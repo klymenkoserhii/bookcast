@@ -1,0 +1,1653 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-01.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-01.md mp3/pies-baskervilleow_002_i-pan-sherlock-holmes.mp3
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-01.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-01.md
+     It reads chapter-01.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path mp3/pies-baskervilleow_002_i-pan-sherlock-holmes.mp3, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Pies Baskerville’ów · Rozdział I</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative;
+    cursor: help;
+    color: var(--accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    top: 12px;
+    width: min(360px, calc(100vw - 36px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans);
+    text-align: left;
+    white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-pl { display: block; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* EN / UA toggles + blocks */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .en p {
+    font-family: var(--sans);
+    font-size: .93rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Pies Baskerville’ów · Rozdział I</h1>
+      <p class="chapter-name">Pan Sherlock Holmes</p>
+      <p>Arthur Conan Doyle · trilingual study edition: EN → PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleEn" class="ctl" type="button" aria-pressed="false">Reveal all EN</button>
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>mp3/pies-baskervilleow_002_i-pan-sherlock-holmes.mp3</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>E</kbd> toggle EN · <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" src="audio/chapter-01.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (EN → PL → UA, in reading order)  */
+/*    Generated from chapter-01.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "en": "Mr. Sherlock Holmes, who was usually very late in the mornings, save upon those not infrequent occasions when he was up all night, was seated at the breakfast table.",
+  "pl": "Pan Sherlock Holmes zwykł wstawać późno, o ile nie czuwał przez całą noc, a zdarzało mu się to nieraz. Otóż owego dnia wstał wyjątkowo wcześnie. Jadł śniadanie.",
+  "ua": "Містер Шерлок Холмс мав звичку прокидатися пізно, якщо не просиджував цілу ніч без сну, а траплялося це йому нерідко. Отож того дня він устав надзвичайно рано. Він снідав.",
+  "para": 0,
+  "start": 14.36
+ },
+ {
+  "en": "I stood upon the hearth-rug and picked up the stick which our visitor had left behind him the night before. It was a fine, thick piece of wood, bulbous-headed, of the sort which is known as a “Penang lawyer.” Just under the head was a broad silver band nearly an inch across. “To James Mortimer, M.R.C.S., from his friends of the C.C.H.,” was engraved upon it, with the date “1884.”",
+  "pl": "Stałem przy kominku. Schyliłem się i podniosłem laskę, którą nasz gość zostawił wczorajszego wieczoru. Był to kij gruby, z dużą gałką, utoczoną z drewna; pod gałką była srebrna obrączka, a na niej napis: „Jakubowi Mortimerowi M. R. C. S. od przyjaciół C. C. H.”, pod spodem zaś data: „r. 1884”.",
+  "ua": "Я стояв біля каміна. Нахилився й підняв ціпок, якого наш гість залишив учора ввечері. Це був грубий ціпок із великим набалдашником, виточеним з дерева; під набалдашником було срібне кільце, а на ньому напис: «Джеймсу Мортімеру, M. R. C. S., від друзів C. C. H.», а під ним дата: «1884 р.».",
+  "para": 0,
+  "start": 27.44
+ },
+ {
+  "en": "It was just such a stick as the old-fashioned family practitioner used to carry—dignified, solid, and reassuring.",
+  "pl": "Taką laskę staroświecką, mocną, zapewniającą bezpieczeństwo, zwykli nosić starzy lekarze.",
+  "ua": "Такий ціпок — старомодний, міцний, що вселяє певність, — звикли носити старі лікарі.",
+  "para": 0,
+  "start": 59.71
+ },
+ {
+  "en": "“Well, Watson, what do you make of it?”",
+  "pl": "— No, i cóż, Watson? Co pan myślisz o tej lasce? Jakie wyprowadzasz wnioski? — zapytał.",
+  "ua": "— Ну, то що, Ватсоне? Що ви думаєте про цей ціпок? Яких висновків доходите? — запитав він.",
+  "para": 1,
+  "start": 66.95
+ },
+ {
+  "en": "Holmes was sitting with his back to me, and I had given him no sign of my occupation.",
+  "pl": "Holmes siedział odwrócony do mnie plecami; widzieć mnie nie mógł, a ja zachowywałem się tak cichutko, że nie mógł domyślić się, czym jestem zajęty.",
+  "ua": "Холмс сидів до мене спиною; бачити мене він не міг, а я поводився так тихесенько, що він не міг здогадатися, чим я зайнятий.",
+  "para": 2,
+  "start": 78.64
+ },
+ {
+  "en": "“How did you know what I was doing? I believe you have eyes in the back of your head.”",
+  "pl": "— Masz pan chyba oczy z tyłu głowy... — rzekłem.",
+  "ua": "— У вас, мабуть, очі й на потилиці... — мовив я.",
+  "para": 3,
+  "start": 89.19
+ },
+ {
+  "en": "“I have, at least, a well-polished, silver-plated coffee-pot in front of me,” said he. “But, tell me, Watson, what do you make of our visitor’s stick? Since we have been so unfortunate as to miss him and have no notion of his errand, this accidental souvenir becomes of importance. Let me hear you reconstruct the man by an examination of it.”",
+  "pl": "— Mam przed sobą srebrny imbryk — odparł — ale powiedz mi, Watson, co myślisz o lasce naszego gościa? Skoro nie zastał nas w domu i nie wytłumaczył celu swych odwiedzin, ta mimowolna pamiątka nabiera wielkiego znaczenia. Chciałbym też wiedzieć, jakie pojęcie tworzysz sobie o tym człowieku?",
+  "ua": "— Переді мною срібний чайник, — відповів він, — але скажіть мені, Ватсоне, що ви думаєте про ціпок нашого гостя? Оскільки він не застав нас удома й не пояснив мети свого візиту, ця мимовільна пам'ятка набуває великого значення. Хотів би я також знати, яку думку ви собі складаєте про цю людину?",
+  "para": 4,
+  "start": 94.21
+ },
+ {
+  "en": "“I think,” said I, following as far as I could the methods of my companion, “that Dr. Mortimer is a successful, elderly medical man, well-esteemed since those who know him give him this mark of their appreciation.”",
+  "pl": "— Sądzę — odparłem, trzymając się metody dociekań mojego towarzysza — że doktor Mortimer jest lekarzem średniego wieku, zażywającym szacunku; dowodzi tego ów upominek pacjentów.",
+  "ua": "— Гадаю, — відповів я, тримаючись методу досліджень мого товариша, — що доктор Мортімер — лікар середнього віку, який користується повагою; свідчить про це цей подарунок пацієнтів.",
+  "para": 5,
+  "start": 117.8
+ },
+ {
+  "en": "“Good!” said Holmes. “Excellent!”",
+  "pl": "— Dobrze, wybornie! — pochwalił mnie Holmes.",
+  "ua": "— Добре, чудово! — похвалив мене Холмс.",
+  "para": 6,
+  "start": 132.7
+ },
+ {
+  "en": "“I think also that the probability is in favour of his being a country practitioner who does a great deal of his visiting on foot.”",
+  "pl": "— Sądzę dalej, że jest lekarzem prowincjonalnym i że po większej części odwiedza chorych pieszo.",
+  "ua": "— Далі гадаю, що він провінційний лікар і що здебільшого відвідує хворих пішки.",
+  "para": 7,
+  "start": 138.17
+ },
+ {
+  "en": "“Why so?”",
+  "pl": "— Dlaczego tak pan przypuszczasz?",
+  "ua": "— Чому ви так припускаєте?",
+  "para": 8,
+  "start": 145.52
+ },
+ {
+  "en": "“Because this stick, though originally a very handsome one has been so knocked about that I can hardly imagine a town practitioner carrying it. The thick-iron ferrule is worn down, so it is evident that he has done a great amount of walking with it.”",
+  "pl": "— Bo laska, choć pierwotnie ładna, jest tak zniszczona, że żaden lekarz miejski nie chciałby jej używać. Grube okucie żelazne starło się, co dowodzi, że laska była w częstym użyciu.",
+  "ua": "— Бо ціпок, хоч спочатку й гарний, так зношений, що жоден міський лікар не схотів би ним користуватися. Товсте залізне окуття стерлося, що доводить, що ціпок був у частому вжитку.",
+  "para": 9,
+  "start": 147.76
+ },
+ {
+  "en": "“Perfectly sound!” said Holmes.",
+  "pl": "— Słuszne rozumowanie — przytwierdził Holmes.",
+  "ua": "— Слушне міркування, — підтвердив Холмс.",
+  "para": 10,
+  "start": 162.52
+ },
+ {
+  "en": "“And then again, there is the ‘friends of the C.C.H.’ I should guess that to be the Something Hunt, the local hunt to whose members he has possibly given some surgical assistance, and which has made him a small presentation in return.”",
+  "pl": "— A dalej, napis od przyjaciół z C. C. H. świadczy, że lekarz niósł pomoc członkom jakiegoś klubu myśliwskiego (Hunting Club).",
+  "ua": "— А далі, напис від друзів із C. C. H. свідчить, що лікар надавав допомогу членам якогось мисливського клубу (Hunting Club).",
+  "para": 11,
+  "start": 166.82
+ },
+ {
+  "en": "“Really, Watson, you excel yourself,” said Holmes, pushing back his chair and lighting a cigarette. “I am bound to say that in all the accounts which you have been so good as to give of my own small achievements you have habitually underrated your own abilities. It may be that you are not yourself luminous, but you are a conductor of light. Some people without possessing genius have a remarkable power of stimulating it. I confess, my dear fellow, that I am very much in your debt.”",
+  "pl": "— Istotnie, Watson, przechodzisz sam siebie — rzekł Holmes, zapalając papierosa. — Muszę przyznać, że pańskie wnioski są słuszne. Mam pojętnego ucznia. Wyświetliłeś kilka punktów zupełnie ciemnych.",
+  "ua": "— Справді, Ватсоне, ви перевершуєте самого себе, — сказав Холмс, запалюючи цигарку. — Мушу визнати, що ваші висновки слушні. Я маю тямущого учня. Ви висвітлили кілька цілком темних пунктів.",
+  "para": 12,
+  "start": 180.15
+ },
+ {
+  "en": "He had never said as much before, and I must admit that his words gave me keen pleasure, for I had often been piqued by his indifference to my admiration and to the attempts which I had made to give publicity to his methods. I was proud, too, to think that I had so far mastered his system as to apply it in a way which earned his approval.",
+  "pl": "Nigdy jeszcze Holmes nie odzywał się do mnie w sposób tak pochlebny. Cieszyłem się z jego uznania, na które od dawna już usiłowałem zasłużyć, stosując jego metodę badań w sprawach kryminalnych.",
+  "ua": "Ще ніколи Холмс не говорив до мене так похвально. Я тішився його визнанням, на яке давно вже намагався заслужити, застосовуючи його метод дослідження в кримінальних справах.",
+  "para": 13,
+  "start": 202.11
+ },
+ {
+  "en": "He now took the stick from my hands and examined it for a few minutes with his naked eyes. Then with an expression of interest he laid down his cigarette, and carrying the cane to the window, he looked over it again with a convex lens.",
+  "pl": "Po chwili milczenia odebrał mi laskę i przypatrywał jej się gołym okiem. Następnie odłożył papierosa, odszedł z laską do okna i począł jej się przyglądać przez szkło powiększające.",
+  "ua": "Після хвилини мовчання він забрав у мене ціпок і почав розглядати його неозброєним оком. Потім відклав цигарку, відійшов із ціпком до вікна й почав придивлятися до нього крізь збільшувальне скло.",
+  "para": 14,
+  "start": 216.12
+ },
+ {
+  "en": "“Interesting, though elementary,” said he as he returned to his favourite corner of the settee. “There are certainly one or two indications upon the stick. It gives us the basis for several deductions.”",
+  "pl": "— Ciekawe, bardzo ciekawe... — rzekł, wracając na swoje ulubione miejsce przy kominku.",
+  "ua": "— Цікаво, дуже цікаво... — сказав він, повертаючись на своє улюблене місце біля каміна.",
+  "para": 15,
+  "start": 230.95
+ },
+ {
+  "en": "“Has anything escaped me?” I asked with some self-importance. “I trust that there is nothing of consequence which I have overlooked?”",
+  "pl": "— Czy pan dopatrzył się jakiegoś nowego szczegółu, mogącego służyć za wskazówkę? — spytałem, spodziewając się, że nic ważnego nie uszło mojej baczności.",
+  "ua": "— Чи ви помітили якусь нову деталь, що могла б стати вказівкою? — запитав я, сподіваючись, що нічого важливого не вислизнуло з-під моєї уваги.",
+  "para": 16,
+  "start": 241.26
+ },
+ {
+  "en": "“I am afraid, my dear Watson, that most of your conclusions were erroneous. When I said that you stimulated me I meant, to be frank, that in noting your fallacies I was occasionally guided towards the truth. Not that you are entirely wrong in this instance. The man is certainly a country practitioner. And he walks a good deal.”",
+  "pl": "— Zdaje mi się, mój drogi Watsonie, że prawie wszystkie twoje wnioski były mylne. Pod jednym tylko względem miałeś słuszność, a mianowicie, że posiadacz tej laski jest doktorem prowincjonalnym i że dużo chodzi.",
+  "ua": "— Мені здається, мій дорогий Ватсоне, що майже всі ваші висновки були хибні. Лише в одному ви мали рацію, а саме: що власник цього ціпка — провінційний лікар і що він багато ходить пішки.",
+  "para": 17,
+  "start": 251.58
+ },
+ {
+  "en": "“Then I was right.”",
+  "pl": "— A więc nie omyliłem się?",
+  "ua": "— Отже, я не помилився?",
+  "para": 18,
+  "start": 267.2
+ },
+ {
+  "en": "“To that extent.”",
+  "pl": "— W tym punkcie — nie.",
+  "ua": "— У цьому пункті — ні.",
+  "para": 19,
+  "start": 270.2
+ },
+ {
+  "en": "“But that was all.”",
+  "pl": "— A w innych?",
+  "ua": "— А в інших?",
+  "para": 20,
+  "start": 272.96
+ },
+ {
+  "en": "“No, no, my dear Watson, not all—by no means all. I would suggest, for example, that a presentation to a doctor is more likely to come from a hospital than from a hunt, and that when the initials ‘C.C.’ are placed before that hospital the words ‘Charing Cross’ very naturally suggest themselves.”",
+  "pl": "— Inne wywody były fałszywe. I tak, na przykład, twierdzisz, że laska jest darem jakiegoś prowincjonalnego klubu myśliwskiego. Ja przypuszczam, że ofiarowali ją lekarzowi pensjonariusze szpitala Charing Cross (C. C. H.).",
+  "ua": "— Інші висновки були хибні. Так, наприклад, ви стверджуєте, що ціпок — дарунок якогось провінційного мисливського клубу. Я ж припускаю, що його подарували лікареві пацієнти лікарні Черінґ-Кросс (C. C. H.).",
+  "para": 21,
+  "start": 275.77
+ },
+ {
+  "en": "“You may be right.” “The probability lies in that direction. And if we take this as a working hypothesis we have a fresh basis from which to start our construction of this unknown visitor.” “Well, then, supposing that ‘C.C.H.’ does stand for ‘Charing Cross Hospital,’ what further inferences may we draw?”",
+  "pl": "— Przyznaję, że to jest prawdopodobniejsze. Jaki pan stąd wyprowadza wniosek?",
+  "ua": "— Визнаю, що це правдоподібніше. Який ви звідси робите висновок?",
+  "para": 22,
+  "start": 290.16
+ },
+ {
+  "en": "“Do none suggest themselves? You know my methods. Apply them!”",
+  "pl": "— Znana jest panu moja metoda badania. Zastosuj ją w praktyce.",
+  "ua": "— Вам відомий мій метод дослідження. Застосуйте його на практиці.",
+  "para": 23,
+  "start": 296.8
+ },
+ {
+  "en": "“I can only think of the obvious conclusion that the man has practised in town before going to the country.”",
+  "pl": "— Mogę to tylko wywnioskować, że przed osiedleniem się na wsi ten lekarz praktykował w mieście.",
+  "ua": "— Можу зробити лише той висновок, що перед тим як оселитися в селі, цей лікар практикував у місті.",
+  "para": 24,
+  "start": 302.09
+ },
+ {
+  "en": "“I think that we might venture a little farther than this. Look at it in this light. On what occasion would it be most probable that such a presentation would be made? When would his friends unite to give him a pledge of their good will? Obviously at the moment when Dr. Mortimer withdrew from the service of the hospital in order to start a practice for himself. We know there has been a presentation. We believe there has been a change from a town hospital to a country practice. Is it, then, stretching our inference too far to say that the presentation was on the occasion of the change?”",
+  "pl": "— Sądzę, że możemy posunąć się jeszcze dalej na drodze przypuszczeń. Ten dar został wręczony w chwili, gdy doktor Mortimer opuszczał szpital, aby rozpocząć praktykę na własną rękę.",
+  "ua": "— Гадаю, що можемо просунутися ще далі на шляху припущень. Цей дарунок було вручено тієї миті, коли доктор Мортімер залишав лікарню, щоб розпочати власну практику.",
+  "para": 25,
+  "start": 309.89
+ },
+ {
+  "en": "“It certainly seems probable.”",
+  "pl": "— Prawdopodobnie.",
+  "ua": "— Ймовірно.",
+  "para": 26,
+  "start": 325.39
+ },
+ {
+  "en": "“Now, you will observe that he could not have been on the staff of the hospital, since only a man well-established in a London practice could hold such a position, and such a one would not drift into the country. What was he, then? If he was in the hospital and yet not on the staff he could only have been a house-surgeon or a house-physician—little more than a senior student.",
+  "pl": "— Jakież mógł on zajmować stanowisko w tym szpitalu? Albo lekarza ordynującego, albo studenta-praktykanta. Zapewne to ostatnie, bo doktor szpitalny, z wyrobioną opinią i liczną praktyką, nie opuszcza zajmowanej pozycji, aby się przesiedlać na prowincję.",
+  "ua": "— Яку ж посаду він міг обіймати в цій лікарні? Або ординатора, або студента-практиканта. Напевно, останню, бо лікарняний лікар із усталеною репутацією та численною практикою не залишає своєї посади, щоб переселятися в провінцію.",
+  "para": 27,
+  "start": 327.85
+ },
+ {
+  "en": "And he left five years ago—the date is on the stick.",
+  "pl": "Doktor Mortimer opuścił szpital przed laty pięciu, jak to wskazuje data na lasce.",
+  "ua": "Доктор Мортімер залишив лікарню п'ять років тому, як це засвідчує дата на ціпку.",
+  "para": 27,
+  "start": 348.31
+ },
+ {
+  "en": "So your grave, middle-aged family practitioner vanishes into thin air, my dear Watson, and there emerges a young fellow under thirty, amiable, unambitious, absent-minded, and the possessor of a favourite dog, which I should describe roughly as being larger than a terrier and smaller than a mastiff.”",
+  "pl": "W owym czasie ukończył zapewne uniwersytet, a więc upada pański wniosek, iż jest człowiekiem średniego wieku. Doktor Mortimer ma lat trzydzieści niespełna, jest uprzejmy, dobry, niezbyt ambitny, roztargniony. Ma psa trochę większego od jamnika, a mniejszego od wyżła.",
+  "ua": "У той час він, певно, закінчив університет, а отже, падає ваш висновок, ніби він людина середнього віку. Докторові Мортімеру неповних тридцять, він люб'язний, добрий, не надто честолюбний, розсіяний. Має пса трохи більшого за таксу, але меншого за лягавого.",
+  "para": 27,
+  "start": 355.85
+ },
+ {
+  "en": "I laughed incredulously as Sherlock Holmes leaned back in his settee and blew little wavering rings of smoke up to the ceiling.",
+  "pl": "Roześmiałem się niedowierzająco. Holmes zasiadł wygodnie w fotelu i puszczał kłęby dymu.",
+  "ua": "Я недовірливо засміявся. Холмс зручно всівся у фотелі й пускав клубки диму.",
+  "para": 28,
+  "start": 380.0
+ },
+ {
+  "en": "“As to the latter part, I have no means of checking you,” said I, “but at least it is not difficult to find out a few particulars about the man’s age and professional career.” From my small medical shelf I took down the Medical Directory and turned up the name. There were several Mortimers, but only one who could be our visitor. I read his record aloud.",
+  "pl": "— Nietrudno będzie przekonać się, który z nas dwóch ma rację — rzekłem, zbliżając się do szafki bibliotecznej i wyjmując z niej kalendarz z wykazem lekarzy angielskich oraz ich życiorysem. Spośród wielu Mortimerów jeden tylko mógł być tym, o którego nam chodziło. Odczytałem głośno:",
+  "ua": "— Неважко буде переконатися, хто з нас двох має рацію, — сказав я, наближаючись до книжкової шафи й виймаючи з неї календар із переліком англійських лікарів та їхніми життєписами. Серед багатьох Мортімерів лише один міг бути тим, про кого йшлося. Я прочитав уголос:",
+  "para": 29,
+  "start": 388.96
+ },
+ {
+  "en": "“Mortimer, James, M.R.C.S., 1882, Grimpen, Dartmoor, Devon. House-surgeon, from 1882 to 1884, at Charing Cross Hospital. Winner of the Jackson prize for Comparative Pathology, with essay entitled ‘Is Disease a Reversion?’",
+  "pl": "Mortimer Jakub, lekarz powiatowy w Grimpen, Dartmoor, hrabstwo Devonshire. Był studentem-praktykantem w szpitalu Charing-Cross od r. 1882 do 1884. Otrzymał nagrodę Jacksona za studium z zakresu patologii porównawczej, zatytułowane: Czy choroba jest zboczeniem?",
+  "ua": "Мортімер Джеймс, повітовий лікар у Ґрімпені, Дартмур, графство Девоншир. Був студентом-практикантом у лікарні Черінґ-Кросс від 1882 до 1884 року. Отримав премію Джексона за працю з порівняльної патології під назвою «Чи хвороба є відхиленням?»",
+  "para": 30,
+  "start": 409.49
+ },
+ {
+  "en": "Corresponding member of the Swedish Pathological Society. Author of ‘Some Freaks of Atavism’ (Lancet 1882). ‘Do We Progress?’ (Journal of Psychology, March, 1883).",
+  "pl": "Jest członkiem szwedzkiego Towarzystwa Patologicznego, autorem wielu artykułów, jako to: Kilka przykładów atawizmu (drukowany w „Lancecie” w r. 1882), Czy idziemy z biegiem postępu? („Dziennik Psychologiczny” 1883).",
+  "ua": "Є членом шведського Товариства патологів, автором багатьох статей, як-от: «Кілька прикладів атавізму» (надруковано в «Ланцеті» 1882 року), «Чи йдемо ми в ногу з поступом?» («Психологічний журнал», 1883).",
+  "para": 30,
+  "start": 437.63
+ },
+ {
+  "en": "Medical Officer for the parishes of Grimpen, Thorsley, and High Barrow.”",
+  "pl": "Jest lekarzem powiatowym gmin Grimpen, Thorsley i High Barrow.",
+  "ua": "Є повітовим лікарем громад Ґрімпен, Торслі та Гай-Берроу.",
+  "para": 30,
+  "start": 458.6
+ },
+ {
+  "en": "“No mention of that local hunt, Watson,” said Holmes with a mischievous smile, “but a country doctor, as you very astutely observed. I think that I am fairly justified in my inferences.",
+  "pl": "— Widzisz pan, że miałem słuszność — rzekł Holmes.",
+  "ua": "— Бачите, я мав рацію, — сказав Холмс.",
+  "para": 31,
+  "start": 466.96
+ },
+ {
+  "en": "As to the adjectives, I said, if I remember right, amiable, unambitious, and absent-minded. It is my experience that it is only an amiable man in this world who receives testimonials, only an unambitious one who abandons a London career for the country, and only an absent-minded one who leaves his stick and not his visiting-card after waiting an hour in your room.”",
+  "pl": "— Obstaję dalej przy moich hipotezach, że doktor Mortimer musi być uprzejmy, bo tylko człowiek uprzejmy dostaje takie upominki od swoich pacjentów; że nie jest ambitny, bo inaczej nie opuszczałby Londynu dla prowincji, i że jest roztargniony, bo w razie przeciwnym, zamiast laski, zostawiłby swój bilet wizytowy.",
+  "ua": "— Я далі стою на своїх гіпотезах: що доктор Мортімер мусить бути люб'язним, бо тільки люб'язні люди отримують такі подарунки від своїх пацієнтів; що він не честолюбний, бо інакше не залишав би Лондона задля провінції; і що він розсіяний, бо в противному разі залишив би візитівку, а не ціпок.",
+  "para": 31,
+  "start": 471.78
+ },
+ {
+  "en": "“And the dog?”",
+  "pl": "— Jakież są pańskie wnioski co do psa?",
+  "ua": "— А які ваші висновки щодо пса?",
+  "para": 32,
+  "start": 496.29
+ },
+ {
+  "en": "“Has been in the habit of carrying this stick behind his master. Being a heavy stick the dog has held it tightly by the middle, and the marks of his teeth are very plainly visible. The dog’s jaw, as shown in the space between these marks, is too broad in my opinion for a terrier and not broad enough for a mastiff. It may have been—yes, by Jove, it is a curly-haired spaniel.”",
+  "pl": "— Jego pies zwykł nosić laskę w zębach; ponieważ laska jest ciężka, więc ją trzyma pośrodku; w tym miejscu znać ślady psich zębów. Zęby są za duże na jamnika, za małe na wyżła. To może być... tak, to jest pinczer.",
+  "ua": "— Його пес звик носити ціпок у зубах; оскільки ціпок важкий, він тримає його посередині; у цьому місці видно сліди собачих зубів. Зуби завеликі для такси, замалі для лягавого. Це може бути... так, це пінчер.",
+  "para": 33,
+  "start": 500.48
+ },
+ {
+  "en": "He had risen and paced the room as he spoke. Now he halted in the recess of the window. There was such a ring of conviction in his voice that I glanced up in surprise.",
+  "pl": "Holmes przeszedł przez pokój i stanął we framudze okna. W głosie jego było tyle głębokiego przekonania, że nie mogłem się wstrzymać, aby go nie zapytać.",
+  "ua": "Холмс перейшов кімнату й став у віконній ніші. У його голосі було стільки глибокого переконання, що я не міг стриматися, щоб не запитати його.",
+  "para": 34,
+  "start": 521.61
+ },
+ {
+  "en": "“My dear fellow, how can you possibly be so sure of that?”",
+  "pl": "— Skąd taka pewność?",
+  "ua": "— Звідки така певність?",
+  "para": 35,
+  "start": 532.1
+ },
+ {
+  "en": "“For the very simple reason that I see the dog himself on our very door-step, and there is the ring of its owner. Don’t move, I beg you, Watson. He is a professional brother of yours, and your presence may be of assistance to me.",
+  "pl": "— Dla bardzo prostej przyczyny, że mam tego psa przed oczyma; stoi za tymi drzwiami, a jego właściciel w tej chwili właśnie do nich dzwoni. Proszę cię, Watson, nie wychodź z pokoju. Jest pańskim kolegą<sup>2<\/sup> i pańska obecność może mi być przydatna.",
+  "ua": "— З дуже простої причини: я маю цього пса перед очима; він стоїть за цими дверима, а його власник саме цієї миті дзвонить до них. Прошу вас, Ватсоне, не виходьте з кімнати. Він ваш колега<sup>2<\/sup>, і ваша присутність може мені знадобитися.",
+  "para": 36,
+  "start": 534.45
+ },
+ {
+  "en": "Now is the dramatic moment of fate, Watson, when you hear a step upon the stair which is walking into your life, and you know not whether for good or ill. What does Dr. James Mortimer, the man of science, ask of Sherlock Holmes, the specialist in crime? Come in!”",
+  "pl": "Nadchodzi ważna chwila. Zbliżają się kroki, które mogą stanowić o przeznaczeniu — złym czy dobrym — nie wiadomo. Ciekaw jestem, czego doktor Jakub Mortimer zażąda od Sherlocka Holmesa, specjalisty od przestępstw kryminalnych... Proszę!",
+  "ua": "Наближається важлива мить. Наближаються кроки, які можуть вирішити долю — добру чи злу — невідомо. Цікаво мені, чого доктор Джеймс Мортімер зажадає від Шерлока Холмса, фахівця з кримінальних злочинів... Прошу!",
+  "para": 36,
+  "start": 550.43
+ },
+ {
+  "en": "The appearance of our visitor was a surprise to me, since I had expected a typical country practitioner. He was a very tall, thin man, with a long nose like a beak, which jutted out between two keen, grey eyes, set closely together and sparkling brightly from behind a pair of gold-rimmed glasses.",
+  "pl": "Do pokoju wszedł nasz gość. Jego powierzchowność zdziwiła mnie bardzo. Nie wyglądał na prowincjonalnego lekarza. Był wysoki, szczupły, miał nos wąski, wysuwający się ostro spomiędzy oczu przenikliwych, zasłoniętych ciemnymi okularami, w złotej oprawie.",
+  "ua": "До кімнати ввійшов наш гість. Його зовнішність дуже мене здивувала. Він не скидався на провінційного лікаря. Був високий, худорлявий, мав вузький ніс, що гостро виступав поміж проникливих очей, закритих темними окулярами в золотій оправі.",
+  "para": 37,
+  "start": 575.1
+ },
+ {
+  "en": "He was clad in a professional but rather slovenly fashion, for his frock-coat was dingy and his trousers frayed. Though young, his long back was already bowed, and he walked with a forward thrust of his head and a general air of peering benevolence. As he entered his eyes fell upon the stick in Holmes’s hand, and he ran towards it with an exclamation of joy.",
+  "pl": "Ubrany był w długi, poplamiony surdut, spodnie miał wystrzępione. Choć jeszcze młody wiekiem, był już przygarbiony; na jego twarzy malowała się dobra wola względem ludzi. Wchodząc, zobaczył od razu laskę w ręku Holmesa i podbiegł ku niej z okrzykiem radości.",
+  "ua": "Одягнений він був у довгий, заплямований сюртук, штани мав пошарпані. Хоч ще молодий віком, він уже був згорблений; на його обличчі вимальовувалася доброзичливість до людей. Входячи, він одразу побачив ціпок у руці Холмса й підбіг до нього з вигуком радості.",
+  "para": 37,
+  "start": 597.18
+ },
+ {
+  "en": "“I am so very glad,” said he. “I was not sure whether I had left it here or in the Shipping Office. I would not lose that stick for the world.”",
+  "pl": "— Tak się cieszę! — zawołał. — Nie byłem pewny, czym ją zostawił tutaj, czy w biurze portowym. Gdybym ją zgubił, sprawiłoby mi to wielką przykrość.",
+  "ua": "— Як я радий! — вигукнув він. — Я не був певен, чи залишив її тут, чи в портовому бюро. Якби я її загубив, це завдало б мені великої прикрості.",
+  "para": 38,
+  "start": 618.65
+ },
+ {
+  "en": "“A presentation, I see,” said Holmes.",
+  "pl": "— Wszak to prezent? — rzekł Holmes.",
+  "ua": "— Це ж подарунок? — сказав Холмс.",
+  "para": 39,
+  "start": 632.69
+ },
+ {
+  "en": "“Yes, sir.”",
+  "pl": "— Tak, panie.",
+  "ua": "— Так, сер.",
+  "para": 40,
+  "start": 637.15
+ },
+ {
+  "en": "“From Charing Cross Hospital?”",
+  "pl": "— Od pensjonariuszy szpitala Charing Cross...",
+  "ua": "— Від пацієнтів лікарні Черінґ-Кросс...",
+  "para": 41,
+  "start": 639.04
+ },
+ {
+  "en": "“From one or two friends there on the occasion of my marriage.”",
+  "pl": "— Tak, od paru pacjentów. Dali mi ją na pamiątkę mojego ślubu.",
+  "ua": "— Так, від кількох пацієнтів. Вони дали мені її на пам'ять про моє весілля.",
+  "para": 42,
+  "start": 642.74
+ },
+ {
+  "en": "“Dear, dear, that’s bad!” said Holmes, shaking his head.",
+  "pl": "— Szkoda — rzekł Holmes, ściskając mu rękę.",
+  "ua": "— Шкода, — сказав Холмс, потискуючи йому руку.",
+  "para": 43,
+  "start": 649.22
+ },
+ {
+  "en": "Dr. Mortimer blinked through his glasses in mild astonishment. “Why was it bad?”",
+  "pl": "— Czego pan żałuje? — spytał doktor Mortimer ze zdziwieniem.",
+  "ua": "— Чого ви шкодуєте? — запитав доктор Мортімер із подивом.",
+  "para": 44,
+  "start": 654.38
+ },
+ {
+  "en": "“Only that you have disarranged our little deductions. Your marriage, you say?”",
+  "pl": "— Szkoda, że pan rozproszył moje wnioski — brzmiała odpowiedź. — A więc powiadasz pan, że to podarek ślubny?",
+  "ua": "— Шкода, що ви розвіяли мої висновки, — прозвучала відповідь. — Отже, ви кажете, що це весільний дарунок?",
+  "para": 45,
+  "start": 661.01
+ },
+ {
+  "en": "“Yes, sir. I married, and so left the hospital, and with it all hopes of a consulting practice. It was necessary to make a home of my own.”",
+  "pl": "— Tak, panie. Ożeniłem się i dlatego musiałem szpital opuścić; trzeba było założyć dom, postarać się o praktykę samodzielną.",
+  "ua": "— Так, сер. Я одружився, і тому мусив залишити лікарню; треба було завести дім, подбати про самостійну практику.",
+  "para": 46,
+  "start": 670.08
+ },
+ {
+  "en": "“Come, come, we are not so far wrong, after all,” said Holmes. “And now, Dr. James Mortimer—” “Mister, sir, Mister—a humble M.R.C.S.” “And a man of precise mind, evidently.”",
+  "pl": "— No, i teraz zyskujesz pan sobie sławę na polu nauki — rzekłem.",
+  "ua": "— Ну, і тепер ви здобуваєте собі славу на полі науки, — сказав я.",
+  "para": 47,
+  "start": 679.08
+ },
+ {
+  "en": "“A dabbler in science, Mr. Holmes, a picker up of shells on the shores of the great unknown ocean. I presume that it is Mr. Sherlock Holmes whom I am addressing and not—”",
+  "pl": "— Wszak mam przyjemność mówić z panem Sherlockiem Holmesem?",
+  "ua": "— Я ж маю приємність розмовляти з містером Шерлоком Холмсом?",
+  "para": 48,
+  "start": 686.36
+ },
+ {
+  "en": "“No, this is my friend Dr. Watson.”",
+  "pl": "— Nie, to mój przyjaciel, doktor Watson.",
+  "ua": "— Ні, це мій друг, доктор Ватсон.",
+  "para": 49,
+  "start": 689.84
+ },
+ {
+  "en": "“Glad to meet you, sir. I have heard your name mentioned in connection with that of your friend. You interest me very much, Mr. Holmes. I had hardly expected so dolichocephalic a skull or such well-marked supra-orbital development. Would you have any objection to my running my finger along your parietal fissure? A cast of your skull, sir, until the original is available, would be an ornament to any anthropological museum. It is not my intention to be fulsome, but I confess that I covet your skull.”",
+  "pl": "— Miło mi pana poznać. Słyszałem o panu nie raz. Pozwoli mi pan, panie Holmes, zbadać swoją czaszkę. Od pierwszego rzutu oka spostrzegłem, że jest niezwykła: zdradza zdolności, rzekłbym nawet: geniusz dedukcyjny. Taka czaszka byłaby ozdobą każdego muzeum. Przyznaję, że jej panu zazdroszczę.",
+  "ua": "— Приємно з вами познайомитися. Я не раз чув про вас. Дозволите мені, пане Холмс, дослідити ваш череп. З першого погляду я помітив, що він незвичайний: він виявляє здібності, я б навіть сказав — дедуктивний геній. Такий череп був би окрасою будь-якого музею. Визнаю, що я вам його заздрю.",
+  "para": 50,
+  "start": 695.21
+ },
+ {
+  "en": "Sherlock Holmes waved our strange visitor into a chair. “You are an enthusiast in your line of thought, I perceive, sir, as I am in mine,” said he. “I observe from your forefinger that you make your own cigarettes. Have no hesitation in lighting one.” The man drew out paper and tobacco and twirled the one up in the other with surprising dexterity. He had long, quivering fingers as agile and restless as the antennæ of an insect. Holmes was silent, but his little darting glances showed me the interest which he took in our curious companion. “I presume, sir,” said he at last, “that it was not merely for the purpose of examining my skull that you have done me the honour to call here last night and again today?”",
+  "pl": "— Jesteś pan entuzjastą w swoim zawodzie, tak jak ja w swoim — odparł detektyw — ale sądzę, że nie przybywasz pan tu po raz wtóry jedynie w zamiarze zbadania mojej czaszki...",
+  "ua": "— Ви ентузіаст у своєму фаху, як і я у своєму, — відповів детектив, — але гадаю, що ви прибули сюди вдруге не лише з наміром дослідити мій череп...",
+  "para": 51,
+  "start": 725.18
+ },
+ {
+  "en": "“No, sir, no; though I am happy to have had the opportunity of doing that as well. I came to you, Mr. Holmes, because I recognized that I am myself an unpractical man and because I am suddenly confronted with a most serious and extraordinary problem. Recognizing, as I do, that you are the second highest expert in Europe—”",
+  "pl": "— Nie, panie, choć rad jestem, że zdarza mi się sposobność ku temu. Przybyłem do pana, panie Holmes, bo uznaję własną niepraktyczność, a jestem postawiony wobec bardzo trudnego zagadnienia. Ponieważ pan jesteś drugim w Europie ekspertem w sprawach kryminalnych...",
+  "ua": "— Ні, сер, хоч я радий, що мені трапляється нагода для цього. Я прибув до вас, пане Холмс, бо визнаю власну непрактичність, а переді мною постало дуже складне завдання. Оскільки ви другий в Європі експерт у кримінальних справах...",
+  "para": 52,
+  "start": 741.9
+ },
+ {
+  "en": "“Indeed, sir! May I inquire who has the honour to be the first?” asked Holmes with some asperity.",
+  "pl": "— Doprawdy? Czy wolno mi zapytać, kto jest pierwszy?",
+  "ua": "— Справді? Чи дозволено мені запитати, хто перший?",
+  "para": 53,
+  "start": 763.0
+ },
+ {
+  "en": "“To the man of precisely scientific mind the work of Monsieur Bertillon must always appeal strongly.”",
+  "pl": "— W oczach człowieka przekładającego teorię nad praktykę pan Bertillion zajmuje niewątpliwie pierwsze miejsce.",
+  "ua": "— В очах людини, яка ставить теорію над практикою, пан Бертільйон безперечно посідає перше місце.",
+  "para": 54,
+  "start": 769.16
+ },
+ {
+  "en": "“Then had you not better consult him?”",
+  "pl": "— Więc czemuż pan nie zwrócisz się do niego?",
+  "ua": "— То чому ж ви не звернетеся до нього?",
+  "para": 55,
+  "start": 778.49
+ },
+ {
+  "en": "“I said, sir, to the precisely scientific mind. But as a practical man of affairs it is acknowledged that you stand alone. I trust, sir, that I have not inadvertently—”",
+  "pl": "— Powiadam, że jest on pierwszorzędny powagą, jako teoretyk. Ale pan, jako praktyk, zajmujesz pierwsze w Europie — to niewątpliwe. Spodziewam się, żem pana nie obraził...",
+  "ua": "— Я кажу, що він першорядний авторитет як теоретик. Але ви як практик посідаєте перше місце в Європі — це безперечно. Сподіваюся, що я вас не образив...",
+  "para": 56,
+  "start": 781.85
+ },
+ {
+  "en": "“Just a little,” said Holmes. “I think, Dr. Mortimer, you would do wisely if without more ado you would kindly tell me plainly what the exact nature of the problem is in which you demand my assistance.”",
+  "pl": "— Trochę — odparł Holmes na wpół żartem — ale jako człowiek praktyczny, chciałbym nareszcie dowiedzieć się, co pana tutaj sprowadza.",
+  "ua": "— Трохи, — відповів Холмс напівжартома, — але як людина практична я хотів би нарешті дізнатися, що вас сюди привело.",
+  "para": 57,
+  "start": 799.47
+ }
+];
+const ANNOTATIONS = {"2": {"term": "*jest pańskim kolegą*", "definition": "*jest pańskim kolegą* — tj. kolegą po fachu; dr Watson nie zna osobiście dr. Mortimera. [przypis edytorski]", "translation": "тобто колегою за фахом; доктор Вотсон особисто не знайомий із доктором Мортімером. [редакторська примітка]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into mp3/pies-baskervilleow_002_i-pan-sherlock-holmes.mp3, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  14.36,   // [ 0] conf 0.96  "Pan Sherlock Holmes zwykł wstawać późno,…"
+  27.44,   // [ 1] conf 0.84  "Stałem przy kominku. Schyliłem się i podn…"
+  59.71,   // [ 2] conf 1.00  "Taką laskę staroświecką, mocną, zapewniaj…"
+  66.95,   // [ 3] conf 1.00  "— No, i cóż, Watson? Co pan myślisz o tej…"
+  78.64,   // [ 4] conf 1.00  "Holmes siedział odwrócony do mnie plecami…"
+  89.19,   // [ 5] conf 1.00  "— Masz pan chyba oczy z tyłu głowy... — r…"
+  94.21,   // [ 6] conf 1.00  "— Mam przed sobą srebrny imbryk — odparł…"
+  117.80,  // [ 7] conf 1.00  "— Sądzę — odparłem, trzymając się metody…"
+  132.70,  // [ 8] conf 1.00  "— Dobrze, wybornie! — pochwalił mnie Holm…"
+  138.17,  // [ 9] conf 1.00  "— Sądzę dalej, że jest lekarzem prowincjo…"
+  145.52,  // [10] conf 1.00  "— Dlaczego tak pan przypuszczasz?"
+  147.76,  // [11] conf 0.97  "— Bo laska, choć pierwotnie ładna, jest t…"
+  162.52,  // [12] conf 1.00  "— Słuszne rozumowanie — przytwierdził Hol…"
+  166.82,  // [13] conf 0.80  "— A dalej, napis od przyjaciół z C. C. H.…"
+  180.15,  // [14] conf 1.00  "— Istotnie, Watson, przechodzisz sam sieb…"
+  202.11,  // [15] conf 1.00  "Nigdy jeszcze Holmes nie odzywał się do m…"
+  216.12,  // [16] conf 0.96  "Po chwili milczenia odebrał mi laskę i pr…"
+  230.95,  // [17] conf 1.00  "— Ciekawe, bardzo ciekawe... — rzekł, wra…"
+  241.26,  // [18] conf 1.00  "— Czy pan dopatrzył się jakiegoś nowego s…"
+  251.58,  // [19] conf 1.00  "— Zdaje mi się, mój drogi Watsonie, że pr…"
+  267.20,  // [20] conf 1.00  "— A więc nie omyliłem się?"
+  270.20,  // [21] conf 1.00  "— W tym punkcie — nie."
+  272.96,  // [22] conf 1.00  "— A w innych?"
+  275.77,  // [23] conf 1.00  "— Inne wywody były fałszywe. I tak, na pr…"
+  290.16,  // [24] conf 1.00  "— Przyznaję, że to jest prawdopodobniejsz…"
+  296.80,  // [25] conf 1.00  "— Znana jest panu moja metoda badania. Za…"
+  302.09,  // [26] conf 1.00  "— Mogę to tylko wywnioskować, że przed os…"
+  309.89,  // [27] conf 1.00  "— Sądzę, że możemy posunąć się jeszcze da…"
+  325.39,  // [28] conf 1.00  "— Prawdopodobnie."
+  327.85,  // [29] conf 1.00  "— Jakież mógł on zajmować stanowisko w ty…"
+  348.31,  // [30] conf 1.00  "Doktor Mortimer opuścił szpital przed lat…"
+  355.85,  // [31] conf 1.00  "W owym czasie ukończył zapewne uniwersyte…"
+  380.00,  // [32] conf 1.00  "Roześmiałem się niedowierzająco. Holmes z…"
+  388.96,  // [33] conf 0.98  "— Nietrudno będzie przekonać się, który z…"   // start word fuzzy-corrected
+  409.49,  // [34] conf 0.97  "Mortimer Jakub, lekarz powiatowy w Grimpe…"
+  437.63,  // [35] conf 0.96  "Jest członkiem szwedzkiego Towarzystwa Pa…"
+  458.60,  // [36] conf 1.00  "Jest lekarzem powiatowym gmin Grimpen, Th…"
+  466.96,  // [37] conf 1.00  "— Widzisz pan, że miałem słuszność — rzek…"
+  471.78,  // [38] conf 1.00  "— Obstaję dalej przy moich hipotezach, że…"
+  496.29,  // [39] conf 1.00  "— Jakież są pańskie wnioski co do psa?"
+  500.48,  // [40] conf 0.95  "— Jego pies zwykł nosić laskę w zębach; p…"
+  521.61,  // [41] conf 0.96  "Holmes przeszedł przez pokój i stanął we…"
+  532.10,  // [42] conf 1.00  "— Skąd taka pewność?"
+  534.45,  // [43] conf 0.91  "— Dla bardzo prostej przyczyny, że mam te…"
+  550.43,  // [44] conf 0.94  "Nadchodzi ważna chwila. Zbliżają się krok…"
+  575.10,  // [45] conf 0.91  "Do pokoju wszedł nasz gość. Jego powierzc…"   // start word fuzzy-corrected
+  597.18,  // [46] conf 1.00  "Ubrany był w długi, poplamiony surdut, sp…"
+  618.65,  // [47] conf 1.00  "— Tak się cieszę! — zawołał. — Nie byłem…"
+  632.69,  // [48] conf 1.00  "— Wszak to prezent? — rzekł Holmes."
+  637.15,  // [49] conf 1.00  "— Tak, panie."
+  639.04,  // [50] conf 1.00  "— Od pensjonariuszy szpitala Charing Cros…"
+  642.74,  // [51] conf 1.00  "— Tak, od paru pacjentów. Dali mi ją na p…"
+  649.22,  // [52] conf 1.00  "— Szkoda — rzekł Holmes, ściskając mu ręk…"
+  654.38,  // [53] conf 0.88  "— Czego pan żałuje? — spytał doktor Morti…"
+  661.01,  // [54] conf 1.00  "— Szkoda, że pan rozproszył moje wnioski…"
+  670.08,  // [55] conf 1.00  "— Tak, panie. Ożeniłem się i dlatego musi…"
+  679.08,  // [56] conf 1.00  "— No, i teraz zyskujesz pan sobie sławę n…"
+  686.36,  // [57] conf 0.88  "— Wszak mam przyjemność mówić z panem She…"
+  689.84,  // [58] conf 0.83  "— Nie, to mój przyjaciel, doktor Watson."
+  695.21,  // [59] conf 1.00  "— Miło mi pana poznać. Słyszałem o panu n…"
+  725.18,  // [60] conf 1.00  "— Jesteś pan entuzjastą w swoim zawodzie,…"
+  741.90,  // [61] conf 1.00  "— Nie, panie, choć rad jestem, że zdarza…"
+  763.00,  // [62] conf 1.00  "— Doprawdy? Czy wolno mi zapytać, kto jes…"
+  769.16,  // [63] conf 0.92  "— W oczach człowieka przekładającego teor…"
+  778.49,  // [64] conf 1.00  "— Więc czemuż pan nie zwrócisz się do nie…"
+  781.85,  // [65] conf 1.00  "— Powiadam, że jest on pierwszorzędny pow…"
+  799.47,  // [66] conf 1.00  "— Trochę — odparł Holmes na wpół żartem —…"
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  enOpen: false,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function appendTooltipText(parent, text) {
+  // Render table emphasis safely; never interpret annotation cells as HTML.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function setStudyText(element, text) {
+  // Preserve unsupported superscripts literally, and decorate known note numbers.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      const definition = document.createElement("span");
+      definition.className = "note-pl";
+      appendTooltipText(definition, note.definition);
+      tooltip.appendChild(definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- EN / UA toggle chips --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const enChip = document.createElement("button");
+    enChip.type = "button";
+    enChip.className = "chip";
+    enChip.textContent = "EN ▾";
+    enChip.setAttribute("aria-expanded", "false");
+    enChip.setAttribute("aria-controls", "en-" + i);
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+
+    toggles.append(enChip, uaChip);
+
+    /* --- hidden EN block --- */
+    const enBox = document.createElement("div");
+    enBox.className = "stack en";
+    enBox.id = "en-" + i;
+    enBox.hidden = true;
+    const enLbl = document.createElement("span");
+    enLbl.className = "lbl";
+    enLbl.textContent = "English";
+    const enP = document.createElement("p");
+    enP.lang = "en";
+    setStudyText(enP, unit.en);
+    enBox.append(enLbl, enP);
+
+    /* --- hidden UA block --- */
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, enBox, uaBox, pbar);
+
+    enChip.addEventListener("click", () => setEn(i, enBox.hidden));
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, enChip, uaChip, enBox, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: mp3/pies-baskervilleow_002_i-pan-sherlock-holmes.mp3`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = (box.classList.contains("en") ? "EN " : "UA ") + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setEn(i, open) { setChip(els[i].enChip, els[i].enBox, open); }
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleEnEl = document.getElementById("toggleEn");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(kind, open) {
+  const key = kind === "en" ? "enOpen" : "uaOpen";
+  state[key] = open;
+  els.forEach((e, i) => (kind === "en" ? setEn(i, open) : setUa(i, open)));
+  const btn = kind === "en" ? toggleEnEl : toggleUaEl;
+  btn.textContent = (open ? "Hide all " : "Reveal all ") + kind.toUpperCase();
+  btn.setAttribute("aria-pressed", String(open));
+  btn.classList.toggle("is-on", open);
+}
+
+toggleEnEl.addEventListener("click", () => setAll("en", !state.enOpen));
+toggleUaEl.addEventListener("click", () => setAll("ua", !state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+// If metadata never arrives (missing file / unsupported codec), tell the user.
+setTimeout(() => { if (audio.readyState < 1) showBanner(); }, 2500);
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "e" || ev.key === "E") {
+    setAll("en", !state.enOpen);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll("ua", !state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

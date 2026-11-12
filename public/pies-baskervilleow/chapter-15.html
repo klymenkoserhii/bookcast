@@ -1,0 +1,1749 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-15.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-15.md mp3/pies-baskervilleow_016_xv-rzut-oka-wstecz.mp3
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-15.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-15.md
+     It reads chapter-15.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path mp3/pies-baskervilleow_016_xv-rzut-oka-wstecz.mp3, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Pies Baskerville’ów · Rozdział XV</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative;
+    cursor: help;
+    color: var(--accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    top: 12px;
+    width: min(360px, calc(100vw - 36px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans);
+    text-align: left;
+    white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-pl { display: block; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* EN / UA toggles + blocks */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .en p {
+    font-family: var(--sans);
+    font-size: .93rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Pies Baskerville’ów · Rozdział XV</h1>
+      <p class="chapter-name">Rzut oka wstecz</p>
+      <p>Arthur Conan Doyle · trilingual study edition: EN → PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleEn" class="ctl" type="button" aria-pressed="false">Reveal all EN</button>
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>mp3/pies-baskervilleow_016_xv-rzut-oka-wstecz.mp3</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>E</kbd> toggle EN · <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" src="audio/chapter-15.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (EN → PL → UA, in reading order)  */
+/*    Generated from chapter-15.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "en": "It was the end of November, and Holmes and I sat, upon a raw and foggy night, on either side of a blazing fire in our sitting-room in Baker Street. Since the tragic upshot of our visit to Devonshire he had been engaged in two affairs of the utmost importance, in the first of which he had exposed the atrocious conduct of Colonel Upwood in connection with the famous card scandal of the Nonpareil Club, while in the second he had defended the unfortunate Mme. Montpensier from the charge of murder which hung over her in connection with the death of her step-daughter, Mlle. Carére, the young lady who, as it will be remembered, was found six months later alive and married in New York. My friend was in excellent spirits over the success which had attended a succession of difficult and important cases, so that I was able to induce him to discuss the details of the Baskerville mystery. I had waited patiently for the opportunity for I was aware that he would never permit cases to overlap, and that his clear and logical mind would not be drawn from its present work to dwell upon memories of the past.",
+  "pl": "W końcu listopada Holmes i ja w wieczór ciemny i dżdżysty siedzieliśmy przy kominku w naszej bawialni na Baker Street. Mój przyjaciel był w wybornym humorze i skorzystałem z tego, aby go wybadać o nieznane mi dotychczas szczegóły sprawy Baskerville’a.",
+  "ua": "Наприкінці листопада, темного й дощового вечора, ми з Холмсом сиділи біля каміна у вітальні на Бейкер-стріт. Мій друг був у чудовому гуморі, і я скористався нагодою, щоб розпитати його про подробиці справи Баскервілів, яких досі не знав.",
+  "para": 0,
+  "start": 7.76
+ },
+ {
+  "en": "Sir Henry and Dr. Mortimer were, however, in London, on their way to that long voyage which had been recommended for the restoration of his shattered nerves. They had called upon us that very afternoon, so that it was natural that the subject should come up for discussion.",
+  "pl": "Sir Henryk i doktor Mortimer bawili w Londynie, gotując się do dalekiej podróży, która miała wzmocnić nerwy baroneta.",
+  "ua": "Сер Генрі й доктор Мортімер перебували в Лондоні, готуючись до далекої подорожі, яка мала зміцнити нерви баронета.",
+  "para": 1,
+  "start": 26.2
+ },
+ {
+  "en": "“The whole course of events,” said Holmes, “from the point of view of the man who called himself Stapleton was simple and direct, although to us, who had no means in the beginning of knowing the motives of his actions and could only learn part of the facts, it all appeared exceedingly complex. I have had the advantage of two conversations with Mrs. Stapleton, and the case has now been so entirely cleared up that I am not aware that there is anything which has remained a secret to us. You will find a few notes upon the matter under the heading B in my indexed list of cases.”",
+  "pl": "— Cała ta sprawa była jasna i prosta z punktu widzenia rzekomego Stapletona — mówił Holmes w odpowiedzi na moje pytanie. — Dla nas zaś, którzyśmy nie znali jego pobudek i celów, wydawała się tajemnicza i zawiła. Znajdziesz moje poglądy pod literą B w moich aktach kryminalnych.",
+  "ua": "— З погляду самого Степлтона ця справа була ясною й простою, — відповів Холмс на моє запитання. — Для нас же, хто не знав його мотивів і намірів, вона здавалася таємничою й заплутаною. Мої міркування знайдеш під літерою «Б» у моєму архіві кримінальних справ.",
+  "para": 2,
+  "start": 37.18
+ },
+ {
+  "en": "“Perhaps you would kindly give me a sketch of the course of events from memory.”",
+  "pl": "— Wolałbym, żebyś mi to opowiedział żywym słowem.",
+  "ua": "— Я волів би почути твою розповідь, а не читати нотатки.",
+  "para": 3,
+  "start": 61.66
+ },
+ {
+  "en": "“Certainly, though I cannot guarantee that I carry all the facts in my mind. Intense mental concentration has a curious way of blotting out what has passed. The barrister who has his case at his fingers’ ends and is able to argue with an expert upon his own subject finds that a week or two of the courts will drive it all out of his head once more. So each of my cases displaces the last, and Mlle. Carére has blurred my recollection of Baskerville Hall.",
+  "pl": "— Dobrze, ale nie ręczę za dokładność. Pamięć może mnie mylić. Otóż moje badania wykryły, że portret rodzinny nas nie zawiódł. Ten łotr był synem Rogera Baskerville, młodszego brata sir Karola; wywędrował do Ameryki z bardzo złą reputacją.",
+  "ua": "— Гаразд, але за точність не ручаюся: пам'ять може зрадити. Моє розслідування підтвердило, що родинний портрет нас не підвів. Цей негідник був сином Роджера Баскервіля, молодшого брата сера Чарльза; він виїхав до Америки з украй поганою репутацією.",
+  "para": 4,
+  "start": 65.88
+ },
+ {
+  "en": "Tomorrow some other little problem may be submitted to my notice which will in turn dispossess the fair French lady and the infamous Upwood. So far as the case of the hound goes, however, I will give you the course of events as nearly as I can, and you will suggest anything which I may have forgotten. “My inquiries show beyond all question that the family portrait did not lie, and that this fellow was indeed a Baskerville. He was a son of that Rodger Baskerville, the younger brother of Sir Charles, who fled with a sinister reputation to South America, where he was said to have died unmarried.",
+  "pl": "Ożenił się tam z Beryl Garcia, najpiękniejszą kobietą w Kostaryce, a sprzeniewierzywszy znaczną sumę z publicznych funduszów, zmienił nazwisko na Vandeleur, uciekł do Anglii i założył szkołę dla chłopców w Yorkshire.",
+  "ua": "Там він одружився з Беріл Ґарсією, найвродливішою жінкою Коста-Рики, привласнив чималу суму державних коштів, змінив прізвище на Ванделер, утік до Англії й заснував школу для хлопців у Йоркширі.",
+  "para": 4,
+  "start": 89.31
+ },
+ {
+  "en": "He did, as a matter of fact, marry, and had one child, this fellow, whose real name is the same as his father’s. He married Beryl Garcia, one of the beauties of Costa Rica, and, having purloined a considerable sum of public money, he changed his name to Vandeleur and fled to England, where he established a school in the east of Yorkshire.",
+  "pl": "Do obrania tego zawodu skłoniła go znajomość, zawarta w drodze powrotnej z nauczycielem suchotnikiem, niejakim Fraserem. Weszli w spółkę.",
+  "ua": "До цієї справи його підштовхнуло знайомство під час повернення додому з сухотним учителем на прізвище Фрейзер. Вони стали партнерами.",
+  "para": 4,
+  "start": 106.78
+ },
+ {
+  "en": "His reason for attempting this special line of business was that he had struck up an acquaintance with a consumptive tutor upon the voyage home, and that he had used this man’s ability to make the undertaking a success. Fraser, the tutor, died however, and the school which had begun well sank from disrepute into infamy.",
+  "pl": "Dopóki Fraser żył, szkoła szła dobrze i prowadzona była z poczuciem obywatelskich obowiązków, ale po jego śmierci zyskała jak najgorszą opinię, aż wreszcie okryła się hańbą. Vandeleur uznał za stosowne zmienić nazwisko.",
+  "ua": "Поки Фрейзер був живий, школа процвітала й працювала сумлінно, але після його смерті її репутація занепала, доки вона не вкрилася ганьбою. Ванделер вирішив, що час змінити прізвище.",
+  "para": 4,
+  "start": 119.28
+ },
+ {
+  "en": "The Vandeleurs found it convenient to change their name to Stapleton, and he brought the remains of his fortune, his schemes for the future, and his taste for entomology to the south of England.",
+  "pl": "Jako Stapleton, z resztkami ukradzionych pieniędzy, z pięknymi zbiorami entomologicznymi przesiedlił się do Anglii południowej.",
+  "ua": "Під ім'ям Степлтона, з рештками вкрадених грошей і чудовою колекцією комах, він перебрався на південь Англії.",
+  "para": 4,
+  "start": 136.44
+ },
+ {
+  "en": "I learned at the British Museum that he was a recognized authority upon the subject, and that the name of Vandeleur has been permanently attached to a certain moth which he had, in his Yorkshire days, been the first to describe.",
+  "pl": "Muzeum Brytyjskie objaśniło mnie, że był powagą na polu owadoznawstwa; odkrył dużo gatunków, które noszą nazwisko Vandeleur.",
+  "ua": "У Британському музеї мені пояснили, що він був авторитетом у галузі ентомології; він відкрив чимало видів, які отримали його прізвище — Ванделер.",
+  "para": 5,
+  "start": 146.96
+ },
+ {
+  "en": "“We now come to that portion of his life which has proved to be of such intense interest to us. The fellow had evidently made inquiry and found that only two lives intervened between him and a valuable estate.",
+  "pl": "Ten nikczemnik zbadał zapewne swoje stosunki rodzinne i dowiedział się, że jedno tylko życie ludzkie stoi pomiędzy nim a olbrzymią fortuną.",
+  "ua": "Цей негідник, очевидно, розвідав своє родовідне становище й дізнався, що лише одне людське життя відділяє його від величезного спадку.",
+  "para": 6,
+  "start": 159.06
+ },
+ {
+  "en": "When he went to Devonshire his plans were, I believe, exceedingly hazy, but that he meant mischief from the first is evident from the way in which he took his wife with him in the character of his sister.",
+  "pl": "Przypuszczam, że w chwili osiedlania się w Devonshire nie miał jeszcze wytyczonego jasno planu; lecz że od początku żywił złe zamiary, świadczy o tym fakt, iż żonę swą podawał jako siostrę.",
+  "ua": "Гадаю, оселившись у Девонширі, він іще не мав чіткого плану. Але що від самого початку задумував лихе, свідчить те, що дружину він видавав за сестру.",
+  "para": 6,
+  "start": 169.12
+ },
+ {
+  "en": "The idea of using her as a decoy was clearly already in his mind, though he may not have been certain how the details of his plot were to be arranged.",
+  "pl": "Widocznie miał już wtedy projekt użycia jej jako narzędzia, choć nie wiedział jeszcze, jakimi drogami dojdzie do celu.",
+  "ua": "Вочевидь, він уже тоді планував використати її як приманку, хоча ще не знав, як саме здійснить свій задум.",
+  "para": 6,
+  "start": 184.72
+ },
+ {
+  "en": "He meant in the end to have the estate, and he was ready to use any tool or run any risk for that end. His first act was to establish himself as near to his ancestral home as he could, and his second was to cultivate a friendship with Sir Charles Baskerville and with the neighbours.",
+  "pl": "Przede wszystkim postarał się osiąść jak najbliżej siedziby swych przodków, po wtóre — nawiązać przyjazny stosunek z sir Karolem Baskervillem oraz z jego sąsiadami.",
+  "ua": "Насамперед він постарався оселитися якнайближче до родового маєтку, а потім — зав'язати дружні стосунки із сером Чарльзом Баскервілем та його сусідами.",
+  "para": 7,
+  "start": 192.16
+ },
+ {
+  "en": "“The baronet himself told him about the family hound, and so prepared the way for his own death. Stapleton, as I will continue to call him, knew that the old man’s heart was weak and that a shock would kill him.",
+  "pl": "Baronet opowiedział mu sam o psie prześladującym ich ród i zgotował tym sobie okropną śmierć. Stapleton — gdyż tak go będę nazywał w dalszym ciągu — wiedział, że sir Karol ma wadę serca i że gwałtowne wstrząśnienie może go zabić; wiedział też, że jest przesądny i że wierzy w tę legendę.",
+  "ua": "Баронет сам розповів йому про пса, що переслідував їхній рід, і тим накликав на себе жахливу смерть. Степлтон — надалі я називатиму його так — знав, що сер Чарльз мав хворе серце й міг померти від сильного потрясіння; знав також про його забобонність і віру в легенду.",
+  "para": 8,
+  "start": 204.61
+ },
+ {
+  "en": "So much he had learned from Dr. Mortimer. He had heard also that Sir Charles was superstitious and had taken this grim legend very seriously. His ingenious mind instantly suggested a way by which the baronet could be done to death, and yet it would be hardly possible to bring home the guilt to the real murderer.",
+  "pl": "Nikczemnik poznał od razu, jaką może stąd korzyść osiągnąć; obmyślił dla baroneta śmierć niezawodną, za którą nikt nie mógł być pociągnięty do odpowiedzialności.",
+  "ua": "Негідник одразу побачив, яку вигоду може з цього отримати. Він вигадав надійний спосіб убити баронета так, щоб нікого не можна було притягнути до відповідальності.",
+  "para": 9,
+  "start": 230.64
+ },
+ {
+  "en": "“Having conceived the idea he proceeded to carry it out with considerable finesse. An ordinary schemer would have been content to work with a savage hound. The use of artificial means to make the creature diabolical was a flash of genius upon his part. The dog he bought in London from Ross and Mangles, the dealers in Fulham Road.",
+  "pl": "Przeprowadził swój plan bardzo zręcznie. Zwyczajny łotr byłby użył psa rozjuszonego — on nadał mu jeszcze pozory piekielnej bestii. Kupił najdziksze i największe psisko, jakie mógł dostać u handlarzy Ross and Mangles w Londynie.",
+  "ua": "Він здійснив задум надзвичайно вправно. Звичайний злочинець пустив би на жертву просто розлюченого пса, а Степлтон надав йому ще й подобу пекельної потвори. У лондонських торговців Росс і Менглз він придбав найбільшого й найлютішого пса, якого ті мали.",
+  "para": 10,
+  "start": 244.76
+ },
+ {
+  "en": "It was the strongest and most savage in their possession. He brought it down by the North Devon line and walked a great distance over the moor so as to get it home without exciting any remarks. He had already on his insect hunts learned to penetrate the Grimpen Mire, and so had found a safe hiding-place for the creature.",
+  "pl": "Przywiódł go do stacji North Devon, odległej od Baskerville-Hall i nadłożył ogromny kawał drogi, idąc łąką i moczarami, aby go nikt nie spostrzegł. Wpierw wynalazł dla niego schronienie w Grimpen-Mire i tam go od razu wprowadził. Trzymał go na łańcuchu i czekał sposobności.",
+  "ua": "Він привіз його залізницею до станції Норт-Девон, а потім довго йшов луками та болотом, щоб ніхто його не помітив. Заздалегідь знайшов псові схованку в Ґрімпен-Майрі, оселив його там на ланцюгу й став чекати слушної нагоди.",
+  "para": 10,
+  "start": 265.18
+ },
+ {
+  "en": "Here he kennelled it and waited his chance.",
+  "pl": "Ale niełatwo było ją znaleźć.",
+  "ua": "Але знайти схованку було нелегко.",
+  "para": 10,
+  "start": 287.85
+ },
+ {
+  "en": "“But it was some time coming. The old gentleman could not be decoyed outside of his grounds at night.",
+  "pl": "Stary baronet nie wychodził nigdy za obręb pałacu po zachodzie słońca. Kilkakrotnie Stapleton czyhał na niego z psem, lecz bezskutecznie. Wtedy to okoliczni włościanie widzieli ogromne psisko, co spowodowało wskrzeszenie legendy.",
+  "ua": "Старий баронет ніколи не виходив за межі маєтку після заходу сонця. Степлтон кілька разів чатував на нього із псом, але марно. Саме тоді місцеві селяни й бачили величезного пса, що знову оживило легенду.",
+  "para": 11,
+  "start": 290.56
+ },
+ {
+  "en": "Several times Stapleton lurked about with his hound, but without avail. It was during these fruitless quests that he, or rather his ally, was seen by peasants, and that the legend of the demon dog received a new confirmation. He had hoped that his wife might lure Sir Charles to his ruin, but here she proved unexpectedly independent.",
+  "pl": "Stapleton miał nadzieję, że jego żona zdoła doprowadzić sir Karola do zguby, lecz natrafił na niespodziewany opór. Nie chciała rozkochiwać starego gentlemana; ani groźby, ani nawet kije nie zdołały jej skłonić do tak niecnego wspólnictwa. Stapleton musiał działać sam.",
+  "ua": "Степлтон сподівався, що дружина зможе занапастити сера Чарльза, але наразився на несподіваний опір. Вона не хотіла спокушати старого джентльмена; ні погрози, ні навіть побої не змогли схилити її до такого підлого співучастя. Степлтону довелося діяти самому.",
+  "para": 12,
+  "start": 311.25
+ },
+ {
+  "en": "She would not endeavour to entangle the old gentleman in a sentimental attachment which might deliver him over to his enemy. Threats and even, I am sorry to say, blows refused to move her.",
+  "pl": "Pomogła mu dobroczynność sir Karola. Zacny starzec, zwiedziony pozorami, polubił Stapletona i za jego pośrednictwem świadczył dużo dobrego, między innymi pani Laurze Lyons.",
+  "ua": "Йому допомогла доброчинність сера Чарльза. Добрий старець, обманутий зовнішністю, прихилився до Степлтона й через нього чинив багато добра, зокрема й пані Лорі Лайонс.",
+  "para": 13,
+  "start": 332.8
+ },
+ {
+  "en": "She would have nothing to do with it, and for a time Stapleton was at a deadlock. “He found a way out of his difficulties through the chance that Sir Charles, who had conceived a friendship for him, made him the minister of his charity in the case of this unfortunate woman, Mrs. Laura Lyons.",
+  "pl": "Stapleton poznał ją przypadkowo, zainteresował się niby jej losem i wzbudził współczucie w litościwym sercu baroneta; że zaś potrafił zyskiwać względy kobiet i przedstawił się jako kawaler, wkrótce zdobył nie tylko zaufanie, lecz i serce pięknej Laury;",
+  "ua": "Степлтон випадково познайомився з нею, удав, ніби цікавиться її долею, і розчулив милосердне серце баронета. А оскільки вмів подобатися жінкам і називав себе неодруженим, то незабаром здобув не лише довіру, а й серце вродливої Лори",
+  "para": 13,
+  "start": 348.06
+ },
+ {
+  "en": "By representing himself as a single man he acquired complete influence over her, and he gave her to understand that in the event of her obtaining a divorce from her husband he would marry her.",
+  "pl": "dawał jej też do zrozumienia, że się z nią ożeni, jeśli ona rozwiedzie się z mężem.",
+  "ua": "і дав їй зрозуміти, що одружиться з нею, якщо вона розлучиться з чоловіком.",
+  "para": 13,
+  "start": 369.37
+ },
+ {
+  "en": "His plans were suddenly brought to a head by his knowledge that Sir Charles was about to leave the Hall on the advice of Dr. Mortimer, with whose opinion he himself pretended to coincide. He must act at once, or his victim might get beyond his power.",
+  "pl": "Usłyszawszy, że sir Karol, z porady doktora Mortimera, zamierza opuścić Baskerville Hall, postanowił działać bezzwłocznie, w obawie, aby ofiara nie wysunęła się z jego szponów.",
+  "ua": "Дізнавшись, що сер Чарльз за порадою доктора Мортімера збирається залишити Баскервіль-Хол, Степлтон вирішив діяти негайно, боячись, що жертва вислизне з його пазурів.",
+  "para": 14,
+  "start": 376.78
+ },
+ {
+  "en": "He therefore put pressure upon Mrs. Lyons to write this letter, imploring the old man to give her an interview on the evening before his departure for London. He then, by a specious argument, prevented her from going, and so had the chance for which he had waited.",
+  "pl": "Skłonił zatem panią Lyons do napisania listu, w którym błagała baroneta o przybycie do furtki ogrodowej w przeddzień jego wyjazdu do Londynu. Następnie odradził jej stawić się na umówionym miejscu.",
+  "ua": "Він змусив пані Лайонс написати листа з благанням прийти до садової хвіртки напередодні від'їзду до Лондона. А потім відмовив її від зустрічі.",
+  "para": 14,
+  "start": 389.84
+ },
+ {
+  "en": "“Driving back in the evening from Coombe Tracey he was in time to get his hound, to treat it with his infernal paint, and to bring the beast round to the gate at which he had reason to expect that he would find the old gentleman waiting.",
+  "pl": "Wracając wieczorem z Coombe Tracey, spuścił psa z łańcucha, posmarował go fosforem i przyprowadził do furtki, wiedząc, że stary gentleman zjawi się przy niej od strony pałacu.",
+  "ua": "Увечері, повертаючись із Кум-Трейсі, він забрав пса, намастив його фосфорною сумішшю й привів до хвіртки, біля якої мав чекати старий джентльмен.",
+  "para": 15,
+  "start": 404.04
+ },
+ {
+  "en": "The dog, incited by its master, sprang over the wicket-gate and pursued the unfortunate baronet, who fled screaming down the yew alley. In that gloomy tunnel it must indeed have been a dreadful sight to see that huge black creature, with its flaming jaws and blazing eyes, bounding after its victim. He fell dead at the end of the alley from heart disease and terror.",
+  "pl": "Pies, poszczuty przez swego pana, przeskoczył przez furtkę i ścigał biednego baroneta; ten uciekał aleją wiązów, wołając o pomoc. Pies biegł trawnikiem, baronet aleją żwirową; dlatego pozostały tylko ślady jego kroków.",
+  "ua": "Пес, підбурений господарем, перестрибнув через хвіртку й погнався за нещасним баронетом. Той утік алеєю в'язів, гукаючи на допомогу. Пес біг газоном, а баронет — гравійною доріжкою, тому залишилися тільки його сліди.",
+  "para": 16,
+  "start": 416.23
+ },
+ {
+  "en": "The hound had kept upon the grassy border while the baronet had run down the path, so that no track but the man’s was visible. On seeing him lying still the creature had probably approached to sniff at him, but finding him dead had turned away again. It was then that it left the print which was actually observed by Dr. Mortimer.",
+  "pl": "Widząc, że leży bez ruchu, pies zbliżył się zapewne, obwąchał go, a gdy poczuł, że już nie żyje, zawrócił. Stapleton przywołał go, odprowadził do prowizorycznej budy w Grimpen-Mire i uwiązał znowu na łańcuchu.",
+  "ua": "Побачивши, що баронет лежить нерухомо, пес, певно, підійшов і обнюхав його, а зрозумівши, що той мертвий, повернув назад. Степлтон відкликав пса, відвів його до тимчасової буди в Ґрімпен-Майрі й знову посадив на ланцюг.",
+  "para": 17,
+  "start": 437.61
+ },
+ {
+  "en": "The hound was called off and hurried away to its lair in the Grimpen Mire, and a mystery was left which puzzled the authorities, alarmed the countryside, and finally brought the case within the scope of our observation.",
+  "pl": "Śmierć sir Karola pozostała niewyjaśniona; władze policyjne łamały sobie głowę nad jej przyczyną, okolica była w strachu, wreszcie oddano sprawę w nasze ręce.",
+  "ua": "Смерть сера Чарльза лишилася нез'ясованою. Поліція ламала голову над її причиною, околиці охопив страх, і зрештою справу передали нам.",
+  "para": 18,
+  "start": 454.48
+ },
+ {
+  "en": "“So much for the death of Sir Charles Baskerville. You perceive the devilish cunning of it, for really it would be almost impossible to make a case against the real murderer. His only accomplice was one who could never give him away, and the grotesque, inconceivable nature of the device only served to make it more effective. Both of the women concerned in the case, Mrs. Stapleton and Mrs. Laura Lyons, were left with a strong suspicion against Stapleton.",
+  "pl": "Rozumiesz piekielny podstęp tego łotra: tak się urządził, że nie można było znaleźć śladów zbrodni ani wytoczyć procesu mordercy. Jedyny jego wspólnik zdradzić go nie mógł. Obie kobiety wplątane w tę sprawę: pani Stapleton i pani Laura Lyons, miały pewne podejrzenia.",
+  "ua": "Розумієш диявольську хитрість цього негідника? Він улаштував усе так, що не залишилося доказів злочину й убивцю не можна було притягнути до суду. Єдиний його спільник не міг його видати. Обидві жінки, втягнуті в цю справу, — пані Степлтон і пані Лора Лайонс — мали певні підозри.",
+  "para": 19,
+  "start": 469.4
+ },
+ {
+  "en": "Mrs. Stapleton knew that he had designs upon the old man, and also of the existence of the hound. Mrs. Lyons knew neither of these things, but had been impressed by the death occurring at the time of an uncancelled appointment which was only known to him.",
+  "pl": "Mrs Stapleton wiedziała nawet o złych zamiarach męża względem sir Karola, a także o istnieniu psa. Mrs Lyons nie miała wprawdzie pojęcia ani o jednym, ani o drugim, lecz zastanowiło ją, że śmierć starego gentlemana wynikła o godzinie, wyznaczonej na spotkanie z nią.",
+  "ua": "Пані Степлтон знала навіть про злі наміри чоловіка щодо сера Чарльза та про існування пса. Пані Лайонс не знала ні того, ні іншого, але її насторожило, що смерть старого джентльмена настала саме в годину призначеної нею зустрічі.",
+  "para": 19,
+  "start": 494.6
+ },
+ {
+  "en": "However, both of them were under his influence, and he had nothing to fear from them.",
+  "pl": "Obie kobiety znajdowały się jednak pod wpływem tego łotra — nie miał powodu obawiać się zdrady z ich strony.",
+  "ua": "Однак обидві жінки перебували під впливом негідника, і він не мав підстав боятися їхньої зради.",
+  "para": 19,
+  "start": 515.54
+ },
+ {
+  "en": "The first half of his task was successfully accomplished but the more difficult still remained.",
+  "pl": "Pierwsza część szatańskiego zadania była spełniona, pozostawała druga, trudniejsza.",
+  "ua": "Першу половину диявольського задуму було виконано; попереду залишалася друга, складніша.",
+  "para": 20,
+  "start": 526.2
+ },
+ {
+  "en": "“It is possible that Stapleton did not know of the existence of an heir in Canada. In any case he would very soon learn it from his friend Dr. Mortimer, and he was told by the latter all details about the arrival of Henry Baskerville.",
+  "pl": "Stapleton mógł na razie nie wiedzieć o istnieniu spadkobiercy w Kanadzie. Bądź co bądź, dowiedział się o tym wkrótce po śmierci sir Karola od swego przyjaciela, doktora Mortimera, który go też uwiadomił o przybyciu sir Henryka.",
+  "ua": "Спершу Степлтон міг не знати, що в Канаді є спадкоємець. У будь-якому разі невдовзі після смерті сера Чарльза він довідався про це від свого друга, доктора Мортімера, який також повідомив йому про приїзд сера Генрі.",
+  "para": 21,
+  "start": 536.75
+ },
+ {
+  "en": "Stapleton’s first idea was that this young stranger from Canada might possibly be done to death in London without coming down to Devonshire at all. He distrusted his wife ever since she had refused to help him in laying a trap for the old man, and he dared not leave her long out of his sight for fear he should lose his influence over her. It was for this reason that he took her to London with him.",
+  "pl": "Pierwszą myślą Stapletona było zapewne zgładzić go ze świata w Londynie. Stracił zaufanie do żony od chwili, gdy nie chciała mu pomagać w zastawianiu sideł na sir Karola. Bał się jednak zostawić ją samą na dłuższy czas, dlatego wziął ją ze sobą do Londynu.",
+  "ua": "Першою думкою Степлтона, мабуть, було вбити його ще в Лондоні. Відтоді, як дружина відмовилася допомагати йому влаштувати пастку для сера Чарльза, він їй не довіряв. Але боявся залишати її саму надовго, тому й узяв із собою до Лондона.",
+  "para": 22,
+  "start": 552.6
+ },
+ {
+  "en": "They lodged, I find, at the Mexborough Private Hotel, in Craven Street, which was actually one of those called upon by my agent in search of evidence. Here he kept his wife imprisoned in her room while he, disguised in a beard, followed Dr. Mortimer to Baker Street and afterwards to the station and to the Northumberland Hotel.",
+  "pl": "Doszedłem, że zamieszkali w hotelu Mexborough, przy Craven Street. Stapleton zamykał żonę na klucz, a sam, przyprawiwszy brodę dla niepoznaki, śledził każdy krok doktora Mortimera, jeździł za nim na Baker-Street, a następnie na dworzec i do hotelu Northumberland.",
+  "ua": "Я з'ясував, що вони зупинилися в приватному готелі «Мексборо» на Крейвен-стріт. Степлтон замикав дружину в кімнаті, а сам, замаскувавшись бородою, стежив за кожним кроком доктора Мортімера: їздив за ним на Бейкер-стріт, потім на вокзал і до готелю «Нортумберленд».",
+  "para": 23,
+  "start": 572.25
+ },
+ {
+  "en": "His wife had some inkling of his plans; but she had such a fear of her husband—a fear founded upon brutal ill-treatment—that she dare not write to warn the man whom she knew to be in danger. If the letter should fall into Stapleton’s hands her own life would not be safe.",
+  "pl": "Żona domyślała się jego planów, lecz obawiała się ostrzec upatrzoną ofiarę. Gdyby list wpadł w ręce Stapletona, jej własne życie byłoby w niebezpieczeństwie.",
+  "ua": "Дружина здогадувалася про його плани, але боялася попередити призначену жертву. Якби лист потрапив до рук Степлтона, її власне життя опинилося б під загрозою.",
+  "para": 24,
+  "start": 594.36
+ },
+ {
+  "en": "Eventually, as we know, she adopted the expedient of cutting out the words which would form the message, and addressing the letter in a disguised hand. It reached the baronet, and gave him the first warning of his danger.",
+  "pl": "Jak wiemy, wpadła na myśl wycięcia z gazety słów, którymi ostrzegała baroneta. List doszedł rąk baroneta i był pierwszą zapowiedzią niebezpieczeństwa.",
+  "ua": "Як ми знаємо, вона придумала вирізати з газети слова для застереження баронетові. Лист дійшов до сера Чарльза й став першим попередженням про небезпеку.",
+  "para": 25,
+  "start": 607.24
+ },
+ {
+  "en": "“It was very essential for Stapleton to get some article of Sir Henry’s attire so that, in case he was driven to use the dog, he might always have the means of setting him upon his track.",
+  "pl": "Stapleton postarał się o but sir Henryka, aby w danym razie wyzyskać węch psa i wprowadzić go na trop ofiary.",
+  "ua": "Степлтон мусив дістати черевик сера Генрі, щоб за потреби скористатися собачим нюхом і пустити пса по сліду жертви.",
+  "para": 26,
+  "start": 624.0
+ },
+ {
+  "en": "With characteristic promptness and audacity he set about this at once, and we cannot doubt that the boots or chamber-maid of the hotel was well bribed to help him in his design. By chance, however, the first boot which was procured for him was a new one and, therefore, useless for his purpose. He then had it returned and obtained another—a most instructive incident, since it proved conclusively to my mind that we were dealing with a real hound, as no other supposition could explain this anxiety to obtain an old boot and this indifference to a new one. The more outré and grotesque an incident is the more carefully it deserves to be examined, and the very point which appears to complicate a case is, when duly considered and scientifically handled, the one which is most likely to elucidate it.",
+  "pl": "Posługacz hotelowy dostarczył mu obuwia, za hojną pewnie opłatą; lecz pierwszy wykradziony but był nowy; Stapleton kazał go podrzucić i dostał drugi, noszony. Ten drobny fakt wprowadził mnie od razu na domysł, że prześladowca sir Henryka chce użyć psa do swych celów.",
+  "ua": "Готельний служник, напевно за щедру плату, дістав йому взуття. Але перший черевик був новий, тож Степлтон наказав повернути його й дістав інший — ношений. Ця дрібниця одразу навела мене на думку, що переслідувач сера Генрі хотів використати пса у своїх цілях.",
+  "para": 27,
+  "start": 633.13
+ },
+ {
+  "en": "“Then we had the visit from our friends next morning, shadowed always by Stapleton in the cab. From his knowledge of our rooms and of my appearance, as well as from his general conduct, I am inclined to think that Stapleton’s career of crime has been by no means limited to this single Baskerville affair.",
+  "pl": "Nazajutrz baronet przybył tutaj; Stapleton śledził go w dorożce. Sądząc z tego, że mnie znał i wiedział, gdzie mieszkam, gotów jestem przypuścić, że już poprzednio miał powody obawiać się mojej działalności wywiadowczej i że nie był nowicjuszem na polu zbrodni.",
+  "ua": "Наступного ранку баронет приїхав сюди, а Степлтон стежив за ним із кеба. Знаючи, що він упізнав мене й знав, де я мешкаю, можу припустити, що й раніше підозрював мою діяльність і був досвідченим злочинцем.",
+  "para": 28,
+  "start": 657.46
+ },
+ {
+  "en": "It is suggestive that during the last three years there have been four considerable burglaries in the west country, for none of which was any criminal ever arrested. The last of these, at Folkestone Court, in May, was remarkable for the cold-blooded pistolling of the page, who surprised the masked and solitary burglar. I cannot doubt that Stapleton recruited his waning resources in this fashion, and that for years he has been a desperate and dangerous man.",
+  "pl": "W ciągu ostatnich trzech lat okradziono w Devonshire cztery dwory. W żadnym wypadku złoczyńcy zostali ujęci. Wreszcie w maju roku bieżącego zrabowano Folkstone Court, przy czym został zabity służący, który pierwszy dostrzegł zamaskowanego złodzieja.",
+  "ua": "За останні три роки в Девонширі пограбували чотири маєтки, і в жодному випадку злочинців не спіймали. У травні цього року пограбували Фолкстон-Корт; слугу, який першим побачив замаскованого злодія, застрелили.",
+  "para": 29,
+  "start": 677.24
+ },
+ {
+  "en": "“We had an example of his readiness of resource that morning when he got away from us so successfully, and also of his audacity in sending back my own name to me through the cabman. From that moment he understood that I had taken over the case in London, and that therefore there was no chance for him there. He returned to Dartmoor and awaited the arrival of the baronet.”",
+  "pl": "Mógłbym ręczyć, że był nim Stapleton, który w ten sposób zasilał swe fundusze. Mieliśmy dowód jego bezczelności w tym, że podał moje nazwisko dorożkarzowi. Zrozumiał wtedy, iż go śledzę i że nie będzie mógł spełnić swych zamiarów w Londynie. Powrócił do Devonshire i oczekiwał tam przybycia baroneta.",
+  "ua": "Б’юся об заклад, що це був Степлтон, який так поповнював свої кошти. Його зухвалість ми побачили, коли він передав моє ім'я візникові. Тоді він зрозумів, що я за ним стежу й у Лондоні він не зможе здійснити задум. Він повернувся до Девонширу й чекав на приїзд баронета.",
+  "para": 30,
+  "start": 695.66
+ },
+ {
+  "en": "“One moment!” said I. “You have, no doubt, described the sequence of events correctly, but there is one point which you have left unexplained. What became of the hound when its master was in London?”",
+  "pl": "— Przepraszam cię — rzekłem — Czy mógłbyś mi wyjaśnić, kto żywił psa podczas pobytu Stapletona w Londynie?",
+  "ua": "— Перепрошую, — сказав я. — Хто годував пса, поки Степлтон був у Лондоні?",
+  "para": 31,
+  "start": 718.9
+ },
+ {
+  "en": "“I have given some attention to this matter and it is undoubtedly of importance. There can be no question that Stapleton had a confidant, though it is unlikely that he ever placed himself in his power by sharing all his plans with him. There was an old manservant at Merripit House, whose name was Anthony. His connection with the Stapletons can be traced for several years, as far back as the school-mastering days, so that he must have been aware that his master and mistress were really husband and wife.",
+  "pl": "— Ważna to kwestia — odparł. — Zastanawiałem się nad nią, i doszedłem do przekonania, że Stapleton miał wspólnika. W Merripit House był stary lokaj, Antoni. Wiem, że pozostawał u niego w służbie co najmniej kilka lat, bo widziano go za czasów, gdy Stapleton był kierownikiem szkoły w Yorkshire.",
+  "ua": "— Важливе запитання, — відповів Холмс. — Я над ним міркував і дійшов висновку, що в Степлтона був спільник. У Мерріпіт-гауз жив старий слуга на ім'я Антоні. Він служив у Степлтона щонайменше кілька років — його бачили ще тоді, коли той був директором школи в Йоркширі.",
+  "para": 32,
+  "start": 726.64
+ },
+ {
+  "en": "This man has disappeared and has escaped from the country. It is suggestive that Anthony is not a common name in England, while Antonio is so in all Spanish or Spanish-American countries.",
+  "pl": "Ten człowiek musiał wiedzieć, że Beryl jest żoną, nie siostrą jego pana. Po zamachu na sir Henryka Antoni zniknął bez śladu.",
+  "ua": "Цей чоловік мусив знати, що Беріл — дружина його господаря, а не сестра. Після замаху на сера Генрі Антоні безслідно зник.",
+  "para": 32,
+  "start": 750.88
+ },
+ {
+  "en": "The man, like Mrs. Stapleton herself, spoke good English, but with a curious lisping accent. I have myself seen this old man cross the Grimpen Mire by the path which Stapleton had marked out.",
+  "pl": "Otóż to imię, rzadkie w Anglii, jest bardzo pospolite w Hiszpanii i w Ameryce hiszpańskiej. Ów służący, również jak i pani Stapleton, mówił po angielsku płynnie, lecz z akcentem miękkim, południowym. Widziałem sam Antoniego, idącego do Grimpen-Mire ścieżką, wytyczoną przez Stapletona.",
+  "ua": "Ім'я Антоні рідкісне в Англії, зате Антоніо дуже поширене в Іспанії та іспаномовній Америці. Слуга, як і пані Степлтон, добре говорив англійською, але з м'яким південним акцентом. Я сам бачив Антоні, як він ішов до Ґрімпен-Майру стежкою, позначеною Степлтоном.",
+  "para": 33,
+  "start": 762.52
+ },
+ {
+  "en": "It is very probable, therefore, that in the absence of his master it was he who cared for the hound, though he may never have known the purpose for which the beast was used.",
+  "pl": "Zapewne ten, podczas jego nieobecności, żywił psa, choć zapewne nie wiedział, do jakiego celu jest przeznaczony.",
+  "ua": "Отже, ймовірно, під час відсутності господаря саме він доглядав пса, хоча, може, й не знав, для чого той призначений.",
+  "para": 33,
+  "start": 786.97
+ },
+ {
+  "en": "“The Stapletons then went down to Devonshire, whither they were soon followed by Sir Henry and you. One word now as to how I stood myself at that time. It may possibly recur to your memory that when I examined the paper upon which the printed words were fastened I made a close inspection for the water-mark.",
+  "pl": "Teraz słówko o mojej działalności w czasie, gdyś przebywał z sir Henrykiem w Baskerville Hall. Pamiętasz może, jak oglądając papier, na którym były przyklejone słowa wycięte z „Timesa”, badałem znak wodny; trzymałem wtedy papier przy oczach. Otóż zaleciała mnie subtelna woń białego jaśminu.",
+  "ua": "А тепер розповім трохи про свою діяльність, поки ти був із сером Генрі в Баскервіль-Холі. Пам'ятаєш, як я розглядав папір, на якому були наклеєні вирізані з «Таймс» слова, й підніс його до очей, щоб перевірити водяний знак? Тоді я відчув тонкий аромат білого жасмину.",
+  "para": 34,
+  "start": 795.17
+ },
+ {
+  "en": "In doing so I held it within a few inches of my eyes, and was conscious of a faint smell of the scent known as white jessamine. There are seventy-five perfumes, which it is very necessary that a criminal expert should be able to distinguish from each other, and cases have more than once within my own experience depended upon their prompt recognition. The scent suggested the presence of a lady, and already my thoughts began to turn towards the Stapletons.",
+  "pl": "Jest siedemdziesiąt pięć gatunków perfum, które każdy detektyw powinien rozróżniać; wiele wypadków zależy od szybkiego poznawania perfum. Jaśmin naprowadził mnie na domysł, że list został przesłany przez kobietę. Już wtedy moje podejrzenia zwróciły się ku Stapletonom.",
+  "ua": "Є сімдесят п'ять ароматів, які має розрізняти кожен детектив; чимало справ залежить від того, чи впізнаєш їх швидко. Жасмин наштовхнув мене на думку, що лист надіслала жінка. Уже тоді я почав підозрювати Степлтонів.",
+  "para": 35,
+  "start": 821.59
+ },
+ {
+  "en": "Thus I had made certain of the hound, and had guessed at the criminal before ever we went to the west country.",
+  "pl": "Wiedziałem więc o istnieniu psa i miejscu zamieszkania mordercy, zanim wyruszyliście do Devonshire.",
+  "ua": "Отже, ще до вашого від'їзду до Девонширу я знав про пса й здогадувався, хто вбивця.",
+  "para": 36,
+  "start": 846.83
+ },
+ {
+  "en": "“It was my game to watch Stapleton. It was evident, however, that I could not do this if I were with you, since he would be keenly on his guard. I deceived everybody, therefore, yourself included, and I came down secretly when I was supposed to be in London. My hardships were not so great as you imagined, though such trifling details must never interfere with the investigation of a case.",
+  "pl": "Postanowiłem śledzić Stapletona. Oczywiście nie mógłbym tego dokonać, przebywając z wami, albowiem łotr miałby się na baczności. Zwiodłem wszystkich, nie wyłączając ciebie, i zjawiłem się potajemnie, wówczas gdy sądziliście wszyscy, że bawię w Londynie.",
+  "ua": "Я вирішив стежити за Степлтоном. Звісно, я не міг би цього робити, якби був із вами: він насторожився б. Тож я обдурив усіх, і тебе також, і таємно приїхав, хоча всі вважали, що я в Лондоні.",
+  "para": 37,
+  "start": 854.54
+ },
+ {
+  "en": "I stayed for the most part at Coombe Tracey, and only used the hut upon the moor when it was necessary to be near the scene of action. Cartwright had come down with me, and in his disguise as a country boy he was of great assistance to me.",
+  "pl": "Ukrywałem się przeważnie w Coombe Tracey, chroniąc się w jaskini na moczarach tylko wtedy, gdy moja obecność na polu działania była niezbędna. Cartwright w przebraniu chłopca wiejskiego oddawał mi znaczne usługi.",
+  "ua": "Переважно я переховувався в Кум-Трейсі, а до оселі на болоті приходив лише тоді, коли мусив бути близько до місця подій. Картрайт приїхав зі мною, і, перевдягнений на сільського хлопця, дуже мені допомагав.",
+  "para": 38,
+  "start": 871.09
+ },
+ {
+  "en": "I was dependent upon him for food and clean linen. When I was watching Stapleton, Cartwright was frequently watching you, so that I was able to keep my hand upon all the strings.",
+  "pl": "Dostarczał mi pożywienia i czystej bielizny, podczas gdym ja śledził Stapletona, on śledził ciebie, tak że wiedziałem o każdym twoim kroku.",
+  "ua": "Я покладався на нього щодо їжі й чистої білизни. Поки я стежив за Степлтоном, Картрайт часто стежив за тобою, тож я тримав руку на всіх нитках.",
+  "para": 38,
+  "start": 885.98
+ },
+ {
+  "en": "“I have already told you that your reports reached me rapidly, being forwarded instantly from Baker Street to Coombe Tracey. They were of great service to me, and especially that one incidentally truthful piece of biography of Stapleton’s. I was able to establish the identity of the man and the woman and knew at last exactly how I stood.",
+  "pl": "Mówiłem ci już, że twoje raporty dochodziły mnie szybko, odsyłano mi je natychmiast z Baker Street do Coombe Tracey. Przydały mi się bardzo, zwłaszcza biografia Stapletona. Pomogła mi ona wykryć jego tożsamość i stosunek do pięknej towarzyszki.",
+  "ua": "Я вже казав, що твої звіти швидко доходили до мене: їх одразу пересилали з Бейкер-стріт до Кум-Трейсі. Вони дуже допомогли, особливо той випадково правдивий фрагмент біографії Степлтона. Завдяки йому я встановив особи чоловіка й жінки та зрозумів, як усе пов'язано.",
+  "para": 39,
+  "start": 898.2
+ },
+ {
+  "en": "The case had been considerably complicated through the incident of the escaped convict and the relations between him and the Barrymores. This also you cleared up in a very effective way, though I had already come to the same conclusions from my own observations.",
+  "pl": "Sprawa powikłała się przez ucieczkę więźnia Seldona i jego porozumienie się z Barrymore’ami. I tę zawiłość rozplątałeś, choć i ja doszedłem do tego samego wyniku, na mocy własnych spostrzeżeń.",
+  "ua": "Втеча каторжника й його зв'язок із Берріморами значно ускладнили справу. Ти й це розплутав дуже вправно, хоча я дійшов такого самого висновку завдяки власним спостереженням.",
+  "para": 40,
+  "start": 918.65
+ },
+ {
+  "en": "“By the time that you discovered me upon the moor I had a complete knowledge of the whole business, but I had not a case which could go to a jury.",
+  "pl": "W chwili gdyś mnie znalazł na moczarach, miałem już w ręku wszystkie nici spisku, lecz nie posiadałem materiału dowodowego, z którym mógłbym stanąć przed sądem.",
+  "ua": "Коли ти знайшов мене на болоті, я вже знав усю історію, але ще не мав доказів, з якими можна було б виступити перед судом.",
+  "para": 41,
+  "start": 933.6
+ },
+ {
+  "en": "Even Stapleton’s attempt upon Sir Henry that night which ended in the death of the unfortunate convict did not help us much in proving murder against our man. There seemed to be no alternative but to catch him red-handed, and to do so we had to use Sir Henry, alone and apparently unprotected, as a bait.",
+  "pl": "Nawet zamach na sir Henryka, który skończył się śmiercią Seldona, nieszczęsnego więźnia, nie mógł nam pomóc do wykazania zbrodniczości Stapletona.",
+  "ua": "Навіть замах Степлтона на сера Генрі тієї ночі, що завершився загибеллю нещасного каторжника, майже не допоміг довести злочинність Степлтона.",
+  "para": 42,
+  "start": 945.62
+ },
+ {
+  "en": "We did so, and at the cost of a severe shock to our client we succeeded in completing our case and driving Stapleton to his destruction.",
+  "pl": "Nie było innej rady, jak go schwytać na gorącym uczynku, a w tym celu musiałem użyć sir Henryka, z narażeniem jego nerwów.",
+  "ua": "Не було іншого виходу, як схопити його на гарячому; для цього довелося використати сера Генрі, наражаючи його нерви на небезпеку.",
+  "para": 43,
+  "start": 957.7
+ },
+ {
+  "en": "That Sir Henry should have been exposed to this is, I must confess, a reproach to my management of the case, but we had no means of foreseeing the terrible and paralyzing spectacle which the beast presented, nor could we predict the fog which enabled him to burst upon us at such short notice. We succeeded in our object at a cost which both the specialist and Dr. Mortimer assure me will be a temporary one.",
+  "pl": "Przyznaję, że moja w tym wina: trzeba było poprowadzić sprawę inaczej i oszczędzić naszemu klientowi tej przykrości, ale nie mogłem przewidzieć, że ten łotr posmaruje psa siarką i że owej nocy będzie mgła, dzięki czemu sir Henryk nie mógł widzieć z oddali czworonożnego sprzymierzeńca Stapletona,",
+  "ua": "Зізнаюся, це моя провина: слід було повести справу інакше й уберегти клієнта від цього потрясіння. Але я не міг передбачити, що негідник намастить пса сіркою і що тієї ночі буде туман, який не дасть серові Генрі побачити чотириногого спільника Степлтона",
+  "para": 43,
+  "start": 967.66
+ },
+ {
+  "en": "A long journey may enable our friend to recover not only from his shattered nerves but also from his wounded feelings.",
+  "pl": "który wyskoczył znienacka i przestraszył tego odważnego człowieka.",
+  "ua": "що раптово вискочив і налякав цього відважного чоловіка.",
+  "para": 43,
+  "start": 991.22
+ },
+ {
+  "en": "His love for the lady was deep and sincere, and to him the saddest part of all this black business was that he should have been deceived by her.",
+  "pl": "Zresztą doktor Mortimer i wezwani specjaliści upewniają, że nasz przyjaciel powróci niebawem do równowagi i że odzyska spokój ducha, zachwiany nie tylko tym wypadkiem, lecz i sercowym zawodem.",
+  "ua": "Доктор Мортімер і запрошені фахівці запевняють, що наш друг невдовзі оговтається. Довга подорож допоможе йому відновити не лише розхитані нерви, а й душевний спокій, збурений цим випадком та нещасливим коханням.",
+  "para": 43,
+  "start": 995.85
+ },
+ {
+  "en": "“It only remains to indicate the part which she had played throughout. There can be no doubt that Stapleton exercised an influence over her which may have been love or may have been fear, or very possibly both, since they are by no means incompatible emotions. It was, at least, absolutely effective. At his command she consented to pass as his sister, though he found the limits of his power over her when he endeavoured to make her the direct accessory to murder.",
+  "pl": "Pozostaje mi już tylko zaznaczyć rolę pani Stapleton. Mąż wywierał na nią wpływ demoniczny; nie wiadomo, czy go bardziej kochała, czy też się bała. Bądź co bądź, słuchała go niewolniczo, stawiając mu opór wtedy tylko, gdy chciał ją zmusić do wspólnictwa w zbrodni.",
+  "ua": "Залишилося сказати про роль пані Степлтон. Чоловік мав над нею майже демонічну владу; важко сказати, чи вона більше його кохала, чи боялася. Можливо, і те, й інше. У кожному разі, вона слухалася його беззаперечно й опиралася лише тоді, коли він хотів зробити її прямою співучасницею вбивства.",
+  "para": 44,
+  "start": 1011.41
+ },
+ {
+  "en": "She was ready to warn Sir Henry so far as she could without implicating her husband, and again and again she tried to do so.",
+  "pl": "Pragnęła ostrzec sir Henryka, bez narażania męża; próbowała kilkakrotnie, lecz bezskutecznie.",
+  "ua": "Вона прагнула попередити сера Генрі, не виказавши чоловіка, й не раз намагалася це зробити.",
+  "para": 44,
+  "start": 1035.89
+ },
+ {
+  "en": "Stapleton himself seems to have been capable of jealousy, and when he saw the baronet paying court to the lady, even though it was part of his own plan, still he could not help interrupting with a passionate outburst which revealed the fiery soul which his self-contained manner so cleverly concealed.",
+  "pl": "Stapleton był zdolny do zazdrości: widząc, że baronet zaleca się do jego żony, choć to leżało w jego zamiarach, nie mógł jednak powstrzymać się od gwałtownego wybuchu.",
+  "ua": "Степлтон, схоже, був ревнивим. Побачивши, як баронет залицяється до його дружини — хоча це й було частиною його плану, — він не втримався від пристрасного спалаху, що виявив палку душу, приховану за його стриманими манерами.",
+  "para": 45,
+  "start": 1044.63
+ },
+ {
+  "en": "By encouraging the intimacy he made it certain that Sir Henry would frequently come to Merripit House and that he would sooner or later get the opportunity which he desired.",
+  "pl": "Opamiętawszy się, udawał, że sprzyja rodzącemu się uczuciu, zapraszał sir Henryka do Merripit House w nadziei, że wcześniej czy później nadarzy się sposobność wciągnięcia go w zasadzkę.",
+  "ua": "Потім він опанував себе й удавав, що схвалює це почуття. Запрошував сера Генрі до Мерріпіт-гауз, сподіваючись, що рано чи пізно з'явиться нагода влаштувати засідку.",
+  "para": 45,
+  "start": 1056.57
+ },
+ {
+  "en": "On the day of the crisis, however, his wife turned suddenly against him.",
+  "pl": "Nagle w dniu oznaczonym na zamach żona opowiedziała się przeciwko niemu.",
+  "ua": "Та в день, призначений для замаху, дружина раптом виступила проти нього.",
+  "para": 46,
+  "start": 1069.05
+ },
+ {
+  "en": "She had learned something of the death of the convict, and she knew that the hound was being kept in the outhouse on the evening that Sir Henry was coming to dinner.",
+  "pl": "Do uszu jej doszła wieść o nagłej śmierci zbiegłego więźnia na moczarach, a że wiedziała, iż pies trzymany jest tam na uwięzi, domyśliła się, jaką śmierć Stapleton gotuje sir Henrykowi, tym bardziej gdy mąż przyprowadził psa i zamknął go w oficynie.",
+  "ua": "Вона почула про раптову смерть каторжника на болоті й знала, що пес сидить там на ланцюгу. Тож здогадалася, яку смерть Степлтон готує серові Генрі, особливо коли чоловік привів пса й замкнув його у флігелі.",
+  "para": 46,
+  "start": 1075.37
+ },
+ {
+  "en": "She taxed her husband with his intended crime, and a furious scene followed in which he showed her for the first time that she had a rival in his love. Her fidelity turned in an instant to bitter hatred, and he saw that she would betray him.",
+  "pl": "Owego wieczora, przed przybyciem sir Henryka na obiad, między małżonkami wynikła sprzeczka. Beryl nazwała męża zbrodniarzem; rozwścieczony, chcąc ją dotknąć boleśnie, oznajmił jej, że kocha inną.",
+  "ua": "Того вечора, перед приходом сера Генрі на обід, між подружжям спалахнула сварка. Беріл назвала чоловіка злочинцем; розлютившись і бажаючи завдати їй болю, він зізнався, що кохає іншу.",
+  "para": 47,
+  "start": 1091.77
+ },
+ {
+  "en": "He tied her up, therefore, that she might have no chance of warning Sir Henry, and he hoped, no doubt, that when the whole countryside put down the baronet’s death to the curse of his family, as they certainly would do, he could win his wife back to accept an accomplished fact and to keep silent upon what she knew.",
+  "pl": "To brutalne wyznanie zerwało ostatnie pęta łączące ją z nędznikiem i wznieciło w jej sercu nienawiść i pragnienie zemsty.",
+  "ua": "Це жорстоке зізнання розірвало останні пута, що пов'язували її з негідником, і запалило в її серці ненависть та жагу помсти.",
+  "para": 48,
+  "start": 1108.53
+ },
+ {
+  "en": "In this I fancy that in any case he made a miscalculation, and that, if we had not been there, his doom would none the less have been sealed.",
+  "pl": "On spostrzegł tę zmianę, i obawiając się, aby go nie zdradziła, uwiązał ją do słupa i zamknął na klucz.",
+  "ua": "Він помітив її переміну й, боячись зради, прив'язав її до стовпа й замкнув.",
+  "para": 49,
+  "start": 1121.88
+ },
+ {
+  "en": "A woman of Spanish blood does not condone such an injury so lightly. And now, my dear Watson, without referring to my notes, I cannot give you a more detailed account of this curious case. I do not know that anything essential has been left unexplained.” “He could not hope to frighten Sir Henry to death as he had done the old uncle with his bogie hound.”",
+  "pl": "Pewien był, że po dokonanej zbrodni, gdy cała okolica przypisywać będzie śmierć sir Henryka przekleństwu ciążącemu na jego rodzie, on, Stapleton, zręcznym kłamstwem i pochlebstwem zdoła odzyskać uczucie swej żony, skłonić ją do milczenia i do przyjęcia faktów dokonanych.",
+  "ua": "Він був певен, що після вбивства сера Генрі вся округа пояснить смерть родовим прокляттям, а він зможе брехнею та лестощами повернути любов дружини, змусити її мовчати й змиритися з доконаним.",
+  "para": 49,
+  "start": 1131.63
+ },
+ {
+  "en": "“The beast was savage and half-starved. If its appearance did not frighten its victim to death, at least it would paralyze the resistance which might be offered.”",
+  "pl": "Na tym polu spotkałby go zawód niewątpliwy. Kobieta, w której żyłach płynie krew hiszpańska, nie zapomina podobnej urazy.",
+  "ua": "Та тут його чекало неминуче розчарування. Жінка з іспанською кров'ю не так легко забуває подібну образу.",
+  "para": 50,
+  "start": 1152.83
+ },
+ {
+  "en": "“No doubt. There only remains one difficulty. If Stapleton came into the succession, how could he explain the fact that he, the heir, had been living unannounced under another name so close to the property? How could he claim it without causing suspicion and inquiry?”",
+  "pl": "Oto i wszystko, co wiem o tej ciekawej sprawie. Jedno tylko pozostaje do wyjaśnienia: w jaki sposób Stapleton, doszedłszy do sukcesji, wyjaśniłby, dlaczego tak długo zamieszkiwał w pobliżu Baskerville Hall pod przybranym nazwiskiem? W jaki sposób byłby się upomniał o spadek, bez zwrócenia podejrzeń?",
+  "ua": "Оце й усе, що я знаю про цю дивну справу. Залишається лише одна загадка: якби Степлтон отримав спадок, то як пояснив би, що так довго жив поблизу Баскервіль-Хола під чужим ім'ям? Як заявив би права на спадок, не викликавши підозр?",
+  "para": 51,
+  "start": 1166.12
+ },
+ {
+  "en": "“It is a formidable difficulty, and I fear that you ask too much when you expect me to solve it.",
+  "pl": "Pani Stapleton zeznaje, iż jej mąż miał w tym względzie kilka projektów: albo upomnieć się o sukcesję z Ameryki Południowej, tam dowieść swej tożsamości i uzyskać fortunę, nie przyjeżdżając do Anglii;",
+  "ua": "Пані Степлтон свідчить, що чоловік мав кілька планів: або заявити про спадок із Південної Америки, довести там британській владі свою особу й отримати гроші, так і не приїжджаючи до Англії",
+  "para": 52,
+  "start": 1190.19
+ },
+ {
+  "en": "The past and the present are within the field of my inquiry, but what a man may do in the future is a hard question to answer.",
+  "pl": "albo dostarczyć jakiemuś wspólnikowi potrzebnych legitymacji i otrzymać spadek za jego pośrednictwem; albo prowadzić samemu sprawę na miejscu, lecz pod inną postacią zewnętrzna, w takim przebraniu, żeby nikt poznać go nie mógł.",
+  "ua": "або передати потрібні документи спільникові, щоб той отримав спадок від його імені; або самому вести справу на місці, змінивши зовнішність так, щоб ніхто його не впізнав.",
+  "para": 52,
+  "start": 1209.09
+ },
+ {
+  "en": "Mrs. Stapleton has heard her husband discuss the problem on several occasions.",
+  "pl": "Znając go, jestem pewien, że wybrnąłby z tych trudności.",
+  "ua": "Знаючи його, я певен, що він знайшов би вихід із цих труднощів.",
+  "para": 52,
+  "start": 1224.99
+ },
+ {
+  "en": "There were three possible courses. He might claim the property from South America, establish his identity before the British authorities there and so obtain the fortune without ever coming to England at all, or he might adopt an elaborate disguise during the short time that he need be in London; or, again, he might furnish an accomplice with the proofs and papers, putting him in as heir, and retaining a claim upon some proportion of his income. We cannot doubt from what we know of him that he would have found some way out of the difficulty. And now, my dear Watson, we have had some weeks of severe work, and for one evening, I think, we may turn our thoughts into more pleasant channels. I have a box for Les Huguenots. Have you heard the De Reszkes? Might I trouble you then to be ready in half an hour, and we can stop at Marcini’s for a little dinner on the way?”",
+  "pl": "A teraz, mój drogi, dość już o tej sprawie. Kosztowała nas niemało trudu. Zasłużyliśmy na rozrywkę. Dziś dają Hugonotów. Wziąłem lożę. Czyś słyszał kiedy Reszków<sup>27<\/sup>? Ubierzemy się zaraz i przed widowiskiem pojedziemy na obiad do pierwszorzędnej restauracji. Dobrze?...",
+  "ua": "А тепер, мій любий Ватсоне, досить про цю справу. Вона завдала нам чимало клопоту, тож заслужили на розвагу. Сьогодні дають «Гугенотів», я взяв ложу. Ти чув коли-небудь братів Решке<sup>27<\/sup>? Негайно одягаймося, а перед виставою повечеряємо в першокласному ресторані. Згода?..",
+  "para": 53,
+  "start": 1229.51
+ }
+];
+const ANNOTATIONS = {"27": {"term": "*Reszke* a. *de Reszke*", "definition": "*Reszke* a. *de Reszke* — rodzeństwo śpiewaków: Jan (1850–1925, tenor), Edward (1853–1917, bas) i Józefina (1855–1891, sopran). Urodzeni w Warszawie. Koncertowali w całej Europie. [przypis edytorski]", "translation": "родина співаків: Ян (1850–1925, тенор), Едвард (1853–1917, бас) і Жозефіна (1855–1891, сопрано). Народилися у Варшаві. Виступали по всій Європі. [редакторська примітка]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into mp3/pies-baskervilleow_016_xv-rzut-oka-wstecz.mp3, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  7.76,    // [ 0] conf 0.98  "W końcu listopada Holmes i ja w wieczór c…"
+  26.20,   // [ 1] conf 0.94  "Sir Henryk i doktor Mortimer bawili w Lon…"
+  37.18,   // [ 2] conf 1.00  "— Cała ta sprawa była jasna i prosta z pu…"
+  61.66,   // [ 3] conf 1.00  "— Wolałbym, żebyś mi to opowiedział żywym…"
+  65.88,   // [ 4] conf 0.97  "— Dobrze, ale nie ręczę za dokładność. Pa…"
+  89.31,   // [ 5] conf 0.94  "Ożenił się tam z Beryl Garcia, najpięknie…"
+  106.78,  // [ 6] conf 0.95  "Do obrania tego zawodu skłoniła go znajom…"
+  119.28,  // [ 7] conf 0.94  "Dopóki Fraser żył, szkoła szła dobrze i p…"
+  136.44,  // [ 8] conf 1.00  "Jako Stapleton, z resztkami ukradzionych…"
+  146.96,  // [ 9] conf 0.94  "Muzeum Brytyjskie objaśniło mnie, że był…"
+  159.06,  // [10] conf 0.95  "Ten nikczemnik zbadał zapewne swoje stosu…"
+  169.12,  // [11] conf 0.94  "Przypuszczam, że w chwili osiedlania się…"
+  184.72,  // [12] conf 1.00  "Widocznie miał już wtedy projekt użycia j…"
+  192.16,  // [13] conf 0.91  "Przede wszystkim postarał się osiąść jak…"
+  204.61,  // [14] conf 0.98  "Baronet opowiedział mu sam o psie prześla…"
+  230.64,  // [15] conf 1.00  "Nikczemnik poznał od razu, jaką może stąd…"
+  244.76,  // [16] conf 0.97  "Przeprowadził swój plan bardzo zręcznie.…"
+  265.18,  // [17] conf 0.93  "Przywiódł go do stacji North Devon, odleg…"
+  287.85,  // [18] conf 1.00  "Ale niełatwo było ją znaleźć."
+  290.56,  // [19] conf 1.00  "Stary baronet nie wychodził nigdy za obrę…"
+  311.25,  // [20] conf 0.95  "Stapleton miał nadzieję, że jego żona zdo…"
+  332.80,  // [21] conf 0.96  "Pomogła mu dobroczynność sir Karola. Zacn…"
+  348.06,  // [22] conf 1.00  "Stapleton poznał ją przypadkowo, zaintere…"
+  369.37,  // [23] conf 0.94  "dawał jej też do zrozumienia, że się z ni…"
+  376.78,  // [24] conf 0.92  "Usłyszawszy, że sir Karol, z porady dokto…"
+  389.84,  // [25] conf 0.97  "Skłonił zatem panią Lyons do napisania li…"
+  404.04,  // [26] conf 0.89  "Wracając wieczorem z Coombe Tracey, spuśc…"
+  416.23,  // [27] conf 1.00  "Pies, poszczuty przez swego pana, przesko…"
+  437.61,  // [28] conf 0.94  "Widząc, że leży bez ruchu, pies zbliżył s…"
+  454.48,  // [29] conf 0.96  "Śmierć sir Karola pozostała niewyjaśniona…"
+  469.40,  // [30] conf 0.98  "Rozumiesz piekielny podstęp tego łotra: t…"
+  494.60,  // [31] conf 0.95  "Mrs Stapleton wiedziała nawet o złych zam…"
+  515.54,  // [32] conf 1.00  "Obie kobiety znajdowały się jednak pod wp…"
+  526.20,  // [33] conf 1.00  "Pierwsza część szatańskiego zadania była…"
+  536.75,  // [34] conf 0.92  "Stapleton mógł na razie nie wiedzieć o is…"
+  552.60,  // [35] conf 0.95  "Pierwszą myślą Stapletona było zapewne zg…"
+  572.25,  // [36] conf 0.97  "Doszedłem, że zamieszkali w hotelu Mexbor…"
+  594.36,  // [37] conf 1.00  "Żona domyślała się jego planów, lecz obaw…"
+  607.24,  // [38] conf 1.00  "Jak wiemy, wpadła na myśl wycięcia z gaze…"
+  624.00,  // [39] conf 0.95  "Stapleton postarał się o but sir Henryka,…"
+  633.13,  // [40] conf 1.00  "Posługacz hotelowy dostarczył mu obuwia,…"
+  657.46,  // [41] conf 0.97  "Nazajutrz baronet przybył tutaj; Stapleto…"   // start word fuzzy-corrected
+  677.24,  // [42] conf 0.94  "W ciągu ostatnich trzech lat okradziono w…"
+  695.66,  // [43] conf 1.00  "Mógłbym ręczyć, że był nim Stapleton, któ…"
+  718.90,  // [44] conf 1.00  "— Przepraszam cię — rzekłem — Czy mógłbyś…"
+  726.64,  // [45] conf 1.00  "— Ważna to kwestia — odparł. — Zastanawia…"
+  750.88,  // [46] conf 0.95  "Ten człowiek musiał wiedzieć, że Beryl je…"
+  762.52,  // [47] conf 0.95  "Otóż to imię, rzadkie w Anglii, jest bard…"
+  786.97,  // [48] conf 1.00  "Zapewne ten, podczas jego nieobecności, ż…"
+  795.17,  // [49] conf 1.00  "Teraz słówko o mojej działalności w czasi…"
+  821.59,  // [50] conf 0.94  "Jest siedemdziesiąt pięć gatunków perfum,…"
+  846.83,  // [51] conf 1.00  "Wiedziałem więc o istnieniu psa i miejscu…"
+  854.54,  // [52] conf 0.97  "Postanowiłem śledzić Stapletona. Oczywiśc…"
+  871.09,  // [53] conf 0.94  "Ukrywałem się przeważnie w Coombe Tracey,…"
+  885.98,  // [54] conf 0.91  "Dostarczał mi pożywienia i czystej bieliz…"
+  898.20,  // [55] conf 0.95  "Mówiłem ci już, że twoje raporty dochodzi…"
+  918.65,  // [56] conf 0.93  "Sprawa powikłała się przez ucieczkę więźn…"
+  933.60,  // [57] conf 1.00  "W chwili gdyś mnie znalazł na moczarach,…"
+  945.62,  // [58] conf 0.95  "Nawet zamach na sir Henryka, który skończ…"
+  957.70,  // [59] conf 0.95  "Nie było innej rady, jak go schwytać na g…"
+  967.66,  // [60] conf 0.96  "Przyznaję, że moja w tym wina: trzeba był…"
+  991.22,  // [61] conf 0.88  "który wyskoczył znienacka i przestraszył…"
+  995.85,  // [62] conf 0.96  "Zresztą doktor Mortimer i wezwani specjal…"
+  1011.41, // [63] conf 1.00  "Pozostaje mi już tylko zaznaczyć rolę pan…"
+  1035.89, // [64] conf 0.91  "Pragnęła ostrzec sir Henryka, bez narażan…"
+  1044.63, // [65] conf 1.00  "Stapleton był zdolny do zazdrości: widząc…"
+  1056.57, // [66] conf 0.93  "Opamiętawszy się, udawał, że sprzyja rodz…"
+  1069.05, // [67] conf 1.00  "Nagle w dniu oznaczonym na zamach żona op…"
+  1075.37, // [68] conf 0.98  "Do uszu jej doszła wieść o nagłej śmierci…"
+  1091.77, // [69] conf 0.92  "Owego wieczora, przed przybyciem sir Henr…"
+  1108.53, // [70] conf 1.00  "To brutalne wyznanie zerwało ostatnie pęt…"
+  1121.88, // [71] conf 1.00  "On spostrzegł tę zmianę, i obawiając się,…"
+  1131.63, // [72] conf 0.95  "Pewien był, że po dokonanej zbrodni, gdy…"
+  1152.83, // [73] conf 1.00  "Na tym polu spotkałby go zawód niewątpliw…"
+  1166.12, // [74] conf 1.00  "Oto i wszystko, co wiem o tej ciekawej sp…"
+  1190.19, // [75] conf 1.00  "Pani Stapleton zeznaje, iż jej mąż miał w…"
+  1209.09, // [76] conf 0.97  "albo dostarczyć jakiemuś wspólnikowi potr…"
+  1224.99, // [77] conf 1.00  "Znając go, jestem pewien, że wybrnąłby z…"
+  1229.51, // [78] conf 0.93  "A teraz, mój drogi, dość już o tej sprawi…"
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  enOpen: false,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function appendTooltipText(parent, text) {
+  // Render table emphasis safely; never interpret annotation cells as HTML.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function setStudyText(element, text) {
+  // Preserve unsupported superscripts literally, and decorate known note numbers.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      const definition = document.createElement("span");
+      definition.className = "note-pl";
+      appendTooltipText(definition, note.definition);
+      tooltip.appendChild(definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- EN / UA toggle chips --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const enChip = document.createElement("button");
+    enChip.type = "button";
+    enChip.className = "chip";
+    enChip.textContent = "EN ▾";
+    enChip.setAttribute("aria-expanded", "false");
+    enChip.setAttribute("aria-controls", "en-" + i);
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+
+    toggles.append(enChip, uaChip);
+
+    /* --- hidden EN block --- */
+    const enBox = document.createElement("div");
+    enBox.className = "stack en";
+    enBox.id = "en-" + i;
+    enBox.hidden = true;
+    const enLbl = document.createElement("span");
+    enLbl.className = "lbl";
+    enLbl.textContent = "English";
+    const enP = document.createElement("p");
+    enP.lang = "en";
+    setStudyText(enP, unit.en);
+    enBox.append(enLbl, enP);
+
+    /* --- hidden UA block --- */
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, enBox, uaBox, pbar);
+
+    enChip.addEventListener("click", () => setEn(i, enBox.hidden));
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, enChip, uaChip, enBox, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: mp3/pies-baskervilleow_016_xv-rzut-oka-wstecz.mp3`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = (box.classList.contains("en") ? "EN " : "UA ") + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setEn(i, open) { setChip(els[i].enChip, els[i].enBox, open); }
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleEnEl = document.getElementById("toggleEn");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(kind, open) {
+  const key = kind === "en" ? "enOpen" : "uaOpen";
+  state[key] = open;
+  els.forEach((e, i) => (kind === "en" ? setEn(i, open) : setUa(i, open)));
+  const btn = kind === "en" ? toggleEnEl : toggleUaEl;
+  btn.textContent = (open ? "Hide all " : "Reveal all ") + kind.toUpperCase();
+  btn.setAttribute("aria-pressed", String(open));
+  btn.classList.toggle("is-on", open);
+}
+
+toggleEnEl.addEventListener("click", () => setAll("en", !state.enOpen));
+toggleUaEl.addEventListener("click", () => setAll("ua", !state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+// If metadata never arrives (missing file / unsupported codec), tell the user.
+setTimeout(() => { if (audio.readyState < 1) showBanner(); }, 2500);
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "e" || ev.key === "E") {
+    setAll("en", !state.enOpen);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll("ua", !state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

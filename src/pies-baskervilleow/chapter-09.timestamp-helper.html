@@ -1,0 +1,1403 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to mp3/pies-baskervilleow_010_ix-drugie-sprawozdanie-doktora-watsona.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-09.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pies Baskerville’ów · Rozdział IX — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Pies Baskerville’ów · Rozdział IX · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="mp3/pies-baskervilleow_010_ix-drugie-sprawozdanie-doktora-watsona.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Baskerville-Hall, 15 października.",
+  "start": 10.52
+ },
+ {
+  "i": 1,
+  "pl": "Drogi Holmesie!",
+  "start": 13.26
+ },
+ {
+  "i": 2,
+  "pl": "Pozostawiłem cię wprawdzie długo bez wiadomości, za to dziś pragnę ci to wynagrodzić.",
+  "start": 14.85
+ },
+ {
+  "i": 3,
+  "pl": "Fakty następowały tak szybko po sobie, że trudno było je spisywać. Donosiłem ci, żem widział Barrymore’a, zakradającego się po nocy ze światłem w ręce do pustego pokoju. Teraz mam całą wiązankę nowin.",
+  "start": 20.42
+ },
+ {
+  "i": 4,
+  "pl": "Rzeczy wzięły obrót niespodziewany, w ciągu dwu ostatnich dni wyświetliła się niejedna zagadka, a inne zaciemniły się jeszcze bardziej. Sam osądź.",
+  "start": 35.76
+ },
+ {
+  "i": 5,
+  "pl": "Nazajutrz przed śniadaniem poszedłem do pustego pokoju nawiedzonego przez Barrymore’a nocy ubiegłej. Okno, przez które wyglądał, wychodziło na zachód i odznaczało się tym od innych, że był z niego najbliższy widok na bagno.",
+  "start": 48.31
+ },
+ {
+  "i": 6,
+  "pl": "Jest tam puste miejsce pomiędzy dwoma drzewami, przez które widać z bliska łąkę i oparzelisko, podczas gdy z innych okien widok na nie jest dalszy i zasłonięty.",
+  "start": 67.25
+ },
+ {
+  "i": 7,
+  "pl": "Czyżby Barrymore upatrywał kogoś lub czegoś na bagnie? Noc była tak ciemna, że przy najlepszym wzroku niepodobna było nic dojrzeć. Więc jakiż był cel tych obserwacji?",
+  "start": 81.69
+ },
+ {
+  "i": 8,
+  "pl": "W pierwszej chwili sądziłem, że to intryga miłosna. Dlatego zakradał się boso, dlatego był niespokojny. Barrymore jest niezwykle pięknym mężczyzną i może mieć powodzenie u kobiet — ta hipoteza wydała mi się prawdopodobna. Zgrzyt klucza w zamku świadczył może o potajemnym wyjściu na schadzkę.",
+  "start": 98.47
+ },
+ {
+  "i": 9,
+  "pl": "Takie wysnuwałem wnioski; opowiadam ci je, chociaż rezultat wykazał ich bezpodstawność.",
+  "start": 126.43
+ },
+ {
+  "i": 10,
+  "pl": "Sądząc, że nie mam prawa zachowywać ich dla siebie, zwierzyłem się z nich przed sir Henrykiem, opowiedziawszy mu wpierw, com widział. Był mniej zdziwiony, niż mogłem przypuszczać.",
+  "start": 134.83
+ },
+ {
+  "i": 11,
+  "pl": "— Wiem, że Barrymore chodzi po nocy — oświadczył. — Kilka razy słyszałem jego kroki w korytarzu o jednej i tej samej godzinie.",
+  "start": 150.56
+ },
+ {
+  "i": 12,
+  "pl": "— Więc może co noc chodzi do okna?",
+  "start": 161.18
+ },
+ {
+  "i": 13,
+  "pl": "— Może. W takim razie schwytamy go na gorącym uczynku i przekonamy się o celu jego wędrówek. Ciekaw też jestem, jak by postąpił Holmes na naszym miejscu?",
+  "start": 165.69
+ },
+ {
+  "i": 14,
+  "pl": "— Sądzę, że zrobiłby to samo, co pan zamierzasz — odparłem. — Boję się tylko, aby Barrymore nie usłyszał naszych kroków.",
+  "start": 179.66
+ },
+ {
+  "i": 15,
+  "pl": "— Ma tępy słuch; zauważyłem to już nieraz. Zatem dziś wieczorem zaczaimy się w moim pokoju.",
+  "start": 190.66
+ },
+ {
+  "i": 16,
+  "pl": "Sir Henryk był rad widocznie; ta nowa wyprawa była urozmaiceniem nudnego życia.",
+  "start": 199.88
+ },
+ {
+  "i": 17,
+  "pl": "W pałacu panował ruch gorączkowy. Baronet sprowadził architekta z Londynu, zaś z Plymouth — stolarzy i dekoratorów; nie szczędził kosztów, aby przywrócić dawny blask siedzibie swoich przodków.",
+  "start": 207.04
+ },
+ {
+  "i": 18,
+  "pl": "Skoro pałac zostanie urządzony, brak w nim będzie tylko — pięknej pani domu.",
+  "start": 225.84
+ },
+ {
+  "i": 19,
+  "pl": "Między nami mówiąc, łatwo domyślam się, kto mógłby zająć to miejsce. Baronet zakochany po uszy w naszej pięknej sąsiadce, miss Stapleton.",
+  "start": 233.55
+ },
+ {
+  "i": 20,
+  "pl": "Lecz na drodze tej miłości istnieją przeszkody. Nie dalej jak dziś sir Henryk miał przykrą niespodziankę.",
+  "start": 246.08
+ },
+ {
+  "i": 21,
+  "pl": "Po naszej rozmowie o Barrymorze, wziął czapkę i wyszedł. Ja za nim.",
+  "start": 254.5
+ },
+ {
+  "i": 22,
+  "pl": "— Towarzyszysz mi, Watson?... — zapytał z widocznym niezadowoleniem.",
+  "start": 261.04
+ },
+ {
+  "i": 23,
+  "pl": "— To zależy od tego, dokąd pan idzie; jeżeli na łąkę i bagno, pójdę z panem.",
+  "start": 266.37
+ },
+ {
+  "i": 24,
+  "pl": "— Właśnie tam podążam.",
+  "start": 271.87
+ },
+ {
+  "i": 25,
+  "pl": "— Wszak pan wie, co mi polecił Holmes... Przykro mi, że się panu narzucam, ale nie mogę puścić pana samego na trzęsawiska.",
+  "start": 274.48
+ },
+ {
+  "i": 26,
+  "pl": "Sir Henryk położył mi rękę na ramieniu.",
+  "start": 283.27
+ },
+ {
+  "i": 27,
+  "pl": "— Mój drogi — rzekł z uśmiechem — Sherlock Holmes, pomimo swej przenikliwości, nie przewidział tego, co wynikło od czasu, jak zamieszkałem nad bagnem. Wszak mnie rozumiesz?... I jestem pewien, że nie zechcesz przeszkadzać mi w takiej chwili.",
+  "start": 286.45
+ },
+ {
+  "i": 28,
+  "pl": "Byłem w trudnym położeniu, a gdym tak stał zafrasowany, mój towarzysz odwrócił się i poszedł przez łąkę.",
+  "start": 307.7
+ },
+ {
+  "i": 29,
+  "pl": "Czyniłem sobie wyrzuty, że go pozostawiam własnemu losowi. A nuż go spotka nieszczęście!...",
+  "start": 315.5
+ },
+ {
+  "i": 30,
+  "pl": "Na samą myśl o tym krew uderzyła mi do głowy.",
+  "start": 321.0
+ },
+ {
+  "i": 31,
+  "pl": "Może jeszcze nie za późno, może zdołam go dogonić...",
+  "start": 323.96
+ },
+ {
+  "i": 32,
+  "pl": "Podążyłem w kierunku, w którym sir Henryk odszedł, ale nie mogłem go dostrzec, aż wreszcie ukazał mi się na zakręcie drogi, tam, gdzie ścieżka wiodąca przez trzęsawisko odbiega od gościńca.",
+  "start": 327.84
+ },
+ {
+  "i": 33,
+  "pl": "Skręciłem w bok i zamiast iść za nim, wspiąłem się na mały pagórek, skąd było widać całą równinę. Ukrywszy się za skałą, śledziłem jego kroki.",
+  "start": 340.77
+ },
+ {
+  "i": 34,
+  "pl": "Uszedł ścieżką dobre pół mili, gdy nagle zobaczyłem zbliżającą się ku niemu pannę Stapleton.",
+  "start": 353.79
+ },
+ {
+  "i": 35,
+  "pl": "A więc to była schadzka umówiona...",
+  "start": 361.4
+ },
+ {
+  "i": 36,
+  "pl": "Przywitawszy się, szli dalej bardzo wolno; z poruszenia rąk miarkowałem, że miss Beryl o coś go prosi.",
+  "start": 366.08
+ },
+ {
+  "i": 37,
+  "pl": "Namyślałem się, co robić. Wstrętnym jest szpiegować przyjaciela; w danych okolicznościach było to moim obowiązkiem; lecz gdyby mu groziło niebezpieczeństwo, byłem za daleko, aby nieść pomoc. Więc cóż począć? Wahałem się między poczuciem delikatności a obowiązku.",
+  "start": 376.04
+ },
+ {
+  "i": 38,
+  "pl": "Tymczasem sir Henryk i jego towarzyszka stanęli na ścieżce. Rozmawiali bardzo żywo. Nagle spostrzegłem, że nie ja jeden jestem świadkiem ich spotkania. Ujrzałem coś zielonego, zawieszonego w powietrzu. Przyjrzawszy się, zobaczyłem, że to siatka na motyle.",
+  "start": 395.87
+ },
+ {
+  "i": 39,
+  "pl": "Szedł Stapleton. Był daleko bliżej od młodej pary niż ja i widocznie podążał ku niej.",
+  "start": 417.62
+ },
+ {
+  "i": 40,
+  "pl": "Wtem sir Henryk objął wpół miss Stapleton; zdawało mi się, że ona broni się od uścisku. Pochylił się nad nią, chciał ją pocałować — zasłoniła się ręką.",
+  "start": 426.3
+ },
+ {
+  "i": 41,
+  "pl": "Nagle odskoczyli od siebie. Spłoszył ich Stapleton. Pędził co tchu, wymachiwał rękoma, a gdy się z nimi zrównał tupał nogami i zapewne krzyczał i robił wymówki sir Henrykowi. Ten widocznie usprawiedliwiał się.",
+  "start": 438.3
+ },
+ {
+  "i": 42,
+  "pl": "Wreszcie Stapleton skinął na siostrę, która po chwili wahania poszła za nim, rzuciwszy spojrzenie baronetowi.",
+  "start": 455.25
+ },
+ {
+  "i": 43,
+  "pl": "On stał długo jak wryty, wreszcie odszedł krokiem powolnym, z głową zwieszoną.",
+  "start": 463.93
+ },
+ {
+  "i": 44,
+  "pl": "Co to wszystko znaczyło? Nie mogłem pojąć, lecz byłem wzburzony widokiem tej sceny. Zbiegłem ze wzgórza i spotkałem się z sir Henrykiem.",
+  "start": 472.53
+ },
+ {
+  "i": 45,
+  "pl": "— Watson! — zawołał. — Skądże się tu wziąłeś? Czyżbyś mnie śledził wbrew mojej woli?",
+  "start": 483.87
+ },
+ {
+  "i": 46,
+  "pl": "Wyznałem mu prawdę. W pierwszej chwili oczy zapałały mu gniewem, lecz rozbroiła go widocznie moja szczerość; koniec końców roześmiał się.",
+  "start": 492.5
+ },
+ {
+  "i": 47,
+  "pl": "— Można by sądzić, że takie pustkowie sprzyja samotności, a jednak — mówił żartobliwie — niepodobna konkurować bez świadków... Smutne to zresztą konkury. Gdzieżeś się ukrywał?",
+  "start": 503.42
+ },
+ {
+  "i": 48,
+  "pl": "— Za tymi skałami, na wzgórzu.",
+  "start": 519.54
+ },
+ {
+  "i": 49,
+  "pl": "— Czy widziałeś, z której strony jej brat przyszedł?",
+  "start": 522.47
+ },
+ {
+  "i": 50,
+  "pl": "— Z przeciwnej.",
+  "start": 526.57
+ },
+ {
+  "i": 51,
+  "pl": "— Czy on robi na tobie wrażenie wariata?",
+  "start": 528.77
+ },
+ {
+  "i": 52,
+  "pl": "— Nie.",
+  "start": 532.37
+ },
+ {
+  "i": 53,
+  "pl": "— Od pierwszej chwili wydał mi się nienormalny, a teraz gotów jestem przypuścić, że mnie albo jemu braknie piątej klepki. Słuchaj, Watson: mieszkasz już ze mną parę tygodni, powiedz mi szczerze, czyś nie spostrzegł we mnie jakiego umysłowego zboczenia?",
+  "start": 533.76
+ },
+ {
+  "i": 54,
+  "pl": "Jak znajdujesz: czy mógłbym być dobrym mężem dla ukochanej kobiety?",
+  "start": 554.04
+ },
+ {
+  "i": 55,
+  "pl": "— Zdaje mi się, że najlepszym.",
+  "start": 560.58
+ },
+ {
+  "i": 56,
+  "pl": "— Wszak on nic nie może zarzucić mojemu stanowisku społecznemu. Więc cóż ma przeciwko mojej osobie? Nie skrzywdziłem nikogo, żyłem uczciwie. A jednak nie pozwala mi dotknąć bodaj końca jej paluszków.",
+  "start": 563.66
+ },
+ {
+  "i": 57,
+  "pl": "— Czy wręcz zabronił?",
+  "start": 578.82
+ },
+ {
+  "i": 58,
+  "pl": "— Tak, i powiedział mi wiele innych przykrych rzeczy. Mówię ci, Watson, choć znam ją od paru tygodni, czuję, że z żadną kobietą nie byłbym tak szczęśliwy, jak z nią; a zdaje mi się, że i ona odpłaca mi wzajemnością. W oczach kobiety trwają błyski wymowniejsze od słów.",
+  "start": 582.04
+ },
+ {
+  "i": 59,
+  "pl": "Ale ten nieznośny brat nie pozwala nam się porozumieć. Dziś po raz pierwszy zdarzyła mi się sposobność widzieć ją sam na sam. Cieszyło ją to widocznie, choć nie chciała słuchać moich wynurzeń miłosnych.",
+  "start": 605.46
+ },
+ {
+  "i": 60,
+  "pl": "Wracała wciąż do jednego przedmiotu, ostrzegając mnie o grożącym niebezpieczeństwie i dowodząc, że póty nie będzie miała spokoju, dopóki ja tych stron nie opuszczę.",
+  "start": 621.7
+ },
+ {
+  "i": 61,
+  "pl": "Powiedziałem jej, że nie pilno mi odjeżdżać, skoro ona tu przebywa, i że jeśli dba istotnie o moje bezpieczeństwo, to opuści tę okolicę wraz ze mną, i prosiłem o jej rękę. Zanim jednak zdążyła mi odpowiedzieć, ten jej utrapiony brat wpadł między nas jak kula.",
+  "start": 634.36
+ },
+ {
+  "i": 62,
+  "pl": "Był blady z gniewu, trząsł się, a z jasnych oczu padały pioruny.",
+  "start": 655.74
+ },
+ {
+  "i": 63,
+  "pl": "Jak śmiałem przemawiać w ten sposób do jego siostry? — wołał. — Czy dlatego, że jestem baronetem, to wszystko mi wolno?...",
+  "start": 661.1
+ },
+ {
+  "i": 64,
+  "pl": "Tłumaczyłem mu, że nie potrzebuję wstydzić się moich uczuć dla miss Beryl i że mam nadzieję, iż zaszczyci mnie swoją ręką.",
+  "start": 669.94
+ },
+ {
+  "i": 65,
+  "pl": "Nie polepszyło to sprawy. Stapleton rozwścieczył się na dobre. I mnie zbrakło cierpliwości. Odpowiedziałem mu za ostro ze względu na jej obecność.",
+  "start": 677.39
+ },
+ {
+  "i": 66,
+  "pl": "Skończyło się na tym, że on odszedł z siostrą, a ja powracam jak niepyszny. Wytłumacz mi, co to znaczy, a będę ci wdzięczny do śmierci.",
+  "start": 692.13
+ },
+ {
+  "i": 67,
+  "pl": "Dawałem kilka wyjaśnień, ale nie zadowoliły sir Henryka, bo istotnie, co można mu zarzucić?",
+  "start": 704.3
+ },
+ {
+  "i": 68,
+  "pl": "Przemawia za nim tytuł, fortuna, charakter, wiek i uroda. Jedyny zarzut, jaki można by mu czynić — to że fatalizm ściga jego rodzinę. Ale Stapleton, jako człowiek uczony, nie powinien by przywiązywać wagi do przesądów.",
+  "start": 713.42
+ },
+ {
+  "i": 69,
+  "pl": "Toteż nie pojmuję, dlaczego odrzuca jego zabiegi, nie pytając nawet, czy siostra jest mu przychylna, a dziwi mnie nadto, że ona słucha go ślepo.",
+  "start": 732.77
+ },
+ {
+  "i": 70,
+  "pl": "Nasze domysły na ten temat przerwał sam Stapleton, który przybył po południu, aby przeprosić baroneta za swoją porywczość.",
+  "start": 744.0
+ },
+ {
+  "i": 71,
+  "pl": "Po długiej rozmowie sam na sam z sir Henrykiem w jego gabinecie wyszli pogodzeni. Dla przypieczętowania zgody zaprosił nas na obiad do Merripit House.",
+  "start": 752.95
+ },
+ {
+  "i": 72,
+  "pl": "— Dziwny to człowiek — rzekł do mnie sir Henryk po jego odejściu. — Nie mogę zapomnieć wzroku, jakim mnie piorunował dziś rano, ale mimo to muszę przyznać, że teraz znalazł się<sup>20<\/sup> przyzwoicie.",
+  "start": 764.48
+ },
+ {
+  "i": 73,
+  "pl": "— Czy wytłumaczył swe postąpienie?",
+  "start": 776.32
+ },
+ {
+  "i": 74,
+  "pl": "— Mówił, że siostra jest mu wszystkim na świecie. Żyli zawsze razem, ona mu była jedynym towarzyszem. Sama myśl o utraceniu jej doprowadza go do rozpaczy.",
+  "start": 780.61
+ },
+ {
+  "i": 75,
+  "pl": "Nie spostrzegł mojej skłonności ku Beryl, a gdy ją ujrzał w moich objęciach, ogarnął go taki gniew samolubny, że stracił przytomność i nie odpowiada za swoje słowa i czyny. Przepraszał jednak i uznawał, że byłoby szaleństwem chcieć zatrzymać przy sobie kobietę tak piękną, jak jego siostra.",
+  "start": 791.87
+ },
+ {
+  "i": 76,
+  "pl": "Jeżeli ma go opuścić, to on, Stapleton, woli, żeby poślubiła sąsiada mieszkającego tak blisko niż kogokolwiek innego. Ale musi oswoić się z tą myślą.",
+  "start": 811.72
+ },
+ {
+  "i": 77,
+  "pl": "Gotów jest mi przyrzec jej rękę, jeżeli w zamian zobowiążę się słowem honoru, że przez trzy miesiące nie wspomnę jej o miłości, nie będę starał się widywać jej sam na sam i zadowolę się zwykłym stosunkiem towarzyskim. Obiecałem mu to solennie i rzeczy na tym stanęły.",
+  "start": 826.31
+ },
+ {
+  "i": 78,
+  "pl": "A więc jedna z tajemnic już wyjaśniona. Uczuliśmy grunt pod nogami w bagnie, po którym błądzimy po omacku.",
+  "start": 849.58
+ },
+ {
+  "i": 79,
+  "pl": "Wiemy już teraz, dlaczego Stapleton patrzał niechętnie na konkurenta siostry; chociaż ten konkurent jest jedną z pierwszych partii w kraju.",
+  "start": 860.36
+ },
+ {
+  "i": 80,
+  "pl": "A teraz przechodzę do innej nici, którą wyciągnąłem ze splątanego motka — do przyczyny łez pani Barrymore i tajemniczych nocnych wędrówek jej męża.",
+  "start": 869.15
+ },
+ {
+  "i": 81,
+  "pl": "Powinszuj mi, Holmes, i przyznaj, że nie zawiodłem twego zaufania. Ta zagadka została wyjaśniona w jedną noc.",
+  "start": 881.45
+ },
+ {
+  "i": 82,
+  "pl": "Napisałem: „w jedną noc”, właściwie jednak stało się to w ciągu dwóch nocy, albowiem pierwsze próby chybiły.",
+  "start": 890.17
+ },
+ {
+  "i": 83,
+  "pl": "Siedziałem z sir Henrykiem w jego pokoju do trzeciej z rana, ale nie doleciał nas żaden inny szmer oprócz głosu zegara. Wreszcie usnęliśmy obaj na krzesłach.",
+  "start": 899.34
+ },
+ {
+  "i": 84,
+  "pl": "Niezrażeni tym, postanowiliśmy próbę ponowić. Następnej nocy zgasiliśmy lampkę i zapaliwszy papierosy, czekaliśmy, co będzie dalej.",
+  "start": 912.97
+ },
+ {
+  "i": 85,
+  "pl": "Godziny wlokły się powoli. Wybiła pierwsza, druga; już nas sen morzył, gdy nagle obaj wyprostowaliśmy się na krzesłach. Doleciał nas odgłos kroków.",
+  "start": 923.84
+ },
+ {
+  "i": 86,
+  "pl": "Zakradały się cichutko i wreszcie umilkły w oddali. Wtedy baronet drzwi otworzył i wyszliśmy na palcach.",
+  "start": 940.59
+ },
+ {
+  "i": 87,
+  "pl": "Barrymore minął już galerię, korytarz był pogrążony w ciemnościach.",
+  "start": 951.97
+ },
+ {
+  "i": 88,
+  "pl": "Doszliśmy na palcach do drugiego skrzydła w chwili, gdy kamerdyner wsuwał się do pokoju na końcu korytarza. Zamknął drzwi za sobą. Podsunęliśmy się cichutko, stąpając ostrożnie, w obawie, aby nas nie zdradziło skrzypnięcie podłogi. Zajrzeliśmy przez dziurkę od klucza.",
+  "start": 958.21
+ },
+ {
+  "i": 89,
+  "pl": "Barrymore stał przy oknie ze świecą w ręku.",
+  "start": 978.08
+ },
+ {
+  "i": 90,
+  "pl": "Nie ułożyliśmy planu kampanii, ale baronet uważa prostą drogę za najkrótszą i najwłaściwszą. Nie namyślając się, wszedł do pokoju. Barrymore odskoczył od okna.",
+  "start": 983.2
+ },
+ {
+  "i": 91,
+  "pl": "— Co ty tu robisz? — zapytał go sir Henryk.",
+  "start": 995.54
+ },
+ {
+  "i": 92,
+  "pl": "— Nic, proszę pana.",
+  "start": 999.58
+ },
+ {
+  "i": 93,
+  "pl": "Był tak wystraszony, że świeca podskakiwała mu w ręku.",
+  "start": 1001.0
+ },
+ {
+  "i": 94,
+  "pl": "— Przyszedłem zobaczyć, czy okno zamknięte... Zamykam co dzień wszystkie okna, żeby się złodziej nie zakradł.",
+  "start": 1005.55
+ },
+ {
+  "i": 95,
+  "pl": "— Tak, zwłaszcza tutaj, na... drugie piętro. Słuchaj, Barrymore — rzekł — postanowiliśmy obaj zmusić cię do powiedzenia prawdy. Im prędzej ją wyznasz, tym lepiej dla ciebie. Dość tych kłamstw. Gadaj! Coś tu robił?",
+  "start": 1013.1
+ },
+ {
+  "i": 96,
+  "pl": "Spojrzał na nas z rozpaczą, załamał ręce bezradnie.",
+  "start": 1032.7
+ },
+ {
+  "i": 97,
+  "pl": "— Nie robiłem nic złego — szepnął. — Trzymałem świecę w oknie.",
+  "start": 1038.23
+ },
+ {
+  "i": 98,
+  "pl": "— A dlaczego ją trzymałeś?",
+  "start": 1044.59
+ },
+ {
+  "i": 99,
+  "pl": "— Niech mnie pan o to nie pyta. Daję panu słowo honoru, że to cudza tajemnica. Nie mogę jej wyjawić. Gdyby chodziło tylko o mnie, wyznałbym panu całą prawdę.",
+  "start": 1046.75
+ },
+ {
+  "i": 100,
+  "pl": "Błysnęła mi nagła myśl. Wziąłem świecę, którą Barrymore postawił był na oknie.",
+  "start": 1058.48
+ },
+ {
+  "i": 101,
+  "pl": "— To zapewne sygnał umówiony — rzekłem. — Zobaczmy, jaka będzie odpowiedź.",
+  "start": 1064.24
+ },
+ {
+  "i": 102,
+  "pl": "Podniosłem świecę w górę i trzymałem ją tak, jak on przed naszym wejściem. Pomimo ciemności, bo księżyc był zasłonięty chmurami, widać było drzewa, a dalej łąkę. Wtem zobaczyłem blade światełko na bagnie.",
+  "start": 1072.54
+ },
+ {
+  "i": 103,
+  "pl": "— Jest sygnał! — zawołałem.",
+  "start": 1088.8
+ },
+ {
+  "i": 104,
+  "pl": "— Nie, proszę pana, to nic nie znaczy — przerwał mi Barrymore. — Upewniam pana, że to przypadkowe.",
+  "start": 1091.46
+ },
+ {
+  "i": 105,
+  "pl": "— Poruszaj świecą, Watson — zawołaj baronet. — Widzisz? I tamto światło rusza się... Czy i teraz, łotrze, będziesz przeczył, że dawaliście sobie sygnały?... Chodź no tutaj. Mów, kto jest twoim wspólnikiem i jaki knujecie spisek?",
+  "start": 1100.01
+ },
+ {
+  "i": 106,
+  "pl": "Twarz kamerdynera pociemniała od tłumionego gniewu.",
+  "start": 1119.99
+ },
+ {
+  "i": 107,
+  "pl": "— Nie powiem! — oświadczył butnie. — To moja rzecz, nie pańska.",
+  "start": 1124.91
+ },
+ {
+  "i": 108,
+  "pl": "— W takim razie wynoś się zaraz z mego domu!",
+  "start": 1129.03
+ },
+ {
+  "i": 109,
+  "pl": "— Dobrze. Jeśli trzeba, to trudno.",
+  "start": 1131.98
+ },
+ {
+  "i": 110,
+  "pl": "— I żebyś mi się nie pokazywał na oczy! To wstyd, hańba!... Twoja rodzina służyła mojej przez kilka pokoleń, a ty knujesz przeciwko mnie spiski?...",
+  "start": 1134.08
+ },
+ {
+  "i": 111,
+  "pl": "— Nie, nie przeciw panu.",
+  "start": 1142.34
+ },
+ {
+  "i": 112,
+  "pl": "Słowa te były wypowiedziane głosem kobiecym. Na progu stała pani Barrymore, jeszcze bledsza od męża.",
+  "start": 1144.02
+ },
+ {
+  "i": 113,
+  "pl": "— Wynosimy się stąd, Elizo — oznajmił jej kamerdyner. — Pakuj nasze rzeczy.",
+  "start": 1153.97
+ },
+ {
+  "i": 114,
+  "pl": "— O, John! John! Ja cię zgubiłam!... To wszystko moja wina, sir Henryku, moja wyłącznie... On nie winien. Robił to dla mnie, bo go o to prosiłam.",
+  "start": 1159.37
+ },
+ {
+  "i": 115,
+  "pl": "— Mów pani, wytłumacz, co to znaczy! — zawołał sir Henryk.",
+  "start": 1172.32
+ },
+ {
+  "i": 116,
+  "pl": "— Mój nieszczęsny brat umiera z głodu, tam, na bagnie... Nie możemy go opuścić... To światło jest sygnałem, że przygotowaliśmy dla niego pożywienie... a tamto światełko wskazuje, gdzie mamy je przynieść...",
+  "start": 1176.24
+ },
+ {
+  "i": 117,
+  "pl": "— A więc brat pani jest...",
+  "start": 1189.4
+ },
+ {
+  "i": 118,
+  "pl": "— Zbiegłym więźniem... mordercą... Seldon.",
+  "start": 1192.72
+ },
+ {
+  "i": 119,
+  "pl": "— To prawda — przytwierdził Barrymore. — Mówiłem, że tajemnica nie jest moja i że nie mam prawa jej zdradzić. Ale teraz sir Henryk przekonał się, że to nie był spisek przeciw niemu...",
+  "start": 1197.56
+ },
+ {
+  "i": 120,
+  "pl": "Takie jest zatem wyjaśnienie nocnych wędrówek i światła w oknie.",
+  "start": 1211.44
+ },
+ {
+  "i": 121,
+  "pl": "Sir Henryk i ja patrzaliśmy na tę kobietę ze zdumieniem. Czyż podobna, aby osoba tak przyzwoita i poważna miała w swoich żyłach tę samą krew, co słynny zbrodniarz?...",
+  "start": 1217.21
+ },
+ {
+  "i": 122,
+  "pl": "— Tak, panie — mówiła jakby w odpowiedzi na nasze myśli. — Moje panieńskie nazwisko było Seldon, a to mój młodszy brat... Psuliśmy go za jego lat dziecinnych, wszystko mu było wolno, więc nabrał przekonania, że świat istnieje dla jego przyjemności...",
+  "start": 1231.32
+ },
+ {
+  "i": 123,
+  "pl": "Gdy dorósł, wdał się w złe towarzystwo, zaczął hulać i jeszcze gorzej... Wpędził naszą biedną matkę do grobu, a nasze nazwisko błotem obryzgał. Upadał coraz niżej, wreszcie spełnił tę ostatnią zbrodnię...",
+  "start": 1250.23
+ },
+ {
+  "i": 124,
+  "pl": "Ale dla mnie jest on zawsze małym chłopaczkiem z jasnymi kędziorami, którego niańczyłam jako starsza siostra. Dlatego uciekł z więzienia. Wiedział, że ja tu jestem i że mu nie odmówię pomocy... Przywlókł się do nas, wycieńczony, zgłodniały, ścigany przez policję. Cóż miałam począć?...",
+  "start": 1266.59
+ },
+ {
+  "i": 125,
+  "pl": "Wzięliśmy go, zamknęli na strychu, żywiliśmy go, przyodziali. Po powrocie jaśnie pana brat sądził, że będzie bezpieczniejszy na bagnie, i tam się ukrywa. Z dnia na dzień spodziewaliśmy się, że opuści te strony, lecz dopóki tu jest, my nie możemy go opuścić.",
+  "start": 1289.26
+ },
+ {
+  "i": 126,
+  "pl": "Jeżeli kto zawinił, to ja, nie mój mąż; on go ukrywał i żywił przez wzgląd na mnie...",
+  "start": 1306.9
+ },
+ {
+  "i": 127,
+  "pl": "W głosie jej była szczerość.",
+  "start": 1313.76
+ },
+ {
+  "i": 128,
+  "pl": "— Czy to prawda, Barrymore?... — zapytał sir Henryk.",
+  "start": 1317.63
+ },
+ {
+  "i": 129,
+  "pl": "— Tak, panie, święta prawda.",
+  "start": 1321.5
+ },
+ {
+  "i": 130,
+  "pl": "— Ha! Nie mogę mieć ci za złe, żeś uległ prośbom żony. Wracajcie oboje do waszego pokoju. Pomówimy o tym jutro.",
+  "start": 1325.12
+ },
+ {
+  "i": 131,
+  "pl": "Wyjrzeliśmy znowu przez okno. Sir Henryk otworzył je; chłodny wiatr smagnął nas po twarzach. Daleko na bagnie płonęło blade światełko.",
+  "start": 1334.44
+ },
+ {
+  "i": 132,
+  "pl": "— Dziwna rzecz, że on nie boi się zdradzać swej obecności... — rzekł baronet.",
+  "start": 1345.45
+ },
+ {
+  "i": 133,
+  "pl": "— Może tak światło umieścił, że widać je tylko z tego punktu.",
+  "start": 1352.38
+ },
+ {
+  "i": 134,
+  "pl": "— Jak ci się zdaje: czy to stąd daleko?",
+  "start": 1357.42
+ },
+ {
+  "i": 135,
+  "pl": "— Półtorej mili, dwie najwyżej. O ile mogę zmiarkować, jest to w pobliżu Cleft Tor.",
+  "start": 1361.33
+ },
+ {
+  "i": 136,
+  "pl": "— Nie musi to być daleko, jeśli Barrymore co dzień zanosi tam żywność. Słuchaj, Watson, schwytam tego łotra!",
+  "start": 1370.07
+ },
+ {
+  "i": 137,
+  "pl": "I mnie ta sama myśl przeszła przez głowę. Wszak Barrymore nie wyjawił nam tajemnicy dobrowolnie, lecz pod naciskiem; nie byliśmy więc zobowiązani do sekretu, a to tym bardziej, że chodziło o łotra, wobec którego ustawały wszelkie względy współczucia.",
+  "start": 1378.3
+ },
+ {
+  "i": 138,
+  "pl": "Obowiązkiem naszym było oddać go w ręce sprawiedliwości, uniemożliwić mu dalsze zbrodnie. Gdybyśmy go oszczędzili, mogliby to przypłacić życiem sąsiedzi, Stapletonowie na przykład.",
+  "start": 1396.4
+ },
+ {
+  "i": 139,
+  "pl": "Niepokój o nich wpływał zapewne na to postanowienie sir Henryka.",
+  "start": 1409.85
+ },
+ {
+  "i": 140,
+  "pl": "— Pójdę z tobą — oświadczyłem.",
+  "start": 1415.27
+ },
+ {
+  "i": 141,
+  "pl": "— A zatem bierz rewolwer i wdziewaj buty — (byliśmy obaj boso, żeby ciszej stąpać). — Im wcześniej wyruszymy, tym lepiej. Łotr może lada chwila zgasić światło i nie odszukamy go po nocy.",
+  "start": 1417.51
+ },
+ {
+  "i": 142,
+  "pl": "W pięć minut byliśmy już gotowi i wyruszyliśmy na ową niebezpieczną ekspedycję.",
+  "start": 1431.39
+ },
+ {
+  "i": 143,
+  "pl": "Noc była pochmurna, wilgotna, od czasu do czasu księżyc wyłaniał się spoza chmur, a gdyśmy doszli do bagna, począł kropić drobny deszczyk.",
+  "start": 1437.44
+ },
+ {
+  "i": 144,
+  "pl": "Światło wciąż płonęło.",
+  "start": 1449.11
+ },
+ {
+  "i": 145,
+  "pl": "— Czy masz broń? — spytałem.",
+  "start": 1451.44
+ },
+ {
+  "i": 146,
+  "pl": "— Mam nóż myśliwski — odparł sir Henryk.",
+  "start": 1453.68
+ },
+ {
+  "i": 147,
+  "pl": "— Musimy wpaść na niego znienacka, bo mówią, że jest silny, jak lew. Powalimy go, zanim zdoła stawić nam opór.",
+  "start": 1457.16
+ },
+ {
+  "i": 148,
+  "pl": "— Ciekaw jestem, co by też Holmes powiedział na naszą wyprawę — rzekł baronet. — To godzina duchów; grasują teraz po bagnie... — dodał na wpół żartobliwie.",
+  "start": 1465.73
+ },
+ {
+  "i": 149,
+  "pl": "Jakby w odpowiedzi na te słowa po trzęsawisku rozległ się ów głos przeraźliwy, który już raz słyszałem w pobliżu Grimpen Mire. Wiatr niósł go wśród nocnej ciszy; z początku było to ciche warczenie, niebawem przeszło w straszne wycie. Baronet zbladł i chwycił się mojego rękawa.",
+  "start": 1478.14
+ },
+ {
+  "i": 150,
+  "pl": "— Na miłość boską, co to takiego, Watson? — spytał szeptem.",
+  "start": 1500.5
+ },
+ {
+  "i": 151,
+  "pl": "— Nie wiem. Podobno ten głos rozlega się często po bagnie — odparłem. — Już go raz słyszałem.",
+  "start": 1504.64
+ },
+ {
+  "i": 152,
+  "pl": "Zaległa znowu cisza, przerażająca, złowroga. Staliśmy, nasłuchując, ale żaden dźwięk nie wpadł nam w ucho.",
+  "start": 1512.59
+ },
+ {
+  "i": 153,
+  "pl": "— Watson... — szepnął baronet — to było szczekanie psa!...",
+  "start": 1522.62
+ },
+ {
+  "i": 154,
+  "pl": "W jego głosie brzmiał tłumiony strach.",
+  "start": 1527.65
+ },
+ {
+  "i": 155,
+  "pl": "— Jakże okoliczni mieszkańcy tłumaczą sobie to przeraźliwe wycie? — zapytał.",
+  "start": 1531.78
+ },
+ {
+  "i": 156,
+  "pl": "— Kto by tam uważał na to, co mówią ludzie prości.",
+  "start": 1538.48
+ },
+ {
+  "i": 157,
+  "pl": "— Powiedz mi jednak, co mówią?",
+  "start": 1542.36
+ },
+ {
+  "i": 158,
+  "pl": "Zawahałem się.",
+  "start": 1544.42
+ },
+ {
+  "i": 159,
+  "pl": "— Powiadają, że to szczekanie psa Baskerville’ów — odparłem.",
+  "start": 1545.4
+ },
+ {
+  "i": 160,
+  "pl": "Milczał długo.",
+  "start": 1551.19
+ },
+ {
+  "i": 161,
+  "pl": "— Tak, to był pies — rzekł wreszcie. — Szczekał bardzo daleko, w stronie Grimpen Mire...",
+  "start": 1553.48
+ },
+ {
+  "i": 162,
+  "pl": "— Trudno określić, skąd głos dolatywał.",
+  "start": 1564.24
+ },
+ {
+  "i": 163,
+  "pl": "— Powiadam ci, że stamtąd, Watson. A ty jak sądzisz? Czy to było szczekanie?... Nie jestem dzieckiem. Możesz mi powiedzieć prawdę.",
+  "start": 1567.76
+ },
+ {
+  "i": 164,
+  "pl": "— Po raz pierwszy słyszałem ten głos, idąc ze Stapletonem. Tłumaczył mi, że to wabienie rzadkiego ptaka.",
+  "start": 1577.06
+ },
+ {
+  "i": 165,
+  "pl": "— Nie, nie, to był pies. Czyżby istotnie legenda została osnuta na faktach prawdziwych? Czyżby istotnie groziło mi niebezpieczeństwo?... Co o tym myślisz, Watson?",
+  "start": 1587.96
+ },
+ {
+  "i": 166,
+  "pl": "— Jestem pewien, że nie.",
+  "start": 1599.5
+ },
+ {
+  "i": 167,
+  "pl": "— Hm! Co innego było śmiać się z tych baśni w Londynie, a rzecz inna stać tutaj, wśród ciemności na bagnie i słyszeć ten przeraźliwy głos. Mój biedny stryj! Wszak widziano wyraźnie ślady łap wielkiego psa przy jego zwłokach... Wszystko to łączy się ze sobą.",
+  "start": 1603.55
+ },
+ {
+  "i": 168,
+  "pl": "Nie jestem tchórzem, Watson, lecz to wycie ścięło mi krew w żyłach. Dotknij mojej ręki.",
+  "start": 1626.36
+ },
+ {
+  "i": 169,
+  "pl": "Była zimna jak marmur.",
+  "start": 1633.89
+ },
+ {
+  "i": 170,
+  "pl": "— Jutro śmiać się będziesz z tej przygody — rzekłem, aby go uspokoić.",
+  "start": 1637.38
+ },
+ {
+  "i": 171,
+  "pl": "— Wątpię; ten głos pozostanie mi na zawsze w pamięci. Cóż mi radzisz zrobić?",
+  "start": 1644.2
+ },
+ {
+  "i": 172,
+  "pl": "— Wracać do domu.",
+  "start": 1650.94
+ },
+ {
+  "i": 173,
+  "pl": "— Nie. Przyszliśmy tutaj, aby schwytać mordercę i nie cofniemy się w pół drogi. Chodźmy! Co ma być, niech się stanie.",
+  "start": 1653.28
+ },
+ {
+  "i": 174,
+  "pl": "Stąpaliśmy powoli wśród ciemności. Światełko płonęło wciąż w jednym punkcie. Chwilami zdawało nam się, że jest blisko, to znów że bardzo daleko. Wreszcie zmiarkowaliśmy, w której stronie świeci.",
+  "start": 1663.08
+ },
+ {
+  "i": 175,
+  "pl": "Niedaleko od nas, w szczelinie pomiędzy dwiema skałami, chroniącymi ją od wiatru, stała świeczka w lichtarzu. Nie było jej widać z żadnego innego punktu, tylko od strony Baskerville Hall. Zrąb skalny zasłaniał nas przed oczyma zbiega. Pełzając ostrożnie, doczołgaliśmy się pod świecę.",
+  "start": 1679.03
+ },
+ {
+  "i": 176,
+  "pl": "— Co teraz? — szepnął sir Henryk.",
+  "start": 1702.44
+ },
+ {
+  "i": 177,
+  "pl": "— Czekajmy. On musi być w pobliżu. Trzeba zajrzeć. Zobaczymy go może.",
+  "start": 1706.33
+ },
+ {
+  "i": 178,
+  "pl": "Jakoż zaledwie tych słów domówiłem, w szczelinie skalnej nad świecą ukazała nam się twarz potworna, zwierzęca, zorana dzikimi namiętnościami, żółta jak wosk. Zbrodniarz był zarośnięty po same oczy. Tak wyglądali zapewne nasi przodkowie zamieszkujący te bagna w przedhistorycznej epoce.",
+  "start": 1713.98
+ },
+ {
+  "i": 179,
+  "pl": "Morderca wodził niespokojnym wzrokiem dokoła jak zwierz, gdy go doleci odgłos nagonki.",
+  "start": 1738.51
+ },
+ {
+  "i": 180,
+  "pl": "Coś widocznie wzbudziło jego podejrzliwość. Może Barrymore zwykł był dawać mu sygnał, o którym nie wiedzieliśmy, a może złoczyńca miał inny powód do obawy, bądź co bądź strach malował się na jego dzikiej twarzy.",
+  "start": 1746.46
+ },
+ {
+  "i": 181,
+  "pl": "Lada chwila mógł cofnąć się i zniknąć wśród ciemności. Wyskoczyłem z mojej kryjówki, sir Henryk za mną. Zbrodniarz zaklął przeraźliwie i zrzucił ogromny kamień. Roztrzaskał się on o skałę, o którą opieraliśmy się przed chwilą.",
+  "start": 1765.59
+ },
+ {
+  "i": 182,
+  "pl": "Szczęśliwym zbiegiem okoliczności księżyc przedarł się właśnie przez chmury i oświecił bagno.",
+  "start": 1782.24
+ },
+ {
+  "i": 183,
+  "pl": "Zbiegliśmy z pagórka, goniąc uciekającego co tchu Seldona. Przeskakiwał z kamienia na kamień, ze skały na skałę jak dziki kozioł.",
+  "start": 1789.29
+ },
+ {
+  "i": 184,
+  "pl": "Mogłem powalić zbrodniarza od razu wystrzałem z rewolweru, lecz wziąłem go dla obrony w razie napaści, nie zaś dla zabijania człowieka bezbronnego.",
+  "start": 1799.67
+ },
+ {
+  "i": 185,
+  "pl": "Obaj z sir Henrykiem biegamy znakomicie; przekonaliśmy się jednak niebawem, że nie zdołamy go dopędzić. W świetle księżyca widzieliśmy długo jego szerokie bary i kabłąkowate nogi, aż wreszcie ukazał nam się jako mały punkcik na skraju widnokręgu.",
+  "start": 1811.64
+ },
+ {
+  "i": 186,
+  "pl": "Biegliśmy do zupełnego braku tchu, ale przestrzeń pomiędzy nami a uciekającym Seldonem zwiększała się ustawicznie. Wreszcie, zdyszani, usiedliśmy na skale, patrząc za nim, dopóki nam nie znikł sprzed oczu.",
+  "start": 1831.6
+ },
+ {
+  "i": 187,
+  "pl": "W chwili tej właśnie zdarzyła się rzecz dziwna i niespodziewana. Odpocząwszy, wstawaliśmy, aby wracać do domu, bośmy już zaniechali dalszego pościgu. Księżyc w pełni zachodził za jedną z wyższych skał; wtem na jej szczycie ujrzałem postać męską, wyglądającą jak posąg.",
+  "start": 1849.68
+ },
+ {
+  "i": 188,
+  "pl": "Nie myśl, że to było złudzenie zmysłów. O ile mogłem zauważyć, był to mężczyzna wysokiego wzrostu, szczupły. Stał z założonymi na krzyż rękoma, ze spuszczoną głową, jak gdyby wpatrywał się w tę pustą przestrzeń.",
+  "start": 1869.96
+ },
+ {
+  "i": 189,
+  "pl": "To może duch bagna... Bądź co bądź, nie był to Seldon, gdyż ten przed chwilą znikł był w kierunku wręcz przeciwnym. Zresztą owa postać była daleko wyższa i szczuplejsza.",
+  "start": 1887.39
+ },
+ {
+  "i": 190,
+  "pl": "Chciałem pokazać to zjawisko baronetowi, lecz w chwili, gdym się odwrócił, postać już zniknęła. Na tle księżycowej tarczy odrzynały się skały, lecz żywy posąg nie stał już na ich szczycie.",
+  "start": 1901.85
+ },
+ {
+  "i": 191,
+  "pl": "Chciałem pójść i przekonać się, co to było, ale baronet nie miał ochoty szukać nowych wrażeń. Nie dostrzegł owego dziwnego zjawiska i wmawiał we mnie, że mi się przywidziało, bo nie odczuł wrażenia, które mnie wstrząsnęło do szpiku kości.",
+  "start": 1915.51
+ },
+ {
+  "i": 192,
+  "pl": "— To zapewne jakiś strażnik ziemski. Bagno roi się od nich od czasu, gdy Seldon uciekł z więzienia.",
+  "start": 1933.7
+ },
+ {
+  "i": 193,
+  "pl": "Ha! Kto wie, czy takie wyjaśnienie nie jest prawdziwe; chciałbym jednak to stwierdzić.",
+  "start": 1941.74
+ },
+ {
+  "i": 194,
+  "pl": "Dziś mamy zamiar donieść zarządowi więziennemu w Princetown, gdzie ma szukać zbiega. Jednak szkoda, że nie zdołaliśmy go sami schwytać.",
+  "start": 1947.2
+ },
+ {
+  "i": 195,
+  "pl": "Takie są przygody ostatniej nocy. Musisz przyznać, Holmes, że moje sprawozdanie jest bardzo szczegółowe i dokładne. Wiele faktów pozostaje do wyjaśnienia; przedstawiam ci je bez komentarzy, aby ci nie przeszkadzać w wyprowadzaniu wniosków.",
+  "start": 1958.03
+ },
+ {
+  "i": 196,
+  "pl": "Postąpiliśmy naprzód na drodze odkryć. Znamy już przyczynę nocnych wędrówek Barrymore’ów — a to ułatwia sytuację.",
+  "start": 1974.36
+ },
+ {
+  "i": 197,
+  "pl": "Lecz trzęsawisko zawiera jeszcze wiele niewyjaśnionych tajemnic. Może w następnym liście zdołam rzucić na nie światło. Byłoby najlepiej, gdybyś mógł sam przyjechać.",
+  "start": 1983.02
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

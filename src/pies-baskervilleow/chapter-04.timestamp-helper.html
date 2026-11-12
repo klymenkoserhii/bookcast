@@ -1,0 +1,1088 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to mp3/pies-baskervilleow_005_iv-sir-henryk-baskerville.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-04.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pies Baskerville’ów · Rozdział IV — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Pies Baskerville’ów · Rozdział IV · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="mp3/pies-baskervilleow_005_iv-sir-henryk-baskerville.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Zjedliśmy wcześnie śniadanie. Holmes czekał na zapowiedzianą wizytę. Nasi klienci stawili się punktualnie. Biła właśnie dziesiąta, gdy do pokoju bawialnego wszedł doktor Mortimer, a za nim młody baronet.",
+  "start": 6.93
+ },
+ {
+  "i": 1,
+  "pl": "Ten ostatni był niewielkiego wzrostu, silnie zbudowany, miał lat ze trzydzieści, włosy i oczy ciemne; gęste czarne brwi nadawały jego twarzy wyraz stanowczy, a nawet srogi.",
+  "start": 23.73
+ },
+ {
+  "i": 2,
+  "pl": "Z całej jego postawy i ogorzałego oblicza było znać, że dużo przebywał na świeżym powietrzu; wyglądał na skończonego gentlemana.",
+  "start": 37.17
+ },
+ {
+  "i": 3,
+  "pl": "— Oto sir Henryk Baskerville — prezentował doktor Mortimer.",
+  "start": 49.78
+ },
+ {
+  "i": 4,
+  "pl": "— Tak, jestem tu we własnej osobie, a co dziwniejsza, panie Holmes, że gdyby mój przyjaciel nie zaproponował mi tej wizyty, sam przybyłbym do pana.",
+  "start": 59.44
+ },
+ {
+  "i": 5,
+  "pl": "— Niechże pan siada. Czyżby od pańskiego przybycia do Londynu zdarzyło się panu coś niezwykłego?",
+  "start": 78.77
+ },
+ {
+  "i": 6,
+  "pl": "— Zażartowano ze mnie. Dziś rano dostałem ten list.",
+  "start": 86.95
+ },
+ {
+  "i": 7,
+  "pl": "Sir Henryk położył na stole kopertę; wszyscy nachyliliśmy się nad nią. Była to zwykła, szara koperta; adres: Sir Henryk Baskerville, Northumberland Hotel — wypisany był drukiem, stempel Charing Cross i data na kopercie z poprzedniego wieczora.",
+  "start": 94.73
+ },
+ {
+  "i": 8,
+  "pl": "— Kto wiedział, że pan zatrzyma się w Northumberland Hotel? — spytał Holmes, spoglądając bystro na swego klienta.",
+  "start": 118.19
+ },
+ {
+  "i": 9,
+  "pl": "— Nikt nie mógł wiedzieć. Zdecydowałem się dopiero po spotkaniu doktora Mortimera.",
+  "start": 127.7
+ },
+ {
+  "i": 10,
+  "pl": "— Doktor Mortimer mieszkał już tam zapewne?",
+  "start": 136.58
+ },
+ {
+  "i": 11,
+  "pl": "— Bynajmniej. Zatrzymałem się u znajomego — odparł doktor. — Nie było żadnych poszlak, wskazujących, że chcemy stanąć w tym właśnie hotelu.",
+  "start": 139.26
+ },
+ {
+  "i": 12,
+  "pl": "— Hm! ktoś widocznie śledzi pańskie kroki.",
+  "start": 150.42
+ },
+ {
+  "i": 13,
+  "pl": "Holmes wyjął z koperty papier dużego formatu, rozłożył go na stole. Na środku arkusza było jedno zdanie. Brzmiało w te słowa:",
+  "start": 153.97
+ },
+ {
+  "i": 14,
+  "pl": "Jeśli dbasz o życie, strzeż się trzęsawiska.",
+  "start": 165.48
+ },
+ {
+  "i": 15,
+  "pl": "Tylko jedno słowo: „trzęsawiska” było wypisane atramentem, reszta drukowanymi literami.",
+  "start": 171.83
+ },
+ {
+  "i": 16,
+  "pl": "— A teraz, panie Holmes — rzekł sir Henryk Baskerville — może mi pan wytłumaczy, co znaczą te słowa i kto interesuje się moją osobą?",
+  "start": 185.24
+ },
+ {
+  "i": 17,
+  "pl": "— Cóż pan o tym myślisz, doktorze Mortimer? Musisz chyba przyznać, że nie ma w tym nic nadnaturalnego.",
+  "start": 201.88
+ },
+ {
+  "i": 18,
+  "pl": "— Nie, lecz te słowa mogą być skreślone przez kogoś, kto wierzy w nadprzyrodzoną siłę rządzącą tą sprawą.",
+  "start": 208.4
+ },
+ {
+  "i": 19,
+  "pl": "— Jaką sprawą? — podchwycił sir Henryk Baskerville. — Widzę, że panowie jesteście lepiej ode mnie powiadomieni o moich interesach.",
+  "start": 217.16
+ },
+ {
+  "i": 20,
+  "pl": "— Zanim stąd wyjdziesz, sir Henryku, będziesz wiedział to, co i my — oświadczył Sherlock Holmes. — Tymczasem zajmiemy się tym ciekawym dokumentem. List został naklejony i wrzucony do skrzynki wczoraj wieczorem. Czy masz wczorajszy „Times”, Watson?",
+  "start": 231.3
+ },
+ {
+  "i": 21,
+  "pl": "— Leży tutaj.",
+  "start": 256.45
+ },
+ {
+  "i": 22,
+  "pl": "— Proszę cię o niego. Chcę zobaczyć wewnętrzną kolumnę z artykułem wstępnym.",
+  "start": 258.02
+ },
+ {
+  "i": 23,
+  "pl": "Przebiegł okiem wzdłuż szpalty.",
+  "start": 264.18
+ },
+ {
+  "i": 24,
+  "pl": "— Artykuł wstępny traktuje o wolnym handlu. Pozwólcie mi odczytać z niego jeden ustęp:",
+  "start": 267.76
+ },
+ {
+  "i": 25,
+  "pl": "„Nie należy się łudzić, że taryfa protekcyjna osłoni nasz przemysł. Takie prawo zmniejszy tylko obieg kapitałów i sprawi, że życie będzie droższe w Anglii. Jeżeli więc dbasz o swój dobrobyt, szanowny obywatelu, strzeż się głosować za rzecznikami tej idei”.",
+  "start": 275.72
+ },
+ {
+  "i": 26,
+  "pl": "— Cóż o tym myślisz, Watson? — zawołał Holmes, zacierając ręce z radości. — Czy nie znajdujesz<sup>9<\/sup>, że wyrażone poglądy są bardzo głębokie?",
+  "start": 297.24
+ },
+ {
+  "i": 27,
+  "pl": "Doktor Mortimer spojrzał na Holmesa z zaciekawieniem; sir Henryk był widocznie zdziwiony.",
+  "start": 309.0
+ },
+ {
+  "i": 28,
+  "pl": "— Nie znam się na taryfach — rzekł — ale nie widzę, aby te słowa miały nas wprowadzić na trop autora listu.",
+  "start": 317.23
+ },
+ {
+  "i": 29,
+  "pl": "— I owszem. Watson zna mój system. Czy zrozumiałeś znaczenie tego zdania dla naszej sprawy?",
+  "start": 330.01
+ },
+ {
+  "i": 30,
+  "pl": "— Przyznaję, że nie widzę żadnej łączności pomiędzy tymi słowami a przestrogą zawartą w liście anonimowym.",
+  "start": 340.6
+ },
+ {
+  "i": 31,
+  "pl": "— A jednak, kochany Watson, łączność jest tak ścisła, że jedno wypływa z drugiego. Życie, dbasz, strzeż się — czyż nie widzisz, skąd są wzięte owe słowa?",
+  "start": 348.22
+ },
+ {
+  "i": 32,
+  "pl": "— Masz pan słuszność! — zawołał sir Henryk.",
+  "start": 367.84
+ },
+ {
+  "i": 33,
+  "pl": "— Wszelkie wątpliwości rozprasza fakt, że słowa zostały wycięte w całości, nie zaś pojedynczymi literami, a nawet widzimy dwa słowa wycięte razem: dbasz o...",
+  "start": 373.65
+ },
+ {
+  "i": 34,
+  "pl": "— Doprawdy, panie Holmes, to przechodzi wszelkie pojęcie — rzekł doktor Mortimer, patrząc na mego przyjaciela ze zdumieniem. — Nie dość, że pan poznałeś od razu, iż słowa zostały wycięte z dziennika, ale domyśliłeś się, z którego. Powiedzże nam, jakim sposobem?",
+  "start": 390.42
+ },
+ {
+  "i": 35,
+  "pl": "— Sądzę, że potrafiłbyś, doktorze, odróżnić czaszkę Murzyna od czaszki Eskimosa?",
+  "start": 412.68
+ },
+ {
+  "i": 36,
+  "pl": "— Naturalnie. Badanie czaszek — to moja specjalność.",
+  "start": 417.26
+ },
+ {
+  "i": 37,
+  "pl": "— Dla moich oczu różnica pomiędzy burgosowymi czcionkami artykułów wstępnych „Timesa” a petitowym drukiem pism wieczornych jest tak wielka, jak dla pana między czaszką Eskimosa a Murzyna. Badanie druków jest elementarzem wiedzy detektywa.",
+  "start": 420.84
+ },
+ {
+  "i": 38,
+  "pl": "— O ile można przypuszczać, te słowa zostały wycięte scyzorykiem.",
+  "start": 438.8
+ },
+ {
+  "i": 39,
+  "pl": "— Nie; nożyczkami i to bardzo ostrymi i krótkimi. Po wycięciu naklejono je gumą na papierze.",
+  "start": 444.33
+ },
+ {
+  "i": 40,
+  "pl": "— Ale dlaczego słowo: trzęsawisko zostało wypisane ręcznie?",
+  "start": 452.65
+ },
+ {
+  "i": 41,
+  "pl": "— Bo nie ma go w artykule.",
+  "start": 459.45
+ },
+ {
+  "i": 42,
+  "pl": "— Czy coś jeszcze zwróciło pańską uwagę, panie Holmes? — pytał sir Henryk.",
+  "start": 462.76
+ },
+ {
+  "i": 43,
+  "pl": "— Dostrzegam parę wskazówek, choć starano się zatrzeć wszelkie ślady. Adres wypisany literami drukowanymi ręką niewprawną, ale skądinąd „Times” jest czytywany przez ludzi inteligentnych.",
+  "start": 471.19
+ },
+ {
+  "i": 44,
+  "pl": "Wyprowadzam stąd wniosek, że autorem anonimu jest człowiek wykształcony, który chce uchodzić za nieuka; sam fakt, że ukrywa swe pismo, dowodzi, że pan znasz lub że mógłbyś poznać to pismo. Dalej: słowa nie są naklejone w prostej linii; i tak, na przykład, życie nie jest na swoim miejscu właściwym.",
+  "start": 484.05
+ },
+ {
+  "i": 45,
+  "pl": "To świadczy o niedbałości lub o wzruszeniu. Przypuszczam raczej to ostatnie. Korespondent śpieszył się widocznie... ale dlaczego? Wiedział, że list wrzucony wieczorem, choćby najpóźniej, dojdzie rąk sir Henryka nazajutrz przed jego wyjściem z hotelu.",
+  "start": 508.35
+ },
+ {
+  "i": 46,
+  "pl": "Czyżby ów nieznajomy bał się, że mu przerwą robotę?",
+  "start": 530.91
+ },
+ {
+  "i": 47,
+  "pl": "— Wkraczamy teraz w dziedzinę domysłów — wtrącił doktor Mortimer.",
+  "start": 535.89
+ },
+ {
+  "i": 48,
+  "pl": "— Powiedz pan raczej, że na pole prawdopodobieństw. Może to pan nazwać domysłem, ale ja jestem pewien, że adres został skreślony w hotelu.",
+  "start": 542.23
+ },
+ {
+  "i": 49,
+  "pl": "— Skąd pan to wie?",
+  "start": 553.75
+ },
+ {
+  "i": 50,
+  "pl": "— Jeżeli panowie przyjrzycie mu się dokładnie, to zmiarkujecie, że piszący miał kłopot z piórem i atramentem. Pióro pryskało dwa razy w jednym słowie, i wyschło trzy razy przy wypisywaniu tak krótkiego adresu, co dowodzi, że było bardzo mało atramentu w kałamarzu.",
+  "start": 556.32
+ },
+ {
+  "i": 51,
+  "pl": "Otóż w domu prywatnym rzadko się zdarza, aby atrament wysechł i żeby pióro było w tak złym stanie. Ale wiadomo, czym są pióra i kałamarze hotelowe. Sądzę, że badając kałamarze w hotelach w pobliżu Charing Cross, znajdziemy wycięty numer „Timesa” i zdołamy odszukać osobę, która ten list przesłała.",
+  "start": 575.2
+ },
+ {
+  "i": 52,
+  "pl": "Obejrzał starannie papier, na którym były przyklejone słowa, ale nie mógł dojrzeć nic osobliwego.",
+  "start": 595.15
+ },
+ {
+  "i": 53,
+  "pl": "— Czy zdarzyło się panu coś jeszcze od chwili, gdyś pan przybył do Londynu? — spytał sir Henryka.",
+  "start": 602.08
+ },
+ {
+  "i": 54,
+  "pl": "— Nic zgoła.",
+  "start": 609.53
+ },
+ {
+  "i": 55,
+  "pl": "— Czy nie zauważyłeś pan, że pana śledzą?",
+  "start": 612.39
+ },
+ {
+  "i": 56,
+  "pl": "— Nie. Któż by miał ochotę mnie śledzić? Nikt mnie tu nie zna.",
+  "start": 616.9
+ },
+ {
+  "i": 57,
+  "pl": "— Czy nie miał pan jakiejś niespodzianki?",
+  "start": 624.29
+ },
+ {
+  "i": 58,
+  "pl": "— Żadnej. Chyba tę tylko, że mi zginął jeden but.",
+  "start": 626.81
+ },
+ {
+  "i": 59,
+  "pl": "— Zginął panu but? A to w jaki sposób?",
+  "start": 632.02
+ },
+ {
+  "i": 60,
+  "pl": "— Znajdziesz go pan zapewne po powrocie do hotelu. Nie warto trudzić pana Holmesa takimi drobiazgami — przerwał mu doktor Mortimer.",
+  "start": 636.12
+ },
+ {
+  "i": 61,
+  "pl": "— Przepraszam; to nie jest drobiazg — zaprzeczył detektyw. — Jakże to było?",
+  "start": 647.36
+ },
+ {
+  "i": 62,
+  "pl": "— Wystawiłem na korytarz oba buty do czyszczenia. Nazajutrz był tylko jeden. Posługacz nie wiedział, co się stało z drugim. Kupiłem te buty wczoraj i nie miałem ich wcale na nogach.",
+  "start": 654.94
+ },
+ {
+  "i": 63,
+  "pl": "— Jeżeli ich pan nie nosiłeś, czemu je dawałeś do czyszczenia?",
+  "start": 670.58
+ },
+ {
+  "i": 64,
+  "pl": "— Buty przechodziły przez tyle rąk w sklepie, że potrzebują czyszczenia.",
+  "start": 674.88
+ },
+ {
+  "i": 65,
+  "pl": "— A zatem wczoraj, po przyjeździe do Londynu, robiłeś pan sprawunki?",
+  "start": 681.8
+ },
+ {
+  "i": 66,
+  "pl": "— Robiłem ich dużo. Towarzyszył mi doktor Mortimer. Bo to muszę panu wyznać, że pędząc życie swobodne, na świeżym powietrzu, zaniedbałem się trochę, a trzeba było przygotować się do odegrania roli pana licznych włości. Pomiędzy innymi kupiłem te żółte buty, zapłaciłem za nie sześć szylingów.",
+  "start": 685.24
+ },
+ {
+  "i": 67,
+  "pl": "Ale ukradli mi jeden, zanim je włożyłem na nogi.",
+  "start": 712.79
+ },
+ {
+  "i": 68,
+  "pl": "— To dziwne. Na co może się zdać jeden but? — zastanawiał się Sherlock Holmes.",
+  "start": 718.49
+ },
+ {
+  "i": 69,
+  "pl": "— A teraz, panowie — rzekł baronet — czekam na spełnienie obietnicy. Chciałbym się dowiedzieć o tym, co ukrywaliście przede mną.",
+  "start": 726.0
+ },
+ {
+  "i": 70,
+  "pl": "— Pańskie żądanie jest słuszne — odparł Holmes. — Doktorze Mortimer, sądzę, że masz obowiązek opowiedzieć sir Henrykowi to, coś nam opowiadał.",
+  "start": 739.13
+ },
+ {
+  "i": 71,
+  "pl": "Otrzymawszy taką zachętę, lekarz wyjął papiery z kieszeni i przedstawił całą sprawę nowemu baronetowi.",
+  "start": 751.6
+ },
+ {
+  "i": 72,
+  "pl": "Sir Henryk Baskerville słuchał uważnie, przerywając od czasu do czasu okrzykiem zdziwienia.",
+  "start": 759.73
+ },
+ {
+  "i": 73,
+  "pl": "— Ha! Widzę, żem otrzymał spadek, do którego przywiązana jest jakaś zemsta — rzekł wreszcie, gdy opowiadanie dobiegło końca. — Ma się rozumieć, słyszałem o owym psie od czasów niepamiętnych, jeszcze z ust moich nianiek. Dotychczas jednak nie przywiązywałem wagi do tej legendy.",
+  "start": 769.42
+ },
+ {
+  "i": 74,
+  "pl": "Teraz widzę, że śmierci mojego stryja towarzyszyły istotnie tajemnicze okoliczności. Panowie sami jeszcze nie wiecie, czy ta sprawa wchodzi w zakres działania policjantów, czy też pastorów. A w dodatku dostaję ów zagadkowy list...",
+  "start": 796.59
+ },
+ {
+  "i": 75,
+  "pl": "— Widać z niego, że ktoś śledzi łąkę i przyległe do niej pustkowia i trzęsawiska — rzekł doktor Mortimer.",
+  "start": 820.07
+ },
+ {
+  "i": 76,
+  "pl": "— I że ktoś jest do pana źle usposobiony, bo inaczej druga osoba nie miałaby powodu ostrzegać go o niebezpieczeństwie.",
+  "start": 831.91
+ },
+ {
+  "i": 77,
+  "pl": "— A może, dla wiadomych im przyczyn, chcą oddalić stąd sir Henryka.",
+  "start": 840.85
+ },
+ {
+  "i": 78,
+  "pl": "— I to jest możliwe, i wdzięczny jestem panu, doktorze Mortimer, że mnie tę myśl poddałeś. Obecnie chodzi o to, czy sir Henryk ma, czy też nie ma wyruszyć do Baskerville Hall?",
+  "start": 845.57
+ },
+ {
+  "i": 79,
+  "pl": "— Czemuż by nie miał?",
+  "start": 861.43
+ },
+ {
+  "i": 80,
+  "pl": "— Zdaje się, że panu tam grozi niebezpieczeństwo.",
+  "start": 865.85
+ },
+ {
+  "i": 81,
+  "pl": "— Czy mówisz pan o niebezpieczeństwie ze strony ludzi, czy też ze strony czworonożnego wroga Baskerville’ów?",
+  "start": 870.53
+ },
+ {
+  "i": 82,
+  "pl": "— Nasze badania to wykryją.",
+  "start": 881.43
+ },
+ {
+  "i": 83,
+  "pl": "— Bądź co bądź, jestem zdecydowany. Nie ma w piekle takiego szatana, ani na ziemi takiego człowieka, który by mi przeszkodził zamieszkać w domu moich przodków.",
+  "start": 884.91
+ },
+ {
+  "i": 84,
+  "pl": "Przy tych słowach sir Henryk zmarszczył brwi, z oczu posypały mu się iskry. Widocznie śmiały duch Baskerville’ów nie wygasł w ostatnim potomku rodu.",
+  "start": 900.09
+ },
+ {
+  "i": 85,
+  "pl": "— Teraz — mówił dalej — muszę zastanowić się nad tym, com się dowiedział. Chciałbym mieć godzinkę do namysłu. Jest wpół do pierwszej. Wracam do hotelu. Może byście panowie przyszli tam do mnie na śniadanie o drugiej? Wówczas będę mógł powiedzieć, co o tym wszystkim myślę.",
+  "start": 913.87
+ },
+ {
+  "i": 86,
+  "pl": "— Dobrze. Stawimy się na oznaczoną godzinę.",
+  "start": 938.99
+ },
+ {
+  "i": 87,
+  "pl": "— A zatem do widzenia.",
+  "start": 943.49
+ },
+ {
+  "i": 88,
+  "pl": "Po wyjściu naszych gości, Holmes zerwał się i zawołał:",
+  "start": 946.01
+ },
+ {
+  "i": 89,
+  "pl": "— Watson, bierz kapelusz i laskę. Nie ma chwili czasu do stracenia.",
+  "start": 951.07
+ },
+ {
+  "i": 90,
+  "pl": "Wybiegł z pokoju w szlafroku; w minutę potem ukazał się w surducie. Zbiegliśmy ze schodów. Na ulicy zobaczyliśmy sir Henryka i doktora Mortimera o paręset metrów przed sobą. Szli w kierunku Oxford Street.",
+  "start": 956.73
+ },
+ {
+  "i": 91,
+  "pl": "— Czy mam ich dogonić i zatrzymać? — spytałem.",
+  "start": 972.53
+ },
+ {
+  "i": 92,
+  "pl": "— Broń Boże! — odparł. — Twoje towarzystwo wystarcza mi najzupełniej. Ci panowie dobrze robią, że idą się przejść. Ładny dzień.",
+  "start": 977.79
+ },
+ {
+  "i": 93,
+  "pl": "Szedł krokiem przyśpieszonym, aż dopóki przestrzeń pomiędzy nami a tamtymi nie zmniejszyła się o połowę; następnie, trzymając się wciąż o sto łokci od nich, szedł za nimi przez całą Oxford Street aż do Regent Street. Nasi przyjaciele zatrzymali się raz przed wystawą sklepową. Holmes stanął także.",
+  "start": 988.73
+ },
+ {
+  "i": 94,
+  "pl": "Po chwili wydał cichy okrzyk zadowolenia. Spojrzałem w kierunku jego wzroku i zobaczyłem, że dorożka z siedzącym w niej mężczyzną, która zatrzymała się po drugiej stronie ulicy, jedzie znowu dalej.",
+  "start": 1009.83
+ },
+ {
+  "i": 95,
+  "pl": "— Chodźmy, Watson. Trzeba mu się przyjrzeć.",
+  "start": 1023.27
+ },
+ {
+  "i": 96,
+  "pl": "Dostrzegłem czarną, puszystą brodę i oczy, świdrujące nas poprzez szybę dorożki. W tejże chwili podniosło się okienko w pudle, nieznajomy rzucił parę słów woźnicy i dorożka pomknęła szybko w stronę Regent Street.",
+  "start": 1027.26
+ },
+ {
+  "i": 97,
+  "pl": "Holmes obejrzał się za drugą, ale nie było żadnej niezajętej. Popędził pieszo, ale dorożka jechała tak szybko, że niepodobna było jej dogonić. Niebawem zniknęła nam z oczu.",
+  "start": 1044.5
+ },
+ {
+  "i": 98,
+  "pl": "— Tam do kata! — zaklął mój przyjaciel. — Tośmy się urządzili! Nie do darowania!...",
+  "start": 1059.34
+ },
+ {
+  "i": 99,
+  "pl": "— Kto to był? — spytałem.",
+  "start": 1069.3
+ },
+ {
+  "i": 100,
+  "pl": "— Nie mam pojęcia.",
+  "start": 1072.32
+ },
+ {
+  "i": 101,
+  "pl": "— Zapewne szpieg.",
+  "start": 1074.1
+ },
+ {
+  "i": 102,
+  "pl": "— Z tego, com słyszał od Baskerville’a, przypuszczam, że od chwili jego przybycia do Londynu ktoś go śledzi, bo inaczej skąd by wiedziano tak szybko, że stanął w hotelu Northumberland? A jeżeli go śledzili w pierwszym dniu pobytu, niewątpliwie będą śledzić dalej.",
+  "start": 1076.42
+ },
+ {
+  "i": 103,
+  "pl": "Zauważyłeś zapewne, że podczas gdy doktor Mortimer czytał, wyglądałem dwukrotnie przez okno.",
+  "start": 1094.55
+ },
+ {
+  "i": 104,
+  "pl": "— Spostrzegłem to.",
+  "start": 1101.79
+ },
+ {
+  "i": 105,
+  "pl": "— Otóż patrzyłem, czy nikt nie stoi po przeciwnej stronie ulicy; ale nie było nikogo.",
+  "start": 1103.39
+ },
+ {
+  "i": 106,
+  "pl": "Mam do czynienia z przebiegłym lisem, a choć dotychczas nie mogę zmiarkować<sup>10<\/sup>, czy ów nieznajomy pragnie zguby sir Henryka, czy też chce go przed niebezpieczeństwem uchronić, czuję, że trzeba się z nim liczyć. Po wyjściu sir Baskerville’a wybiegłem co tchu, aby zobaczyć jego cień.",
+  "start": 1109.73
+ },
+ {
+  "i": 107,
+  "pl": "Ale ten człowiek wsiadł do dorożki, sądząc, że w ten sposób nie zwróci na siebie uwagi.",
+  "start": 1133.22
+ },
+ {
+  "i": 108,
+  "pl": "— Oddaje go to na łaskę i niełaskę dorożkarza. Szkoda, że nie dostrzegliśmy numeru — zauważył Watson.",
+  "start": 1141.23
+ },
+ {
+  "i": 109,
+  "pl": "— Mój drogi, czyż sądzisz, że mogłem przeoczyć tak ważny szczegół? Zapamiętałem numer dorożki. 2704. Ale tymczasem na nic się to nie zda. Zrobiłem wielkie głupstwo... Zamiast śledzić dorożkę z przodu, trzeba było zawrócić się i wsiąść do pierwszej lepszej, znajdującej się z tyłu.",
+  "start": 1149.67
+ },
+ {
+  "i": 110,
+  "pl": "W ten sposób moglibyśmy jechać za nią, albo kazać się zawieźć wprost do Northumberland Hotel i tam czekać. Zbytnia gorliwość była wielkim błędem. Nasz przeciwnik nie omieszkał z niego skorzystać.",
+  "start": 1173.93
+ },
+ {
+  "i": 111,
+  "pl": "Szliśmy powoli przez Regent Street. Doktor Mortimer i jego towarzysz od dawna już zniknęli nam z oczu.",
+  "start": 1192.2
+ },
+ {
+  "i": 112,
+  "pl": "— Nie warto ich śledzić — rzekł Holmes. — Tamten już umknął i nie pojawi się zapewne. Trzeba korzystać z tych nici, które trzymamy w ręku. Czy zapamiętałeś twarz nieznajomego?",
+  "start": 1200.18
+ },
+ {
+  "i": 113,
+  "pl": "— Zapamiętałem tylko brodę.",
+  "start": 1215.41
+ },
+ {
+  "i": 114,
+  "pl": "— I ja także; wyprowadzam stąd wniosek, że była przyprawiona. Wejdźmy tutaj.",
+  "start": 1217.4
+ },
+ {
+  "i": 115,
+  "pl": "Weszliśmy do hotelu. Zarządzający przyjął Holmesa z wielką radością.",
+  "start": 1225.56
+ },
+ {
+  "i": 116,
+  "pl": "— Jak widzę, pamiętasz, Wilson, drobną przysługę, którą miałem sposobność ci wyświadczyć — rzekł mój przyjaciel.",
+  "start": 1231.42
+ },
+ {
+  "i": 117,
+  "pl": "— Nie zapomnę jej nigdy. Uratowałeś mi pan honor i życie.",
+  "start": 1240.71
+ },
+ {
+  "i": 118,
+  "pl": "— Przesadzasz, mój drogi. Wszak macie tu posługacza nazwiskiem Cartridge, który wykazał dużo sprytu podczas śledztwa.",
+  "start": 1247.67
+ },
+ {
+  "i": 119,
+  "pl": "— Tak; jest jeszcze u nas.",
+  "start": 1258.03
+ },
+ {
+  "i": 120,
+  "pl": "— Czy mógłbyś zadzwonić na niego? Dziękuję. A chciałbym też zmienić pięciofuntowy banknot.",
+  "start": 1261.23
+ },
+ {
+  "i": 121,
+  "pl": "W sieni ukazał się chłopak czternastoletni, zwinny, wesoły i rozgarnięty. Stanął przed detektywem w postawie pełnej uszanowania.",
+  "start": 1268.23
+ },
+ {
+  "i": 122,
+  "pl": "— Proszę o spis hoteli. Dziękuję. Patrz, Cartridge: oto nazwy dwudziestu trzech hoteli w pobliżu Charing Cross. Widzisz?",
+  "start": 1280.59
+ },
+ {
+  "i": 123,
+  "pl": "— Tak, panie.",
+  "start": 1291.81
+ },
+ {
+  "i": 124,
+  "pl": "— Zwiedzisz każdy z nich po kolei.",
+  "start": 1293.78
+ },
+ {
+  "i": 125,
+  "pl": "— Dobrze, .",
+  "start": 1296.85
+ },
+ {
+  "i": 126,
+  "pl": "— Zaczniesz od dania szylinga portierowi. Oto masz dwadzieścia trzy szylingi.",
+  "start": 1298.35
+ },
+ {
+  "i": 127,
+  "pl": "— Dobrze, sir.",
+  "start": 1305.02
+ },
+ {
+  "i": 128,
+  "pl": "— Będziesz mówił, że potrzebne ci są gazety wczorajsze, że szukasz ważnego ogłoszenia, które miało być umieszczone w jednej z nich, ale nie wiesz — w której.",
+  "start": 1306.94
+ },
+ {
+  "i": 129,
+  "pl": "— Rozumiem, sir.",
+  "start": 1318.8
+ },
+ {
+  "i": 130,
+  "pl": "— W istocie będziesz szukał numeru „Timesa”, w którym kilka słów zostało wyciętych nożyczkami. Oto jest jeden egzemplarz. Na tej stronicy. Czy poznasz ją?",
+  "start": 1321.23
+ },
+ {
+  "i": 131,
+  "pl": "— Poznam.",
+  "start": 1334.99
+ },
+ {
+  "i": 132,
+  "pl": "— Za każdym razem portier, stojący we drzwiach, wezwie portiera, siedzącego w sieni — i temu dasz po szylingu. Oto dwadzieścia trzy szylingi. Zapewne na 23 razy — 20 razy usłyszysz, że spalono wczorajsze gazety; w trzech hotelach dadzą ci cały plik; będziesz wśród niego szukał tego numeru „Timesa”.",
+  "start": null
+ },
+ {
+  "i": 133,
+  "pl": "Prawdopodobnie go nie znajdziesz. Oto dziesięć szylingów na nieprzewidziane wydatki. Wypraw do mnie depeszę przed wieczorem na Baker Street.",
+  "start": 1361.47
+ },
+ {
+  "i": 134,
+  "pl": "A teraz, Watson, musimy dowiedzieć się o dorożkarza Nr 2704, potem wstąpimy do galerii obrazów przy Bond Street, dla zapełnienia sobie czasu do godziny drugiej.",
+  "start": 1373.63
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

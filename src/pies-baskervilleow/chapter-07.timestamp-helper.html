@@ -1,0 +1,1263 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to mp3/pies-baskervilleow_008_vii-stapleton-z-merripit-house.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-07.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pies Baskerville’ów · Rozdział VII — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Pies Baskerville’ów · Rozdział VII · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="mp3/pies-baskervilleow_008_vii-stapleton-z-merripit-house.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Świeżość następnego poranka rozproszyła smutne wrażenie, jakie na nas obu wywarła rezydencja Baskerville’ów. W świetle promieni słonecznych, ślizgających się po starych zbrojach, sala jadalna wydała nam się weselsza, gdyśmy zasiedli do śniadania.",
+  "start": 7.06
+ },
+ {
+  "i": 1,
+  "pl": "— Widzę, że to była wina naszego usposobienia, nie zaś dworu — mówił baronet. — Byliśmy wczoraj zmęczeni drogą, zziębli, więc wszystko ukazywało nam się w ponurym świetle. Dziś jesteśmy rzeźwi, wypoczęci, toteż dom wydaje nam się weselszy.",
+  "start": 23.55
+ },
+ {
+  "i": 2,
+  "pl": "— A jednak nie wszystko było grą wyobraźni — odparłem. — Czy pan słyszał wczoraj płacz?",
+  "start": 44.17
+ },
+ {
+  "i": 3,
+  "pl": "— Istotnie, zdawało mi się, że słyszę zawodzenie żałosne. Natężyłem słuch, ale płacz ustał; więc byłem pewien, że mi się śniło.",
+  "start": 51.73
+ },
+ {
+  "i": 4,
+  "pl": "— Ja słyszałem płacz najwyraźniej i mógłbym ręczyć, że płakała kobieta.",
+  "start": 63.64
+ },
+ {
+  "i": 5,
+  "pl": "— Trzeba to sprawdzić — oświadczył sir Henryk.",
+  "start": 71.0
+ },
+ {
+  "i": 6,
+  "pl": "Zadzwonił na Barrymore’a i spytał go o wyjaśnienie tej zagadki. Zdało mi się, że blada twarz kamerdynera zbladła jeszcze bardziej.",
+  "start": 76.51
+ },
+ {
+  "i": 7,
+  "pl": "— W domu są tylko dwie kobiety — odparł. — Mleczarka, która śpi w drugim skrzydle, i moja żona. Co do mojej, mogę ręczyć, że nie płakała.",
+  "start": 84.57
+ },
+ {
+  "i": 8,
+  "pl": "A jednak mówiąc to, kłamał.",
+  "start": 100.01
+ },
+ {
+  "i": 9,
+  "pl": "Po śniadaniu spotkałem panią Barrymore w sieni. Słońce padało na jej twarz chłodną, płaską i brzydką. Duże, wyraziste oczy były zaczerwienione; spojrzała na mnie spod zapuchłych powiek.",
+  "start": 103.59
+ },
+ {
+  "i": 10,
+  "pl": "A więc to ona płakała wśród nocy; mąż wiedział o tym na pewno. Jednak zaprzeczył nam. Jaki miał w tym cel? Dlaczego ona płakała?",
+  "start": 118.7
+ },
+ {
+  "i": 11,
+  "pl": "Ten blady mężczyzna z czarną brodą wydawał mi się podejrzany. On pierwszy znalazł trupa sir Karola; o okolicznościach towarzyszących jego śmierci wiedzieliśmy tylko to, co Barrymore opowiadał. Zaczynałem przypuszczać, że to on, Barrymore, ukrywał się w dorożce i śledził sir Henryka.",
+  "start": 130.15
+ },
+ {
+  "i": 12,
+  "pl": "Broda była podobna. Wprawdzie według rysopisu dorożkarza rzekomy Sherlock Holmes był niższego wzrostu, lecz rysopisy bywają niedokładne.",
+  "start": 155.38
+ },
+ {
+  "i": 13,
+  "pl": "Trzeba było tę rzecz sprawdzić. Ale w jaki sposób? Przede wszystkim należało dowiedzieć się od poczmistrza w Grimpen, czy telegram został oddany do własnych rąk Barrymore’a.",
+  "start": 166.16
+ },
+ {
+  "i": 14,
+  "pl": "Po południu sir Henryk chciał załatwić korespondencję; mogłem udać się do Grimpen. Był to spacer niedaleki, droga wiodła brzegiem trzęsawiska.",
+  "start": 179.25
+ },
+ {
+  "i": 15,
+  "pl": "W Grimpen były tylko dwie murowane budowle: austeria<sup>16<\/sup> i dom doktora Mortimera. Pocztmistrz utrzymywał jednocześnie sklepik korzenny.",
+  "start": 190.13
+ },
+ {
+  "i": 16,
+  "pl": "— Naturalnie — odparł na moje pytanie — depesza została wręczona panu Barrymore, stosownie do życzenia.",
+  "start": 203.0
+ },
+ {
+  "i": 17,
+  "pl": "— Kto ją wręczył?",
+  "start": 211.44
+ },
+ {
+  "i": 18,
+  "pl": "— Mój chłopak. Słuchaj no, James, wszak w zeszłym tygodniu oddałeś telegram do rąk pana Barrymore w Baskerville Hall?",
+  "start": 213.26
+ },
+ {
+  "i": 19,
+  "pl": "— Tak, ojcze.",
+  "start": 221.01
+ },
+ {
+  "i": 20,
+  "pl": "— Do rąk własnych? — spytałem.",
+  "start": 223.36
+ },
+ {
+  "i": 21,
+  "pl": "— Był wtedy na strychu, więc nie mogłem oddać mu do rąk, ale wręczyłem depeszę jego żonie, która powiedziała, że ją zaraz zaniesie mężowi.",
+  "start": 226.8
+ },
+ {
+  "i": 22,
+  "pl": "— Czy widziałeś pana Barrymore’a?",
+  "start": 236.56
+ },
+ {
+  "i": 23,
+  "pl": "— Nie, proszę pana; mówiłem już, że był na strychu.",
+  "start": 239.36
+ },
+ {
+  "i": 24,
+  "pl": "— Jeżeliś go nie widział, to skądże wiesz, że był na strychu?",
+  "start": 243.0
+ },
+ {
+  "i": 25,
+  "pl": "— Jego własna żona musiała chyba wiedzieć, gdzie się obraca — wtrącił pocztmistrz. — Czyżby nie dostał depeszy? Jeżeli zaszła pomyłka, niech sam Barrymore wniesie skargę.",
+  "start": 247.3
+ },
+ {
+  "i": 26,
+  "pl": "Na nic by się zdały dalsze pytania. Mimo wybiegu Holmesa, nie pozyskaliśmy pewności, że Barrymore nie był wtedy w Londynie. On, który ostatni widział sir Karola żywym, chciał może pierwszy zobaczyć swego nowego pana.",
+  "start": 259.19
+ },
+ {
+  "i": 27,
+  "pl": "Ale jaki mógł mieć cel w prześladowaniu rodziny Baskerville?",
+  "start": 276.55
+ },
+ {
+  "i": 28,
+  "pl": "Przypomniała mi się dziwna przestroga, wycięta ze wstępnego artykułu „Timesa”. Kto ją przesłał? On, czy też ktoś, kto chciał pokrzyżować jego plany?",
+  "start": 281.92
+ },
+ {
+  "i": 29,
+  "pl": "Może kamerdyner chciał zabezpieczyć sobie w dalszym ciągu spokojne i niezależne stanowisko w pałacu, w którym podczas nieobecności właścicieli był prawdziwym panem?...",
+  "start": 296.35
+ },
+ {
+  "i": 30,
+  "pl": "Ale taki cel byłby niedostateczną pobudką do zbrodni.",
+  "start": 306.23
+ },
+ {
+  "i": 31,
+  "pl": "Sam Holmes powiadał, że nigdy jeszcze nie zdarzyła mu się sprawa tak zawiła. Pragnąłem już jak najprędzej oddać ją w ręce mego przyjaciela.",
+  "start": 311.03
+ },
+ {
+  "i": 32,
+  "pl": "Tok moich myśli został przerwany odgłosem kroków. Ktoś biegł za mną i wołał mnie po nazwisku.",
+  "start": 320.26
+ },
+ {
+  "i": 33,
+  "pl": "Odwróciłem się pewien, że ujrzę doktora Mortimera, lecz ku mojemu zdziwieniu, zobaczyłem nieznajomego.",
+  "start": 327.54
+ },
+ {
+  "i": 34,
+  "pl": "Był to mężczyzna niewielkiego wzrostu, o twarzy wygolonej, o włosach ciemnych, gładko przyczesanych; mógł mieć lat trzydzieści parę do czterdziestu. Przez ramię zwieszała mu się puszka, w jednej ręce niósł siatkę do łowienia owadów.",
+  "start": 334.23
+ },
+ {
+  "i": 35,
+  "pl": "— Daruje mi pan moją natarczywość, doktorze Watson — rzekł, podbiegając do mnie zdyszany — ale tu, na tych piaskach, żyjemy bez ceremonii. Prezentacje odbywają się naturalnie. Słyszał pan już o mnie od naszego wspólnego przyjaciela, doktora Mortimera. Jestem Stapleton z Merripit House.",
+  "start": 350.05
+ },
+ {
+  "i": 36,
+  "pl": "— Poznałbym pana po siatce — odparłem, bo wiadomo mi było, że pan Stapleton jest naturalistą — ale w jaki sposób pan mnie poznał?",
+  "start": 373.24
+ },
+ {
+  "i": 37,
+  "pl": "— Byłem u Mortimera i pokazał mi pana przez okno. Ponieważ idę w tę samą stronę, więc dogoniłem pana. Czy sir Henryk już wypoczął po podróży?",
+  "start": 385.24
+ },
+ {
+  "i": 38,
+  "pl": "— Najzupełniej.",
+  "start": 399.08
+ },
+ {
+  "i": 39,
+  "pl": "— Obawialiśmy się tu wszyscy, że nowy baronet, po tragicznej śmierci sir Karola, nie zechce zamieszkać tutaj. Spełnia ofiarę, zagrzebując się w takim ustroniu; ale okolica na tym zyska i powinna mu być wdzięczna. Spodziewam się, że sir Henryk nie żywi przesądnych obaw?",
+  "start": 399.94
+ },
+ {
+  "i": 40,
+  "pl": "— Jest na to zbyt rozumny.",
+  "start": 424.9
+ },
+ {
+  "i": 41,
+  "pl": "— Ma się rozumieć, słyszałeś już pan legendę o psie prześladującym tę rodzinę?",
+  "start": 427.02
+ },
+ {
+  "i": 42,
+  "pl": "— Słyszałem.",
+  "start": 433.77
+ },
+ {
+  "i": 43,
+  "pl": "— To dziwne, jak tutejsi włościanie są łatwowierni: każdy z nich gotów przysiąc, że widział psa na własne oczy.",
+  "start": 434.91
+ },
+ {
+  "i": 44,
+  "pl": "Pan Stapleton mówił to z uśmiechem, ale z oczu jego było widać, że przywiązuje wiarę do tych pogłosek.",
+  "start": 448.42
+ },
+ {
+  "i": 45,
+  "pl": "— Owa legenda oddziałała na wyobraźnię sir Karola — ciągnął dalej — i pewien jestem, że sprowadziła nagłą śmierć.",
+  "start": 456.44
+ },
+ {
+  "i": 46,
+  "pl": "— W jaki sposób?",
+  "start": 470.74
+ },
+ {
+  "i": 47,
+  "pl": "— Sir Karol był tak zdenerwowany, że ukazanie się psa mogło go zabić. Zdaje mi się, że ujrzał istotnie dziwne stworzenie w Alei Wiązów... Obawiałem się zawsze anewryzmu serca, bo byłem bardzo do niego przywiązany.",
+  "start": 473.32
+ },
+ {
+  "i": 48,
+  "pl": "— Skąd pan wiedział o wadzie serca?",
+  "start": 492.24
+ },
+ {
+  "i": 49,
+  "pl": "— Od mego przyjaciela, doktora Mortimera.",
+  "start": 495.8
+ },
+ {
+  "i": 50,
+  "pl": "— Zatem sądzisz pan, że jakiś pies ścigał sir Karola i że biedak zmarł skutkiem strachu?",
+  "start": 499.3
+ },
+ {
+  "i": 51,
+  "pl": "— Czy pan znasz jakiś inny powód śmierci?",
+  "start": 507.92
+ },
+ {
+  "i": 52,
+  "pl": "— Dotychczas nie wyprowadzam wniosków.",
+  "start": 512.08
+ },
+ {
+  "i": 53,
+  "pl": "— A pan Sherlock Holmes czy wyraził już swój pogląd na tę sprawę?",
+  "start": 515.5
+ },
+ {
+  "i": 54,
+  "pl": "Zdziwiło mnie takie pytanie. Można je było wziąć za zasadzkę, ale twarz mówiącego była chłodna i obojętna, więc moje podejrzenia musiały pierzchnąć.",
+  "start": 523.86
+ },
+ {
+  "i": 55,
+  "pl": "— Nie dziw, że znam pańskie stosunki ze słynnym detektywem — rzekł pan Stapleton. — Wszak wiadomo powszechnie, iż jesteście w przyjaźni ze sobą.",
+  "start": 536.78
+ },
+ {
+  "i": 56,
+  "pl": "Gdy doktor Mortimer wymienił mi pańskie nazwisko, domyśliłem się od razu, że pan Sherlock Holmes wziął w swoje ręce tę sprawę i że pan tu przybyłeś z jego ramienia. Rzecz naturalna, że chciałbym się dowiedzieć, co pan Sherlock Holmes o tym myśli.",
+  "start": 551.08
+ },
+ {
+  "i": 57,
+  "pl": "— Nie potrafię pana objaśnić w tym względzie.",
+  "start": 573.62
+ },
+ {
+  "i": 58,
+  "pl": "— Czy zamierza odwiedzić naszą okolicę?",
+  "start": 577.88
+ },
+ {
+  "i": 59,
+  "pl": "— Chwilowo nie może opuścić Londynu; ważniejsze sprawy pochłaniają jego czas i uwagę.",
+  "start": 582.16
+ },
+ {
+  "i": 60,
+  "pl": "— Szkoda wielka! Może by wyświetlił tę tajemnicę... Gdybyś pan potrzebował wskazówek, gotów jestem służyć. Może mi pan powie, w jaki sposób zamierzasz pan prowadzić sprawę, a kto wie, czy nie mógłbym udzielić panu pomocy...",
+  "start": 588.84
+ },
+ {
+  "i": 61,
+  "pl": "— Przybyłem tu w odwiedziny do mego przyjaciela, sir Henryka, i nie potrzebuję żadnej pomocy.",
+  "start": 607.89
+ },
+ {
+  "i": 62,
+  "pl": "— Jesteś pan ostrożny. To się chwali! — rzekł Stapleton. — A ja zostałem ukarany za natręctwo i nie ponowię już propozycji, uczynionej ze szczerego serca i w najlepszej chęci.",
+  "start": 619.16
+ },
+ {
+  "i": 63,
+  "pl": "Doszliśmy do ścieżki, wiodącej przez piaski i trzęsawiska. Na prawo sterczał odłam skały; poza nią, w pewnej odległości, unosił się dym z komina.",
+  "start": 637.27
+ },
+ {
+  "i": 64,
+  "pl": "— Ta ścieżka prowadzi do Marripit House — rzekł Stapleton. — Może mnie pan zechce zaszczycić swoimi odwiedzinami?",
+  "start": 648.21
+ },
+ {
+  "i": 65,
+  "pl": "Miałem ochotę odmówić ze względu na sir Henryka, ale przypomniałem sobie, że jest zajęty korespondencją; nie mogłem mu dopomóc, a z drugiej strony, Holmes kazał mi poznawać sąsiedztwo. Więc przyjąłem zaproszenie pana Stapletona i weszliśmy razem na ścieżkę.",
+  "start": 657.68
+ },
+ {
+  "i": 66,
+  "pl": "— Dziwne to trzęsawisko — mówił, wskazując mi olbrzymią płaszczyznę pokrytą piaskami i trawą — dla nieoswojonego oka wydaje się monotonne i smutne, ale kto się przyzwyczai do tych fal piaszczystych, dla tego mają one urok nieprzeparty, a zawierają tyle tajemnic!...",
+  "start": 677.24
+ },
+ {
+  "i": 67,
+  "pl": "— Pan je zgłębiłeś?",
+  "start": 700.88
+ },
+ {
+  "i": 68,
+  "pl": "— Mieszkam tu od lat dwóch zaledwie. Tutejsi mieszkańcy mogliby mnie nazwać obcym przybyszem. Osiedliliśmy się tutaj wkrótce po przybyciu sir Karola, ale moje upodobania przyrodnicze skłaniają mnie do ciągłych wędrówek, toteż poznałem każdą niemal piędź ziemi.",
+  "start": 704.69
+ },
+ {
+  "i": 69,
+  "pl": "Sądzę, że nikt tutaj nie zna jej lepiej ode mnie.",
+  "start": 726.35
+ },
+ {
+  "i": 70,
+  "pl": "— Czy okolica jest tak trudna do poznania?",
+  "start": 730.09
+ },
+ {
+  "i": 71,
+  "pl": "— Bardzo trudna. Widzisz pan, na przykład, tę rozległą równinę na północ, obramowaną wzgórzami. Czy dostrzegasz pan coś niezwykłego?",
+  "start": 735.43
+ },
+ {
+  "i": 72,
+  "pl": "— Widzę, że można by galopować po tej równinie.",
+  "start": 746.38
+ },
+ {
+  "i": 73,
+  "pl": "— Wielu już przypłaciło życiem taką chętkę. Czy widzisz pan zielone plamy, którymi usiana jest ta płaszczyzna?",
+  "start": 749.72
+ },
+ {
+  "i": 74,
+  "pl": "— Są to zapewne kępki traw.",
+  "start": 759.6
+ },
+ {
+  "i": 75,
+  "pl": "Stapleton roześmiał się.",
+  "start": 762.7
+ },
+ {
+  "i": 76,
+  "pl": "— To tak zwane Grimpen-Mire<sup>17<\/sup>, błota nieprzebyte. Jeden fałszywy krok, a śmierć pewna. Nie dalej jak wczoraj widziałem na własne oczy, jak zapadł w nie młody źrebak. Pochłonęło go trzęsawisko.",
+  "start": 764.22
+ },
+ {
+  "i": 77,
+  "pl": "Niebezpiecznie jest zapuszczać się tutaj nawet wśród letniej suszy, ale podczas jesiennych roztopów miejsce to jest cmentarzem, a jednak potrafię przejść i wrócić bezpiecznie przez sam środek bagna. Widzisz pan?... Znowu jakiś źrebiec ugrzązł w błocie...",
+  "start": 780.94
+ },
+ {
+  "i": 78,
+  "pl": "Istotnie spostrzegłem coś szamocącego się; po chwili wysunęła się długa szyja i rozległ się przeraźliwy okrzyk. Drgnąłem. Mój towarzysz był chłodniejszy ode mnie.",
+  "start": 807.0
+ },
+ {
+  "i": 79,
+  "pl": "— Już po nim! — rzekł. — Pochłonęło go bagno. Dwa źrebaki w dwa dni! Niebezpiecznie zapuszczać się na te trzęsawiska.",
+  "start": 820.46
+ },
+ {
+  "i": 80,
+  "pl": "— Pan jednak przebywa je bez szwanku? — wtrąciłem.",
+  "start": 834.62
+ },
+ {
+  "i": 81,
+  "pl": "— Tak; po długich wędrówkach znalazłem parę bezpiecznych ścieżek.",
+  "start": 840.48
+ },
+ {
+  "i": 82,
+  "pl": "— Co panu zależało na przebyciu tych błot?",
+  "start": 844.86
+ },
+ {
+  "i": 83,
+  "pl": "— Widzi pan te wzgórza w oddali? To jak wyspy odcięte od świata. Rosną tam rzadkie krzewy i fruwają niezwykłe motyle. Warto się trudzić po takie okazy.",
+  "start": 849.32
+ },
+ {
+  "i": 84,
+  "pl": "— I ja spróbuję.",
+  "start": 865.3
+ },
+ {
+  "i": 85,
+  "pl": "Spojrzał na mnie ze zdziwieniem.",
+  "start": 868.06
+ },
+ {
+  "i": 86,
+  "pl": "— Niechże pana Bóg strzeże od takich prób! Miałbym pańskie życie na sumieniu! — zawołał. — Pan nie wróciłbyś z tej wycieczki. Mnie za drogowskaz służą rośliny.",
+  "start": 870.72
+ },
+ {
+  "i": 87,
+  "pl": "— Cóż to takiego?... — zawołałem.",
+  "start": 887.14
+ },
+ {
+  "i": 88,
+  "pl": "Z oddali doleciało jakby wycie. Niepodobna było zmiarkować, skąd płynie ten okropny głos.",
+  "start": 890.02
+ },
+ {
+  "i": 89,
+  "pl": "Stapleton spojrzał na mnie z zagadkowym wyrazem twarzy.",
+  "start": 897.82
+ },
+ {
+  "i": 90,
+  "pl": "— Dziwne te bagna, prawda? — rzekł jakby z dumą.",
+  "start": 902.96
+ },
+ {
+  "i": 91,
+  "pl": "— Co to takiego? — spytałem.",
+  "start": 910.59
+ },
+ {
+  "i": 92,
+  "pl": "— Włościanie powiadają, że to pies Baskerville’ów upomina się o zdobycz. Słyszałem ten głos parę razy, ale nigdy jeszcze tak wyraźnie, jak dzisiaj.",
+  "start": 914.02
+ },
+ {
+  "i": 93,
+  "pl": "Dokoła nie było widać żadnego żywego stworzenia.",
+  "start": 928.28
+ },
+ {
+  "i": 94,
+  "pl": "— Jesteś pan człowiekiem wykształconym. Wszak pan nie wierzysz w przesądy? Jakże pan tłumaczy sobie te głosy? — spytałem.",
+  "start": 933.81
+ },
+ {
+  "i": 95,
+  "pl": "— Stwardniałe błoto, pękając, wydaje czasem takie jęki — odparł.",
+  "start": 943.37
+ },
+ {
+  "i": 96,
+  "pl": "— Nie, nie; to był głos żywego stworzenia.",
+  "start": 951.81
+ },
+ {
+  "i": 97,
+  "pl": "— Czyś pan kiedy słyszał wabienie błotnego ptaka, zwanego bąkiem?",
+  "start": 956.15
+ },
+ {
+  "i": 98,
+  "pl": "— Nie.",
+  "start": 964.47
+ },
+ {
+  "i": 99,
+  "pl": "— To okaz zaginiony już, ale przetrwał może tutaj. Wszystko możliwe na takich bagnach. Nie zdziwiłbym się, gdyby ten głos był wabieniem ostatniego bąka w Europie.",
+  "start": 965.88
+ },
+ {
+  "i": 100,
+  "pl": "— Bądź co bądź, w życiu moim nie słyszałem podobnego dźwięku.",
+  "start": 984.3
+ },
+ {
+  "i": 101,
+  "pl": "— Tak, to pustkowie zawiera dużo dziwnych rzeczy. Spojrzyj pan na to wzgórze. Co pan dostrzegasz?",
+  "start": 989.74
+ },
+ {
+  "i": 102,
+  "pl": "Cały stok był usiany okrągłymi, foremnymi kamieniami.",
+  "start": 996.78
+ },
+ {
+  "i": 103,
+  "pl": "— Co to takiego? — spytałem.",
+  "start": 1002.36
+ },
+ {
+  "i": 104,
+  "pl": "— To siedziby naszych czcigodnych przodków. Człowiek przedhistoryczny zaludniał gęsto te bagna, a ponieważ od tych czasów nikt tu nie mieszkał, ich jaskinie pozostały nietknięte. Widzi się tam łoża, stołki, misy...",
+  "start": 1004.86
+ },
+ {
+  "i": 105,
+  "pl": "— Z jakiej epoki?",
+  "start": 1025.1
+ },
+ {
+  "i": 106,
+  "pl": "— Neolitycznej zapewne.",
+  "start": 1027.84
+ },
+ {
+  "i": 107,
+  "pl": "— Cóż ci ludzie robili?",
+  "start": 1030.5
+ },
+ {
+  "i": 108,
+  "pl": "— Paśli trzody na stokach gór, osuszali bagna, wyrabiali broń i sprzęty z kamienia. Tak, to bagno jest ciekawą kartą dziejową. Ale przepraszam pana...",
+  "start": 1032.78
+ },
+ {
+  "i": 109,
+  "pl": "Stapleton urwał nagle i podążył za jakimś rzadkim okazem motyla. Ścigał go zapamiętale, podskakiwał, kręcił się w kółko.",
+  "start": 1047.54
+ },
+ {
+  "i": 110,
+  "pl": "Ubawiony tym przyrodniczym intermezzo, postanowiłem czekać na rezultat pościgu. Wtem doleciał mnie znowu odgłos kroków. Obejrzałem się i zobaczyłem kobietę, zdążającą ku mnie.",
+  "start": 1057.61
+ },
+ {
+  "i": 111,
+  "pl": "Szła od strony Marripit House. Domyśliłem się od razu, że to jest miss Stapleton, bom słyszał o jej niepospolitej urodzie. Jakoż nawet w stolicy taka piękność musiałaby zwrócić uwagę, a olśniewała wprost na tym pustkowiu.",
+  "start": 1072.87
+ },
+ {
+  "i": 112,
+  "pl": "Byłem tym bardziej zdumiony, że miss Stapleton stanowiła zupełny kontrast ze swoim bratem. O ile on był blady, szczupły, o tyle ona wspaniale rozwinięta; o ile on niepozorny, o tyle ona wytworna.",
+  "start": 1094.55
+ },
+ {
+  "i": 113,
+  "pl": "On miał włosy i oczy szare, cerę wyblakłą — ona była brunetką tak silną, że podobnych nie widuje się w Anglii. Miała rysy nadzwyczaj regularne, oczy ogniste, usta prześlicznie wykrojone i cerę z gorącym rumieńcem. Wydawała się jakby cudownym, nadprzyrodzonym zjawiskiem na tle ponurego krajobrazu.",
+  "start": 1112.74
+ },
+ {
+  "i": 114,
+  "pl": "Oczy jej biegły niespokojnie za bratem, przyśpieszyła kroku i zrównała się ze mną. Uchyliłem kapelusza i chciałem się przedstawić, lecz nie dała mi dojść do słowa.",
+  "start": 1137.43
+ },
+ {
+  "i": 115,
+  "pl": "— Wyjeżdżaj pan stąd!... — szepnęła. — Wracaj natychmiast do Londynu....",
+  "start": 1148.74
+ },
+ {
+  "i": 116,
+  "pl": "Spojrzałem na nią ze zdumieniem. Oczy jej pałały, nóżka uderzała o ziemię.",
+  "start": 1155.27
+ },
+ {
+  "i": 117,
+  "pl": "— Po co mam wracać? — zagadnąłem.",
+  "start": 1163.32
+ },
+ {
+  "i": 118,
+  "pl": "— Nie mogę panu tego wytłumaczyć — odparła głosem przyciszonym — ale na miłość boską, zastosuj się pan do mojej rady. Wyjedź pan stąd i nigdy tu nie wracaj.",
+  "start": 1167.76
+ },
+ {
+  "i": 119,
+  "pl": "— Ależ ja zaledwie przyjechałem...",
+  "start": 1180.5
+ },
+ {
+  "i": 120,
+  "pl": "— Dlaczego pan nie chce zrozumieć, że ta przestroga ma pańskie dobro na względzie? Raz jeszcze powtarzam: wracaj pan do Londynu zaraz, dziś wieczorem. Opuść te strony. Cicho!... Mój brat nadchodzi. Nie mów mu pan o tym ani słowa...",
+  "start": 1182.62
+ },
+ {
+  "i": 121,
+  "pl": "Proszę mi zerwać parę storczyków z tej kępy traw — rzekła innym zupełnie głosem. — Mamy dużo dzikich storczyków. Lubię ten kwiat.",
+  "start": 1200.43
+ },
+ {
+  "i": 122,
+  "pl": "Stapleton zaniechał pościgu i wracał zdyszany.",
+  "start": 1213.56
+ },
+ {
+  "i": 123,
+  "pl": "— Skądże się tu wzięłaś, Beryl? — rzekł ostro.",
+  "start": 1219.81
+ },
+ {
+  "i": 124,
+  "pl": "— Widzę, że jesteś zmęczony — zagadnęła.",
+  "start": 1226.56
+ },
+ {
+  "i": 125,
+  "pl": "— Tak, goniłem motyla. Piękny okaz; spotyka się go rzadko, zwłaszcza na jesieni.",
+  "start": 1233.23
+ },
+ {
+  "i": 126,
+  "pl": "Mówił to lekko, ale patrzał na siostrę badawczo i groźnie.",
+  "start": 1240.7
+ },
+ {
+  "i": 127,
+  "pl": "— Zapoznaliście się państwo, jak widzę — rzekł. — Prezentacja już zbyteczna.",
+  "start": 1246.0
+ },
+ {
+  "i": 128,
+  "pl": "— Tak; prosiłam właśnie sir Henryka, żeby zerwał dla mnie parę storczyków.",
+  "start": 1253.98
+ },
+ {
+  "i": 129,
+  "pl": "— Więc bierzesz pana...",
+  "start": 1262.2
+ },
+ {
+  "i": 130,
+  "pl": "— Sądziłam, że to sir Henryk Baskerville — wtrąciła.",
+  "start": 1266.32
+ },
+ {
+  "i": 131,
+  "pl": "— Pani się myli — rzekłem. — Jestem tylko jego przyjacielem. Nazywam się Watson.",
+  "start": 1271.85
+ },
+ {
+  "i": 132,
+  "pl": "Rumieniec oblał jej śliczną twarzyczkę. Była widocznie zmieszana.",
+  "start": 1278.54
+ },
+ {
+  "i": 133,
+  "pl": "— Zaszło nieporozumienie... — rzekła.",
+  "start": 1284.31
+ },
+ {
+  "i": 134,
+  "pl": "— Nie mieliście przecież dużo czasu na rozmowę — wtrącił jej brat, przeszywając ją wzrokiem badawczym.",
+  "start": 1289.25
+ },
+ {
+  "i": 135,
+  "pl": "— Mówiłam do doktora Watsona, jak do stałego mieszkańca tych stron, nie zaś do gościa. Ale może pan zechce nas odwiedzić w Merripit House?",
+  "start": 1297.64
+ },
+ {
+  "i": 136,
+  "pl": "Przyjąłem zaproszenie. Droga była niedaleka, wiodła brzegiem łąki. Dom, przerobiony widocznie ze starej farmy, wznosił się wśród drzew niewielkich, otoczony był murowanym parkanem; wyglądał smutno i ponuro.",
+  "start": 1309.9
+ },
+ {
+  "i": 137,
+  "pl": "Otworzył nam drzwi stary, mrukliwy służący. Mieszkanie było obszerne, w urządzeniu znać było rękę kobiecą. Patrząc przez okno na te bagna, usiane kamieniami, zastanawiałem się, co mogło skłonić tak wykształconego mężczyznę i tak piękną kobietę do obrania tutaj siedziby.",
+  "start": 1326.86
+ },
+ {
+  "i": 138,
+  "pl": "— Dziwisz się pan zapewne, że rozpięliśmy tutaj namioty? — rzekł Stapleton, jakby w odpowiedzi na moje myśli. — A jednak dobrze nam i czujemy się szczęśliwi. Prawda, Beryl?",
+  "start": 1348.27
+ },
+ {
+  "i": 139,
+  "pl": "— Zupełnie szczęśliwi — potwierdziła bez zapału.",
+  "start": 1368.01
+ },
+ {
+  "i": 140,
+  "pl": "— Miałem szkołę w jednym z hrabstw północnych — mówił Stapleton — ale ten rodzaj pracy nie odpowiadał mojemu temperamentowi, chociaż obcowanie z dziećmi, urabianie ich umysłów, miało dla mnie dużo uroku. Losy popchnęły mnie jednak na inną drogę. Wybuchła epidemia.",
+  "start": 1372.82
+ },
+ {
+  "i": 141,
+  "pl": "Ofiarą jej padło trzech chłopców z mojej szkoły; ucierpiała skutkiem tego na opinii i nie mogła już utrzymać się dalej.",
+  "start": 1399.57
+ },
+ {
+  "i": 142,
+  "pl": "Naraziło mnie to na dużą stratę pieniężną; ale żal mi tylko zmarłych dzieci; dla siebie nie żałuję tego, bo mam czas oddawać się moim ulubionym badaniom i znalazłem tu obfite pole do studiów nad botaniką i zoologią. Siostra dzieli moje upodobania przyrodnicze.",
+  "start": 1410.49
+ },
+ {
+  "i": 143,
+  "pl": "Mówię to, żeby panu ułatwić rozwiązanie zagadki, nad którą pan zastanawiał się, patrząc na oparzeliska.",
+  "start": 1437.85
+ },
+ {
+  "i": 144,
+  "pl": "— Dziwiłem się istotnie, że państwo obrali tę okolicę, w której pobyt musi być smutny, zwłaszcza dla pani.",
+  "start": 1446.89
+ },
+ {
+  "i": 145,
+  "pl": "— Jest mi tu dobrze — oświadczyła.",
+  "start": 1455.84
+ },
+ {
+  "i": 146,
+  "pl": "— Mamy książki, mamy nasze zajęcia naukowe, mamy sąsiadów. Doktor Mortimer jest człowiekiem uczonym w swoim zakresie, biedny sir Karol był miłym towarzyszem. Widywaliśmy go często i jego śmierć była dla nas ciosem. Jak pan uważa, czy bez natręctwa mógłbym złożyć dziś wizytę sir Henrykowi?",
+  "start": 1460.78
+ },
+ {
+  "i": 147,
+  "pl": "— Jestem pewien, że będzie panu rad.",
+  "start": 1495.96
+ },
+ {
+  "i": 148,
+  "pl": "— A więc odwiedzę go po południu. Pragnąłbym, o ile możności, uprzyjemnić mu pobyt w tych stronach, zanim przywyknie do ponurej okolicy. Może pan zechce obejrzeć mój zbiór motyli? Sądzę, że nie ma obfitszego w całej Anglii południowej.",
+  "start": 1500.25
+ },
+ {
+  "i": 149,
+  "pl": "Nie mogłem przyjąć zaproszenia; pilno mi już było do mego towarzysza. Bałem się o niego, byłem mimo woli pod wrażeniem smutnego krajobrazu, a zapewne i ostrzeżeń miss Stapleton, wypowiedzianych tak poważnie, uroczyście niemal, że musiały osłaniać jakąś tajemnicę.",
+  "start": 1527.01
+ },
+ {
+  "i": 150,
+  "pl": "Toteż, mimo naglących zaprosin na śniadanie, pożegnałem rodzeństwo i wracałem do dworu tą samą ścieżką.",
+  "start": 1548.92
+ },
+ {
+  "i": 151,
+  "pl": "Musiała być jednak inna, krótsza droga, bo zanim doszedłem do gościńca, ku wielkiemu mojemu zdziwieniu ujrzałem miss Stapleton siedzącą na kamieniu przy drodze.",
+  "start": 1557.84
+ },
+ {
+  "i": 152,
+  "pl": "— Wybiegłam naprzód, aby pana tu spotkać, nie wzięłam nawet kapelusza — mówiła zdyszana. — Chcę pana prosić, abyś zapomniał moje słowa. Nie tyczyły się pana.",
+  "start": 1570.2
+ },
+ {
+  "i": 153,
+  "pl": "— Nie mogę ich zapomnieć, miss Stapleton — odparłem. — Jestem przyjacielem sir Henryka, chodzi mi o jego bezpieczeństwo. Niechże mi pani wytłumaczy, dlaczego radzisz mu pani opuścić te strony i wracać do Londynu?",
+  "start": 1584.25
+ },
+ {
+  "i": 154,
+  "pl": "— To był kaprys kobiecy, doktorze Watson. Gdy mnie poznasz, przekonasz się, że nie zawsze umiem wytłumaczyć pobudki moich słów i czynów.",
+  "start": 1602.83
+ },
+ {
+  "i": 155,
+  "pl": "— Nie, nie, pamiętam, jak głos pani drżał, pamiętam, jak pani na mnie patrzała z trwogą. Na miłość boską, bądź ze mną szczera, miss Stapleton. Od pierwszej chwili, gdym zawitał w te strony, czuję coś złowróżbnego w powietrzu.",
+  "start": 1613.52
+ },
+ {
+  "i": 156,
+  "pl": "Stąpamy jakby po owych zielonych kępach na bagnie, lada chwila możemy w nich utonąć, a nikt nie chce nam wskazać, gdzie jest niebezpieczeństwo. Powiedz mi pani, co znaczyły jej słowa, a w zamian obiecuję, że je powtórzę sir Henrykowi.",
+  "start": 1630.58
+ },
+ {
+  "i": 157,
+  "pl": "Na twarzy miss Stapleton odbiło się wahanie, ale trwało krótko.",
+  "start": 1648.44
+ },
+ {
+  "i": 158,
+  "pl": "— Przywiązujesz pan zbyt wielką wagę do moich słów — odrzekła. — Oboje z bratem zmartwiliśmy się bardzo śmiercią sir Karola. Odwiedzał nas często, mówił z przejęciem o klątwie ciążącej nad jego rodem.",
+  "start": 1655.58
+ },
+ {
+  "i": 159,
+  "pl": "Nie dziw, że po jego tragicznej śmierci gotowa byłam uwierzyć w słuszność jego obaw, a widząc jego spadkobiercę, przedstawiciela tejże rodziny, uważałam sobie za obowiązek przestrzec go o możliwym niebezpieczeństwie. To był jedyny cel moich słów.",
+  "start": 1672.7
+ },
+ {
+  "i": 160,
+  "pl": "— Ale na czym owo niebezpieczeństwo polega?",
+  "start": 1692.24
+ },
+ {
+  "i": 161,
+  "pl": "— Słyszałeś pan legendę o psie?",
+  "start": 1696.84
+ },
+ {
+  "i": 162,
+  "pl": "— Nie wierzę w te brednie.",
+  "start": 1700.78
+ },
+ {
+  "i": 163,
+  "pl": "— Ale ja wierzę. Jeżeli pan ma wpływ na sir Henryka, wywieź go pan z tej okolicy. Świat jest szeroki. Dlaczego sir Henryk ma koniecznie mieszkać tutaj, gdzie mu grozi niebezpieczeństwo?",
+  "start": 1703.45
+ },
+ {
+  "i": 164,
+  "pl": "— Dlatego właśnie, że grozi. Taki już jego charakter. Jeżeli pani nie może przytoczyć mi ważniejszego powodu, to tym argumentem nie zdołam go skłonić do opuszczenia Baskerville Hall.",
+  "start": 1720.65
+ },
+ {
+  "i": 165,
+  "pl": "— Nie mogę przytoczyć innego powodu, bo żadnego innego nie znam.",
+  "start": 1735.19
+ },
+ {
+  "i": 166,
+  "pl": "— Jeszcze jedno pytanie, miss Stapleton. Jeżeli w słowach pani nie było ukrytego znaczenia, to dlaczego nie chciałaś, aby je brat usłyszał?",
+  "start": 1741.6
+ },
+ {
+  "i": 167,
+  "pl": "— Mój brat pragnie, żeby dwór był zamieszkany, bo sądzi, że obecność właściciela jest konieczna dla dobra okolicy. Gniewałby się na mnie, gdyby wiedział, że radzę sir Henrykowi opuścić te strony. Spełniłam swój obowiązek i nic już więcej nie dodam.",
+  "start": 1751.3
+ },
+ {
+  "i": 168,
+  "pl": "Muszę wracać, bo brat domyśli się, żem rozmawiała z panem. Do widzenia!",
+  "start": 1771.28
+ },
+ {
+  "i": 169,
+  "pl": "Odeszła, pozostawiając mnie na pastwę obaw i niepokojów o sir Henryka.",
+  "start": 1778.74
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

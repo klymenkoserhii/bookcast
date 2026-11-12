@@ -1,0 +1,1941 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-02.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-02.md mp3/pies-baskervilleow_003_ii-przeklenstwo-rodu-baskerville-ow.mp3
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-02.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-02.md
+     It reads chapter-02.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path mp3/pies-baskervilleow_003_ii-przeklenstwo-rodu-baskerville-ow.mp3, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Pies Baskerville’ów · Rozdział II</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative;
+    cursor: help;
+    color: var(--accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    top: 12px;
+    width: min(360px, calc(100vw - 36px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans);
+    text-align: left;
+    white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-pl { display: block; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* EN / UA toggles + blocks */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .en p {
+    font-family: var(--sans);
+    font-size: .93rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Pies Baskerville’ów · Rozdział II</h1>
+      <p class="chapter-name">Przekleństwo rodu Baskerville’ów</p>
+      <p>Arthur Conan Doyle · trilingual study edition: EN → PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleEn" class="ctl" type="button" aria-pressed="false">Reveal all EN</button>
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>mp3/pies-baskervilleow_003_ii-przeklenstwo-rodu-baskerville-ow.mp3</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>E</kbd> toggle EN · <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" src="audio/chapter-02.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (EN → PL → UA, in reading order)  */
+/*    Generated from chapter-02.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "en": "“I have in my pocket a manuscript,” said Dr. James Mortimer.",
+  "pl": "— Mam w kieszeni rękopis — rzekł doktor Jakub Mortimer.",
+  "ua": "— У мене в кишені рукопис, — сказав доктор Джеймс Мортімер.",
+  "para": 0,
+  "start": 7.49
+ },
+ {
+  "en": "“I observed it as you entered the room,” said Holmes.",
+  "pl": "— Spostrzegłem to od razu, gdyś pan wszedł do pokoju — odparł Holmes.",
+  "ua": "— Я помітив це відразу, щойно ви ввійшли до кімнати, — відповів Холмс.",
+  "para": 1,
+  "start": 14.82
+ },
+ {
+  "en": "“It is an old manuscript.”",
+  "pl": "— Manuskrypt jest stary.",
+  "ua": "— Рукопис старий.",
+  "para": 2,
+  "start": 20.36
+ },
+ {
+  "en": "“Early eighteenth century, unless it is a forgery.”",
+  "pl": "— Z osiemnastego wieku.",
+  "ua": "— З вісімнадцятого століття.",
+  "para": 3,
+  "start": 23.84
+ },
+ {
+  "en": "“How can you say that, sir?”",
+  "pl": "— Skąd pan wie?",
+  "ua": "— Звідки ви знаєте?",
+  "para": 4,
+  "start": 26.04
+ },
+ {
+  "en": "“You have presented an inch or two of it to my examination all the time that you have been talking. It would be a poor expert who could not give the date of a document within a decade or so.",
+  "pl": "— Z pańskiej kieszeni wychodzi pół cala papieru. Przyglądałem mu się, podczas gdyś pan mówił, a byłbym lichym rzeczoznawcą, gdybym z zewnętrznego wyglądu nie potrafił określić daty rękopisu.",
+  "ua": "— З вашої кишені виступає пів цаля паперу. Я придивлявся до нього, поки ви говорили, а я був би кепським знавцем, якби з зовнішнього вигляду не зміг визначити дату рукопису.",
+  "para": 5,
+  "start": 27.73
+ },
+ {
+  "en": "You may possibly have read my little monograph upon the subject. I put that at 1730.”",
+  "pl": "Czytałeś pan zapewne moją monografię w tym przedmiocie. Otóż w tym wypadku sądzę, że manuskrypt datuje się z roku 1730.",
+  "ua": "Ви, мабуть, читали мою монографію на цю тему. Отож у цьому випадку я гадаю, що рукопис датується 1730 роком.",
+  "para": 5,
+  "start": 40.83
+ },
+ {
+  "en": "“The exact date is 1742.”",
+  "pl": "— Omyliłeś się pan o lat dwanaście. Datowany jest na rok 1742.",
+  "ua": "— Ви помилилися на дванадцять років. Він датований 1742 роком.",
+  "para": 6,
+  "start": 50.57
+ },
+ {
+  "en": "Dr. Mortimer drew it from his breast-pocket.",
+  "pl": "Doktor Mortimer wyjął go z kieszeni.",
+  "ua": "Доктор Мортімер вийняв його з кишені.",
+  "para": 7,
+  "start": 57.73
+ },
+ {
+  "en": "“This family paper was committed to my care by Sir Charles Baskerville, whose sudden and tragic death some three months ago created so much excitement in Devonshire. I may say that I was his personal friend as well as his medical attendant.",
+  "pl": "— Ten dokument rodzinny został powierzony mojej pieczy przez sir Karola Baskerville’a, którego śmierć tragiczna poruszyła przed trzema miesiącami całe Devonshire. Dodam, że byłem jego osobistym przyjacielem, zarówno jak lekarzem domowym.",
+  "ua": "— Цей родинний документ був довірений моїй опіці сером Чарльзом Баскервілем, чия трагічна смерть три місяці тому схвилювала весь Девоншир. Додам, що я був його особистим другом, а також домашнім лікарем.",
+  "para": 8,
+  "start": 60.58
+ },
+ {
+  "en": "He was a strong-minded man, sir, shrewd, practical, and as unimaginative as I am myself. Yet he took this document very seriously, and his mind was prepared for just such an end as did eventually overtake him.”",
+  "pl": "Był to człowiek dzielny, rozumny, praktyczny i tak samo jak ja, nie podlegający złudzeniom wyobraźni. A jednak wierzył święcie słowom tego dokumentu i był przygotowany na rodzaj śmierci, który go spotkał...",
+  "ua": "Це була людина мужня, розумна, практична і так само, як і я, не схильна до оман уяви. А проте він свято вірив словам цього документа і був готовий до того роду смерті, який його спіткав...",
+  "para": 8,
+  "start": 79.02
+ },
+ {
+  "en": "Holmes stretched out his hand for the manuscript and flattened it upon his knee.",
+  "pl": "Holmes wyciągnął rękę po manuskrypt i począł mu się bacznie przyglądać.",
+  "ua": "Холмс простягнув руку по рукопис і почав уважно його розглядати.",
+  "para": 9,
+  "start": 95.38
+ },
+ {
+  "en": "“You will observe, Watson, the alternative use of the long s and the short. It is one of several indications which enabled me to fix the date.”",
+  "pl": "— Zwracam pańską uwagę, Watson, na kolejne używanie krótkiego i długiego s. Jest to jedna ze wskazówek, która mi pomogła do określenia daty.",
+  "ua": "— Звертаю вашу увагу, Ватсоне, на почергове вживання короткого й довгого s. Це одна з ознак, яка допомогла мені визначити дату.",
+  "para": 10,
+  "start": 101.22
+ },
+ {
+  "en": "I looked over his shoulder at the yellow paper and the faded script. At the head was written: “Baskerville Hall,” and below in large, scrawling figures: “1742.”",
+  "pl": "Spojrzałem przez ramię na papier, pożółkły ze starości. Na pierwszej stronicy był nagłówek; „Baskerville-Hall”, a pod spodem data: „1742”.",
+  "ua": "Я глянув через його плече на папір, пожовклий від старості. На першій сторінці був заголовок: «Баскервіль-Хол», а під ним дата: «1742».",
+  "para": 11,
+  "start": 113.26
+ },
+ {
+  "en": "“It appears to be a statement of some sort.”",
+  "pl": "— To zapewne potwierdzenie jakiejś legendy — wtrącił Holmes.",
+  "ua": "— Це, певно, підтвердження якоїсь легенди, — вставив Холмс.",
+  "para": 12,
+  "start": 129.86
+ },
+ {
+  "en": "“Yes, it is a statement of a certain legend which runs in the Baskerville family.”",
+  "pl": "— Rzeczywiście — przyznał doktor Mortimer. — Legenda tyczy się rodu Baskerville’ów.",
+  "ua": "— Справді, — погодився доктор Мортімер. — Легенда стосується роду Баскервілів.",
+  "para": 13,
+  "start": 135.54
+ },
+ {
+  "en": "“But I understand that it is something more modern and practical upon which you wish to consult me?”",
+  "pl": "— Przypuszczam jednak, że pragniesz pan zasięgnąć mojej rady w sprawie aktualniejszej i bardziej realnej — rzekł Holmes.",
+  "ua": "— Припускаю, однак, що ви бажаєте скористатися моєю порадою у справі актуальнішій і реальнішій, — сказав Холмс.",
+  "para": 14,
+  "start": 143.42
+ },
+ {
+  "en": "“Most modern. A most practical, pressing matter, which must be decided within twenty-four hours. But the manuscript is short and is intimately connected with the affair. With your permission I will read it to you.”",
+  "pl": "— Tak. Chodzi mi o fakt zagadkowy, który zdarzył się niedawno; muszę rozstrzygnąć zagadkę w ciągu dwudziestu czterech godzin. Ale manuskrypt jest krótki i ma ścisły związek z tą sprawą. Zatem odczytam go panu, jeśli pan pozwoli.",
+  "ua": "— Так. Ідеться про загадковий факт, який стався недавно; я мушу розв'язати загадку протягом двадцяти чотирьох годин. Але рукопис короткий і має тісний зв'язок із цією справою. Тож я прочитаю його вам, якщо ви дозволите.",
+  "para": 15,
+  "start": 152.12
+ },
+ {
+  "en": "Holmes leaned back in his chair, placed his finger-tips together, and closed his eyes, with an air of resignation.",
+  "pl": "Holmes skinął głową. Zasiadł wygodnie w fotelu, złożył ręce tak, że palce stykały się z palcami, przymknął oczy i słuchał z rezygnacją.",
+  "ua": "Холмс кивнув головою. Він зручно всівся у фотелі, склав руки так, що пальці торкалися пальців, заплющив очі й слухав із покорою.",
+  "para": 16,
+  "start": 170.36
+ },
+ {
+  "en": "Dr. Mortimer turned the manuscript to the light and read in a high, cracking voice the following curious, old-world narrative:",
+  "pl": "Doktor Mortimer podsunął manuskrypt pod światło i głosem dobitnym czytał, co następuje:",
+  "ua": "Доктор Мортімер підсунув рукопис до світла й виразним голосом прочитав таке:",
+  "para": 17,
+  "start": 183.26
+ },
+ {
+  "en": "“Of the origin of the Hound of the Baskervilles there have been many statements, yet as I come in a direct line from Hugo Baskerville, and as I had the story from my father, who also had it from his, I have set it down with all belief that it occurred even as is here set forth.",
+  "pl": "Rozmaite pogłoski krążyły o Psie Baskerville’ów, lecz ja, pochodząc w prostej linii od Hugona Baskerville, słyszałem tę historię z ust mojego ojca, który znowu słyszał ją od swojego, więc ją spisuję z całą wiarą.",
+  "ua": "Різні поголоски ходили про Пса Баскервілів, але я, походячи в прямій лінії від Гуго Баскервіля, чув цю історію з уст мого батька, який, своєю чергою, чув її від свого, тому я записую її з повною вірою.",
+  "para": 18,
+  "start": 190.04
+ },
+ {
+  "en": "And I would have you believe, my sons, that the same Justice which punishes sin may also most graciously forgive it, and that no ban is so heavy but that by prayer and repentance it may be removed.",
+  "pl": "Pragnąłbym, abyście i wy, moi synowie, nabrali głębokiego przekonania, że Sprawiedliwość, karcąca winę, może ją odpuścić, i że żadna kara nie jest tak ciężka, aby modlitwa i pokuta nie zdołały jej zatrzeć.",
+  "ua": "Я хотів би, щоб і ви, мої сини, набралися глибокого переконання, що Справедливість, яка карає вину, може її й простити, і що жодна кара не є такою тяжкою, щоб молитва й покута не змогли її змити.",
+  "para": 18,
+  "start": 208.78
+ },
+ {
+  "en": "Learn then from this story not to fear the fruits of the past, but rather to be circumspect in the future, that those foul passions whereby our family has suffered so grievously may not again be loosed to our undoing.",
+  "pl": "Niech te dzieje nauczą was, że nie należy bać się owoców przeszłości, lecz raczej być ostrożnym na przyszłość, aby dzikie chucie, za które nasz ród poniósł tak srogą karę, nie rozkiełznały się znowu na naszą zgubę.",
+  "ua": "Нехай ці діяння навчать вас, що не слід боятися плодів минулого, а радше бути обачними на майбутнє, щоб дикі пожадання, за які наш рід зазнав такої суворої кари, не вирвалися знову на нашу загибель.",
+  "para": 18,
+  "start": 226.38
+ },
+ {
+  "en": "“Know then that in the time of the Great Rebellion (the history of which by the learned Lord Clarendon I most earnestly commend to your attention) this Manor of Baskerville was held by Hugo of that name, nor can it be gainsaid that he was a most wild, profane, and godless man.",
+  "pl": "Dowiedzcie się więc, że za czasów Wielkiej Rewolucji (polecam wam przeczytać dzieje tej epoki, skreślone przez lorda Clarendona); otóż w owych czasach w zamku Baskerville rządził Hugon, a był to, przyznać muszę, człowiek porywczy i bezbożnik.",
+  "ua": "Довідайтеся ж, що за часів Великої революції (раджу вам прочитати історію цієї епохи, написану лордом Кларендоном); отож у ті часи в замку Баскервіль правив Гуго, а був він, мушу визнати, людина запальна й безбожна.",
+  "para": 19,
+  "start": 247.97
+ },
+ {
+  "en": "This, in truth, his neighbours might have pardoned, seeing that saints have never flourished in those parts, but there was in him a certain wanton and cruel humour which made his name a by-word through the West.",
+  "pl": "Sąsiedzi przebaczyliby łatwo to ostatnie wykroczenie, bo nasza okolica nie słynęła nigdy z religijności, ale nie mogli mu przebaczyć wrodzonego okrucieństwa.",
+  "ua": "Сусіди легко простили б йому останній гріх, бо наш край ніколи не славився релігійністю, але не могли йому простити вродженої жорстокості.",
+  "para": 20,
+  "start": 267.98
+ },
+ {
+  "en": "It chanced that this Hugo came to love (if, indeed, so dark a passion may be known under so bright a name) the daughter of a yeoman who held lands near the Baskerville estate. But the young maiden, being discreet and of good repute, would ever avoid him, for she feared his evil name.",
+  "pl": "Otóż ów Hugon pokochał (jeśli można tym mianem nazwać tak dzikie uczucie), pokochał zatem córkę czynszownika, dzierżawiącego grunta w pobliżu dóbr Baskerville. Ale dziewczyna, będąc skromna i bogobojna, obawiała się go jak szatana.",
+  "ua": "Отож той Гуго покохав (якщо можна назвати таким словом таке дике почуття), покохав, отже, дочку орендаря, який держав землю поблизу Баскервільських володінь. Але дівчина, бувши скромною й богобоязною, боялася його як сатани.",
+  "para": 21,
+  "start": 280.22
+ },
+ {
+  "en": "So it came to pass that one Michaelmas this Hugo, with five or six of his idle and wicked companions, stole down upon the farm and carried off the maiden, her father and brothers being from home, as he well knew.",
+  "pl": "Otóż pewnego wieczora na jesieni, w dzień świętego Michała<sup>3<\/sup>, ów Hugon na czele pięciu czy sześciu kompanów zakradł się do farmy i uprowadził dziewczynę, korzystając z chwili, gdy ojciec i bracia jej byli nieobecni.",
+  "ua": "Отож одного осіннього вечора, на Михайлів день<sup>3<\/sup>, той Гуго на чолі п'яти чи шістьох товаришів прокрався на ферму й викрав дівчину, скориставшись хвилиною, коли її батько й брати були відсутні.",
+  "para": 21,
+  "start": 302.77
+ },
+ {
+  "en": "When they had brought her to the Hall the maiden was placed in an upper chamber, while Hugo and his friends sat down to a long carouse, as was their nightly custom. Now, the poor lass upstairs was like to have her wits turned at the singing and shouting and terrible oaths which came up to her from below, for they say that the words used by Hugo Baskerville, when he was in wine, were such as might blast the man who said them.",
+  "pl": "Przywieźli biedaczkę na zamek i osadzili ją w komnacie wieżowej, Hugon i jego towarzysze zasiedli do nocnej uczty, wedle zwyczaju. Słysząc ich pijackie wrzaski, dziewczyna truchlała, lecz była z natury dzielna, więc opanowała strach i postanowiła ratować się.",
+  "ua": "Привезли бідолашну до замку й посадили її в баштовій кімнаті, Гуго та його товариші засіли до нічного бенкету, за звичаєм. Чуючи їхні п'яні ревиська, дівчина тремтіла, але була від природи мужня, тож опанувала страх і вирішила рятуватися.",
+  "para": 22,
+  "start": 322.6
+ },
+ {
+  "en": "At last in the stress of her fear she did that which might have daunted the bravest or most active man, for by the aid of the growth of ivy which covered (and still covers) the south wall she came down from under the eaves, and so homeward across the moor, there being three leagues betwixt the Hall and her father’s farm.",
+  "pl": "Ogromna brzoza osłaniała i do dziś dnia osłania okno tej narożnej komnaty. Dziewczę uczepiło się jej gałęzi i spuściło się na nich na dół, a dostawszy się na swobodę, łąkami i polami biegło do farmy swego ojca, oddalonej o trzy mile od zamku.",
+  "ua": "Величезна береза затуляла й донині затуляє вікно тієї наріжної кімнати. Дівчина вхопилася за її гілки й спустилася по них додолу, а вибравшись на волю, луками й полями побігла до ферми свого батька, віддаленої на три милі від замку.",
+  "para": 22,
+  "start": 343.23
+ },
+ {
+  "en": "“It chanced that some little time later Hugo left his guests to carry food and drink—with other worse things, perchance—to his captive, and so found the cage empty and the bird escaped. Then, as it would seem, he became as one that hath a devil, for, rushing down the stairs into the dining-hall, he sprang upon the great table, flagons and trenchers flying before him, and he cried aloud before all the company that he would that very night render his body and soul to the Powers of Evil if he might but overtake the wench.",
+  "pl": "Wkrótce potem Hugon, zostawiwszy swoich kompanów przy butelkach i kartach, podążył do swojej ofiary, a widząc, że ptaszek opuścił klatkę, jak szalony powrócił do komnaty biesiadnej, wytłukł szkło i wśród okropnych przekleństw i złorzeczeń zaprzysiągł, że odda ciało i duszę diabłu, jeśli ten dopomoże mu odzyskać dziewczynę.",
+  "ua": "Незабаром після того Гуго, залишивши своїх товаришів при пляшках і картах, подався до своєї жертви, а побачивши, що пташка покинула клітку, мов божевільний повернувся до бенкетної зали, побив скло і серед страшних проклять і лихослів'я заприсягнувся, що віддасть тіло й душу дияволу, якщо той допоможе йому повернути дівчину.",
+  "para": 23,
+  "start": 364.48
+ },
+ {
+  "en": "And while the revellers stood aghast at the fury of the man, one more wicked or, it may be, more drunken than the rest, cried out that they should put the hounds upon her.",
+  "pl": "Pijani towarzysze słuchali go w przerażonym milczeniu, tylko jeden, gorszy, a może bardziej pijany od innych, poddał myśl, aby za dziewczyną puścić psy podwórzowe.",
+  "ua": "П'яні товариші слухали його в переляканому мовчанні, лише один, гірший, а може, більш п'яний за інших, подав думку, щоб за дівчиною пустити дворових псів.",
+  "para": 23,
+  "start": 392.66
+ },
+ {
+  "en": "Whereat Hugo ran from the house, crying to his grooms that they should saddle his mare and unkennel the pack, and giving the hounds a kerchief of the maid’s, he swung them to the line, and so off full cry in the moonlight over the moor.",
+  "pl": "Słysząc to, Hugon wybiegł przed dom, zwołał chłopców stajennych, kazał im osiodłać swoją klacz ulubioną i spuścić psy z łańcuchów; jednemu, najdzikszemu, dał do powąchania chustkę dziewczyny, zostawioną w narożnej komnacie, i popędził przez łąki w noc księżycową.",
+  "ua": "Почувши це, Гуго вибіг перед дім, зібрав конюхів, наказав їм осідлати свою улюблену кобилу й спустити псів із ланцюгів; одному, найдикішому, дав понюхати хустку дівчини, залишену в наріжній кімнаті, і погнав через луки в місячну ніч.",
+  "para": 24,
+  "start": 408.16
+ },
+ {
+  "en": "“Now, for some space the revellers stood agape, unable to understand all that had been done in such haste. But anon their bemused wits awoke to the nature of the deed which was like to be done upon the moorlands. Everything was now in an uproar, some calling for their pistols, some for their horses, and some for another flask of wine. But at length some sense came back to their crazed minds, and the whole of them, thirteen in number, took horse and started in pursuit. The moon shone clear above them, and they rode swiftly abreast, taking that course which the maid must needs have taken if she were to reach her own home.",
+  "pl": "Towarzysze hulanki rzucili się do koni, chwycili pistolety i pognali za swoim amfitrionem, a było ich razem trzynastu. Księżyc świecił jasno, pędził galopem drogą, którą musiała uciekać dziewczyna, jeśli podążyła do domu.",
+  "ua": "Товариші гулянки кинулися до коней, схопили пістолі й погнали за своїм господарем, а разом їх було тринадцятеро. Місяць світив ясно, вони мчали галопом дорогою, якою мусила тікати дівчина, якщо подалася додому.",
+  "para": 25,
+  "start": 430.76
+ },
+ {
+  "en": "“They had gone a mile or two when they passed one of the night shepherds upon the moorlands, and they cried to him to know if he had seen the hunt. And the man, as the story goes, was so crazed with fear that he could scarce speak, but at last he said that he had indeed seen the unhappy maiden, with the hounds upon her track.",
+  "pl": "Ujechali z półtorej mili, gdy spostrzegli nocnego pastucha. Pytali go, czy nie widział brytanów. Wystraszony odparł, że przed chwilą biegły za jakąś dziewczyną.",
+  "ua": "Вони проїхали з півтори милі, коли побачили нічного пастуха. Питали його, чи не бачив він гончих. Переляканий, він відповів, що нещодавно вони бігли за якоюсь дівчиною.",
+  "para": 26,
+  "start": 450.11
+ },
+ {
+  "en": "‘But I have seen more than that,’ said he, ‘for Hugo Baskerville passed me upon his black mare, and there ran mute behind him such a hound of hell as God forbid should ever be at my heels.’",
+  "pl": "— Ale widziałem coś więcej — mówił. — Hugon Baskerville pędził tędy na swojej karej klaczy, a za nim leciał jakiś pies okropny, czarny, jakby szatan wcielony. Niech mnie Bóg broni, żebym kiedy jeszcze miał spotkać podobnego potwora na mojej drodze.",
+  "ua": "— Але я бачив дещо більше, — мовив він. — Гуго Баскервіль мчав тут на своїй вороній кобилі, а за ним летів якийсь страшний чорний пес, мов утілений сатана. Боронь мене Боже, щоб я коли-небудь ще зустрів такого потвора на своїй дорозі.",
+  "para": 27,
+  "start": 463.06
+ },
+ {
+  "en": "So the drunken squires cursed the shepherd and rode onward. But soon their skins turned cold, for there came a sound of galloping across the moor, and the black mare, dabbled with white froth, went past with trailing bridle and empty saddle.",
+  "pl": "Pijani towarzysze cisnęli pastuchowi przekleństwo i pognali naprzód. Ujechali jeszcze z pół mili. Nagle włosy stanęły im dęba ze strachu, bo oto przed nimi pędziła klacz kara, pokryta pianą, bez siodła i bez jeźdźca.",
+  "ua": "П'яні товариші кинули пастухові прокляття й погнали вперед. Проїхали ще з пів милі. Раптом волосся стало їм дибки від страху, бо ось перед ними мчала ворона кобила, вкрита піною, без сідла й без вершника.",
+  "para": 28,
+  "start": 483.04
+ },
+ {
+  "en": "Then the revellers rode close together, for a great fear was on them, but they still followed over the moor, though each, had he been alone, would have been right glad to have turned his horse’s head.",
+  "pl": "Towarzysze zbili się w gromadkę, bo ich strach oblatywał, lecz jechali dalej, choć każdy z nich, gdyby był sam, zawróciłby konia i uciekł do zamku, ale jeden wstydził się drugiego.",
+  "ua": "Товариші збилися в гурт, бо їх охоплював страх, але їхали далі, хоч кожен із них, якби був сам, повернув би коня й утік до замку, але один соромився другого.",
+  "para": 29,
+  "start": 501.03
+ },
+ {
+  "en": "Riding slowly in this fashion they came at last upon the hounds. These, though known for their valour and their breed, were whimpering in a cluster at the head of a deep dip or goyal, as we call it, upon the moor, some slinking away and some, with starting hackles and staring eyes, gazing down the narrow valley before them.",
+  "pl": "Człapiąc wolno, zrównali się wreszcie z brytanami; te, choć znane w całej okolicy ze swej zajadłości, leżały teraz w rowie wystraszone i wyły przeraźliwie.",
+  "ua": "Ступаючи повільно, вони зрештою зрівнялися з гончими; ті, хоч і відомі в усій околиці своєю завзятістю, лежали тепер у рові перелякані й вили пронизливо.",
+  "para": 29,
+  "start": 513.76
+ },
+ {
+  "en": "“The company had come to a halt, more sober men, as you may guess, than when they started. The most of them would by no means advance, but three of them, the boldest, or it may be the most drunken, rode forward down the goyal.",
+  "pl": "Kompania zatrzymała się. Jeźdźcy otrzeźwieli od razu. Jedni chcieli zawracać, drudzy postanowili przekonać się, co zaszło. Księżyc świecił tak jasno, że można było szpilki zbierać.",
+  "ua": "Компанія зупинилася. Вершники відразу протверезіли. Одні хотіли повертати, інші вирішили з'ясувати, що сталося. Місяць світив так ясно, що можна було шпильки збирати.",
+  "para": 30,
+  "start": 526.08
+ },
+ {
+  "en": "Now, it opened into a broad space in which stood two of those great stones, still to be seen there, which were set by certain forgotten peoples in the days of old. The moon was shining bright upon the clearing, and there in the centre lay the unhappy maid where she had fallen, dead of fear and of fatigue.",
+  "pl": "O milę dalej, na polu, sterczały wysokie kamienie. Pomiędzy nimi leżała dziewczyna, martwa, a obok niej Hugon Baskerville — nieżywy.",
+  "ua": "За милю далі, в полі, стирчали високі камені. Поміж ними лежала дівчина, мертва, а поруч із нею Гуго Баскервіль — неживий.",
+  "para": 31,
+  "start": 541.75
+ },
+ {
+  "en": "But it was not the sight of her body, nor yet was it that of the body of Hugo Baskerville lying near her, which raised the hair upon the heads of these three dare-devil roysterers, but it was that, standing over Hugo, and plucking at his throat, there stood a foul thing, a great, black beast, shaped like a hound, yet larger than any hound that ever mortal eye has rested upon. And even as they looked the thing tore the throat out of Hugo Baskerville, on which, as it turned its blazing eyes and dripping jaws upon them, the three shrieked with fear and rode for dear life, still screaming, across the moor.",
+  "pl": "Ale nie ten widok, choć straszny i niespodziany, najeżył włosy pijackiej kompanii; straszniejszy obraz przedstawił się ich oczom: nad zwłokami Hugona stał pies czarny, ogromny, wyszczerzał zęby i błyskał ślepiami.",
+  "ua": "Але не цей вид, хоч страшний і несподіваний, змусив волосся п'яної компанії стати дибки; страшніша картина постала перед їхніми очима: над останками Гуго стояв чорний пес, величезний, вишкіряв зуби й блискав очима.",
+  "para": 32,
+  "start": 554.45
+ },
+ {
+  "en": "One, it is said, died that very night of what he had seen, and the other twain were but broken men for the rest of their days.",
+  "pl": "Jeden z towarzyszów padł na miejscu, rażony strachem, drugi utracił zmysły, reszta hulaszczej kompanii do końca życia nie zapomniała tego wrażenia.",
+  "ua": "Один із товаришів упав на місці, вражений страхом, другий втратив розум, решта гультяйської компанії до кінця життя не забула цього враження.",
+  "para": 32,
+  "start": 576.67
+ },
+ {
+  "en": "“Such is the tale, my sons, of the coming of the hound which is said to have plagued the family so sorely ever since. If I have set it down it is because that which is clearly known hath less terror than that which is but hinted at and guessed. Nor can it be denied that many of the family have been unhappy in their deaths, which have been sudden, bloody, and mysterious.",
+  "pl": "Taka jest, moi synowie, legenda o psie, który od owego czasu trapił naszą rodzinę. Spisałem ją, abyście wiedzieli, jak się rzeczy istotnie miały i nie wierzyli krążącym baśniom. Nie będę taił przed wami, że po tym wypadku wielu mężczyzn w naszym rodzie umarło śmiercią nagłą, krwawą i tajemniczą.",
+  "ua": "Така, мої сини, легенда про пса, який від того часу мучив наш рід. Я записав її, щоб ви знали, як усе насправді було, і не вірили байкам, що ходять. Не приховуватиму від вас, що після цього випадку багато чоловіків у нашому роду померли смертю раптовою, кривавою й таємничою.",
+  "para": 33,
+  "start": 588.86
+ },
+ {
+  "en": "Yet may we shelter ourselves in the infinite goodness of Providence, which would not forever punish the innocent beyond that third or fourth generation which is threatened in Holy Writ. To that Providence, my sons, I hereby commend you, and I counsel you by way of caution to forbear from crossing the moor in those dark hours when the powers of evil are exalted.",
+  "pl": "Jednak nie traćmy wiary w miłosierdzie Boskie, które karci niewinnych tylko do trzeciego lub czwartego pokolenia. Opatrzności Boskiej, moi synowie, was polecam i ostrzegam, abyście nie przechodzili przez tę łąkę po nocy, gdy te duchy są rozkiełznane.",
+  "ua": "Однак не втрачаймо віри в Боже милосердя, яке карає невинних лише до третього чи четвертого покоління. Божому Провидінню, мої сини, я вас віддаю й застерігаю, щоб ви не переходили через цю луку вночі, коли ті духи розгнуздані.",
+  "para": 33,
+  "start": 609.92
+ },
+ {
+  "en": "“[This from Hugo Baskerville to his sons Rodger and John, with instructions that they say nothing thereof to their sister Elizabeth.]”",
+  "pl": "(To są przestrogi Hugona Baskerville, spisane dla jego synów, Rogera i Jana, z rozkazem, aby o tym wszystkim nie wspominali swojej siostrze, Elżbiecie).",
+  "ua": "(Це настанови Гуго Баскервіля, записані для його синів, Роджера й Джона, з наказом, щоб вони про все це не згадували своїй сестрі Елізабет.)",
+  "para": 34,
+  "start": 629.77
+ },
+ {
+  "en": "When Dr. Mortimer had finished reading this singular narrative he pushed his spectacles up on his forehead and stared across at Mr. Sherlock Holmes. The latter yawned and tossed the end of his cigarette into the fire.",
+  "pl": "Doktor Mortimer skończył czytać tę niezwykłą opowieść, nasunął na oczy okulary i spojrzał na pana Sherlocka Holmesa. Ten ziewnął i rzucił papierosa w ogień.",
+  "ua": "Доктор Мортімер закінчив читати цю незвичайну оповідь, насунув окуляри на очі й подивився на пана Шерлока Холмса. Той позіхнув і кинув цигарку у вогонь.",
+  "para": 35,
+  "start": 646.72
+ },
+ {
+  "en": "“Well?” said he.",
+  "pl": "— No i cóż? — rzekł.",
+  "ua": "— Ну й що? — мовив він.",
+  "para": 36,
+  "start": 660.81
+ },
+ {
+  "en": "“Do you not find it interesting?”",
+  "pl": "— Czy historia ta nie jest interesująca?",
+  "ua": "— Хіба ця історія не цікава?",
+  "para": 37,
+  "start": 664.82
+ },
+ {
+  "en": "“To a collector of fairy tales.”",
+  "pl": "— Zapewne dla zbieracza starych legend i baśni.",
+  "ua": "— Звісно, для збирача старих легенд і казок.",
+  "para": 38,
+  "start": 668.43
+ },
+ {
+  "en": "Dr. Mortimer drew a folded newspaper out of his pocket.",
+  "pl": "Doktor Mortimer wyjął z kieszeni gazetę.",
+  "ua": "Доктор Мортімер вийняв з кишені газету.",
+  "para": 39,
+  "start": 672.03
+ },
+ {
+  "en": "“Now, Mr. Holmes, we will give you something a little more recent. This is the Devon County Chronicle of May 14th of this year. It is a short account of the facts elicited at the death of Sir Charles Baskerville which occurred a few days before that date.”",
+  "pl": "— A teraz, panie Holmes — rzekł — pokażę panu coś aktualniejszego. Oto dziennik „Devon County Chronicle” z dnia 14. maja roku bieżącego. Jest w nim opis faktów odnoszących się do śmierci Karola Baskerville, która zdarzyła się na kilka dni przed ową datą.",
+  "ua": "— А тепер, пане Холмс, — сказав він, — покажу вам дещо актуальніше. Ось часопис «Devon County Chronicle» від 14 травня цього року. У ньому є опис фактів, що стосуються смерті Чарльза Баскервіля, яка сталася за кілька днів до тієї дати.",
+  "para": 40,
+  "start": 674.81
+ },
+ {
+  "en": "My friend leaned a little forward and his expression became intent. Our visitor readjusted his glasses and began:",
+  "pl": "Mój przyjaciel nachylił się i począł słuchać uważniej. Doktor Mortimer czytał:",
+  "ua": "Мій друг нахилився й почав слухати уважніше. Доктор Мортімер читав:",
+  "para": 41,
+  "start": 694.54
+ },
+ {
+  "en": "“The recent sudden death of Sir Charles Baskerville, whose name has been mentioned as the probable Liberal candidate for Mid-Devon at the next election, has cast a gloom over the county.",
+  "pl": "Niedawna i nagła śmierć sir Karola Baskerville, kandydata liberalnego z hrabstwa Devon, przejęła całą naszą okolicę zdumieniem i trwogą.",
+  "ua": "Недавня й раптова смерть сера Чарльза Баскервіля, кандидата від лібералів у графстві Девон, сповнила весь наш край подивом і тривогою.",
+  "para": 42,
+  "start": 700.6
+ },
+ {
+  "en": "Though Sir Charles had resided at Baskerville Hall for a comparatively short period his amiability of character and extreme generosity had won the affection and respect of all who had been brought into contact with him.",
+  "pl": "Jakkolwiek sir Karol Baskerville mieszkał w Baskerville-Hall od niedawna, lecz jego uprzejmość, hojność i szlachetność zjednały mu szacunek tych wszystkich, którzy mieli z nim do czynienia.",
+  "ua": "Хоч сер Чарльз Баскервіль оселився в Баскервіль-Холі недавно, його привітність, щедрість і шляхетність здобули йому шану всіх, хто мав із ним справу.",
+  "para": 42,
+  "start": 710.62
+ },
+ {
+  "en": "In these days of nouveaux riches it is refreshing to find a case where the scion of an old county family which has fallen upon evil days is able to make his own fortune and to bring it back with him to restore the fallen grandeur of his line.",
+  "pl": "W dzisiejszej epoce parweniuszów miło jest widzieć potomka starożytnego a podupadłego rodu odzyskującego fortunę swych przodków i przywracającego świetność staremu nazwisku.",
+  "ua": "У теперішню епоху парвеню приємно бачити нащадка стародавнього, але занепалого роду, який повертає собі багатство своїх предків і відновлює славу старому імені.",
+  "para": 42,
+  "start": 723.38
+ },
+ {
+  "en": "Sir Charles, as is well known, made large sums of money in South African speculation. More wise than those who go on until the wheel turns against them, he realised his gains and returned to England with them.",
+  "pl": "Sir Karol, jak wiadomo, zyskał duży majątek na spekulacjach w Afryce Południowej, a będąc z natury przezorny, nie kusił dalej szczęścia, które mogłoby się odwrócić od niego, jak to czyni z innymi, i zrealizowawszy swoją fortunę, powrócił do Anglii.",
+  "ua": "Сер Чарльз, як відомо, здобув великий статок на спекуляціях у Південній Африці, а бувши від природи обачним, не спокушав далі щастя, яке могло б відвернутися від нього, як це буває з іншими, і, реалізувавши свої статки, повернувся до Англії.",
+  "para": 43,
+  "start": 736.58
+ },
+ {
+  "en": "It is only two years since he took up his residence at Baskerville Hall, and it is common talk how large were those schemes of reconstruction and improvement which have been interrupted by his death.",
+  "pl": "Przed dwoma laty zaledwie osiadł w Baskerville-Hall; znane są jego szerokie plany odnowienia starej siedziby i wprowadzenia ulepszeń w gospodarstwie rolnym. Śmierć przeszkodziła ich urzeczywistnieniu.",
+  "ua": "Лише два роки тому він оселився в Баскервіль-Холі; відомі його широкі плани відновлення старої садиби й запровадження поліпшень у сільському господарстві. Смерть перешкодила їхньому здійсненню.",
+  "para": 44,
+  "start": 759.58
+ },
+ {
+  "en": "Being himself childless, it was his openly expressed desire that the whole countryside should, within his own lifetime, profit by his good fortune, and many will have personal reasons for bewailing his untimely end. His generous donations to local and county charities have been frequently chronicled in these columns.",
+  "pl": "Będąc bezdzietnym, pragnął, aby cała okolica korzystała z jego fortuny i niejeden z sąsiadów ma ważne powody do opłakiwania jego przedwczesnego zgonu. Donosiliśmy często na tych szpaltach o jego hojnych ofiarach na instytucje publiczne.",
+  "ua": "Бувши бездітним, він бажав, щоб увесь край користав із його статку, і не один із сусідів має важливі підстави оплакувати його передчасну смерть. Ми часто повідомляли на цих шпальтах про його щедрі пожертви на громадські установи.",
+  "para": 45,
+  "start": 776.09
+ },
+ {
+  "en": "“The circumstances connected with the death of Sir Charles cannot be said to have been entirely cleared up by the inquest, but at least enough has been done to dispose of those rumours to which local superstition has given rise. There is no reason whatever to suspect foul play, or to imagine that death could be from any but natural causes.",
+  "pl": "Śledztwo nie wyjaśniło dotychczas okoliczności towarzyszących śmierci sir Karola. Krążą tu najdziwaczniejsze legendy, przypisujące ów nagły zgon działaniu sił nadprzyrodzonych.",
+  "ua": "Слідство досі не з'ясувало обставин, що супроводжували смерть сера Чарльза. Тут ходять найдивовижніші легенди, які приписують цю раптову смерть дії надприродних сил.",
+  "para": 46,
+  "start": 794.62
+ },
+ {
+  "en": "Sir Charles was a widower, and a man who may be said to have been in some ways of an eccentric habit of mind. In spite of his considerable wealth he was simple in his personal tastes, and his indoor servants at Baskerville Hall consisted of a married couple named Barrymore, the husband acting as butler and the wife as housekeeper.",
+  "pl": "Sir Karol był wdowcem, uważano go powszechnie za dziwaka. Pomimo dużej fortuny, miał przyzwyczajenia proste, skromne. Personel służbowy w Baskerville-Hall składał się z kamerdynera, nazwiskiem Barrymore, jego żony, kucharki i gospodyni w jednej osobie.",
+  "ua": "Сер Чарльз був удівцем, його загалом вважали диваком. Попри великий статок, він мав прості, скромні звички. Штат прислуги в Баскервіль-Холі складався з дворецького на прізвище Беррімор, його дружини, кухарки й економки в одній особі.",
+  "para": 47,
+  "start": 808.14
+ },
+ {
+  "en": "Their evidence, corroborated by that of several friends, tends to show that Sir Charles’s health has for some time been impaired, and points especially to some affection of the heart, manifesting itself in changes of colour, breathlessness, and acute attacks of nervous depression. Dr. James Mortimer, the friend and medical attendant of the deceased, has given evidence to the same effect.",
+  "pl": "Oboje zeznają, że zdrowie sir Karola w ostatnich czasach było nietęgie, że rozwijała się w nim choroba serca, objawiająca się bladością, brakiem tchu i częstymi omdleniami. Doktor Jakub Mortimer, przyjaciel i domowy lekarz nieboszczyka, złożył zeznanie w tym samym duchu.",
+  "ua": "Обоє свідчать, що здоров'я сера Чарльза останнім часом було кепське, що в нього розвивалася хвороба серця, яка виявлялася блідістю, задишкою й частими непритомностями. Доктор Джеймс Мортімер, друг і домашній лікар небіжчика, дав свідчення в тому самому дусі.",
+  "para": 47,
+  "start": 830.35
+ },
+ {
+  "en": "“The facts of the case are simple. Sir Charles Baskerville was in the habit every night before going to bed of walking down the famous yew alley of Baskerville Hall. The evidence of the Barrymores shows that this had been his custom. On the fourth of May Sir Charles had declared his intention of starting next day for London, and had ordered Barrymore to prepare his luggage.",
+  "pl": "Sir Karol Baskerville zwykł był co wieczór, przed pójściem na spoczynek, przechadzać się po słynnej Alei Wiązów przed zamkiem. Małżonkowie Barrymore opowiadają, że wieczorem 4. maja ich pan oznajmił im, że nazajutrz wyrusza do Londynu i kazał pakować kuferek.",
+  "ua": "Сер Чарльз Баскервіль мав звичку щоразу ввечері, перед тим як іти на спочинок, прогулюватися по знаменитій Алеї В'язів перед замком. Подружжя Берріморів розповідає, що ввечері 4 травня їхній пан повідомив їм, що наступного дня вирушає до Лондона, і наказав пакувати валізу.",
+  "para": 48,
+  "start": 854.52
+ },
+ {
+  "en": "That night he went out as usual for his nocturnal walk, in the course of which he was in the habit of smoking a cigar.",
+  "pl": "Owego wieczoru wyszedł, jak zwykle, na przechadzkę, wśród której wypalał cygaro.",
+  "ua": "Того вечора він вийшов, як звичайно, на прогулянку, під час якої випалював сигару.",
+  "para": 49,
+  "start": 874.92
+ },
+ {
+  "en": "He never returned.",
+  "pl": "Z tej przechadzki już nie powrócił.",
+  "ua": "З цієї прогулянки він уже не повернувся.",
+  "para": 50,
+  "start": 882.27
+ },
+ {
+  "en": "At twelve o’clock Barrymore, finding the hall door still open, became alarmed, and, lighting a lantern, went in search of his master. The day had been wet, and Sir Charles’s footmarks were easily traced down the alley. Halfway down this walk there is a gate which leads out on to the moor.",
+  "pl": "O dwunastej Barrymore, widząc drzwi frontowe jeszcze otwarte, zaniepokoił się i wziąwszy latarnię, poszedł szukać swego pana. W ciągu dnia deszcz padał, więc łatwo było dojrzeć ślady stóp sir Karola wzdłuż alei. W połowie drogi jest furtka prowadząca na łąkę.",
+  "ua": "О дванадцятій Беррімор, побачивши, що вхідні двері ще відчинені, занепокоївся і, взявши ліхтар, пішов шукати свого пана. Протягом дня йшов дощ, тож легко було розгледіти сліди ніг сера Чарльза вздовж алеї. На половині шляху є хвіртка, що веде на луку.",
+  "para": 51,
+  "start": 886.89
+ },
+ {
+  "en": "There were indications that Sir Charles had stood for some little time here. He then proceeded down the alley, and it was at the far end of it that his body was discovered.",
+  "pl": "Były ślady, że sir Karol stał przy niej przez czas pewien, następnie skręcił znowu w aleję. Znaleziono jego trupa na jej końcu.",
+  "ua": "Були сліди того, що сер Чарльз стояв біля неї якийсь час, потім знову звернув в алею. Його труп знайшли в її кінці.",
+  "para": 52,
+  "start": 907.28
+ },
+ {
+  "en": "One fact which has not been explained is the statement of Barrymore that his master’s footprints altered their character from the time that he passed the moor-gate, and that he appeared from thence onward to have been walking upon his toes.",
+  "pl": "Pomiędzy innymi dotychczas nie wyjaśniono jednego faktu, wynikającego z zeznań Barrymore’a, a mianowicie, że ślady kroków jego pana zmieniły się z chwilą, gdy stał przy furtce i że odtąd szedł na palcach.",
+  "ua": "Поміж іншим, досі не з'ясовано одного факту, що випливає зі свідчень Беррімора, а саме: що сліди кроків його пана змінилися тієї миті, коли він стояв біля хвіртки, і що відтоді він ішов навшпиньки.",
+  "para": 53,
+  "start": 917.36
+ },
+ {
+  "en": "One Murphy, a gipsy horse-dealer, was on the moor at no great distance at the time, but he appears by his own confession to have been the worse for drink. He declares that he heard cries but is unable to state from what direction they came.",
+  "pl": "Niejaki Murphy, Cygan handlujący końmi, znajdował się wówczas na łące, w pewnej odległości od nieboszczyka, ale sam przyznaje, że był pijany. Powiada, że słyszał krzyki, ale nie może określić, skąd wychodziły.",
+  "ua": "Якийсь Мерфі, циган, що торгував кіньми, перебував тоді на луці на певній відстані від небіжчика, але сам зізнається, що був п'яний. Він каже, що чув крики, але не може визначити, звідки вони лунали.",
+  "para": 54,
+  "start": 933.99
+ },
+ {
+  "en": "No signs of violence were to be discovered upon Sir Charles’s person, and though the doctor’s evidence pointed to an almost incredible facial distortion—so great that Dr. Mortimer refused at first to believe that it was indeed his friend and patient who lay before him—it was explained that that is a symptom which is not unusual in cases of dyspnœa and death from cardiac exhaustion.",
+  "pl": "Na ciele sir Karola nie było śladów przemocy lub gwałtu, a chociaż lekarz zeznaje, że wyraz twarzy nieboszczyka był tak zmieniony, że on, doktor Mortimer, w pierwszej chwili poznać go nie mógł, rzeczoznawcy tłumaczą to anewryzmem serca, przy którym zachodzą podobne objawy.",
+  "ua": "На тілі сера Чарльза не було слідів насильства чи розправи, а хоч лікар свідчить, що вираз обличчя небіжчика був такий змінений, що він, доктор Мортімер, першої миті не міг його впізнати, експерти пояснюють це аневризмою серця, за якої виникають подібні явища.",
+  "para": 55,
+  "start": 950.75
+ },
+ {
+  "en": "This explanation was borne out by the post-mortem examination, which showed long-standing organic disease, and the coroner’s jury returned a verdict in accordance with the medical evidence. It is well that this is so, for it is obviously of the utmost importance that Sir Charles’s heir should settle at the Hall and continue the good work which has been so sadly interrupted.",
+  "pl": "Sekcja wykazała przedawnioną wadę serca, sędzia śledczy potwierdził badanie lekarskie. Pożądanym jest, aby spadkobierca sir Karola mógł objąć jak najprędzej majątek i prowadzić dalej chlubną działalność, przerwaną tak nagle i tak tragicznie.",
+  "ua": "Розтин показав давню ваду серця, слідчий суддя підтвердив лікарське дослідження. Бажано, щоб спадкоємець сера Чарльза міг якнайшвидше перейняти маєток і провадити далі славну діяльність, перервану так раптово й так трагічно.",
+  "para": 56,
+  "start": 971.69
+ },
+ {
+  "en": "Had the prosaic finding of the coroner not finally put an end to the romantic stories which have been whispered in connection with the affair, it might have been difficult to find a tenant for Baskerville Hall.",
+  "pl": "Gdyby prozaiczne orzeczenie sędziego śledczego i rzeczoznawców nie położyło końca romantycznym historiom, krążącym na temat owej śmierci, niełatwo byłoby znaleźć właściciela Baskerville-Hall.",
+  "ua": "Якби прозаїчний вирок слідчого судді й експертів не поклав край романтичним історіям, що ходили про ту смерть, нелегко було б знайти власника Баскервіль-Холу.",
+  "para": 57,
+  "start": 990.96
+ },
+ {
+  "en": "It is understood that the next of kin is Mr. Henry Baskerville, if he be still alive, the son of Sir Charles Baskerville’s younger brother. The young man when last heard of was in America, and inquiries are being instituted with a view to informing him of his good fortune.”",
+  "pl": "Domniemanym spadkobiercą jest pan Henryk Baskerville, syn młodszego brata sir Karola. Ów młodzieniec przed kilku laty wyruszył do Ameryki. Zarządzono poszukiwania. Dowie się on zapewne niebawem o zmianie swojego losu.",
+  "ua": "Передбачуваним спадкоємцем є пан Генрі Баскервіль, син молодшого брата сера Чарльза. Той юнак кілька років тому вирушив до Америки. Розпочато пошуки. Він, певно, незабаром дізнається про зміну своєї долі.",
+  "para": 58,
+  "start": 1004.68
+ },
+ {
+  "en": "Dr. Mortimer refolded his paper and replaced it in his pocket.",
+  "pl": "Doktor Mortimer złożył gazetę i wsunął ją do kieszeni, mówiąc:",
+  "ua": "Доктор Мортімер склав газету й засунув її до кишені, мовлячи:",
+  "para": 59,
+  "start": 1027.39
+ },
+ {
+  "en": "“Those are the public facts, Mr. Holmes, in connection with the death of Sir Charles Baskerville.”",
+  "pl": "— To są fakty powszechnie znane.",
+  "ua": "— Це факти загальновідомі.",
+  "para": 60,
+  "start": 1032.27
+ },
+ {
+  "en": "“I must thank you,” said Sherlock Holmes, “for calling my attention to a case which certainly presents some features of interest.",
+  "pl": "— Dziękuję panu za zwrócenie mojej uwagi na sprawę istotnie ciekawą — rzekł pan Holmes.",
+  "ua": "— Дякую вам за те, що звернули мою увагу на справу, справді цікаву, — сказав пан Холмс.",
+  "para": 61,
+  "start": 1036.01
+ },
+ {
+  "en": "I had observed some newspaper comment at the time, but I was exceedingly preoccupied by that little affair of the Vatican cameos, and in my anxiety to oblige the Pope I lost touch with several interesting English cases. This article, you say, contains all the public facts?”",
+  "pl": "— Czytałem o niej, co prawda, w dziennikach, ale w owym czasie byłem zajęty kameami, które zniknęły z Muzeum Watykańskiego. Chciałem się przysłużyć papieżowi i straciłem z oczu to, co się jednocześnie działo w Anglii. Ten artykuł, powiadasz pan, zawiera fakty, znane powszechnie?",
+  "ua": "— Я читав про неї, щоправда, в газетах, але в той час був зайнятий камеями, які зникли з Ватиканського музею. Я хотів прислужитися папі й випустив з ока те, що відбувалося водночас в Англії. Ця стаття, ви кажете, містить факти, загальновідомі?",
+  "para": 61,
+  "start": 1043.45
+ },
+ {
+  "en": "“It does.”",
+  "pl": "— Tak.",
+  "ua": "— Так.",
+  "para": 62,
+  "start": 1061.95
+ },
+ {
+  "en": "“Then let me have the private ones.”",
+  "pl": "— Zechciej więc pan uświadomić mnie teraz o tym, czego nikt nie wie.",
+  "ua": "— Тож будьте ласкаві повідомити мені тепер про те, чого ніхто не знає.",
+  "para": 63,
+  "start": 1063.63
+ },
+ {
+  "en": "He leaned back, put his finger-tips together, and assumed his most impassive and judicial expression.",
+  "pl": "Sherlock Holmes oparł się o poręcz fotela i znowu złożył ręce tak, aby palce stykały się końcami.",
+  "ua": "Шерлок Холмс оперся на поруччя фотелю й знову склав руки так, щоб кінчики пальців торкалися.",
+  "para": 64,
+  "start": 1069.53
+ },
+ {
+  "en": "“In doing so,” said Dr. Mortimer, who had begun to show signs of some strong emotion, “I am telling that which I have not confided to anyone. My motive for withholding it from the coroner’s inquiry is that a man of science shrinks from placing himself in the public position of seeming to indorse a popular superstition.",
+  "pl": "— Uczynię to — rzekł doktor Mortimer, zdradzając coraz większe wzburzenie. — Powiem panu to, czego nie mówiłem jeszcze nikomu. Zataiłem to przed sędzią śledczym z pobudek, które pan zapewne zrozumie. Jako człowiek nauki, nie chciałem zdradzać się publicznie, iż wierzę w przesądy.",
+  "ua": "— Зроблю це, — сказав доктор Мортімер, виявляючи дедалі більше хвилювання. — Скажу вам те, чого ще нікому не говорив. Я приховав це від слідчого судді з мотивів, які ви, певно, зрозумієте. Як людина науки, я не хотів публічно визнавати, що вірю в забобони.",
+  "para": 65,
+  "start": 1077.5
+ },
+ {
+  "en": "I had the further motive that Baskerville Hall, as the paper says, would certainly remain untenanted if anything were done to increase its already rather grim reputation.",
+  "pl": "Dalej, rozumiałem, że gdyby utwierdziła się wiara w nadprzyrodzone siły rządzące w Baskerville-Hall, nikt nie zechciałby objąć starego domu w posiadanie.",
+  "ua": "Далі, я розумів, що коли б утвердилася віра в надприродні сили, які керують у Баскервіль-Холі, ніхто не захотів би взяти старий дім у володіння.",
+  "para": 65,
+  "start": 1100.85
+ },
+ {
+  "en": "For both these reasons I thought that I was justified in telling rather less than I knew, since no practical good could result from it, but with you there is no reason why I should not be perfectly frank.",
+  "pl": "Dla tych dwóch powodów nie zeznałem przed sądem wszystkiego, co wiem, albowiem nie zdałoby się to na nic sędziemu śledczemu, ale z panem będę zupełnie szczery.",
+  "ua": "З цих двох причин я не свідчив перед судом усього, що знаю, бо це не принесло б нічого слідчому судді, але з вами я буду цілком відвертий.",
+  "para": 65,
+  "start": 1113.96
+ },
+ {
+  "en": "“The moor is very sparsely inhabited, and those who live near each other are thrown very much together.",
+  "pl": "Okolica jest mało zaludniona, rezydencje rzadkie, a siedziby włościańskie rozrzucone na znacznej odległości od siebie.",
+  "ua": "Околиця малолюдна, резиденції рідкі, а селянські садиби розкидані на значній відстані одна від одної.",
+  "para": 66,
+  "start": 1127.55
+ },
+ {
+  "en": "For this reason I saw a good deal of Sir Charles Baskerville. With the exception of Mr. Frankland, of Lafter Hall, and Mr. Stapleton, the naturalist, there are no other men of education within many miles. Sir Charles was a retiring man, but the chance of his illness brought us together, and a community of interests in science kept us so.",
+  "pl": "Widywałem często sir Karola Baskerville, który był spragniony towarzystwa. Oprócz pana Franklanda w Lafter-Hall i naturalisty, pana Stapletona, w pobliżu nie ma ludzi inteligentnych. Sir Karol był skryty, małomówny.",
+  "ua": "Я часто бачився з сером Чарльзом Баскервілем, який прагнув товариства. Крім пана Френкленда з Лефтер-Холу й натураліста, пана Степлтона, поблизу немає освічених людей. Сер Чарльз був потайний, небагатослівний.",
+  "para": 67,
+  "start": 1135.9
+ },
+ {
+  "en": "He had brought back much scientific information from South Africa, and many a charming evening we have spent together discussing the comparative anatomy of the Bushman and the Hottentot.",
+  "pl": "Zbliżyliśmy się z powodu jego choroby, przy tym łączyły nas wspólne upodobania naukowe. Przywiózł wiele ciekawych wiadomości z Afryki Południowej. Spędziliśmy niejeden miły wieczór na rozprawach o anatomii porównawczej.",
+  "ua": "Ми зблизилися через його хворобу, до того ж нас єднали спільні наукові уподобання. Він привіз багато цікавих відомостей із Південної Африки. Ми провели не один приємний вечір у розмовах про порівняльну анатомію.",
+  "para": 67,
+  "start": 1155.11
+ },
+ {
+  "en": "“Within the last few months it became increasingly plain to me that Sir Charles’s nervous system was strained to the breaking point. He had taken this legend which I have read you exceedingly to heart—so much so that, although he would walk in his own grounds, nothing would induce him to go out upon the moor at night. Incredible as it may appear to you, Mr. Holmes, he was honestly convinced that a dreadful fate overhung his family, and certainly the records which he was able to give of his ancestors were not encouraging.",
+  "pl": "W ciągu ostatnich paru miesięcy spostrzegłem, że system nerwowy sir Karola był nadwerężony. Wziął tak dalece ową legendę do serca, że choć co wieczór odbywał spacery, nic go nie mogło skłonić do wejścia na łąkę po zachodzie słońca.",
+  "ua": "Протягом останніх кількох місяців я помітив, що нервова система сера Чарльза була виснажена. Він так близько взяв собі до серця ту легенду, що хоч щовечора прогулювався, ніщо не могло схилити його вийти на луку після заходу сонця.",
+  "para": 68,
+  "start": 1170.21
+ },
+ {
+  "en": "The idea of some ghastly presence constantly haunted him, and on more than one occasion he has asked me whether I had on my medical journeys at night ever seen any strange creature or heard the baying of a hound. The latter question he put to me several times, and always with a voice which vibrated with excitement.",
+  "pl": "Prześladowała go wciąż obawa upiorów i pytał mnie nieraz, czym nie widział jakiego dziwacznego stworzenia i czym nie słyszał szczekania. Te pytania zadawał mi zawsze głosem drżącym.",
+  "ua": "Його постійно переслідував страх перед привидами, і він не раз питав мене, чи не бачив я якоїсь дивовижної істоти й чи не чув гавкання. Ці питання він ставив мені завжди тремтячим голосом.",
+  "para": 68,
+  "start": 1188.71
+ },
+ {
+  "en": "“I can well remember driving up to his house in the evening some three weeks before the fatal event. He chanced to be at his hall door. I had descended from my gig and was standing in front of him, when I saw his eyes fix themselves over my shoulder and stare past me with an expression of the most dreadful horror.",
+  "pl": "Wraziła mi się w pamięć jedna z moich wizyt u niego przed trzema tygodniami. Stał w sieni. Gdym schodził z wózka, spostrzegłem, że patrzy poprzez moje ramię ze strachem w oczach.",
+  "ua": "Мені врізався в пам'ять один із моїх візитів до нього три тижні тому. Він стояв у сінях. Коли я злазив із візка, я помітив, що він дивиться повз моє плече зі страхом в очах.",
+  "para": 69,
+  "start": 1207.04
+ },
+ {
+  "en": "I whisked round and had just time to catch a glimpse of something which I took to be a large black calf passing at the head of the drive.",
+  "pl": "Odwróciłem się i spostrzegłem jakiś kształt dziwny, podobny do dużego, czarnego cielęcia. Przeleciało to poza moim wózkiem.",
+  "ua": "Я обернувся й побачив якусь дивну подобу, схожу на велике чорне теля. Воно промайнуло за моїм візком.",
+  "para": 69,
+  "start": 1223.76
+ },
+ {
+  "en": "So excited and alarmed was he that I was compelled to go down to the spot where the animal had been and look around for it. It was gone, however, and the incident appeared to make the worst impression upon his mind. I stayed with him all the evening, and it was on that occasion, to explain the emotion which he had shown, that he confided to my keeping that narrative which I read to you when first I came.",
+  "pl": "Sir Karol był tak wzburzony, że poszedłem szukać tego osobliwego zwierzęcia. Ale nigdzie go nie było. Mój pacjent nie mógł się uspokoić. Zostałem z nim przez cały wieczór i wtedy, tłumacząc swe wzburzenie, opowiedział mi całą tę historię.",
+  "ua": "Сер Чарльз був такий схвильований, що я пішов шукати ту своєрідну тварину. Але ніде її не було. Мій пацієнт не міг заспокоїтися. Я залишився з ним на весь вечір, і тоді, пояснюючи своє хвилювання, він розповів мені всю цю історію.",
+  "para": 70,
+  "start": 1235.99
+ },
+ {
+  "en": "I mention this small episode because it assumes some importance in view of the tragedy which followed, but I was convinced at the time that the matter was entirely trivial and that his excitement had no justification.",
+  "pl": "Wspominam o tym drobnym epizodzie, gdyż nabiera on znaczenia wobec tragedii, która potem nastąpiła; na razie nie przywiązywałem do tego wagi i dziwiłem się wzburzeniu sir Karola.",
+  "ua": "Згадую про цей дрібний епізод, бо він набуває значення перед трагедією, яка потім сталася; поки що я не надавав цьому ваги й дивувався хвилюванню сера Чарльза.",
+  "para": 71,
+  "start": 1258.52
+ },
+ {
+  "en": "“It was at my advice that Sir Charles was about to go to London. His heart was, I knew, affected, and the constant anxiety in which he lived, however chimerical the cause of it might be, was evidently having a serious effect upon his health. I thought that a few months among the distractions of town would send him back a new man.",
+  "pl": "Miał jechać do Londynu z mojej porady. Wiedziałem, że jest chory na serce i że ciągły niepokój źle wpływa na jego zdrowie. Sądziłem, że parę miesięcy spędzonych na rozrywkach uwolni go od tych mar i przywidzeń.",
+  "ua": "Він мав їхати до Лондона з моєї поради. Я знав, що він хворий на серце і що постійний неспокій погано впливає на його здоров'я. Я гадав, що кілька місяців, проведених у розвагах, звільнять його від тих марень і привидів.",
+  "para": 72,
+  "start": 1273.92
+ },
+ {
+  "en": "Mr. Stapleton, a mutual friend who was much concerned at his state of health, was of the same opinion. At the last instant came this terrible catastrophe.",
+  "pl": "Nasz wspólny przyjaciel, pan Stapleton, był tego samego zdania. I oto wynikło nieszczęście.",
+  "ua": "Наш спільний друг, пан Степлтон, був тієї самої думки. І ось сталося нещастя.",
+  "para": 72,
+  "start": 1290.88
+ },
+ {
+  "en": "“On the night of Sir Charles’s death Barrymore the butler, who made the discovery, sent Perkins the groom on horseback to me, and as I was sitting up late I was able to reach Baskerville Hall within an hour of the event. I checked and corroborated all the facts which were mentioned at the inquest.",
+  "pl": "Zaraz po śmierci sir Karola kamerdyner Barrymore wyprawił do mnie grooma<sup>4<\/sup> Perkinsa; przybyłem do Baskerville-Hall w godzinę po katastrofie. Zbadałem wszystkie fakty, przytoczone w śledztwie.",
+  "ua": "Відразу після смерті сера Чарльза дворецький Беррімор вислав до мене конюха<sup>4<\/sup> Перкінса; я прибув до Баскервіль-Холу за годину після катастрофи. Я дослідив усі факти, наведені на слідстві.",
+  "para": 73,
+  "start": 1301.26
+ },
+ {
+  "en": "I followed the footsteps down the yew alley, I saw the spot at the moor-gate where he seemed to have waited, I remarked the change in the shape of the prints after that point, I noted that there were no other footsteps save those of Barrymore on the soft gravel,",
+  "pl": "Szedłem śladami pozostawionymi w Alei Wiązów, obejrzałem miejsce przy furtce, gdzie sir Karol zatrzymał się, i zmiarkowałem, że od owego miejsca szedł na palcach i że nie było śladu innych kroków, oprócz późniejszych, Barrymore’a.",
+  "ua": "Я йшов слідами, залишеними в Алеї В'язів, оглянув місце біля хвіртки, де сер Чарльз зупинився, і зміркував, що від того місця він ішов навшпиньки і що не було сліду інших кроків, крім пізніших, Беррімора.",
+  "para": 73,
+  "start": 1317.68
+ },
+ {
+  "en": "and finally I carefully examined the body, which had not been touched until my arrival.",
+  "pl": "Wreszcie obejrzałem starannie zwłoki, które pozostały nietknięte do mego przybycia.",
+  "ua": "Нарешті я старанно оглянув останки, які залишалися недоторканими до мого прибуття.",
+  "para": 73,
+  "start": 1337.36
+ },
+ {
+  "en": "Sir Charles lay on his face, his arms out, his fingers dug into the ground, and his features convulsed with some strong emotion to such an extent that I could hardly have sworn to his identity. There was certainly no physical injury of any kind.",
+  "pl": "Sir Karol leżał na wznak z rozciągniętymi rękoma, twarz była tak zmieniona, że zaledwie mogłem ją poznać. Na ciele nie było żadnych obrażeń.",
+  "ua": "Сер Чарльз лежав навзнак із розкинутими руками, обличчя було так змінене, що я ледве міг його впізнати. На тілі не було жодних ушкоджень.",
+  "para": 74,
+  "start": 1344.92
+ },
+ {
+  "en": "But one false statement was made by Barrymore at the inquest. He said that there were no traces upon the ground round the body. He did not observe any. But I did—some little distance off, but fresh and clear.”",
+  "pl": "Ale Barrymore w toku śledztwa uczynił jedno zeznanie fałszywe. Powiedział, że nie było żadnych śladów dokoła trupa. Nie spostrzegł ich, ale ja dostrzegłem — zupełnie świeże, w pobliżu.",
+  "ua": "Але Беррімор під час слідства зробив одне неправдиве свідчення. Він сказав, що навколо трупа не було жодних слідів. Він їх не помітив, але я побачив — зовсім свіжі, поблизу.",
+  "para": 74,
+  "start": 1359.84
+ },
+ {
+  "en": "“Footprints?”",
+  "pl": "— Czy ślady kroków?",
+  "ua": "— Сліди кроків?",
+  "para": 75,
+  "start": 1381.06
+ },
+ {
+  "en": "“Footprints.”",
+  "pl": "— Tak.",
+  "ua": "— Так.",
+  "para": 76,
+  "start": 1384.27
+ },
+ {
+  "en": "“A man’s or a woman’s?”",
+  "pl": "— Męskie czy kobiece?",
+  "ua": "— Чоловічі чи жіночі?",
+  "para": 77,
+  "start": 1385.76
+ },
+ {
+  "en": "Dr. Mortimer looked strangely at us for an instant, and his voice sank almost to a whisper as he answered.",
+  "pl": "Doktor Mortimer patrzył na nas przez chwilę dziwnymi oczyma, wreszcie odparł szeptem:",
+  "ua": "Доктор Мортімер дивився на нас якусь мить дивними очима, врешті відповів пошепки:",
+  "para": 78,
+  "start": 1388.04
+ },
+ {
+  "en": "“Mr. Holmes, they were the footprints of a gigantic hound!”",
+  "pl": "— Panie Holmes, były to ślady kroków... psa... olbrzymiego.",
+  "ua": "— Пане Холмс, це були сліди кроків... пса... величезного.",
+  "para": 79,
+  "start": 1396.09
+ }
+];
+const ANNOTATIONS = {"3": {"term": "*dzień świętego Michała*", "definition": "*dzień świętego Michała* — 29 września; w luterańskim i anglikańskim kalendarzu liturgicznym w dniu tym obchodzone jest święto Michała Archanioła, tradycyjne od średniowiecza obchody tego święta w Wielkiej Brytanii i Irlandii zwane są *Michaelmas*, do XVIII wieku uroczystość 29 września była świętem nakazanym, poprzedzonym trzydniowym postem. [przypis edytorski]", "translation": "29 вересня; у лютеранському й англіканському літургійних календарях цього дня відзначають свято архангела Михаїла. Традиційні святкування цього дня у Великій Британії та Ірландії, відомі як *Michaelmas*, ведуться із середньовіччя. До XVIII століття урочистість 29 вересня була обов’язковим святом, якому передував триденний піст. [редакторська примітка]"}, "4": {"term": "*groom* (ang.)", "definition": "*groom* (ang.) — stajenny, parobek. [przypis edytorski]", "translation": "(англ.) — конюх, конюший, наймит. [редакторська примітка]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into mp3/pies-baskervilleow_003_ii-przeklenstwo-rodu-baskerville-ow.mp3, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  7.49,    // [  0] conf 1.00  "— Mam w kieszeni rękopis — rzekł doktor J…"
+  14.82,   // [  1] conf 0.91  "— Spostrzegłem to od razu, gdyś pan wszed…"
+  20.36,   // [  2] conf 1.00  "— Manuskrypt jest stary."
+  23.84,   // [  3] conf 1.00  "— Z osiemnastego wieku."
+  26.04,   // [  4] conf 1.00  "— Skąd pan wie?"
+  27.73,   // [  5] conf 1.00  "— Z pańskiej kieszeni wychodzi pół cala p…"
+  40.83,   // [  6] conf 1.00  "Czytałeś pan zapewne moją monografię w ty…"
+  50.57,   // [  7] conf 0.91  "— Omyliłeś się pan o lat dwanaście. Datow…"   // start word fuzzy-corrected
+  57.73,   // [  8] conf 1.00  "Doktor Mortimer wyjął go z kieszeni."
+  60.58,   // [  9] conf 0.90  "— Ten dokument rodzinny został powierzony…"
+  79.02,   // [ 10] conf 0.94  "Był to człowiek dzielny, rozumny, praktyc…"
+  95.38,   // [ 11] conf 1.00  "Holmes wyciągnął rękę po manuskrypt i poc…"
+  101.22,  // [ 12] conf 1.00  "— Zwracam pańską uwagę, Watson, na kolejn…"
+  113.26,  // [ 13] conf 1.00  "Spojrzałem przez ramię na papier, pożółkł…"
+  129.86,  // [ 14] conf 1.00  "— To zapewne potwierdzenie jakiejś legend…"
+  135.54,  // [ 15] conf 0.80  "— Rzeczywiście — przyznał doktor Mortimer…"
+  143.42,  // [ 16] conf 1.00  "— Przypuszczam jednak, że pragniesz pan z…"
+  152.12,  // [ 17] conf 1.00  "— Tak. Chodzi mi o fakt zagadkowy, który…"
+  170.36,  // [ 18] conf 1.00  "Holmes skinął głową. Zasiadł wygodnie w f…"
+  183.26,  // [ 19] conf 1.00  "Doktor Mortimer podsunął manuskrypt pod ś…"
+  190.04,  // [ 20] conf 0.89  "Rozmaite pogłoski krążyły o Psie Baskervi…"
+  208.78,  // [ 21] conf 1.00  "Pragnąłbym, abyście i wy, moi synowie, na…"
+  226.38,  // [ 22] conf 0.97  "Niech te dzieje nauczą was, że nie należy…"
+  247.97,  // [ 23] conf 1.00  "Dowiedzcie się więc, że za czasów Wielkie…"
+  267.98,  // [ 24] conf 1.00  "Sąsiedzi przebaczyliby łatwo to ostatnie…"
+  280.22,  // [ 25] conf 0.94  "Otóż ów Hugon pokochał (jeśli można tym m…"
+  302.77,  // [ 26] conf 0.92  "Otóż pewnego wieczora na jesieni, w dzień…"
+  322.60,  // [ 27] conf 0.97  "Przywieźli biedaczkę na zamek i osadzili…"
+  343.23,  // [ 28] conf 1.00  "Ogromna brzoza osłaniała i do dziś dnia o…"
+  364.48,  // [ 29] conf 1.00  "Wkrótce potem Hugon, zostawiwszy swoich k…"
+  392.66,  // [ 30] conf 1.00  "Pijani towarzysze słuchali go w przerażon…"
+  408.16,  // [ 31] conf 1.00  "Słysząc to, Hugon wybiegł przed dom, zwoł…"
+  430.76,  // [ 32] conf 1.00  "Towarzysze hulanki rzucili się do koni, c…"
+  450.11,  // [ 33] conf 1.00  "Ujechali z półtorej mili, gdy spostrzegli…"
+  463.06,  // [ 34] conf 1.00  "— Ale widziałem coś więcej — mówił. — Hug…"
+  483.04,  // [ 35] conf 0.91  "Pijani towarzysze cisnęli pastuchowi prze…"   // start word fuzzy-corrected
+  501.03,  // [ 36] conf 1.00  "Towarzysze zbili się w gromadkę, bo ich s…"
+  513.76,  // [ 37] conf 1.00  "Człapiąc wolno, zrównali się wreszcie z b…"
+  526.08,  // [ 38] conf 1.00  "Kompania zatrzymała się. Jeźdźcy otrzeźwi…"
+  541.75,  // [ 39] conf 0.95  "O milę dalej, na polu, sterczały wysokie…"
+  554.45,  // [ 40] conf 1.00  "Ale nie ten widok, choć straszny i niespo…"
+  576.67,  // [ 41] conf 1.00  "Jeden z towarzyszów padł na miejscu, rażo…"
+  588.86,  // [ 42] conf 0.96  "Taka jest, moi synowie, legenda o psie, k…"
+  609.92,  // [ 43] conf 0.97  "Jednak nie traćmy wiary w miłosierdzie Bo…"
+  629.77,  // [ 44] conf 1.00  "(To są przestrogi Hugona Baskerville, spi…"
+  646.72,  // [ 45] conf 1.00  "Doktor Mortimer skończył czytać tę niezwy…"
+  660.81,  // [ 46] conf 1.00  "— No i cóż? — rzekł."
+  664.82,  // [ 47] conf 1.00  "— Czy historia ta nie jest interesująca?"
+  668.43,  // [ 48] conf 1.00  "— Zapewne dla zbieracza starych legend i…"
+  672.03,  // [ 49] conf 1.00  "Doktor Mortimer wyjął z kieszeni gazetę."
+  674.81,  // [ 50] conf 0.97  "— A teraz, panie Holmes — rzekł — pokażę…"
+  694.54,  // [ 51] conf 0.91  "Mój przyjaciel nachylił się i począł słuc…"
+  700.60,  // [ 52] conf 0.95  "Niedawna i nagła śmierć sir Karola Basker…"
+  710.62,  // [ 53] conf 0.96  "Jakkolwiek sir Karol Baskerville mieszkał…"
+  723.38,  // [ 54] conf 0.95  "W dzisiejszej epoce parweniuszów miło jes…"
+  736.58,  // [ 55] conf 0.97  "Sir Karol, jak wiadomo, zyskał duży mająt…"
+  759.58,  // [ 56] conf 1.00  "Przed dwoma laty zaledwie osiadł w Basker…"
+  776.09,  // [ 57] conf 1.00  "Będąc bezdzietnym, pragnął, aby cała okol…"
+  794.62,  // [ 58] conf 0.90  "Śledztwo nie wyjaśniło dotychczas okolicz…"
+  808.14,  // [ 59] conf 0.97  "Sir Karol był wdowcem, uważano go powszec…"
+  830.35,  // [ 60] conf 0.97  "Oboje zeznają, że zdrowie sir Karola w os…"
+  854.52,  // [ 61] conf 0.97  "Sir Karol Baskerville zwykł był co wieczó…"
+  874.92,  // [ 62] conf 0.91  "Owego wieczoru wyszedł, jak zwykle, na pr…"
+  882.27,  // [ 63] conf 1.00  "Z tej przechadzki już nie powrócił."
+  886.89,  // [ 64] conf 0.97  "O dwunastej Barrymore, widząc drzwi front…"
+  907.28,  // [ 65] conf 0.95  "Były ślady, że sir Karol stał przy niej p…"
+  917.36,  // [ 66] conf 1.00  "Pomiędzy innymi dotychczas nie wyjaśniono…"
+  933.99,  // [ 67] conf 1.00  "Niejaki Murphy, Cygan handlujący końmi, z…"
+  950.75,  // [ 68] conf 0.95  "Na ciele sir Karola nie było śladów przem…"
+  971.69,  // [ 69] conf 0.97  "Sekcja wykazała przedawnioną wadę serca,…"
+  990.96,  // [ 70] conf 1.00  "Gdyby prozaiczne orzeczenie sędziego śled…"
+  1004.68, // [ 71] conf 0.97  "Domniemanym spadkobiercą jest pan Henryk…"
+  1027.39, // [ 72] conf 0.90  "Doktor Mortimer złożył gazetę i wsunął ją…"
+  1032.27, // [ 73] conf 1.00  "— To są fakty powszechnie znane."
+  1036.01, // [ 74] conf 1.00  "— Dziękuję panu za zwrócenie mojej uwagi…"
+  1043.45, // [ 75] conf 1.00  "— Czytałem o niej, co prawda, w dziennika…"
+  1061.95, // [ 76] conf 1.00  "— Tak."
+  1063.63, // [ 77] conf 1.00  "— Zechciej więc pan uświadomić mnie teraz…"
+  1069.53, // [ 78] conf 1.00  "Sherlock Holmes oparł się o poręcz fotela…"
+  1077.50, // [ 79] conf 0.97  "— Uczynię to — rzekł doktor Mortimer, zdr…"
+  1100.85, // [ 80] conf 1.00  "Dalej, rozumiałem, że gdyby utwierdziła s…"
+  1113.96, // [ 81] conf 1.00  "Dla tych dwóch powodów nie zeznałem przed…"
+  1127.55, // [ 82] conf 1.00  "Okolica jest mało zaludniona, rezydencje…"
+  1135.90, // [ 83] conf 0.83  "Widywałem często sir Karola Baskerville,…"
+  1155.11, // [ 84] conf 1.00  "Zbliżyliśmy się z powodu jego choroby, pr…"
+  1170.21, // [ 85] conf 0.95  "W ciągu ostatnich paru miesięcy spostrzeg…"
+  1188.71, // [ 86] conf 1.00  "Prześladowała go wciąż obawa upiorów i py…"
+  1207.04, // [ 87] conf 1.00  "Wraziła mi się w pamięć jedna z moich wiz…"
+  1223.76, // [ 88] conf 1.00  "Odwróciłem się i spostrzegłem jakiś kszta…"
+  1235.99, // [ 89] conf 0.97  "Sir Karol był tak wzburzony, że poszedłem…"   // start word fuzzy-corrected
+  1258.52, // [ 90] conf 0.93  "Wspominam o tym drobnym epizodzie, gdyż n…"
+  1273.92, // [ 91] conf 0.97  "Miał jechać do Londynu z mojej porady. Wi…"
+  1290.88, // [ 92] conf 1.00  "Nasz wspólny przyjaciel, pan Stapleton, b…"
+  1301.26, // [ 93] conf 0.79  "Zaraz po śmierci sir Karola kamerdyner Ba…"
+  1317.68, // [ 94] conf 0.94  "Szedłem śladami pozostawionymi w Alei Wią…"
+  1337.36, // [ 95] conf 1.00  "Wreszcie obejrzałem starannie zwłoki, któ…"
+  1344.92, // [ 96] conf 1.00  "Sir Karol leżał na wznak z rozciągniętymi…"
+  1359.84, // [ 97] conf 1.00  "Ale Barrymore w toku śledztwa uczynił jed…"
+  1381.06, // [ 98] conf 1.00  "— Czy ślady kroków?"
+  1384.27, // [ 99] conf 1.00  "— Tak."
+  1385.76, // [100] conf 1.00  "— Męskie czy kobiece?"
+  1388.04, // [101] conf 1.00  "Doktor Mortimer patrzył na nas przez chwi…"
+  1396.09, // [102] conf 1.00  "— Panie Holmes, były to ślady kroków... p…"
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  enOpen: false,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function appendTooltipText(parent, text) {
+  // Render table emphasis safely; never interpret annotation cells as HTML.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function setStudyText(element, text) {
+  // Preserve unsupported superscripts literally, and decorate known note numbers.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      const definition = document.createElement("span");
+      definition.className = "note-pl";
+      appendTooltipText(definition, note.definition);
+      tooltip.appendChild(definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- EN / UA toggle chips --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const enChip = document.createElement("button");
+    enChip.type = "button";
+    enChip.className = "chip";
+    enChip.textContent = "EN ▾";
+    enChip.setAttribute("aria-expanded", "false");
+    enChip.setAttribute("aria-controls", "en-" + i);
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+
+    toggles.append(enChip, uaChip);
+
+    /* --- hidden EN block --- */
+    const enBox = document.createElement("div");
+    enBox.className = "stack en";
+    enBox.id = "en-" + i;
+    enBox.hidden = true;
+    const enLbl = document.createElement("span");
+    enLbl.className = "lbl";
+    enLbl.textContent = "English";
+    const enP = document.createElement("p");
+    enP.lang = "en";
+    setStudyText(enP, unit.en);
+    enBox.append(enLbl, enP);
+
+    /* --- hidden UA block --- */
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, enBox, uaBox, pbar);
+
+    enChip.addEventListener("click", () => setEn(i, enBox.hidden));
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, enChip, uaChip, enBox, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: mp3/pies-baskervilleow_003_ii-przeklenstwo-rodu-baskerville-ow.mp3`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = (box.classList.contains("en") ? "EN " : "UA ") + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setEn(i, open) { setChip(els[i].enChip, els[i].enBox, open); }
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleEnEl = document.getElementById("toggleEn");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(kind, open) {
+  const key = kind === "en" ? "enOpen" : "uaOpen";
+  state[key] = open;
+  els.forEach((e, i) => (kind === "en" ? setEn(i, open) : setUa(i, open)));
+  const btn = kind === "en" ? toggleEnEl : toggleUaEl;
+  btn.textContent = (open ? "Hide all " : "Reveal all ") + kind.toUpperCase();
+  btn.setAttribute("aria-pressed", String(open));
+  btn.classList.toggle("is-on", open);
+}
+
+toggleEnEl.addEventListener("click", () => setAll("en", !state.enOpen));
+toggleUaEl.addEventListener("click", () => setAll("ua", !state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+// If metadata never arrives (missing file / unsupported codec), tell the user.
+setTimeout(() => { if (audio.readyState < 1) showBanner(); }, 2500);
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "e" || ev.key === "E") {
+    setAll("en", !state.enOpen);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll("ua", !state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,2237 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-03.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-03.md mp3/pies-baskervilleow_004_iii-zagadka.mp3
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-03.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-03.md
+     It reads chapter-03.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path mp3/pies-baskervilleow_004_iii-zagadka.mp3, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Pies Baskerville’ów · Rozdział III</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative;
+    cursor: help;
+    color: var(--accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    top: 12px;
+    width: min(360px, calc(100vw - 36px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans);
+    text-align: left;
+    white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-pl { display: block; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* EN / UA toggles + blocks */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .en p {
+    font-family: var(--sans);
+    font-size: .93rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Pies Baskerville’ów · Rozdział III</h1>
+      <p class="chapter-name">Zagadka</p>
+      <p>Arthur Conan Doyle · trilingual study edition: EN → PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleEn" class="ctl" type="button" aria-pressed="false">Reveal all EN</button>
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>mp3/pies-baskervilleow_004_iii-zagadka.mp3</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>E</kbd> toggle EN · <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" src="audio/chapter-03.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (EN → PL → UA, in reading order)  */
+/*    Generated from chapter-03.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "en": "I confess at these words a shudder passed through me. There was a thrill in the doctor’s voice which showed that he was himself deeply moved by that which he told us. Holmes leaned forward in his excitement and his eyes had the hard, dry glitter which shot from them when he was keenly interested.",
+  "pl": "Przyznaję, że gdym słuchał tego opowiadania, przebiegały po mnie dreszcze. I doktor był żywo poruszony.",
+  "ua": "Зізнаюся, що, слухаючи цю розповідь, я здригався. Лікар теж був глибоко схвильований.",
+  "para": 0,
+  "start": 6.77
+ },
+ {
+  "en": "“You saw this?”",
+  "pl": "— Widziałeś pan te ślady? — spytałem.",
+  "ua": "— Ви бачили ці сліди? — запитав я.",
+  "para": 1,
+  "start": 17.26
+ },
+ {
+  "en": "“As clearly as I see you.”",
+  "pl": "— Tak, na własne oczy; tak wyraźnie, jak teraz widzę pana.",
+  "ua": "— Так, на власні очі; так виразно, як зараз бачу вас.",
+  "para": 2,
+  "start": 21.58
+ },
+ {
+  "en": "“And you said nothing?”",
+  "pl": "— I nic pan nie mówiłeś?",
+  "ua": "— І ви нічого не казали?",
+  "para": 3,
+  "start": 29.7
+ },
+ {
+  "en": "“What was the use?”",
+  "pl": "— Po co?",
+  "ua": "— Навіщо?",
+  "para": 4,
+  "start": 32.02
+ },
+ {
+  "en": "“How was it that no one else saw it?”",
+  "pl": "— Dlaczego nikt inny nie dostrzegł tych śladów?",
+  "ua": "— Чому ніхто інший не помітив цих слідів?",
+  "para": 5,
+  "start": 33.96
+ },
+ {
+  "en": "“The marks were some twenty yards from the body and no one gave them a thought. I don’t suppose I should have done so had I not known this legend.”",
+  "pl": "— Pozostały o jakieś dwa łokcie od trupa; nie zwrócono na nie uwagi i ja bym ich nie zauważył, gdybym nie był znał<sup>5<\/sup> tej legendy.",
+  "ua": "— Вони лишилися десь за два лікті від трупа; на них не звернули уваги, і я б їх не помітив, якби не знав<sup>5<\/sup> цієї легенди.",
+  "para": 6,
+  "start": 38.55
+ },
+ {
+  "en": "“There are many sheep-dogs on the moor?”",
+  "pl": "— Dużo jest psów w okolicy.",
+  "ua": "— У цій місцевості багато собак.",
+  "para": 7,
+  "start": 49.26
+ },
+ {
+  "en": "“No doubt, but this was no sheep-dog.” “You say it was large?” “Enormous.”",
+  "pl": "— Tak, ale to nie był zwykły pies. Powiedziałem już panom, że był ogromny.",
+  "ua": "— Так, але це не був звичайний пес. Я вже казав вам, що він був величезний.",
+  "para": 8,
+  "start": 52.0
+ },
+ {
+  "en": "“But it had not approached the body?”",
+  "pl": "— Czy nie zbliżył się do trupa?",
+  "ua": "— Він не наблизився до трупа?",
+  "para": 9,
+  "start": 58.97
+ },
+ {
+  "en": "“No.”",
+  "pl": "— Nie.",
+  "ua": "— Ні.",
+  "para": 10,
+  "start": 61.34
+ },
+ {
+  "en": "“What sort of night was it?”",
+  "pl": "— Czy noc była jasna?",
+  "ua": "— Чи ніч була ясна?",
+  "para": 11,
+  "start": null
+ },
+ {
+  "en": "“Damp and raw.”",
+  "pl": "— Nie; pochmurna i wilgotna.",
+  "ua": "— Ні; похмура й волога.",
+  "para": 12,
+  "start": 64.45
+ },
+ {
+  "en": "“But not actually raining?”",
+  "pl": "— Ale deszcz nie padał?",
+  "ua": "— Але дощу не було?",
+  "para": 13,
+  "start": 67.31
+ },
+ {
+  "en": "“No.”",
+  "pl": "— Nie.",
+  "ua": "— Ні.",
+  "para": 14,
+  "start": 69.61
+ },
+ {
+  "en": "“What is the alley like?”",
+  "pl": "— Jak wygląda aleja?",
+  "ua": "— Як виглядає алея?",
+  "para": 15,
+  "start": 70.91
+ },
+ {
+  "en": "“There are two lines of old yew hedge, twelve feet high and impenetrable. The walk in the centre is about eight feet across.”",
+  "pl": "— Jest wysadzana dwoma rzędami wiązów i opasana żywopłotem wysokości 12 stóp. Sama aleja ma 8 stóp szerokości.",
+  "ua": "— Вона обсаджена двома рядами в'язів і обгороджена живоплотом заввишки 12 футів. Сама алея має 8 футів завширшки.",
+  "para": 16,
+  "start": 73.07
+ },
+ {
+  "en": "“Is there anything between the hedges and the walk?”",
+  "pl": "— Czy jest coś pomiędzy żywopłotem a aleją?",
+  "ua": "— Чи є щось між живоплотом і алеєю?",
+  "para": 17,
+  "start": 84.26
+ },
+ {
+  "en": "“Yes, there is a strip of grass about six feet broad on either side.”",
+  "pl": "— Tak; po obu stronach biegnie trawnik, szerokości 6 stóp.",
+  "ua": "— Так; з обох боків тягнеться газон завширшки 6 футів.",
+  "para": 18,
+  "start": 87.46
+ },
+ {
+  "en": "“I understand that the yew hedge is penetrated at one point by a gate?”",
+  "pl": "— O ile zrozumiałem, jest wejście przez furtkę?",
+  "ua": "— Наскільки я зрозумів, є вхід через хвіртку?",
+  "para": 19,
+  "start": 94.07
+ },
+ {
+  "en": "“Yes, the wicket-gate which leads on to the moor.”",
+  "pl": "— Tak, furtka prowadzi na łąkę.",
+  "ua": "— Так, хвіртка веде на луку.",
+  "para": 20,
+  "start": 98.25
+ },
+ {
+  "en": "“Is there any other opening?”",
+  "pl": "— Czy są inne wejścia?",
+  "ua": "— Чи є інші входи?",
+  "para": 21,
+  "start": 101.07
+ },
+ {
+  "en": "“None.”",
+  "pl": "— Nie ma.",
+  "ua": "— Немає.",
+  "para": 22,
+  "start": 103.85
+ },
+ {
+  "en": "“So that to reach the yew alley one either has to come down it from the house or else to enter it by the moor-gate?”",
+  "pl": "— Tak, iż aby wkroczyć w Aleję Wiązów, trzeba wyjść z domu lub iść przez łąkę?",
+  "ua": "— Отже, щоб увійти в Алею В'язів, треба або вийти з будинку, або йти через луку?",
+  "para": 23,
+  "start": 104.82
+ },
+ {
+  "en": "“There is an exit through a summer-house at the far end.”",
+  "pl": "— Jest trzecie wejście przez altanę, na drugim końcu alei.",
+  "ua": "— Є ще третій вхід через альтанку, на другому кінці алеї.",
+  "para": 24,
+  "start": 114.18
+ },
+ {
+  "en": "“Had Sir Charles reached this?”",
+  "pl": "— Czy sir Karol doszedł do tej altany?",
+  "ua": "— Чи дійшов сер Чарльз до цієї альтанки?",
+  "para": 25,
+  "start": 120.47
+ },
+ {
+  "en": "“No; he lay about fifty yards from it.”",
+  "pl": "— Nie; znaleziono go o pięćdziesiąt łokci od niej.",
+  "ua": "— Ні; його знайшли за п'ятдесят ліктів від неї.",
+  "para": 26,
+  "start": 124.86
+ },
+ {
+  "en": "“Now, tell me, Dr. Mortimer—and this is important—the marks which you saw were on the path and not on the grass?”",
+  "pl": "— A teraz zechciej mi pan powiedzieć, doktorze Mortimer, będzie to szczegół ważny: czy ślady, któreś pan spostrzegł, pozostały na żwirze czy na trawie?",
+  "ua": "— А тепер, докторе Мортімер, скажіть мені — це важлива подробиця: сліди, які ви помітили, були на гравії чи на траві?",
+  "para": 27,
+  "start": 129.59
+ },
+ {
+  "en": "“No marks could show on the grass.”",
+  "pl": "— Nie mogłem dojrzeć śladów na trawie.",
+  "ua": "— На траві я не міг розгледіти слідів.",
+  "para": 28,
+  "start": 140.37
+ },
+ {
+  "en": "“Were they on the same side of the path as the moor-gate?”",
+  "pl": "— Czy ślady były po tej samej stronie, co furtka?",
+  "ua": "— Чи були сліди з того самого боку, що й хвіртка?",
+  "para": 29,
+  "start": 144.87
+ },
+ {
+  "en": "“Yes; they were on the edge of the path on the same side as the moor-gate.”",
+  "pl": "— Tak, po tej samej.",
+  "ua": "— Так, з того самого.",
+  "para": 30,
+  "start": 149.31
+ },
+ {
+  "en": "“You interest me exceedingly. Another point. Was the wicket-gate closed?”",
+  "pl": "— Bardzo mnie pan zaciekawia. Jeszcze jedno pytanie. Czy furtka była zamknięta?",
+  "ua": "— Ви мене дуже зацікавили. Ще одне запитання. Чи була хвіртка зачинена?",
+  "para": 31,
+  "start": 152.38
+ },
+ {
+  "en": "“Closed and padlocked.”",
+  "pl": "— Zamknięta na klucz i zaryglowana.",
+  "ua": "— Замкнена на ключ і зачинена на засув.",
+  "para": 32,
+  "start": 158.08
+ },
+ {
+  "en": "“How high was it?”",
+  "pl": "— Jak jest wysoka?",
+  "ua": "— Якої вона висоти?",
+  "para": 33,
+  "start": 161.14
+ },
+ {
+  "en": "“About four feet high.”",
+  "pl": "— Ma około czterech stóp.",
+  "ua": "— Близько чотирьох футів.",
+  "para": 34,
+  "start": 163.48
+ },
+ {
+  "en": "“Then anyone could have got over it?”",
+  "pl": "— A więc można ją łatwo przesadzić<sup>6<\/sup>?",
+  "ua": "— Отже, її легко перестрибнути<sup>6<\/sup>?",
+  "para": 35,
+  "start": 165.46
+ },
+ {
+  "en": "“Yes.”",
+  "pl": "— Tak.",
+  "ua": "— Так.",
+  "para": 36,
+  "start": 168.7
+ },
+ {
+  "en": "“And what marks did you see by the wicket-gate?”",
+  "pl": "— A jakie ślady znalazłeś pan przy furtce?",
+  "ua": "— А які сліди ви знайшли біля хвіртки?",
+  "para": 37,
+  "start": 169.82
+ },
+ {
+  "en": "“None in particular.”",
+  "pl": "— Żadnych, które by mogły zwrócić uwagę.",
+  "ua": "— Жодних, що заслуговували б на увагу.",
+  "para": 38,
+  "start": 174.62
+ },
+ {
+  "en": "“Good heaven! Did no one examine?”",
+  "pl": "— Czyżeś pan nie oglądał ziemi dokoła?",
+  "ua": "— Невже ви не оглянули землю навколо?",
+  "para": 39,
+  "start": 177.46
+ },
+ {
+  "en": "“Yes, I examined, myself.”",
+  "pl": "— I owszem, oglądałem.",
+  "ua": "— Звісно, оглянув.",
+  "para": 40,
+  "start": 182.07
+ },
+ {
+  "en": "“And found nothing?”",
+  "pl": "— I nie dostrzegłeś pan żadnych śladów?",
+  "ua": "— І не помітили жодних слідів?",
+  "para": 41,
+  "start": 184.67
+ },
+ {
+  "en": "“It was all very confused. Sir Charles had evidently stood there for five or ten minutes.”",
+  "pl": "— Były bardzo niewyraźne. Widocznie sir Karol stał tutaj przez pięć do dziesięciu minut.",
+  "ua": "— Вони були дуже нечіткі. Мабуть, сер Чарльз стояв тут п'ять-десять хвилин.",
+  "para": 42,
+  "start": 189.42
+ },
+ {
+  "en": "“How do you know that?”",
+  "pl": "— Skąd pan to wie?",
+  "ua": "— Звідки ви це знаєте?",
+  "para": 43,
+  "start": 195.54
+ },
+ {
+  "en": "“Because the ash had twice dropped from his cigar.”",
+  "pl": "— Gdyż popiół z cygara spadł dwa razy na ziemię.",
+  "ua": "— Бо попіл із сигари двічі впав на землю.",
+  "para": 44,
+  "start": 197.58
+ },
+ {
+  "en": "“Excellent! This is a colleague, Watson, after our own heart. But the marks?”",
+  "pl": "— Wybornie. Znaleźliśmy kolegę wedle naszego serca. Prawda, Watson? Ale jakież to były ślady?",
+  "ua": "— Чудово. Ми знайшли колегу за нашим серцем. Правда, Ватсоне? Але що то були за сліди?",
+  "para": 45,
+  "start": 202.94
+ },
+ {
+  "en": "“He had left his own marks all over that small patch of gravel. I could discern no others.”",
+  "pl": "— Ślady stóp na żwirze. Innych znaków dostrzec nie mogłem.",
+  "ua": "— Сліди ніг на гравії. Інших знаків я не міг розгледіти.",
+  "para": 46,
+  "start": 217.01
+ },
+ {
+  "en": "Sherlock Holmes struck his hand against his knee with an impatient gesture.",
+  "pl": "Sherlock Holmes uderzył ręką w kolano.",
+  "ua": "Шерлок Холмс ударив рукою по коліну.",
+  "para": 47,
+  "start": 224.54
+ },
+ {
+  "en": "“If I had only been there!” he cried. “It is evidently a case of extraordinary interest, and one which presented immense opportunities to the scientific expert. That gravel page upon which I might have read so much has been long ere this smudged by the rain and defaced by the clogs of curious peasants. Oh, Dr. Mortimer, Dr. Mortimer, to think that you should not have called me in!",
+  "pl": "— Czemu mnie tam nie było! — zawołał. — Jest to wypadek bardzo ciekawy, dający obfite pole do naukowej ekspertyzy. Czemuż nie mogłem odczytać tej żwirowej karty, zanim ją zatarły inne stopy! Doktorze Mortimer, że też mnie pan nie uwiadomił wcześniej!",
+  "ua": "— Чому мене там не було! — вигукнув він. — Це дуже цікава справа, що дає широке поле для наукової експертизи. Чому я не зміг прочитати цю гравійну карту, поки її не затоптали інші ноги! Докторе Мортімер, чому ви не повідомили мене раніше!",
+  "para": 48,
+  "start": 230.12
+ },
+ {
+  "en": "You have indeed much to answer for.”",
+  "pl": "Jeśli nam się nie uda wyświetlić sprawy, cała odpowiedzialność spadnie na pana.",
+  "ua": "Якщо нам не вдасться з'ясувати цю справу, вся відповідальність ляже на вас.",
+  "para": 48,
+  "start": 252.01
+ },
+ {
+  "en": "“I could not call you in, Mr. Holmes, without disclosing these facts to the world, and I have already given my reasons for not wishing to do so. Besides, besides—”",
+  "pl": "— Nie mogłem pana wzywać, panie Holmes, bo w takim razie musiałbym ujawnić te fakty przed całym światem, a mówiłem już, żem sobie tego nie życzył. Zresztą... zresztą...",
+  "ua": "— Я не міг звертатися до вас, пане Холмс, бо тоді мусив би оприлюднити ці факти перед усім світом, а я вже казав, що не бажав цього. Зрештою... зрештою...",
+  "para": 49,
+  "start": 256.84
+ },
+ {
+  "en": "“Why do you hesitate?”",
+  "pl": "— Czemu pan nie kończysz?",
+  "ua": "— Чому ви не договорюєте?",
+  "para": 50,
+  "start": 271.11
+ },
+ {
+  "en": "“There is a realm in which the most acute and most experienced of detectives is helpless.”",
+  "pl": "— Bywają dziedziny niedostępne nawet dla najbystrzejszych i najdoświadczeńszych detektywów...",
+  "ua": "— Бувають сфери, недоступні навіть для найпроникливіших і найдосвідченіших детективів...",
+  "para": 51,
+  "start": 273.85
+ },
+ {
+  "en": "“You mean that the thing is supernatural?”",
+  "pl": "— Chcesz pan powiedzieć, że wchodzi to w zakres rzeczy nadprzyrodzonych?",
+  "ua": "— Ви хочете сказати, що це належить до надприродного?",
+  "para": 52,
+  "start": 282.33
+ },
+ {
+  "en": "“I did not positively say so.”",
+  "pl": "— Tego nie twierdzę stanowczo.",
+  "ua": "— Цього я не стверджую напевно.",
+  "para": 53,
+  "start": 287.61
+ },
+ {
+  "en": "“No, but you evidently think it.”",
+  "pl": "— Ale pan tak myślisz w głębi ducha.",
+  "ua": "— Але в глибині душі ви так думаєте.",
+  "para": 54,
+  "start": 290.65
+ },
+ {
+  "en": "“Since the tragedy, Mr. Holmes, there have come to my ears several incidents which are hard to reconcile with the settled order of Nature.”",
+  "pl": "— Od owej tragedii doszły do mojej świadomości fakty sprzeczne z ogólnymi prawami natury.",
+  "ua": "— Відколи сталася ця трагедія, до моєї свідомості дійшли факти, що суперечать загальним законам природи.",
+  "para": 55,
+  "start": 293.49
+ },
+ {
+  "en": "“For example?”",
+  "pl": "— Na przykład?",
+  "ua": "— Наприклад?",
+  "para": 56,
+  "start": 302.09
+ },
+ {
+  "en": "“I find that before the terrible event occurred several people had seen a creature upon the moor which corresponds with this Baskerville demon, and which could not possibly be any animal known to science. They all agreed that it was a huge creature, luminous, ghastly, and spectral. I have cross-examined these men, one of them a hard-headed countryman, one a farrier, and one a moorland farmer, who all tell the same story of this dreadful apparition, exactly corresponding to the hell-hound of the legend.",
+  "pl": "— Dowiaduję się, że przed tą katastrofą kilku ludzi widziało na łące niezwykłe stworzenie, podobne do złego ducha Baskerville’ów. Wszyscy mówią, że był to pies ogromny, przezroczysty. Wypytywałem tych ludzi: jeden z nich jest włościaninem, drugi kowalem, trzeci farmerem. Ich zeznania są jednakowe.",
+  "ua": "— Я дізнався, що до цієї катастрофи кілька людей бачили на луці незвичайну істоту, схожу на злого духа Баскервілів. Усі кажуть, що це був величезний, прозорий пес. Я розпитував цих людей: один із них — селянин, другий — коваль, третій — фермер. Їхні свідчення однакові.",
+  "para": 57,
+  "start": 305.18
+ },
+ {
+  "en": "I assure you that there is a reign of terror in the district, and that it is a hardy man who will cross the moor at night.”",
+  "pl": "W całej okolicy zapanował przesądny strach. Nikt po nocy nie przejdzie przez łąkę.",
+  "ua": "В усій окрузі запанував забобонний страх. Ніхто вночі не перейде через луку.",
+  "para": 57,
+  "start": 334.3
+ },
+ {
+  "en": "“And you, a trained man of science, believe it to be supernatural?” “I do not know what to believe.” Holmes shrugged his shoulders.",
+  "pl": "— I pan, człowiek nauki, wierzy w takie baśnie? — zawołał Holmes.",
+  "ua": "— І ви, людина науки, вірите в такі казки? — вигукнув Холмс.",
+  "para": 58,
+  "start": 343.86
+ },
+ {
+  "en": "“I have hitherto confined my investigations to this world,” said he. “In a modest way I have combated evil, but to take on the Father of Evil himself would, perhaps, be too ambitious a task.",
+  "pl": "— Dotychczas moje badania ogarniały świat zmysłów; usiłowałem walczyć z chorobą, ale ze złymi duchami walczyć nie umiem. Zresztą musisz pan przyznać, że ślady stóp są dowodem materialnym.",
+  "ua": "— Досі мої дослідження обмежувалися світом відчуттів; я намагався боротися з хворобою, але зі злими духами боротися не вмію. До того ж ви мусите визнати, що сліди ніг — матеріальний доказ.",
+  "para": 59,
+  "start": 353.75
+ },
+ {
+  "en": "Yet you must admit that the footmark is material.” “The original hound was material enough to tug a man’s throat out, and yet he was diabolical as well.”",
+  "pl": "Pies Hugona nie był także zjawiskiem nadprzyrodzonym, skoro mógł zagryźć na śmierć, a jednak miał w sobie coś szatańskiego.",
+  "ua": "Пес Гуго теж не був явищем надприродним, бо ж міг загризти на смерть, а проте мав у собі щось сатанинське.",
+  "para": 59,
+  "start": 369.21
+ },
+ {
+  "en": "“I see that you have quite gone over to the supernaturalists. But now, Dr. Mortimer, tell me this. If you hold these views, why have you come to consult me at all?",
+  "pl": "— Widzę, że pan przeszedłeś do obozu spirytystów. Ale zechciej mi powiedzieć jeszcze jedno, doktorze Mortimer. Jeżeli pan skłaniasz się ku takim zapatrywaniom, dlaczego przyszedłeś zasięgnąć mojej rady?",
+  "ua": "— Бачу, що ви перейшли до табору спіритистів. Але скажіть мені ще одне, докторе Мортімер. Якщо ви схиляєтеся до таких поглядів, чому ви прийшли по мою пораду?",
+  "para": 60,
+  "start": 379.68
+ },
+ {
+  "en": "You tell me in the same breath that it is useless to investigate Sir Charles’s death, and that you desire me to do it.”",
+  "pl": "Powiadasz pan jednym tchem, że nie warto przeprowadzać śledztwa w sprawie zabójstwa sir Karola, a jednocześnie prosisz mnie, żebym się tą sprawą zajął.",
+  "ua": "В одному подиху ви кажете, що розслідувати вбивство сера Чарльза немає потреби, а водночас просите мене зайнятися цією справою.",
+  "para": 60,
+  "start": 397.64
+ },
+ {
+  "en": "“I did not say that I desired you to do it.”",
+  "pl": "— Nie prosiłem o to.",
+  "ua": "— Я цього не просив.",
+  "para": 61,
+  "start": 407.38
+ },
+ {
+  "en": "“Then, how can I assist you?”",
+  "pl": "— Więc w jaki sposób mogę panu dopomóc?",
+  "ua": "— Тоді чим я можу вам допомогти?",
+  "para": 62,
+  "start": 413.54
+ },
+ {
+  "en": "“By advising me as to what I should do with Sir Henry Baskerville, who arrives at Waterloo Station”—Dr. Mortimer looked at his watch—“in exactly one hour and a quarter.”",
+  "pl": "— Radząc mi, co mam zrobić z sir Henrykiem Baskerville, który przybywa na dworzec Waterloo — doktor Mortimer spojrzał na zegarek — za godzinę i kwadrans — dokończył.",
+  "ua": "— Порадою, що робити з сером Генрі Баскервілем, який прибуває на вокзал Ватерлоо, — доктор Мортімер глянув на годинник, — за годину й чверть, — закінчив він.",
+  "para": 63,
+  "start": 418.93
+ },
+ {
+  "en": "“He being the heir?”",
+  "pl": "— Czy on jest spadkobiercą?",
+  "ua": "— Він спадкоємець?",
+  "para": 64,
+  "start": 438.91
+ },
+ {
+  "en": "“Yes. On the death of Sir Charles we inquired for this young gentleman and found that he had been farming in Canada. From the accounts which have reached us he is an excellent fellow in every way. I speak now not as a medical man but as a trustee and executor of Sir Charles’s will.”",
+  "pl": "— Tak. Po śmierci sir Karola zasięgaliśmy wiadomości o tym gentlemanie i dowiedzieliśmy się, że ma farmę w Kanadzie. Wedle naszych informacji, jest to młodzieniec bez zarzutu. Nie mówię teraz jako lekarz, lecz jako wykonawca testamentu sir Karola.",
+  "ua": "— Так. Після смерті сера Чарльза ми довідувалися про цього джентльмена й дізналися, що він має ферму в Канаді. За нашими відомостями, це бездоганний молодий чоловік. Я кажу зараз не як лікар, а як виконавець заповіту сера Чарльза.",
+  "para": 65,
+  "start": 440.31
+ },
+ {
+  "en": "“There is no other claimant, I presume?”",
+  "pl": "— Czy nie ma innych kandydatów do spadku?",
+  "ua": "— Чи немає інших претендентів на спадщину?",
+  "para": 66,
+  "start": 461.39
+ },
+ {
+  "en": "“None. The only other kinsman whom we have been able to trace was Rodger Baskerville, the youngest of three brothers of whom poor Sir Charles was the elder. The second brother, who died young, is the father of this lad Henry. The third, Rodger, was the black sheep of the family.",
+  "pl": "— Żadnego. Mógłby nim być tylko Roger Baskerville, najmłodszy z trzech braci, z których sir Karol był najstarszym. Drugi brat, zmarły przedwcześnie, był właśnie ojcem owego Henryka. Trzeci, Roger, był synem marnotrawnym, żywą podobizną duchową starego Hugona.",
+  "ua": "— Жодного. Єдиний, хто міг би ним бути, — Роджер Баскервіль, наймолодший із трьох братів, з яких сер Чарльз був найстарший. Другий брат, що передчасно помер, був батьком цього Генрі. Третій, Роджер, був блудним сином, живою духовною подобою старого Гуго.",
+  "para": 67,
+  "start": 464.55
+ },
+ {
+  "en": "He came of the old masterful Baskerville strain and was the very image, they tell me, of the family picture of old Hugo. He made England too hot to hold him, fled to Central America, and died there in 1876 of yellow fever. Henry is the last of the Baskervilles. In one hour and five minutes I meet him at Waterloo Station. I have had a wire that he arrived at Southampton this morning.",
+  "pl": "Tyle nabroił w Anglii, że nie mógł już tu przebywać, uciekł do Ameryki Środkowej i umarł w roku 1876 na żółtą febrę. Henryk jest ostatnim z Baskerville’ów. Za godzinę i pięć minut mam go spotkać na dworcu Waterloo. Miałem depeszę z zawiadomieniem, iż przybył dziś do Southampton.",
+  "ua": "Він наробив в Англії стільки лиха, що не міг тут більше перебувати, втік до Центральної Америки й помер 1876 року від жовтої лихоманки. Генрі — останній із Баскервілів. За годину й п'ять хвилин я маю зустріти його на вокзалі Ватерлоо. Я отримав телеграму, що він сьогодні прибув до Саутгемптона.",
+  "para": 67,
+  "start": 486.92
+ },
+ {
+  "en": "Now, Mr. Holmes, what would you advise me to do with him?”",
+  "pl": "A teraz, panie Holmes, powiedz, jak mi radzisz postąpić?",
+  "ua": "А тепер, пане Холмс, скажіть, як ви радите мені вчинити?",
+  "para": 67,
+  "start": 515.74
+ },
+ {
+  "en": "“Why should he not go to the home of his fathers?”",
+  "pl": "— Dlaczego sir Henryk nie miałby wrócić do domu swych ojców?",
+  "ua": "— Чому б серу Генрі не повернутися до дому своїх предків?",
+  "para": 68,
+  "start": 522.67
+ },
+ {
+  "en": "“It seems natural, does it not? And yet, consider that every Baskerville who goes there meets with an evil fate.",
+  "pl": "— Wydaje się to rzeczą naturalną, a jednak, jeśli weźmiemy pod uwagę, że każdego z Baskerville’ów, który tam przebywa, czeka śmierć nagła i gwałtowna...",
+  "ua": "— Це видається природним, а проте, якщо взяти до уваги, що кожного з Баскервілів, який там перебуває, чекає раптова й насильницька смерть...",
+  "para": 69,
+  "start": 527.69
+ },
+ {
+  "en": "I feel sure that if Sir Charles could have spoken with me before his death he would have warned me against bringing this, the last of the old race, and the heir to great wealth, to that deadly place. And yet it cannot be denied that the prosperity of the whole poor, bleak countryside depends upon his presence.",
+  "pl": "Jestem pewien, że gdyby sir Karol mógł był ze mną mówić przed katastrofą, byłby mi zakazał wprowadzać ostatniego z rodu do owej przeklętej rezydencji. Z drugiej strony, dobrobyt całej okolicy zależy od przebywania dziedzica w Baskerville-Hall.",
+  "ua": "Я певен, що якби сер Чарльз міг був поговорити зі мною перед катастрофою, він заборонив би мені вводити останнього з роду в цю прокляту резиденцію. З другого боку, добробут усієї округи залежить від перебування спадкоємця в Баскервіль-Холі.",
+  "para": 69,
+  "start": 539.96
+ },
+ {
+  "en": "All the good work which has been done by Sir Charles will crash to the ground if there is no tenant of the Hall. I fear lest I should be swayed too much by my own obvious interest in the matter, and that is why I bring the case before you and ask for your advice.”",
+  "pl": "Całe dzieło, zapoczątkowane przez sir Karola, pójdzie wniwecz, jeśli nikt nie zamieszka na zamku. Boję się, aby dobro tej okolicy nie skłoniło mnie do nielojalnego postąpienia z sir Henrykiem i dlatego proszę pana o radę.",
+  "ua": "Усе діло, розпочате сером Чарльзом, піде нанівець, якщо ніхто не оселиться в замку. Я боюся, що добро цієї округи схилить мене до нелояльного вчинку щодо сера Генрі, і тому прошу вас про пораду.",
+  "para": 69,
+  "start": 559.15
+ },
+ {
+  "en": "Holmes considered for a little time.",
+  "pl": "Holmes zastanawiał się długą chwilę.",
+  "ua": "Холмс довго міркував.",
+  "para": 70,
+  "start": 576.7
+ },
+ {
+  "en": "“Put into plain words, the matter is this,” said he. “In your opinion there is a diabolical agency which makes Dartmoor an unsafe abode for a Baskerville—that is your opinion?”",
+  "pl": "— Zatem — odezwał się — według pańskiego przekonania, jakaś siła nieczysta grozi w tych stronach Baskerville’om. Wszak pan w to wierzy święcie?",
+  "ua": "— Отже, — озвався він, — на вашу думку, якась нечиста сила загрожує в цих краях Баскервілям. Адже ви в це свято вірите?",
+  "para": 71,
+  "start": 582.44
+ },
+ {
+  "en": "“At least I might go the length of saying that there is some evidence that this may be so.”",
+  "pl": "— Gotów jestem przypuszczać, że tak jest.",
+  "ua": "— Я готовий припустити, що так.",
+  "para": 72,
+  "start": 594.6
+ },
+ {
+  "en": "“Exactly. But surely, if your supernatural theory be correct, it could work the young man evil in London as easily as in Devonshire. A devil with merely local powers like a parish vestry would be too inconceivable a thing.”",
+  "pl": "— W takim razie, ta siła nieczysta może pastwić się nad Baskervillem równie dobrze w Londynie, jak i w Devonshire. Szatan, którego działanie byłoby umiejscowione, nie byłby groźny.",
+  "ua": "— У такому разі ця нечиста сила може так само добре чинити зло Баскервілю в Лондоні, як і в Девонширі. Сатана, дія якого була б обмежена місцем, не був би страшним.",
+  "para": 73,
+  "start": 600.1
+ },
+ {
+  "en": "“You put the matter more flippantly, Mr. Holmes, than you would probably do if you were brought into personal contact with these things. Your advice, then, as I understand it, is that the young man will be as safe in Devonshire as in London. He comes in fifty minutes. What would you recommend?”",
+  "pl": "— Starasz się pan ośmieszyć moją obawę, panie Holmes. Lecz gdybyś sam widział te rzeczy nadprzyrodzone, odechciałoby ci się żartów. Z pańskich słów miarkuję, że ów młodzieniec jest równie bezpieczny w Londynie, jak i w Devonshire. Przybywa za pięćdziesiąt minut. Cóż mi pan radzisz?",
+  "ua": "— Ви намагаєтеся осміяти мій страх, пане Холмс. Але якби ви самі бачили ці надприродні речі, вам би відхотілося жартувати. З ваших слів я розумію, що цей юнак так само безпечний у Лондоні, як і в Девонширі. Він прибуває за п'ятдесят хвилин. То що ви мені радите?",
+  "para": 74,
+  "start": 613.46
+ },
+ {
+  "en": "“I recommend, sir, that you take a cab, call off your spaniel who is scratching at my front door, and proceed to Waterloo to meet Sir Henry Baskerville.”",
+  "pl": "— Radzę wziąć dorożkę, zawołać psa, który skowyczy za drzwiami i jechać na dworzec Waterloo na spotkanie sir Henryka Baskerville’a.",
+  "ua": "— Раджу взяти візника, покликати пса, що скавулить за дверима, і їхати на вокзал Ватерлоо назустріч серу Генрі Баскервілю.",
+  "para": 75,
+  "start": 635.73
+ },
+ {
+  "en": "“And then?”",
+  "pl": "— A potem?",
+  "ua": "— А потім?",
+  "para": 76,
+  "start": 643.95
+ },
+ {
+  "en": "“And then you will say nothing to him at all until I have made up my mind about the matter.”",
+  "pl": "— A potem nic mu pan nie powiesz, dopóki nie namyślę się w tym względzie.",
+  "ua": "— А потім ви нічого йому не скажете, доки я не обміркую цього питання.",
+  "para": 77,
+  "start": 645.29
+ },
+ {
+  "en": "“How long will it take you to make up your mind?”",
+  "pl": "— Jak długo potrzebujesz pan namyślać się?",
+  "ua": "— Як довго вам потрібно міркувати?",
+  "para": 78,
+  "start": 649.99
+ },
+ {
+  "en": "“Twenty-four hours. At ten o’clock tomorrow, Dr. Mortimer, I will be much obliged to you if you will call upon me here, and it will be of help to me in my plans for the future if you will bring Sir Henry Baskerville with you.”",
+  "pl": "— Dwadzieścia cztery godziny. Poproszę cię, doktorze Mortimer, abyś mnie odwiedził jutro rano o dziesiątej. A zechciej przywieźć ze sobą sir Henryka Baskerville’a. To mi ułatwi wykonanie mego planu.",
+  "ua": "— Двадцять чотири години. Прошу вас, докторе Мортімер, відвідати мене завтра вранці о десятій. І будьте ласкаві привезти з собою сера Генрі Баскервіля. Це полегшить мені здійснення мого плану.",
+  "para": 79,
+  "start": 653.82
+ },
+ {
+  "en": "“I will do so, Mr. Holmes.”",
+  "pl": "— Zrobię, jak pan chcesz.",
+  "ua": "— Зроблю, як ви хочете.",
+  "para": 80,
+  "start": 667.1
+ },
+ {
+  "en": "He scribbled the appointment on his shirt-cuff and hurried off in his strange, peering, absent-minded fashion. Holmes stopped him at the head of the stair.",
+  "pl": "Doktor zapisał godzinę na mankiecie i wyszedł. Pan Holmes zatrzymał go na schodach.",
+  "ua": "Лікар записав годину на манжеті й вийшов. Пан Холмс зупинив його на сходах.",
+  "para": 81,
+  "start": 670.12
+ },
+ {
+  "en": "“Only one more question, Dr. Mortimer. You say that before Sir Charles Baskerville’s death several people saw this apparition upon the moor?”",
+  "pl": "— Jeszcze jedno pytanie — rzekł. — Powiadasz, przed śmiercią sir Karola kilku ludzi widziało to zjawisko na łące?",
+  "ua": "— Ще одне запитання, — сказав він. — Ви кажете, що до смерті сера Чарльза кілька людей бачили це видіння на луці?",
+  "para": 82,
+  "start": 677.34
+ },
+ {
+  "en": "“Three people did.”",
+  "pl": "— Tak, trzech ludzi.",
+  "ua": "— Так, троє людей.",
+  "para": 83,
+  "start": 686.74
+ },
+ {
+  "en": "“Did any see it after?”",
+  "pl": "— Czy który z nich widział je potem?",
+  "ua": "— Чи хтось із них бачив його потім?",
+  "para": 84,
+  "start": 690.05
+ },
+ {
+  "en": "“I have not heard of any.”",
+  "pl": "— Nie wiem.",
+  "ua": "— Не знаю.",
+  "para": 85,
+  "start": 693.96
+ },
+ {
+  "en": "“Thank you. Good-morning.”",
+  "pl": "— Dziękuję panu. Do widzenia.",
+  "ua": "— Дякую вам. До побачення.",
+  "para": 86,
+  "start": 694.99
+ },
+ {
+  "en": "Holmes returned to his seat with that quiet look of inward satisfaction which meant that he had a congenial task before him.",
+  "pl": "Holmes powrócił na swoje miejsce. Był widocznie zadowolony.",
+  "ua": "Холмс повернувся на своє місце. Він явно був задоволений.",
+  "para": 87,
+  "start": 698.18
+ },
+ {
+  "en": "“Going out, Watson?”",
+  "pl": "— Wychodzisz, Watson? — rzekł.",
+  "ua": "— Ви виходите, Ватсоне? — сказав він.",
+  "para": 88,
+  "start": 705.87
+ },
+ {
+  "en": "“Unless I can help you.”",
+  "pl": "— Czy potrzebujesz mojej pomocy?",
+  "ua": "— Чи потрібна вам моя допомога?",
+  "para": 89,
+  "start": 709.36
+ },
+ {
+  "en": "“No, my dear fellow, it is at the hour of action that I turn to you for aid. But this is splendid, really unique from some points of view. When you pass Bradley’s, would you ask him to send up a pound of the strongest shag tobacco? Thank you.",
+  "pl": "— Nie, mój drogi. Poproszę cię o nią dopiero w chwili działania. Sprawa wyjątkowa. Przechodząc obok Bradleya, zechciej wstąpić do sklepu i każ mi przynieść paczkę najmocniejszego tytoniu.",
+  "ua": "— Ні, мій любий. Я звернуся до вас по неї лише в мить дії. Справа виняткова. Проходячи повз Бредлі, будьте ласкаві зайти до крамниці й накажіть, щоб мені принесли пачку найміцнішого тютюну.",
+  "para": 90,
+  "start": 712.95
+ },
+ {
+  "en": "It would be as well if you could make it convenient not to return before evening. Then I should be very glad to compare impressions as to this most interesting problem which has been submitted to us this morning.”",
+  "pl": "Jeżeli możesz, byłbym ci bardzo zobowiązany, gdybyś tu nie wracał przed wieczorem, a wtedy zestawimy nasze wrażenia i poglądy.",
+  "ua": "Якщо зможете, я був би вам дуже вдячний, якби ви не поверталися сюди до вечора, а тоді ми зіставимо наші враження й погляди.",
+  "para": 90,
+  "start": 726.27
+ },
+ {
+  "en": "I knew that seclusion and solitude were very necessary for my friend in those hours of intense mental concentration during which he weighed every particle of evidence, constructed alternative theories, balanced one against the other, and made up his mind as to which points were essential and which immaterial.",
+  "pl": "Wiedziałem, że samotność jest niezbędna mojemu przyjacielowi w chwilach, gdy zastanawia się nad poszlakami spraw kryminalnych, gdy wyciąga wnioski i tworzy teorie, które okazywały się zawsze słuszne.",
+  "ua": "Я знав, що самотність конче потрібна моєму другові в години, коли він міркує над слідами кримінальних справ, робить висновки й будує теорії, які завжди виявлялися слушними.",
+  "para": 91,
+  "start": 738.08
+ },
+ {
+  "en": "I therefore spent the day at my club and did not return to Baker Street until evening. It was nearly nine o’clock when I found myself in the sitting-room once more.",
+  "pl": "Toteż cały dzień spędziłem w klubie i dopiero około dziewiątej powróciłem do mieszkania przy Baker Street.",
+  "ua": "Тож я провів увесь день у клубі й лише близько дев'ятої повернувся до квартири на Бейкер-стріт.",
+  "para": 91,
+  "start": 750.16
+ },
+ {
+  "en": "My first impression as I opened the door was that a fire had broken out, for the room was so filled with smoke that the light of the lamp upon the table was blurred by it. As I entered, however, my fears were set at rest, for it was the acrid fumes of strong coarse tobacco which took me by the throat and set me coughing. Through the haze I had a vague vision of Holmes in his dressing-gown coiled up in an armchair with his black clay pipe between his lips.",
+  "pl": "Gdy otworzyłem drzwi, zdało mi się, że w mieszkaniu był pożar: światło lampy ukazywało się jakby za czarną mgłą. Po chwili zmiarkowałem, że dym pochodzi nie od ognia, lecz od mocnego tytoniu. Wśród kłębów ujrzałem Holmesa w szlafroku. Siedział w fotelu z fajeczką w ustach.",
+  "ua": "Коли я відчинив двері, мені здалося, що в квартирі пожежа: світло лампи виднілося ніби крізь чорну імлу. За мить я збагнув, що дим іде не від вогню, а від міцного тютюну. Серед клубів диму я побачив Холмса в халаті. Він сидів у кріслі з люлькою в роті.",
+  "para": 92,
+  "start": 758.24
+ },
+ {
+  "en": "Several rolls of paper lay around him.",
+  "pl": "Na stole leżało kilka zwitków papieru. Odkaszlnąłem.",
+  "ua": "На столі лежало кілька згортків паперу. Я закашлявся.",
+  "para": 92,
+  "start": 782.09
+ },
+ {
+  "en": "“Caught cold, Watson?” said he.",
+  "pl": "— Zaziębiłeś się? — spytał.",
+  "ua": "— Ви застудилися? — запитав він.",
+  "para": 93,
+  "start": 787.54
+ },
+ {
+  "en": "“No, it’s this poisonous atmosphere.” “I suppose it is pretty thick, now that you mention it.” “Thick!",
+  "pl": "— Nie, ale można się tu udusić.",
+  "ua": "— Ні, але тут можна задихнутися.",
+  "para": 94,
+  "start": 790.05
+ },
+ {
+  "en": "It is intolerable.” “Open the window, then! You have been at your club all day, I perceive.”",
+  "pl": "— Otwórz okno. Widzę, że spędziłeś cały dzień w klubie...",
+  "ua": "— Відчиніть вікно. Бачу, що ви цілий день провели в клубі...",
+  "para": 95,
+  "start": 793.87
+ },
+ {
+  "en": "“My dear Holmes!” “Am I right?” “Certainly, but how?”",
+  "pl": "— Po czym to miarkujesz, Holmes?",
+  "ua": "— Із чого ви це здогадуєтеся, Холмсе?",
+  "para": 96,
+  "start": 798.11
+ },
+ {
+  "en": "He laughed at my bewildered expression. “There is a delightful freshness about you, Watson, which makes it a pleasure to exercise any small powers which I possess at your expense. A gentleman goes forth on a showery and miry day. He returns immaculate in the evening with the gloss still on his hat and his boots. He has been a fixture therefore all day. He is not a man with intimate friends. Where, then, could he have been? Is it not obvious?” “Well, it is rather obvious.” “The world is full of obvious things which nobody by any chance ever observes. Where do you think that I have been?”",
+  "pl": "— Jesteś trzeźwy, pachnący, w dobrym humorze. Nigdy nie domyślisz się, gdzie ja byłem.",
+  "ua": "— Ви тверезий, пахучий, у доброму гуморі. Ви ніколи не вгадаєте, де я був.",
+  "para": 97,
+  "start": 801.02
+ },
+ {
+  "en": "“A fixture also.”",
+  "pl": "— Nie będę nad tym suszył głowy. Powiesz mi sam.",
+  "ua": "— Не буду ламати собі над цим голови. Самі скажете мені.",
+  "para": 98,
+  "start": 808.86
+ },
+ {
+  "en": "“On the contrary, I have been to Devonshire.”",
+  "pl": "— A więc byłem w Devonshire.",
+  "ua": "— Отже, я був у Девонширі.",
+  "para": 99,
+  "start": 812.8
+ },
+ {
+  "en": "“In spirit?”",
+  "pl": "— Myślą?",
+  "ua": "— Думкою?",
+  "para": 100,
+  "start": 816.7
+ },
+ {
+  "en": "“Exactly. My body has remained in this armchair and has, I regret to observe, consumed in my absence two large pots of coffee and an incredible amount of tobacco. After you left I sent down to Stamford’s for the Ordnance map of this portion of the moor, and my spirit has hovered over it all day. I flatter myself that I could find my way about.”",
+  "pl": "— Tak. Moje ciało pozostało tutaj, na tym fotelu, i skonsumowało dwa olbrzymie imbryki kawy i niezliczoną moc tytoniu. Po twoim wyjściu posłałem do Stamforda po mapę tej okolicy i błądziłem po niej przez dzień cały. Pochlebiam sobie, że każda piędź ziemi jest mi teraz dobrze znana.",
+  "ua": "— Так. Моє тіло лишилося тут, у цьому кріслі, і спожило два величезні кавники кави та незліченну кількість тютюну. Після вашого відходу я послав до Стемфорда по мапу цієї місцевості й блукав нею цілий день. Тішу себе, що кожна п'ядь землі мені тепер добре знайома.",
+  "para": 101,
+  "start": 818.2
+ },
+ {
+  "en": "“A large-scale map, I presume?”",
+  "pl": "— To zapewne mapa o wielkiej skali?",
+  "ua": "— Це, напевно, мапа великого масштабу?",
+  "para": 102,
+  "start": 843.78
+ },
+ {
+  "en": "“Very large.”",
+  "pl": "— Tak.",
+  "ua": "— Так.",
+  "para": 103,
+  "start": 848.24
+ },
+ {
+  "en": "He unrolled one section and held it over his knee.",
+  "pl": "Rozwinął ją i położył na kolanie.",
+  "ua": "Він розгорнув її й поклав собі на коліно.",
+  "para": 104,
+  "start": 850.12
+ },
+ {
+  "en": "“Here you have the particular district which concerns us. That is Baskerville Hall in the middle.”",
+  "pl": "— Widzisz — mówił — oto łąka, a to Baskerville-Hall.",
+  "ua": "— Бачите, — казав він, — ось лука, а це Баскервіль-Хол.",
+  "para": 105,
+  "start": 853.14
+ },
+ {
+  "en": "“With a wood round it?”",
+  "pl": "— Naokoło las.",
+  "ua": "— Навколо ліс.",
+  "para": 106,
+  "start": 860.48
+ },
+ {
+  "en": "“Exactly. I fancy the yew alley, though not marked under that name, must stretch along this line, with the moor, as you perceive, upon the right of it. This small clump of buildings here is the hamlet of Grimpen, where our friend Dr. Mortimer has his headquarters. Within a radius of five miles there are, as you see, only a very few scattered dwellings. Here is Lafter Hall, which was mentioned in the narrative. There is a house indicated here which may be the residence of the naturalist—Stapleton, if I remember right, was his name. Here are two moorland farmhouses, High Tor and Foulmire.",
+  "pl": "— Istotnie. A oto Aleja Wiązów, na lewo od łąki. Tu jest wioska Grimpen, w której doktor Mortimer obrał swoją główną kwaterę. W obrębie pięciu mil mało jest ludzkich siedzib. Oto Lafter-Hall. Tu domek przyrodnika Stapletona. Tutaj dwie farmy: High Tore i Fulmire.",
+  "ua": "— Справді. А ось Алея В'язів, ліворуч від луки. Тут село Грімпен, де доктор Мортімер влаштував свою головну квартиру. У межах п'яти миль людських осель мало. Ось Лефтер-Хол. Тут будиночок природознавця Степлтона. Тут дві ферми: Гай-Тор і Фулмір.",
+  "para": 107,
+  "start": 862.48
+ },
+ {
+  "en": "Then fourteen miles away the great convict prison of Princetown. Between and around these scattered points extends the desolate, lifeless moor. This, then, is the stage upon which tragedy has been played, and upon which we may help to play it again.”",
+  "pl": "O czternaście mil dalej więzienie państwowe Princetown. Dokoła i pośrodku łąki i trzęsawiska. Taki jest teren, na którym rozegrała się owa tragedia. Postaramy się odtworzyć wszystkie jej sceny i akty.",
+  "ua": "За чотирнадцять миль далі — державна в'язниця Принстаун. Навколо й посередині — луки й трясовини. Ось місцевість, де розігралася ця трагедія. Ми постараємося відтворити всі її сцени й акти.",
+  "para": 107,
+  "start": 890.3
+ },
+ {
+  "en": "“It must be a wild place.”",
+  "pl": "— Miejscowość bezludna.",
+  "ua": "— Безлюдна місцевість.",
+  "para": 108,
+  "start": 906.96
+ },
+ {
+  "en": "“Yes, the setting is a worthy one. If the devil did desire to have a hand in the affairs of men—”",
+  "pl": "— Tak. Diabeł mógł się na niej rozgościć...",
+  "ua": "— Так. Диявол міг у ній оселитися...",
+  "para": 109,
+  "start": 910.37
+ },
+ {
+  "en": "“Then you are yourself inclining to the supernatural explanation.”",
+  "pl": "— A zatem i pan skłaniasz się do nadprzyrodzonych wyjaśnień...",
+  "ua": "— Отже, і ви схиляєтеся до надприродних пояснень...",
+  "para": 110,
+  "start": 913.95
+ },
+ {
+  "en": "“The devil’s agents may be of flesh and blood, may they not? There are two questions waiting for us at the outset. The one is whether any crime has been committed at all; the second is, what is the crime and how was it committed? Of course, if Dr. Mortimer’s surmise should be correct, and we are dealing with forces outside the ordinary laws of Nature, there is an end of our investigation.",
+  "pl": "— Sługami Diabła mogą być ludzie z krwi i kości. Należy przede wszystkim rozstrzygnąć dwa zagadnienia. Po pierwsze: czy dopuszczono się zbrodni? Po wtóre: w jaki sposób jej dokonano?",
+  "ua": "— Слугами Диявола можуть бути люди з плоті й крові. Насамперед треба розв'язати два питання. Перше: чи було скоєно злочин? Друге: яким чином його скоєно?",
+  "para": 111,
+  "start": 917.31
+ },
+ {
+  "en": "But we are bound to exhaust all other hypotheses before falling back upon this one. I think we’ll shut that window again, if you don’t mind. It is a singular thing, but I find that a concentrated atmosphere helps a concentration of thought. I have not pushed it to the length of getting into a box to think, but that is the logical outcome of my convictions.",
+  "pl": "Jeżeli doktor Mortimer nie jest w błędzie, jeśli się okaże, że mamy do czynienia z nadprzyrodzonymi siłami, w takim razie dochodzenia sądowe są bezużyteczne. Ale musimy wyczerpać wszelkie inne hipotezy, zanim dojdziemy do tego wniosku. Może byś zamknął okno.",
+  "ua": "Якщо доктор Мортімер не помиляється, якщо виявиться, що ми маємо справу з надприродними силами, тоді судові розслідування марні. Але ми мусимо вичерпати всі інші гіпотези, перш ніж дійдемо цього висновку. Може, ви б зачинили вікно.",
+  "para": 111,
+  "start": 933.21
+ },
+ {
+  "en": "Have you turned the case over in your mind?”",
+  "pl": "Znajduję<sup>7<\/sup>, że skoncentrowana atmosfera pomaga do skupienia myśli. Czy zastanawiałeś się w ciągu dnia nad tą sprawą?",
+  "ua": "Я знаходжу<sup>7<\/sup>, що концентрована атмосфера допомагає зосередженню думки. Чи ви міркували протягом дня над цією справою?",
+  "para": 111,
+  "start": 953.94
+ },
+ {
+  "en": "“Yes, I have thought a good deal of it in the course of the day.” “What do you make of it?” “It is very bewildering.”",
+  "pl": "— Myślałem o niej dużo. Jest istotnie dziwna.",
+  "ua": "— Я багато про неї думав. Вона справді дивна.",
+  "para": 112,
+  "start": 965.68
+ },
+ {
+  "en": "“It has certainly a character of its own. There are points of distinction about it. That change in the footprints, for example. What do you make of that?”",
+  "pl": "— Są w niej punkty charakterystyczne. I tak, na przykład, zmiana śladów.",
+  "ua": "— У ній є характерні пункти. Ось, наприклад, зміна слідів.",
+  "para": 113,
+  "start": 970.53
+ },
+ {
+  "en": "“Mortimer said that the man had walked on tiptoe down that portion of the alley.”",
+  "pl": "— Doktor Mortimer wyjaśnił to w ten sposób, że sir Karol szedł potem na palcach.",
+  "ua": "— Доктор Мортімер пояснив це так, що сер Чарльз потім ішов навшпиньки.",
+  "para": 114,
+  "start": 976.84
+ },
+ {
+  "en": "“He only repeated what some fool had said at the inquest. Why should a man walk on tiptoe down the alley?” “What then?” “He was running, Watson—running desperately, running for his life, running until he burst his heart—and fell dead upon his face.”",
+  "pl": "— Doktor powtórzył tylko to, co jakiś dudek powiedział na śledztwie. Po cóż by sir Baskerville miał chodzić na palcach? Nie, on po prostu biegł, uciekał, aż wreszcie padł twarzą na ziemię.",
+  "ua": "— Доктор повторив лише те, що якийсь бовдур сказав на слідстві. Навіщо серу Баскервілю було б ходити навшпиньки? Ні, він просто біг, тікав, аж поки нарешті впав обличчям на землю.",
+  "para": 115,
+  "start": 983.96
+ },
+ {
+  "en": "“Running from what?”",
+  "pl": "— Przed czymże uciekał?",
+  "ua": "— Від чого ж він тікав?",
+  "para": 116,
+  "start": 1005.22
+ },
+ {
+  "en": "“There lies our problem. There are indications that the man was crazed with fear before ever he began to run.”",
+  "pl": "— To właśnie należy wyświetlić! Są poszlaki, że już był wylękniony, zanim począł uciekać.",
+  "ua": "— Це якраз і треба з'ясувати! Є ознаки, що він був наляканий ще до того, як почав тікати.",
+  "para": 117,
+  "start": 1007.28
+ },
+ {
+  "en": "“How can you say that?”",
+  "pl": "— Skąd wiesz?",
+  "ua": "— Звідки ви знаєте?",
+  "para": 118,
+  "start": 1016.48
+ },
+ {
+  "en": "“I am presuming that the cause of his fears came to him across the moor. If that were so, and it seems most probable, only a man who had lost his wits would have run from the house instead of towards it. If the gipsy’s evidence may be taken as true, he ran with cries for help in the direction where help was least likely to be.",
+  "pl": "— Przypuszczam, że nastraszyło go coś, co ujrzał na łące. Ten widok pozbawił go przytomności, bo inaczej nie byłby uciekał w stronę przeciwną, zamiast biec ku pałacowi. Jeżeli świadectwo Cygana jest wiarygodne, biegnąc, wołał o pomoc, a pędził tam, skąd pomoc w żaden sposób nadejść nie mogła.",
+  "ua": "— Припускаю, що його налякало щось, що він побачив на луці. Цей вид позбавив його притомності, бо інакше він не втікав би в протилежний бік, замість бігти до палацу. Якщо свідчення Цигана достовірне, то, біжачи, він кликав на допомогу, а мчав туди, звідки допомога ніяк не могла прийти.",
+  "para": 119,
+  "start": 1018.3
+ },
+ {
+  "en": "Then, again, whom was he waiting for that night, and why was he waiting for him in the yew alley rather than in his own house?”",
+  "pl": "Dalej: na kogo czekał owej nocy i dlaczego czekał w Alei Wiązów, zamiast w domu?",
+  "ua": "Далі: кого він чекав тієї ночі й чому чекав в Алеї В'язів, а не вдома?",
+  "para": 119,
+  "start": 1043.14
+ },
+ {
+  "en": "“You think that he was waiting for someone?”",
+  "pl": "— Więc sądzisz, że czekał na kogoś?",
+  "ua": "— Отже, ви гадаєте, що він на когось чекав?",
+  "para": 120,
+  "start": 1052.58
+ },
+ {
+  "en": "“The man was elderly and infirm. We can understand his taking an evening stroll, but the ground was damp and the night inclement. Is it natural that he should stand for five or ten minutes, as Dr. Mortimer, with more practical sense than I should have given him credit for, deduced from the cigar ash?”",
+  "pl": "— Był niemłody, chory. Zapewne mógł był wyjść na spacer, ale nie w taką noc, ciemną, wilgotną. Czemu stał przez pięć do dziesięciu minut przy furtce, jak to wywnioskował doktor Mortimer z popiołu cygara?",
+  "ua": "— Він був немолодий, хворий. Можливо, він і міг вийти на прогулянку, але не в таку ніч, темну, вологу. Чому він стояв п'ять-десять хвилин біля хвіртки, як це вивів доктор Мортімер із попелу сигари?",
+  "para": 121,
+  "start": 1057.34
+ },
+ {
+  "en": "“But he went out every evening.”",
+  "pl": "— Wszak sir Karol wychodził co wieczór?",
+  "ua": "— Адже сер Чарльз виходив щовечора?",
+  "para": 122,
+  "start": 1079.4
+ },
+ {
+  "en": "“I think it unlikely that he waited at the moor-gate every evening. On the contrary, the evidence is that he avoided the moor. That night he waited there. It was the night before he made his departure for London. The thing takes shape, Watson. It becomes coherent.",
+  "pl": "— Wątpię, czy co wieczór po dziesięć minut stawał przy furtce. Wiemy nawet, że zwykł był unikać łąki. Przeciwnie, owego wieczora czekał przy niej. Było to w wilię<sup>8<\/sup> jego odjazdu do Londynu. Rzecz zaczyna się rozjaśniać. Mój drogi, podaj mi skrzypce. Mówmy o czym innym.",
+  "ua": "— Сумніваюся, що він щовечора по десять хвилин стояв біля хвіртки. Ми навіть знаємо, що він звик оминати луку. Навпаки, того вечора він чекав біля неї. Це було напередодні<sup>8<\/sup> його від'їзду до Лондона. Справа починає проясняватися. Мій любий, подайте мені скрипку. Поговорімо про щось інше.",
+  "para": 123,
+  "start": 1083.88
+ },
+ {
+  "en": "Might I ask you to hand me my violin, and we will postpone all further thought upon this business until we have had the advantage of meeting Dr. Mortimer and Sir Henry Baskerville in the morning.”",
+  "pl": "Dajmy pokój tej sprawie aż do przybycia doktora Mortimera i sir Henryka Baskerville’a.",
+  "ua": "Облишмо цю справу аж до приїзду доктора Мортімера й сера Генрі Баскервіля.",
+  "para": 123,
+  "start": 1111.7
+ }
+];
+const ANNOTATIONS = {"5": {"term": "*był znał*", "definition": "*był znał* — czas zaprzeszły: znał uprzednio; znał wcześniej. [przypis edytorski]", "translation": "давноминулий час: раніше знав; знав до того. [редакторська примітка]"}, "6": {"term": "*przesadzić* (daw.)", "definition": "*przesadzić* (daw.) — tu: przeskoczyć. [przypis edytorski]", "translation": "(заст.) — тут: перестрибнути. [редакторська примітка]"}, "7": {"term": "*znajdować* (daw.)", "definition": "*znajdować* (daw.) — uważać, sądzić. [przypis edytorski]", "translation": "(заст.) — вважати, гадати. [редакторська примітка]"}, "8": {"term": "*wilia* a. *wigilia*", "definition": "*wilia* a. *wigilia* — dzień poprzedzający jakąś (ważną) datę. [przypis edytorski]", "translation": "день, що передує якійсь (важливій) даті. [редакторська примітка]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into mp3/pies-baskervilleow_004_iii-zagadka.mp3, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  6.77,    // [  0] conf 0.93  "Przyznaję, że gdym słuchał tego opowiadan…"
+  17.26,   // [  1] conf 1.00  "— Widziałeś pan te ślady? — spytałem."
+  21.58,   // [  2] conf 1.00  "— Tak, na własne oczy; tak wyraźnie, jak…"
+  29.70,   // [  3] conf 1.00  "— I nic pan nie mówiłeś?"
+  32.02,   // [  4] conf 1.00  "— Po co?"
+  33.96,   // [  5] conf 1.00  "— Dlaczego nikt inny nie dostrzegł tych ś…"
+  38.55,   // [  6] conf 0.89  "— Pozostały o jakieś dwa łokcie od trupa;…"
+  49.26,   // [  7] conf 1.00  "— Dużo jest psów w okolicy."
+  52.00,   // [  8] conf 1.00  "— Tak, ale to nie był zwykły pies. Powied…"
+  58.97,   // [  9] conf 1.00  "— Czy nie zbliżył się do trupa?"
+  61.34,   // [ 10] conf 1.00  "— Nie."   // absorbed short next unit
+  null,    // [ 11] conf 1.00  "— Czy noc była jasna?"   // merged into previous section; merged into previous (<0.8s)
+  64.45,   // [ 12] conf 1.00  "— Nie; pochmurna i wilgotna."
+  67.31,   // [ 13] conf 1.00  "— Ale deszcz nie padał?"
+  69.61,   // [ 14] conf 1.00  "— Nie."
+  70.91,   // [ 15] conf 1.00  "— Jak wygląda aleja?"
+  73.07,   // [ 16] conf 0.88  "— Jest wysadzana dwoma rzędami wiązów i o…"
+  84.26,   // [ 17] conf 1.00  "— Czy jest coś pomiędzy żywopłotem a alej…"
+  87.46,   // [ 18] conf 0.78  "— Tak; po obu stronach biegnie trawnik, s…"
+  94.07,   // [ 19] conf 1.00  "— O ile zrozumiałem, jest wejście przez f…"
+  98.25,   // [ 20] conf 1.00  "— Tak, furtka prowadzi na łąkę."
+  101.07,  // [ 21] conf 1.00  "— Czy są inne wejścia?"
+  103.85,  // [ 22] conf 1.00  "— Nie ma."
+  104.82,  // [ 23] conf 1.00  "— Tak, iż aby wkroczyć w Aleję Wiązów, tr…"
+  114.18,  // [ 24] conf 1.00  "— Jest trzecie wejście przez altanę, na d…"
+  120.47,  // [ 25] conf 0.86  "— Czy sir Karol doszedł do tej altany?"
+  124.86,  // [ 26] conf 1.00  "— Nie; znaleziono go o pięćdziesiąt łokci…"
+  129.59,  // [ 27] conf 1.00  "— A teraz zechciej mi pan powiedzieć, dok…"
+  140.37,  // [ 28] conf 1.00  "— Nie mogłem dojrzeć śladów na trawie."
+  144.87,  // [ 29] conf 1.00  "— Czy ślady były po tej samej stronie, co…"
+  149.31,  // [ 30] conf 1.00  "— Tak, po tej samej."
+  152.38,  // [ 31] conf 1.00  "— Bardzo mnie pan zaciekawia. Jeszcze jed…"
+  158.08,  // [ 32] conf 1.00  "— Zamknięta na klucz i zaryglowana."
+  161.14,  // [ 33] conf 1.00  "— Jak jest wysoka?"
+  163.48,  // [ 34] conf 1.00  "— Ma około czterech stóp."
+  165.46,  // [ 35] conf 0.67  "— A więc można ją łatwo przesadzić<sup>6<…"
+  168.70,  // [ 36] conf 1.00  "— Tak."
+  169.82,  // [ 37] conf 1.00  "— A jakie ślady znalazłeś pan przy furtce?"
+  174.62,  // [ 38] conf 1.00  "— Żadnych, które by mogły zwrócić uwagę."
+  177.46,  // [ 39] conf 0.67  "— Czyżeś pan nie oglądał ziemi dokoła?"   // start word fuzzy-corrected
+  182.07,  // [ 40] conf 1.00  "— I owszem, oglądałem."
+  184.67,  // [ 41] conf 1.00  "— I nie dostrzegłeś pan żadnych śladów?"
+  189.42,  // [ 42] conf 0.92  "— Były bardzo niewyraźne. Widocznie sir K…"
+  195.54,  // [ 43] conf 1.00  "— Skąd pan to wie?"
+  197.58,  // [ 44] conf 1.00  "— Gdyż popiół z cygara spadł dwa razy na…"
+  202.94,  // [ 45] conf 0.92  "— Wybornie. Znaleźliśmy kolegę wedle nasz…"
+  217.01,  // [ 46] conf 1.00  "— Ślady stóp na żwirze. Innych znaków dos…"
+  224.54,  // [ 47] conf 1.00  "Sherlock Holmes uderzył ręką w kolano."
+  230.12,  // [ 48] conf 1.00  "— Czemu mnie tam nie było! — zawołał. — J…"
+  252.01,  // [ 49] conf 1.00  "Jeśli nam się nie uda wyświetlić sprawy,…"
+  256.84,  // [ 50] conf 0.96  "— Nie mogłem pana wzywać, panie Holmes, b…"
+  271.11,  // [ 51] conf 1.00  "— Czemu pan nie kończysz?"
+  273.85,  // [ 52] conf 1.00  "— Bywają dziedziny niedostępne nawet dla…"
+  282.33,  // [ 53] conf 1.00  "— Chcesz pan powiedzieć, że wchodzi to w…"
+  287.61,  // [ 54] conf 1.00  "— Tego nie twierdzę stanowczo."
+  290.65,  // [ 55] conf 1.00  "— Ale pan tak myślisz w głębi ducha."
+  293.49,  // [ 56] conf 1.00  "— Od owej tragedii doszły do mojej świado…"
+  302.09,  // [ 57] conf 1.00  "— Na przykład?"
+  305.18,  // [ 58] conf 0.95  "— Dowiaduję się, że przed tą katastrofą k…"
+  334.30,  // [ 59] conf 1.00  "W całej okolicy zapanował przesądny strac…"
+  343.86,  // [ 60] conf 1.00  "— I pan, człowiek nauki, wierzy w takie b…"
+  353.75,  // [ 61] conf 1.00  "— Dotychczas moje badania ogarniały świat…"
+  369.21,  // [ 62] conf 1.00  "Pies Hugona nie był także zjawiskiem nadp…"
+  379.68,  // [ 63] conf 1.00  "— Widzę, że pan przeszedłeś do obozu spir…"
+  397.64,  // [ 64] conf 0.91  "Powiadasz pan jednym tchem, że nie warto…"
+  407.38,  // [ 65] conf 1.00  "— Nie prosiłem o to."
+  413.54,  // [ 66] conf 1.00  "— Więc w jaki sposób mogę panu dopomóc?"
+  418.93,  // [ 67] conf 0.96  "— Radząc mi, co mam zrobić z sir Henrykie…"
+  438.91,  // [ 68] conf 1.00  "— Czy on jest spadkobiercą?"
+  440.31,  // [ 69] conf 0.92  "— Tak. Po śmierci sir Karola zasięgaliśmy…"
+  461.39,  // [ 70] conf 1.00  "— Czy nie ma innych kandydatów do spadku?"
+  464.55,  // [ 71] conf 0.97  "— Żadnego. Mógłby nim być tylko Roger Bas…"
+  486.92,  // [ 72] conf 0.94  "Tyle nabroił w Anglii, że nie mógł już tu…"
+  515.74,  // [ 73] conf 0.89  "A teraz, panie Holmes, powiedz, jak mi ra…"
+  522.67,  // [ 74] conf 0.90  "— Dlaczego sir Henryk nie miałby wrócić d…"
+  527.69,  // [ 75] conf 0.92  "— Wydaje się to rzeczą naturalną, a jedna…"
+  539.96,  // [ 76] conf 0.92  "Jestem pewien, że gdyby sir Karol mógł by…"
+  559.15,  // [ 77] conf 0.91  "Całe dzieło, zapoczątkowane przez sir Kar…"
+  576.70,  // [ 78] conf 1.00  "Holmes zastanawiał się długą chwilę."
+  582.44,  // [ 79] conf 0.91  "— Zatem — odezwał się — według pańskiego…"
+  594.60,  // [ 80] conf 1.00  "— Gotów jestem przypuszczać, że tak jest."
+  600.10,  // [ 81] conf 1.00  "— W takim razie, ta siła nieczysta może p…"
+  613.46,  // [ 82] conf 0.98  "— Starasz się pan ośmieszyć moją obawę, p…"
+  635.73,  // [ 83] conf 1.00  "— Radzę wziąć dorożkę, zawołać psa, który…"
+  643.95,  // [ 84] conf 1.00  "— A potem?"
+  645.29,  // [ 85] conf 1.00  "— A potem nic mu pan nie powiesz, dopóki…"
+  649.99,  // [ 86] conf 1.00  "— Jak długo potrzebujesz pan namyślać się?"
+  653.82,  // [ 87] conf 0.93  "— Dwadzieścia cztery godziny. Poproszę ci…"
+  667.10,  // [ 88] conf 0.75  "— Zrobię, jak pan chcesz."   // start word fuzzy-corrected
+  670.12,  // [ 89] conf 1.00  "Doktor zapisał godzinę na mankiecie i wys…"
+  677.34,  // [ 90] conf 0.88  "— Jeszcze jedno pytanie — rzekł. — Powiad…"
+  686.74,  // [ 91] conf 1.00  "— Tak, trzech ludzi."
+  690.05,  // [ 92] conf 0.86  "— Czy który z nich widział je potem?"
+  693.96,  // [ 93] conf 1.00  "— Nie wiem."
+  694.99,  // [ 94] conf 1.00  "— Dziękuję panu. Do widzenia."
+  698.18,  // [ 95] conf 1.00  "Holmes powrócił na swoje miejsce. Był wid…"
+  705.87,  // [ 96] conf 1.00  "— Wychodzisz, Watson? — rzekł."
+  709.36,  // [ 97] conf 1.00  "— Czy potrzebujesz mojej pomocy?"
+  712.95,  // [ 98] conf 0.89  "— Nie, mój drogi. Poproszę cię o nią dopi…"
+  726.27,  // [ 99] conf 1.00  "Jeżeli możesz, byłbym ci bardzo zobowiąza…"
+  738.08,  // [100] conf 0.96  "Wiedziałem, że samotność jest niezbędna m…"
+  750.16,  // [101] conf 1.00  "Toteż cały dzień spędziłem w klubie i dop…"
+  758.24,  // [102] conf 0.98  "Gdy otworzyłem drzwi, zdało mi się, że w…"
+  782.09,  // [103] conf 0.86  "Na stole leżało kilka zwitków papieru. Od…"
+  787.54,  // [104] conf 0.67  "— Zaziębiłeś się? — spytał."   // start word fuzzy-corrected
+  790.05,  // [105] conf 1.00  "— Nie, ale można się tu udusić."
+  793.87,  // [106] conf 1.00  "— Otwórz okno. Widzę, że spędziłeś cały d…"
+  798.11,  // [107] conf 0.80  "— Po czym to miarkujesz, Holmes?"
+  801.02,  // [108] conf 1.00  "— Jesteś trzeźwy, pachnący, w dobrym humo…"
+  808.86,  // [109] conf 1.00  "— Nie będę nad tym suszył głowy. Powiesz…"
+  812.80,  // [110] conf 1.00  "— A więc byłem w Devonshire."
+  816.70,  // [111] conf 1.00  "— Myślą?"
+  818.20,  // [112] conf 0.96  "— Tak. Moje ciało pozostało tutaj, na tym…"
+  843.78,  // [113] conf 1.00  "— To zapewne mapa o wielkiej skali?"
+  848.24,  // [114] conf 1.00  "— Tak."
+  850.12,  // [115] conf 1.00  "Rozwinął ją i położył na kolanie."
+  853.14,  // [116] conf 0.88  "— Widzisz — mówił — oto łąka, a to Basker…"
+  860.48,  // [117] conf 1.00  "— Naokoło las."
+  862.48,  // [118] conf 0.88  "— Istotnie. A oto Aleja Wiązów, na lewo o…"
+  890.30,  // [119] conf 0.97  "O czternaście mil dalej więzienie państwo…"
+  906.96,  // [120] conf 1.00  "— Miejscowość bezludna."
+  910.37,  // [121] conf 0.86  "— Tak. Diabeł mógł się na niej rozgościć.…"
+  913.95,  // [122] conf 1.00  "— A zatem i pan skłaniasz się do nadprzyr…"
+  917.31,  // [123] conf 0.93  "— Sługami Diabła mogą być ludzie z krwi i…"
+  933.21,  // [124] conf 0.97  "Jeżeli doktor Mortimer nie jest w błędzie…"
+  953.94,  // [125] conf 0.85  "Znajduję<sup>7</sup>, że skoncentrowana a…"
+  965.68,  // [126] conf 1.00  "— Myślałem o niej dużo. Jest istotnie dzi…"
+  970.53,  // [127] conf 1.00  "— Są w niej punkty charakterystyczne. I t…"
+  976.84,  // [128] conf 0.93  "— Doktor Mortimer wyjaśnił to w ten sposó…"
+  983.96,  // [129] conf 0.97  "— Doktor powtórzył tylko to, co jakiś dud…"
+  1005.22, // [130] conf 1.00  "— Przed czymże uciekał?"
+  1007.28, // [131] conf 1.00  "— To właśnie należy wyświetlić! Są poszla…"
+  1016.48, // [132] conf 1.00  "— Skąd wiesz?"
+  1018.30, // [133] conf 0.98  "— Przypuszczam, że nastraszyło go coś, co…"
+  1043.14, // [134] conf 1.00  "Dalej: na kogo czekał owej nocy i dlaczeg…"
+  1052.58, // [135] conf 1.00  "— Więc sądzisz, że czekał na kogoś?"
+  1057.34, // [136] conf 0.94  "— Był niemłody, chory. Zapewne mógł był w…"
+  1079.40, // [137] conf 0.83  "— Wszak sir Karol wychodził co wieczór?"
+  1083.88, // [138] conf 0.92  "— Wątpię, czy co wieczór po dziesięć minu…"
+  1111.70, // [139] conf 0.79  "Dajmy pokój tej sprawie aż do przybycia d…"
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  enOpen: false,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function appendTooltipText(parent, text) {
+  // Render table emphasis safely; never interpret annotation cells as HTML.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function setStudyText(element, text) {
+  // Preserve unsupported superscripts literally, and decorate known note numbers.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      const definition = document.createElement("span");
+      definition.className = "note-pl";
+      appendTooltipText(definition, note.definition);
+      tooltip.appendChild(definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- EN / UA toggle chips --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const enChip = document.createElement("button");
+    enChip.type = "button";
+    enChip.className = "chip";
+    enChip.textContent = "EN ▾";
+    enChip.setAttribute("aria-expanded", "false");
+    enChip.setAttribute("aria-controls", "en-" + i);
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+
+    toggles.append(enChip, uaChip);
+
+    /* --- hidden EN block --- */
+    const enBox = document.createElement("div");
+    enBox.className = "stack en";
+    enBox.id = "en-" + i;
+    enBox.hidden = true;
+    const enLbl = document.createElement("span");
+    enLbl.className = "lbl";
+    enLbl.textContent = "English";
+    const enP = document.createElement("p");
+    enP.lang = "en";
+    setStudyText(enP, unit.en);
+    enBox.append(enLbl, enP);
+
+    /* --- hidden UA block --- */
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, enBox, uaBox, pbar);
+
+    enChip.addEventListener("click", () => setEn(i, enBox.hidden));
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, enChip, uaChip, enBox, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: mp3/pies-baskervilleow_004_iii-zagadka.mp3`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = (box.classList.contains("en") ? "EN " : "UA ") + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setEn(i, open) { setChip(els[i].enChip, els[i].enBox, open); }
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleEnEl = document.getElementById("toggleEn");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(kind, open) {
+  const key = kind === "en" ? "enOpen" : "uaOpen";
+  state[key] = open;
+  els.forEach((e, i) => (kind === "en" ? setEn(i, open) : setUa(i, open)));
+  const btn = kind === "en" ? toggleEnEl : toggleUaEl;
+  btn.textContent = (open ? "Hide all " : "Reveal all ") + kind.toUpperCase();
+  btn.setAttribute("aria-pressed", String(open));
+  btn.classList.toggle("is-on", open);
+}
+
+toggleEnEl.addEventListener("click", () => setAll("en", !state.enOpen));
+toggleUaEl.addEventListener("click", () => setAll("ua", !state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+// If metadata never arrives (missing file / unsupported codec), tell the user.
+setTimeout(() => { if (audio.readyState < 1) showBanner(); }, 2500);
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "e" || ev.key === "E") {
+    setAll("en", !state.enOpen);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll("ua", !state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

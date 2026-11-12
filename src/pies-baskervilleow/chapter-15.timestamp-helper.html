@@ -1,0 +1,808 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to mp3/pies-baskervilleow_016_xv-rzut-oka-wstecz.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-15.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pies Baskerville’ów · Rozdział XV — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Pies Baskerville’ów · Rozdział XV · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="mp3/pies-baskervilleow_016_xv-rzut-oka-wstecz.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "W końcu listopada Holmes i ja w wieczór ciemny i dżdżysty siedzieliśmy przy kominku w naszej bawialni na Baker Street. Mój przyjaciel był w wybornym humorze i skorzystałem z tego, aby go wybadać o nieznane mi dotychczas szczegóły sprawy Baskerville’a.",
+  "start": 7.76
+ },
+ {
+  "i": 1,
+  "pl": "Sir Henryk i doktor Mortimer bawili w Londynie, gotując się do dalekiej podróży, która miała wzmocnić nerwy baroneta.",
+  "start": 26.2
+ },
+ {
+  "i": 2,
+  "pl": "— Cała ta sprawa była jasna i prosta z punktu widzenia rzekomego Stapletona — mówił Holmes w odpowiedzi na moje pytanie. — Dla nas zaś, którzyśmy nie znali jego pobudek i celów, wydawała się tajemnicza i zawiła. Znajdziesz moje poglądy pod literą B w moich aktach kryminalnych.",
+  "start": 37.18
+ },
+ {
+  "i": 3,
+  "pl": "— Wolałbym, żebyś mi to opowiedział żywym słowem.",
+  "start": 61.66
+ },
+ {
+  "i": 4,
+  "pl": "— Dobrze, ale nie ręczę za dokładność. Pamięć może mnie mylić. Otóż moje badania wykryły, że portret rodzinny nas nie zawiódł. Ten łotr był synem Rogera Baskerville, młodszego brata sir Karola; wywędrował do Ameryki z bardzo złą reputacją.",
+  "start": 65.88
+ },
+ {
+  "i": 5,
+  "pl": "Ożenił się tam z Beryl Garcia, najpiękniejszą kobietą w Kostaryce, a sprzeniewierzywszy znaczną sumę z publicznych funduszów, zmienił nazwisko na Vandeleur, uciekł do Anglii i założył szkołę dla chłopców w Yorkshire.",
+  "start": 89.31
+ },
+ {
+  "i": 6,
+  "pl": "Do obrania tego zawodu skłoniła go znajomość, zawarta w drodze powrotnej z nauczycielem suchotnikiem, niejakim Fraserem. Weszli w spółkę.",
+  "start": 106.78
+ },
+ {
+  "i": 7,
+  "pl": "Dopóki Fraser żył, szkoła szła dobrze i prowadzona była z poczuciem obywatelskich obowiązków, ale po jego śmierci zyskała jak najgorszą opinię, aż wreszcie okryła się hańbą. Vandeleur uznał za stosowne zmienić nazwisko.",
+  "start": 119.28
+ },
+ {
+  "i": 8,
+  "pl": "Jako Stapleton, z resztkami ukradzionych pieniędzy, z pięknymi zbiorami entomologicznymi przesiedlił się do Anglii południowej.",
+  "start": 136.44
+ },
+ {
+  "i": 9,
+  "pl": "Muzeum Brytyjskie objaśniło mnie, że był powagą na polu owadoznawstwa; odkrył dużo gatunków, które noszą nazwisko Vandeleur.",
+  "start": 146.96
+ },
+ {
+  "i": 10,
+  "pl": "Ten nikczemnik zbadał zapewne swoje stosunki rodzinne i dowiedział się, że jedno tylko życie ludzkie stoi pomiędzy nim a olbrzymią fortuną.",
+  "start": 159.06
+ },
+ {
+  "i": 11,
+  "pl": "Przypuszczam, że w chwili osiedlania się w Devonshire nie miał jeszcze wytyczonego jasno planu; lecz że od początku żywił złe zamiary, świadczy o tym fakt, iż żonę swą podawał jako siostrę.",
+  "start": 169.12
+ },
+ {
+  "i": 12,
+  "pl": "Widocznie miał już wtedy projekt użycia jej jako narzędzia, choć nie wiedział jeszcze, jakimi drogami dojdzie do celu.",
+  "start": 184.72
+ },
+ {
+  "i": 13,
+  "pl": "Przede wszystkim postarał się osiąść jak najbliżej siedziby swych przodków, po wtóre — nawiązać przyjazny stosunek z sir Karolem Baskervillem oraz z jego sąsiadami.",
+  "start": 192.16
+ },
+ {
+  "i": 14,
+  "pl": "Baronet opowiedział mu sam o psie prześladującym ich ród i zgotował tym sobie okropną śmierć. Stapleton — gdyż tak go będę nazywał w dalszym ciągu — wiedział, że sir Karol ma wadę serca i że gwałtowne wstrząśnienie może go zabić; wiedział też, że jest przesądny i że wierzy w tę legendę.",
+  "start": 204.61
+ },
+ {
+  "i": 15,
+  "pl": "Nikczemnik poznał od razu, jaką może stąd korzyść osiągnąć; obmyślił dla baroneta śmierć niezawodną, za którą nikt nie mógł być pociągnięty do odpowiedzialności.",
+  "start": 230.64
+ },
+ {
+  "i": 16,
+  "pl": "Przeprowadził swój plan bardzo zręcznie. Zwyczajny łotr byłby użył psa rozjuszonego — on nadał mu jeszcze pozory piekielnej bestii. Kupił najdziksze i największe psisko, jakie mógł dostać u handlarzy Ross and Mangles w Londynie.",
+  "start": 244.76
+ },
+ {
+  "i": 17,
+  "pl": "Przywiódł go do stacji North Devon, odległej od Baskerville-Hall i nadłożył ogromny kawał drogi, idąc łąką i moczarami, aby go nikt nie spostrzegł. Wpierw wynalazł dla niego schronienie w Grimpen-Mire i tam go od razu wprowadził. Trzymał go na łańcuchu i czekał sposobności.",
+  "start": 265.18
+ },
+ {
+  "i": 18,
+  "pl": "Ale niełatwo było ją znaleźć.",
+  "start": 287.85
+ },
+ {
+  "i": 19,
+  "pl": "Stary baronet nie wychodził nigdy za obręb pałacu po zachodzie słońca. Kilkakrotnie Stapleton czyhał na niego z psem, lecz bezskutecznie. Wtedy to okoliczni włościanie widzieli ogromne psisko, co spowodowało wskrzeszenie legendy.",
+  "start": 290.56
+ },
+ {
+  "i": 20,
+  "pl": "Stapleton miał nadzieję, że jego żona zdoła doprowadzić sir Karola do zguby, lecz natrafił na niespodziewany opór. Nie chciała rozkochiwać starego gentlemana; ani groźby, ani nawet kije nie zdołały jej skłonić do tak niecnego wspólnictwa. Stapleton musiał działać sam.",
+  "start": 311.25
+ },
+ {
+  "i": 21,
+  "pl": "Pomogła mu dobroczynność sir Karola. Zacny starzec, zwiedziony pozorami, polubił Stapletona i za jego pośrednictwem świadczył dużo dobrego, między innymi pani Laurze Lyons.",
+  "start": 332.8
+ },
+ {
+  "i": 22,
+  "pl": "Stapleton poznał ją przypadkowo, zainteresował się niby jej losem i wzbudził współczucie w litościwym sercu baroneta; że zaś potrafił zyskiwać względy kobiet i przedstawił się jako kawaler, wkrótce zdobył nie tylko zaufanie, lecz i serce pięknej Laury;",
+  "start": 348.06
+ },
+ {
+  "i": 23,
+  "pl": "dawał jej też do zrozumienia, że się z nią ożeni, jeśli ona rozwiedzie się z mężem.",
+  "start": 369.37
+ },
+ {
+  "i": 24,
+  "pl": "Usłyszawszy, że sir Karol, z porady doktora Mortimera, zamierza opuścić Baskerville Hall, postanowił działać bezzwłocznie, w obawie, aby ofiara nie wysunęła się z jego szponów.",
+  "start": 376.78
+ },
+ {
+  "i": 25,
+  "pl": "Skłonił zatem panią Lyons do napisania listu, w którym błagała baroneta o przybycie do furtki ogrodowej w przeddzień jego wyjazdu do Londynu. Następnie odradził jej stawić się na umówionym miejscu.",
+  "start": 389.84
+ },
+ {
+  "i": 26,
+  "pl": "Wracając wieczorem z Coombe Tracey, spuścił psa z łańcucha, posmarował go fosforem i przyprowadził do furtki, wiedząc, że stary gentleman zjawi się przy niej od strony pałacu.",
+  "start": 404.04
+ },
+ {
+  "i": 27,
+  "pl": "Pies, poszczuty przez swego pana, przeskoczył przez furtkę i ścigał biednego baroneta; ten uciekał aleją wiązów, wołając o pomoc. Pies biegł trawnikiem, baronet aleją żwirową; dlatego pozostały tylko ślady jego kroków.",
+  "start": 416.23
+ },
+ {
+  "i": 28,
+  "pl": "Widząc, że leży bez ruchu, pies zbliżył się zapewne, obwąchał go, a gdy poczuł, że już nie żyje, zawrócił. Stapleton przywołał go, odprowadził do prowizorycznej budy w Grimpen-Mire i uwiązał znowu na łańcuchu.",
+  "start": 437.61
+ },
+ {
+  "i": 29,
+  "pl": "Śmierć sir Karola pozostała niewyjaśniona; władze policyjne łamały sobie głowę nad jej przyczyną, okolica była w strachu, wreszcie oddano sprawę w nasze ręce.",
+  "start": 454.48
+ },
+ {
+  "i": 30,
+  "pl": "Rozumiesz piekielny podstęp tego łotra: tak się urządził, że nie można było znaleźć śladów zbrodni ani wytoczyć procesu mordercy. Jedyny jego wspólnik zdradzić go nie mógł. Obie kobiety wplątane w tę sprawę: pani Stapleton i pani Laura Lyons, miały pewne podejrzenia.",
+  "start": 469.4
+ },
+ {
+  "i": 31,
+  "pl": "Mrs Stapleton wiedziała nawet o złych zamiarach męża względem sir Karola, a także o istnieniu psa. Mrs Lyons nie miała wprawdzie pojęcia ani o jednym, ani o drugim, lecz zastanowiło ją, że śmierć starego gentlemana wynikła o godzinie, wyznaczonej na spotkanie z nią.",
+  "start": 494.6
+ },
+ {
+  "i": 32,
+  "pl": "Obie kobiety znajdowały się jednak pod wpływem tego łotra — nie miał powodu obawiać się zdrady z ich strony.",
+  "start": 515.54
+ },
+ {
+  "i": 33,
+  "pl": "Pierwsza część szatańskiego zadania była spełniona, pozostawała druga, trudniejsza.",
+  "start": 526.2
+ },
+ {
+  "i": 34,
+  "pl": "Stapleton mógł na razie nie wiedzieć o istnieniu spadkobiercy w Kanadzie. Bądź co bądź, dowiedział się o tym wkrótce po śmierci sir Karola od swego przyjaciela, doktora Mortimera, który go też uwiadomił o przybyciu sir Henryka.",
+  "start": 536.75
+ },
+ {
+  "i": 35,
+  "pl": "Pierwszą myślą Stapletona było zapewne zgładzić go ze świata w Londynie. Stracił zaufanie do żony od chwili, gdy nie chciała mu pomagać w zastawianiu sideł na sir Karola. Bał się jednak zostawić ją samą na dłuższy czas, dlatego wziął ją ze sobą do Londynu.",
+  "start": 552.6
+ },
+ {
+  "i": 36,
+  "pl": "Doszedłem, że zamieszkali w hotelu Mexborough, przy Craven Street. Stapleton zamykał żonę na klucz, a sam, przyprawiwszy brodę dla niepoznaki, śledził każdy krok doktora Mortimera, jeździł za nim na Baker-Street, a następnie na dworzec i do hotelu Northumberland.",
+  "start": 572.25
+ },
+ {
+  "i": 37,
+  "pl": "Żona domyślała się jego planów, lecz obawiała się ostrzec upatrzoną ofiarę. Gdyby list wpadł w ręce Stapletona, jej własne życie byłoby w niebezpieczeństwie.",
+  "start": 594.36
+ },
+ {
+  "i": 38,
+  "pl": "Jak wiemy, wpadła na myśl wycięcia z gazety słów, którymi ostrzegała baroneta. List doszedł rąk baroneta i był pierwszą zapowiedzią niebezpieczeństwa.",
+  "start": 607.24
+ },
+ {
+  "i": 39,
+  "pl": "Stapleton postarał się o but sir Henryka, aby w danym razie wyzyskać węch psa i wprowadzić go na trop ofiary.",
+  "start": 624.0
+ },
+ {
+  "i": 40,
+  "pl": "Posługacz hotelowy dostarczył mu obuwia, za hojną pewnie opłatą; lecz pierwszy wykradziony but był nowy; Stapleton kazał go podrzucić i dostał drugi, noszony. Ten drobny fakt wprowadził mnie od razu na domysł, że prześladowca sir Henryka chce użyć psa do swych celów.",
+  "start": 633.13
+ },
+ {
+  "i": 41,
+  "pl": "Nazajutrz baronet przybył tutaj; Stapleton śledził go w dorożce. Sądząc z tego, że mnie znał i wiedział, gdzie mieszkam, gotów jestem przypuścić, że już poprzednio miał powody obawiać się mojej działalności wywiadowczej i że nie był nowicjuszem na polu zbrodni.",
+  "start": 657.46
+ },
+ {
+  "i": 42,
+  "pl": "W ciągu ostatnich trzech lat okradziono w Devonshire cztery dwory. W żadnym wypadku złoczyńcy zostali ujęci. Wreszcie w maju roku bieżącego zrabowano Folkstone Court, przy czym został zabity służący, który pierwszy dostrzegł zamaskowanego złodzieja.",
+  "start": 677.24
+ },
+ {
+  "i": 43,
+  "pl": "Mógłbym ręczyć, że był nim Stapleton, który w ten sposób zasilał swe fundusze. Mieliśmy dowód jego bezczelności w tym, że podał moje nazwisko dorożkarzowi. Zrozumiał wtedy, iż go śledzę i że nie będzie mógł spełnić swych zamiarów w Londynie. Powrócił do Devonshire i oczekiwał tam przybycia baroneta.",
+  "start": 695.66
+ },
+ {
+  "i": 44,
+  "pl": "— Przepraszam cię — rzekłem — Czy mógłbyś mi wyjaśnić, kto żywił psa podczas pobytu Stapletona w Londynie?",
+  "start": 718.9
+ },
+ {
+  "i": 45,
+  "pl": "— Ważna to kwestia — odparł. — Zastanawiałem się nad nią, i doszedłem do przekonania, że Stapleton miał wspólnika. W Merripit House był stary lokaj, Antoni. Wiem, że pozostawał u niego w służbie co najmniej kilka lat, bo widziano go za czasów, gdy Stapleton był kierownikiem szkoły w Yorkshire.",
+  "start": 726.64
+ },
+ {
+  "i": 46,
+  "pl": "Ten człowiek musiał wiedzieć, że Beryl jest żoną, nie siostrą jego pana. Po zamachu na sir Henryka Antoni zniknął bez śladu.",
+  "start": 750.88
+ },
+ {
+  "i": 47,
+  "pl": "Otóż to imię, rzadkie w Anglii, jest bardzo pospolite w Hiszpanii i w Ameryce hiszpańskiej. Ów służący, również jak i pani Stapleton, mówił po angielsku płynnie, lecz z akcentem miękkim, południowym. Widziałem sam Antoniego, idącego do Grimpen-Mire ścieżką, wytyczoną przez Stapletona.",
+  "start": 762.52
+ },
+ {
+  "i": 48,
+  "pl": "Zapewne ten, podczas jego nieobecności, żywił psa, choć zapewne nie wiedział, do jakiego celu jest przeznaczony.",
+  "start": 786.97
+ },
+ {
+  "i": 49,
+  "pl": "Teraz słówko o mojej działalności w czasie, gdyś przebywał z sir Henrykiem w Baskerville Hall. Pamiętasz może, jak oglądając papier, na którym były przyklejone słowa wycięte z „Timesa”, badałem znak wodny; trzymałem wtedy papier przy oczach. Otóż zaleciała mnie subtelna woń białego jaśminu.",
+  "start": 795.17
+ },
+ {
+  "i": 50,
+  "pl": "Jest siedemdziesiąt pięć gatunków perfum, które każdy detektyw powinien rozróżniać; wiele wypadków zależy od szybkiego poznawania perfum. Jaśmin naprowadził mnie na domysł, że list został przesłany przez kobietę. Już wtedy moje podejrzenia zwróciły się ku Stapletonom.",
+  "start": 821.59
+ },
+ {
+  "i": 51,
+  "pl": "Wiedziałem więc o istnieniu psa i miejscu zamieszkania mordercy, zanim wyruszyliście do Devonshire.",
+  "start": 846.83
+ },
+ {
+  "i": 52,
+  "pl": "Postanowiłem śledzić Stapletona. Oczywiście nie mógłbym tego dokonać, przebywając z wami, albowiem łotr miałby się na baczności. Zwiodłem wszystkich, nie wyłączając ciebie, i zjawiłem się potajemnie, wówczas gdy sądziliście wszyscy, że bawię w Londynie.",
+  "start": 854.54
+ },
+ {
+  "i": 53,
+  "pl": "Ukrywałem się przeważnie w Coombe Tracey, chroniąc się w jaskini na moczarach tylko wtedy, gdy moja obecność na polu działania była niezbędna. Cartwright w przebraniu chłopca wiejskiego oddawał mi znaczne usługi.",
+  "start": 871.09
+ },
+ {
+  "i": 54,
+  "pl": "Dostarczał mi pożywienia i czystej bielizny, podczas gdym ja śledził Stapletona, on śledził ciebie, tak że wiedziałem o każdym twoim kroku.",
+  "start": 885.98
+ },
+ {
+  "i": 55,
+  "pl": "Mówiłem ci już, że twoje raporty dochodziły mnie szybko, odsyłano mi je natychmiast z Baker Street do Coombe Tracey. Przydały mi się bardzo, zwłaszcza biografia Stapletona. Pomogła mi ona wykryć jego tożsamość i stosunek do pięknej towarzyszki.",
+  "start": 898.2
+ },
+ {
+  "i": 56,
+  "pl": "Sprawa powikłała się przez ucieczkę więźnia Seldona i jego porozumienie się z Barrymore’ami. I tę zawiłość rozplątałeś, choć i ja doszedłem do tego samego wyniku, na mocy własnych spostrzeżeń.",
+  "start": 918.65
+ },
+ {
+  "i": 57,
+  "pl": "W chwili gdyś mnie znalazł na moczarach, miałem już w ręku wszystkie nici spisku, lecz nie posiadałem materiału dowodowego, z którym mógłbym stanąć przed sądem.",
+  "start": 933.6
+ },
+ {
+  "i": 58,
+  "pl": "Nawet zamach na sir Henryka, który skończył się śmiercią Seldona, nieszczęsnego więźnia, nie mógł nam pomóc do wykazania zbrodniczości Stapletona.",
+  "start": 945.62
+ },
+ {
+  "i": 59,
+  "pl": "Nie było innej rady, jak go schwytać na gorącym uczynku, a w tym celu musiałem użyć sir Henryka, z narażeniem jego nerwów.",
+  "start": 957.7
+ },
+ {
+  "i": 60,
+  "pl": "Przyznaję, że moja w tym wina: trzeba było poprowadzić sprawę inaczej i oszczędzić naszemu klientowi tej przykrości, ale nie mogłem przewidzieć, że ten łotr posmaruje psa siarką i że owej nocy będzie mgła, dzięki czemu sir Henryk nie mógł widzieć z oddali czworonożnego sprzymierzeńca Stapletona,",
+  "start": 967.66
+ },
+ {
+  "i": 61,
+  "pl": "który wyskoczył znienacka i przestraszył tego odważnego człowieka.",
+  "start": 991.22
+ },
+ {
+  "i": 62,
+  "pl": "Zresztą doktor Mortimer i wezwani specjaliści upewniają, że nasz przyjaciel powróci niebawem do równowagi i że odzyska spokój ducha, zachwiany nie tylko tym wypadkiem, lecz i sercowym zawodem.",
+  "start": 995.85
+ },
+ {
+  "i": 63,
+  "pl": "Pozostaje mi już tylko zaznaczyć rolę pani Stapleton. Mąż wywierał na nią wpływ demoniczny; nie wiadomo, czy go bardziej kochała, czy też się bała. Bądź co bądź, słuchała go niewolniczo, stawiając mu opór wtedy tylko, gdy chciał ją zmusić do wspólnictwa w zbrodni.",
+  "start": 1011.41
+ },
+ {
+  "i": 64,
+  "pl": "Pragnęła ostrzec sir Henryka, bez narażania męża; próbowała kilkakrotnie, lecz bezskutecznie.",
+  "start": 1035.89
+ },
+ {
+  "i": 65,
+  "pl": "Stapleton był zdolny do zazdrości: widząc, że baronet zaleca się do jego żony, choć to leżało w jego zamiarach, nie mógł jednak powstrzymać się od gwałtownego wybuchu.",
+  "start": 1044.63
+ },
+ {
+  "i": 66,
+  "pl": "Opamiętawszy się, udawał, że sprzyja rodzącemu się uczuciu, zapraszał sir Henryka do Merripit House w nadziei, że wcześniej czy później nadarzy się sposobność wciągnięcia go w zasadzkę.",
+  "start": 1056.57
+ },
+ {
+  "i": 67,
+  "pl": "Nagle w dniu oznaczonym na zamach żona opowiedziała się przeciwko niemu.",
+  "start": 1069.05
+ },
+ {
+  "i": 68,
+  "pl": "Do uszu jej doszła wieść o nagłej śmierci zbiegłego więźnia na moczarach, a że wiedziała, iż pies trzymany jest tam na uwięzi, domyśliła się, jaką śmierć Stapleton gotuje sir Henrykowi, tym bardziej gdy mąż przyprowadził psa i zamknął go w oficynie.",
+  "start": 1075.37
+ },
+ {
+  "i": 69,
+  "pl": "Owego wieczora, przed przybyciem sir Henryka na obiad, między małżonkami wynikła sprzeczka. Beryl nazwała męża zbrodniarzem; rozwścieczony, chcąc ją dotknąć boleśnie, oznajmił jej, że kocha inną.",
+  "start": 1091.77
+ },
+ {
+  "i": 70,
+  "pl": "To brutalne wyznanie zerwało ostatnie pęta łączące ją z nędznikiem i wznieciło w jej sercu nienawiść i pragnienie zemsty.",
+  "start": 1108.53
+ },
+ {
+  "i": 71,
+  "pl": "On spostrzegł tę zmianę, i obawiając się, aby go nie zdradziła, uwiązał ją do słupa i zamknął na klucz.",
+  "start": 1121.88
+ },
+ {
+  "i": 72,
+  "pl": "Pewien był, że po dokonanej zbrodni, gdy cała okolica przypisywać będzie śmierć sir Henryka przekleństwu ciążącemu na jego rodzie, on, Stapleton, zręcznym kłamstwem i pochlebstwem zdoła odzyskać uczucie swej żony, skłonić ją do milczenia i do przyjęcia faktów dokonanych.",
+  "start": 1131.63
+ },
+ {
+  "i": 73,
+  "pl": "Na tym polu spotkałby go zawód niewątpliwy. Kobieta, w której żyłach płynie krew hiszpańska, nie zapomina podobnej urazy.",
+  "start": 1152.83
+ },
+ {
+  "i": 74,
+  "pl": "Oto i wszystko, co wiem o tej ciekawej sprawie. Jedno tylko pozostaje do wyjaśnienia: w jaki sposób Stapleton, doszedłszy do sukcesji, wyjaśniłby, dlaczego tak długo zamieszkiwał w pobliżu Baskerville Hall pod przybranym nazwiskiem? W jaki sposób byłby się upomniał o spadek, bez zwrócenia podejrzeń?",
+  "start": 1166.12
+ },
+ {
+  "i": 75,
+  "pl": "Pani Stapleton zeznaje, iż jej mąż miał w tym względzie kilka projektów: albo upomnieć się o sukcesję z Ameryki Południowej, tam dowieść swej tożsamości i uzyskać fortunę, nie przyjeżdżając do Anglii;",
+  "start": 1190.19
+ },
+ {
+  "i": 76,
+  "pl": "albo dostarczyć jakiemuś wspólnikowi potrzebnych legitymacji i otrzymać spadek za jego pośrednictwem; albo prowadzić samemu sprawę na miejscu, lecz pod inną postacią zewnętrzna, w takim przebraniu, żeby nikt poznać go nie mógł.",
+  "start": 1209.09
+ },
+ {
+  "i": 77,
+  "pl": "Znając go, jestem pewien, że wybrnąłby z tych trudności.",
+  "start": 1224.99
+ },
+ {
+  "i": 78,
+  "pl": "A teraz, mój drogi, dość już o tej sprawie. Kosztowała nas niemało trudu. Zasłużyliśmy na rozrywkę. Dziś dają Hugonotów. Wziąłem lożę. Czyś słyszał kiedy Reszków<sup>27<\/sup>? Ubierzemy się zaraz i przed widowiskiem pojedziemy na obiad do pierwszorzędnej restauracji. Dobrze?...",
+  "start": 1229.51
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

@@ -1,0 +1,748 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to mp3/pies-baskervilleow_002_i-pan-sherlock-holmes.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-01.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pies Baskerville’ów · Rozdział I — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Pies Baskerville’ów · Rozdział I · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="mp3/pies-baskervilleow_002_i-pan-sherlock-holmes.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Pan Sherlock Holmes zwykł wstawać późno, o ile nie czuwał przez całą noc, a zdarzało mu się to nieraz. Otóż owego dnia wstał wyjątkowo wcześnie. Jadł śniadanie.",
+  "start": 14.36
+ },
+ {
+  "i": 1,
+  "pl": "Stałem przy kominku. Schyliłem się i podniosłem laskę, którą nasz gość zostawił wczorajszego wieczoru. Był to kij gruby, z dużą gałką, utoczoną z drewna; pod gałką była srebrna obrączka, a na niej napis: „Jakubowi Mortimerowi M. R. C. S. od przyjaciół C. C. H.”, pod spodem zaś data: „r. 1884”.",
+  "start": 27.44
+ },
+ {
+  "i": 2,
+  "pl": "Taką laskę staroświecką, mocną, zapewniającą bezpieczeństwo, zwykli nosić starzy lekarze.",
+  "start": 59.71
+ },
+ {
+  "i": 3,
+  "pl": "— No, i cóż, Watson? Co pan myślisz o tej lasce? Jakie wyprowadzasz wnioski? — zapytał.",
+  "start": 66.95
+ },
+ {
+  "i": 4,
+  "pl": "Holmes siedział odwrócony do mnie plecami; widzieć mnie nie mógł, a ja zachowywałem się tak cichutko, że nie mógł domyślić się, czym jestem zajęty.",
+  "start": 78.64
+ },
+ {
+  "i": 5,
+  "pl": "— Masz pan chyba oczy z tyłu głowy... — rzekłem.",
+  "start": 89.19
+ },
+ {
+  "i": 6,
+  "pl": "— Mam przed sobą srebrny imbryk — odparł — ale powiedz mi, Watson, co myślisz o lasce naszego gościa? Skoro nie zastał nas w domu i nie wytłumaczył celu swych odwiedzin, ta mimowolna pamiątka nabiera wielkiego znaczenia. Chciałbym też wiedzieć, jakie pojęcie tworzysz sobie o tym człowieku?",
+  "start": 94.21
+ },
+ {
+  "i": 7,
+  "pl": "— Sądzę — odparłem, trzymając się metody dociekań mojego towarzysza — że doktor Mortimer jest lekarzem średniego wieku, zażywającym szacunku; dowodzi tego ów upominek pacjentów.",
+  "start": 117.8
+ },
+ {
+  "i": 8,
+  "pl": "— Dobrze, wybornie! — pochwalił mnie Holmes.",
+  "start": 132.7
+ },
+ {
+  "i": 9,
+  "pl": "— Sądzę dalej, że jest lekarzem prowincjonalnym i że po większej części odwiedza chorych pieszo.",
+  "start": 138.17
+ },
+ {
+  "i": 10,
+  "pl": "— Dlaczego tak pan przypuszczasz?",
+  "start": 145.52
+ },
+ {
+  "i": 11,
+  "pl": "— Bo laska, choć pierwotnie ładna, jest tak zniszczona, że żaden lekarz miejski nie chciałby jej używać. Grube okucie żelazne starło się, co dowodzi, że laska była w częstym użyciu.",
+  "start": 147.76
+ },
+ {
+  "i": 12,
+  "pl": "— Słuszne rozumowanie — przytwierdził Holmes.",
+  "start": 162.52
+ },
+ {
+  "i": 13,
+  "pl": "— A dalej, napis od przyjaciół z C. C. H. świadczy, że lekarz niósł pomoc członkom jakiegoś klubu myśliwskiego (Hunting Club).",
+  "start": 166.82
+ },
+ {
+  "i": 14,
+  "pl": "— Istotnie, Watson, przechodzisz sam siebie — rzekł Holmes, zapalając papierosa. — Muszę przyznać, że pańskie wnioski są słuszne. Mam pojętnego ucznia. Wyświetliłeś kilka punktów zupełnie ciemnych.",
+  "start": 180.15
+ },
+ {
+  "i": 15,
+  "pl": "Nigdy jeszcze Holmes nie odzywał się do mnie w sposób tak pochlebny. Cieszyłem się z jego uznania, na które od dawna już usiłowałem zasłużyć, stosując jego metodę badań w sprawach kryminalnych.",
+  "start": 202.11
+ },
+ {
+  "i": 16,
+  "pl": "Po chwili milczenia odebrał mi laskę i przypatrywał jej się gołym okiem. Następnie odłożył papierosa, odszedł z laską do okna i począł jej się przyglądać przez szkło powiększające.",
+  "start": 216.12
+ },
+ {
+  "i": 17,
+  "pl": "— Ciekawe, bardzo ciekawe... — rzekł, wracając na swoje ulubione miejsce przy kominku.",
+  "start": 230.95
+ },
+ {
+  "i": 18,
+  "pl": "— Czy pan dopatrzył się jakiegoś nowego szczegółu, mogącego służyć za wskazówkę? — spytałem, spodziewając się, że nic ważnego nie uszło mojej baczności.",
+  "start": 241.26
+ },
+ {
+  "i": 19,
+  "pl": "— Zdaje mi się, mój drogi Watsonie, że prawie wszystkie twoje wnioski były mylne. Pod jednym tylko względem miałeś słuszność, a mianowicie, że posiadacz tej laski jest doktorem prowincjonalnym i że dużo chodzi.",
+  "start": 251.58
+ },
+ {
+  "i": 20,
+  "pl": "— A więc nie omyliłem się?",
+  "start": 267.2
+ },
+ {
+  "i": 21,
+  "pl": "— W tym punkcie — nie.",
+  "start": 270.2
+ },
+ {
+  "i": 22,
+  "pl": "— A w innych?",
+  "start": 272.96
+ },
+ {
+  "i": 23,
+  "pl": "— Inne wywody były fałszywe. I tak, na przykład, twierdzisz, że laska jest darem jakiegoś prowincjonalnego klubu myśliwskiego. Ja przypuszczam, że ofiarowali ją lekarzowi pensjonariusze szpitala Charing Cross (C. C. H.).",
+  "start": 275.77
+ },
+ {
+  "i": 24,
+  "pl": "— Przyznaję, że to jest prawdopodobniejsze. Jaki pan stąd wyprowadza wniosek?",
+  "start": 290.16
+ },
+ {
+  "i": 25,
+  "pl": "— Znana jest panu moja metoda badania. Zastosuj ją w praktyce.",
+  "start": 296.8
+ },
+ {
+  "i": 26,
+  "pl": "— Mogę to tylko wywnioskować, że przed osiedleniem się na wsi ten lekarz praktykował w mieście.",
+  "start": 302.09
+ },
+ {
+  "i": 27,
+  "pl": "— Sądzę, że możemy posunąć się jeszcze dalej na drodze przypuszczeń. Ten dar został wręczony w chwili, gdy doktor Mortimer opuszczał szpital, aby rozpocząć praktykę na własną rękę.",
+  "start": 309.89
+ },
+ {
+  "i": 28,
+  "pl": "— Prawdopodobnie.",
+  "start": 325.39
+ },
+ {
+  "i": 29,
+  "pl": "— Jakież mógł on zajmować stanowisko w tym szpitalu? Albo lekarza ordynującego, albo studenta-praktykanta. Zapewne to ostatnie, bo doktor szpitalny, z wyrobioną opinią i liczną praktyką, nie opuszcza zajmowanej pozycji, aby się przesiedlać na prowincję.",
+  "start": 327.85
+ },
+ {
+  "i": 30,
+  "pl": "Doktor Mortimer opuścił szpital przed laty pięciu, jak to wskazuje data na lasce.",
+  "start": 348.31
+ },
+ {
+  "i": 31,
+  "pl": "W owym czasie ukończył zapewne uniwersytet, a więc upada pański wniosek, iż jest człowiekiem średniego wieku. Doktor Mortimer ma lat trzydzieści niespełna, jest uprzejmy, dobry, niezbyt ambitny, roztargniony. Ma psa trochę większego od jamnika, a mniejszego od wyżła.",
+  "start": 355.85
+ },
+ {
+  "i": 32,
+  "pl": "Roześmiałem się niedowierzająco. Holmes zasiadł wygodnie w fotelu i puszczał kłęby dymu.",
+  "start": 380.0
+ },
+ {
+  "i": 33,
+  "pl": "— Nietrudno będzie przekonać się, który z nas dwóch ma rację — rzekłem, zbliżając się do szafki bibliotecznej i wyjmując z niej kalendarz z wykazem lekarzy angielskich oraz ich życiorysem. Spośród wielu Mortimerów jeden tylko mógł być tym, o którego nam chodziło. Odczytałem głośno:",
+  "start": 388.96
+ },
+ {
+  "i": 34,
+  "pl": "Mortimer Jakub, lekarz powiatowy w Grimpen, Dartmoor, hrabstwo Devonshire. Był studentem-praktykantem w szpitalu Charing-Cross od r. 1882 do 1884. Otrzymał nagrodę Jacksona za studium z zakresu patologii porównawczej, zatytułowane: Czy choroba jest zboczeniem?",
+  "start": 409.49
+ },
+ {
+  "i": 35,
+  "pl": "Jest członkiem szwedzkiego Towarzystwa Patologicznego, autorem wielu artykułów, jako to: Kilka przykładów atawizmu (drukowany w „Lancecie” w r. 1882), Czy idziemy z biegiem postępu? („Dziennik Psychologiczny” 1883).",
+  "start": 437.63
+ },
+ {
+  "i": 36,
+  "pl": "Jest lekarzem powiatowym gmin Grimpen, Thorsley i High Barrow.",
+  "start": 458.6
+ },
+ {
+  "i": 37,
+  "pl": "— Widzisz pan, że miałem słuszność — rzekł Holmes.",
+  "start": 466.96
+ },
+ {
+  "i": 38,
+  "pl": "— Obstaję dalej przy moich hipotezach, że doktor Mortimer musi być uprzejmy, bo tylko człowiek uprzejmy dostaje takie upominki od swoich pacjentów; że nie jest ambitny, bo inaczej nie opuszczałby Londynu dla prowincji, i że jest roztargniony, bo w razie przeciwnym, zamiast laski, zostawiłby swój bilet wizytowy.",
+  "start": 471.78
+ },
+ {
+  "i": 39,
+  "pl": "— Jakież są pańskie wnioski co do psa?",
+  "start": 496.29
+ },
+ {
+  "i": 40,
+  "pl": "— Jego pies zwykł nosić laskę w zębach; ponieważ laska jest ciężka, więc ją trzyma pośrodku; w tym miejscu znać ślady psich zębów. Zęby są za duże na jamnika, za małe na wyżła. To może być... tak, to jest pinczer.",
+  "start": 500.48
+ },
+ {
+  "i": 41,
+  "pl": "Holmes przeszedł przez pokój i stanął we framudze okna. W głosie jego było tyle głębokiego przekonania, że nie mogłem się wstrzymać, aby go nie zapytać.",
+  "start": 521.61
+ },
+ {
+  "i": 42,
+  "pl": "— Skąd taka pewność?",
+  "start": 532.1
+ },
+ {
+  "i": 43,
+  "pl": "— Dla bardzo prostej przyczyny, że mam tego psa przed oczyma; stoi za tymi drzwiami, a jego właściciel w tej chwili właśnie do nich dzwoni. Proszę cię, Watson, nie wychodź z pokoju. Jest pańskim kolegą<sup>2<\/sup> i pańska obecność może mi być przydatna.",
+  "start": 534.45
+ },
+ {
+  "i": 44,
+  "pl": "Nadchodzi ważna chwila. Zbliżają się kroki, które mogą stanowić o przeznaczeniu — złym czy dobrym — nie wiadomo. Ciekaw jestem, czego doktor Jakub Mortimer zażąda od Sherlocka Holmesa, specjalisty od przestępstw kryminalnych... Proszę!",
+  "start": 550.43
+ },
+ {
+  "i": 45,
+  "pl": "Do pokoju wszedł nasz gość. Jego powierzchowność zdziwiła mnie bardzo. Nie wyglądał na prowincjonalnego lekarza. Był wysoki, szczupły, miał nos wąski, wysuwający się ostro spomiędzy oczu przenikliwych, zasłoniętych ciemnymi okularami, w złotej oprawie.",
+  "start": 575.1
+ },
+ {
+  "i": 46,
+  "pl": "Ubrany był w długi, poplamiony surdut, spodnie miał wystrzępione. Choć jeszcze młody wiekiem, był już przygarbiony; na jego twarzy malowała się dobra wola względem ludzi. Wchodząc, zobaczył od razu laskę w ręku Holmesa i podbiegł ku niej z okrzykiem radości.",
+  "start": 597.18
+ },
+ {
+  "i": 47,
+  "pl": "— Tak się cieszę! — zawołał. — Nie byłem pewny, czym ją zostawił tutaj, czy w biurze portowym. Gdybym ją zgubił, sprawiłoby mi to wielką przykrość.",
+  "start": 618.65
+ },
+ {
+  "i": 48,
+  "pl": "— Wszak to prezent? — rzekł Holmes.",
+  "start": 632.69
+ },
+ {
+  "i": 49,
+  "pl": "— Tak, panie.",
+  "start": 637.15
+ },
+ {
+  "i": 50,
+  "pl": "— Od pensjonariuszy szpitala Charing Cross...",
+  "start": 639.04
+ },
+ {
+  "i": 51,
+  "pl": "— Tak, od paru pacjentów. Dali mi ją na pamiątkę mojego ślubu.",
+  "start": 642.74
+ },
+ {
+  "i": 52,
+  "pl": "— Szkoda — rzekł Holmes, ściskając mu rękę.",
+  "start": 649.22
+ },
+ {
+  "i": 53,
+  "pl": "— Czego pan żałuje? — spytał doktor Mortimer ze zdziwieniem.",
+  "start": 654.38
+ },
+ {
+  "i": 54,
+  "pl": "— Szkoda, że pan rozproszył moje wnioski — brzmiała odpowiedź. — A więc powiadasz pan, że to podarek ślubny?",
+  "start": 661.01
+ },
+ {
+  "i": 55,
+  "pl": "— Tak, panie. Ożeniłem się i dlatego musiałem szpital opuścić; trzeba było założyć dom, postarać się o praktykę samodzielną.",
+  "start": 670.08
+ },
+ {
+  "i": 56,
+  "pl": "— No, i teraz zyskujesz pan sobie sławę na polu nauki — rzekłem.",
+  "start": 679.08
+ },
+ {
+  "i": 57,
+  "pl": "— Wszak mam przyjemność mówić z panem Sherlockiem Holmesem?",
+  "start": 686.36
+ },
+ {
+  "i": 58,
+  "pl": "— Nie, to mój przyjaciel, doktor Watson.",
+  "start": 689.84
+ },
+ {
+  "i": 59,
+  "pl": "— Miło mi pana poznać. Słyszałem o panu nie raz. Pozwoli mi pan, panie Holmes, zbadać swoją czaszkę. Od pierwszego rzutu oka spostrzegłem, że jest niezwykła: zdradza zdolności, rzekłbym nawet: geniusz dedukcyjny. Taka czaszka byłaby ozdobą każdego muzeum. Przyznaję, że jej panu zazdroszczę.",
+  "start": 695.21
+ },
+ {
+  "i": 60,
+  "pl": "— Jesteś pan entuzjastą w swoim zawodzie, tak jak ja w swoim — odparł detektyw — ale sądzę, że nie przybywasz pan tu po raz wtóry jedynie w zamiarze zbadania mojej czaszki...",
+  "start": 725.18
+ },
+ {
+  "i": 61,
+  "pl": "— Nie, panie, choć rad jestem, że zdarza mi się sposobność ku temu. Przybyłem do pana, panie Holmes, bo uznaję własną niepraktyczność, a jestem postawiony wobec bardzo trudnego zagadnienia. Ponieważ pan jesteś drugim w Europie ekspertem w sprawach kryminalnych...",
+  "start": 741.9
+ },
+ {
+  "i": 62,
+  "pl": "— Doprawdy? Czy wolno mi zapytać, kto jest pierwszy?",
+  "start": 763.0
+ },
+ {
+  "i": 63,
+  "pl": "— W oczach człowieka przekładającego teorię nad praktykę pan Bertillion zajmuje niewątpliwie pierwsze miejsce.",
+  "start": 769.16
+ },
+ {
+  "i": 64,
+  "pl": "— Więc czemuż pan nie zwrócisz się do niego?",
+  "start": 778.49
+ },
+ {
+  "i": 65,
+  "pl": "— Powiadam, że jest on pierwszorzędny powagą, jako teoretyk. Ale pan, jako praktyk, zajmujesz pierwsze w Europie — to niewątpliwe. Spodziewam się, żem pana nie obraził...",
+  "start": 781.85
+ },
+ {
+  "i": 66,
+  "pl": "— Trochę — odparł Holmes na wpół żartem — ale jako człowiek praktyczny, chciałbym nareszcie dowiedzieć się, co pana tutaj sprowadza.",
+  "start": 799.47
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>
