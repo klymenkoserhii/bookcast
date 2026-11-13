@@ -1,0 +1,3341 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-08.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-08.md audio/chapter-08.webm
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-08.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-08.md
+     It reads chapter-08.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path audio/chapter-08.webm, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Lalka · Tom I, Rozdział VIII</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative;
+    cursor: help;
+    color: var(--accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    top: 12px;
+    width: min(360px, calc(100vw - 36px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans);
+    text-align: left;
+    white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* Ukrainian reveal block */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Lalka · Tom I, Rozdział VIII</h1>
+      <p class="chapter-name">Medytacje</p>
+      <p>Bolesław Prus · bilingual study edition: PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>audio/chapter-08.webm</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (PL → UA, in reading order)  */
+/*    Generated from chapter-08.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "pl": "Znalazłszy się na ulicy Wokulski stanął na chodniku, jakby namyślając się, dokąd iść. Nie ciągnęło go nic w żadną stronę. Dopiero gdy przypadkiem spojrzał w prawo, na swój nowo wykończony sklep, przed którym już zatrzymywali się ludzie, odwrócił się ze wstrętem i poszedł w lewo.",
+  "ua": "Опинившись на вулиці, Вокульський зупинився на тротуарі, ніби міркуючи, куди йти. Його ні до чого не тягнуло. Аж поки випадково не глянув праворуч, на свою щойно завершену крамницю, перед якою вже зупинялися люди, він відвернувся з огидою й пішов ліворуч.",
+  "para": 0,
+  "start": 6.37
+ },
+ {
+  "pl": "„Dziwna rzecz, jak mnie to wszystko mało obchodzi” — rzekł do siebie. Potem myślał o tych kilkunastu ludziach, którym już daje zajęcie, i o tych kilkudziesięciu, którzy od pierwszego maja mieli dostać u niego zajęcie, o tych setkach, dla których w ciągu roku miał stworzyć nowe źródła pracy,",
+  "ua": "«Дивна річ, як мене це все мало цікавить» — сказав він собі. Потім думав про тих кільканадцятьох людей, яким уже дає роботу, і про тих кількадесят, що мали отримати в нього роботу з першого травня, про тих сотні, для яких мав створити протягом року нові джерела заробітку,",
+  "para": 1,
+  "start": 26.67
+ },
+ {
+  "pl": "i o tych tysiącach, którzy dzięki jego tanim towarom mogliby sobie poprawić nędzny byt — i — czuł, że ci wszyscy ludzie i ich rodziny nic go w tej chwili nie interesują.",
+  "ua": "і про тих тисячі, які завдяки його дешевим товарам могли б поліпшити своє злиденне життя, — і — відчував, що всі ці люди та їхні родини його в цю мить анітрохи не цікавлять.",
+  "para": 1,
+  "start": 45.19
+ },
+ {
+  "pl": "„Sklep odstąpię, nie zawiążę spółki i wyjadę za granicę” — myślał.",
+  "ua": "«Крамницю відступлю, товариства не укладу і поїду за кордон» — думав він.",
+  "para": 2,
+  "start": 59.8
+ },
+ {
+  "pl": "„A zawód, jaki zrobisz ludziom, którzy w tobie położyli nadzieję?”",
+  "ua": "«А розчарування, яке завдаш людям, що поклали на тебе надію?»",
+  "para": 3,
+  "start": 65.59
+ },
+ {
+  "pl": "„Zawód?... Alboż mnie samego nie spotkał zawód?...”",
+  "ua": "«Розчарування?... Хіба ж мене самого не спіткало розчарування?...»",
+  "para": 4,
+  "start": 69.99
+ },
+ {
+  "pl": "Wokulski idąc poczuł jakąś niewygodę; lecz dopiero zastanowiwszy się osądził, że męczy go ciągłe ustępowanie z drogi; przeszedł więc na drugą stronę ulicy, gdzie ruch był mniejszy.",
+  "ua": "Вокульський, ідучи, відчув якесь незручне відчуття; але аж пороздумувавши, дійшов висновку, що його мучить постійне поступання дороги; перейшов отже на інший бік вулиці, де руху було менше.",
+  "para": 5,
+  "start": 74.72
+ },
+ {
+  "pl": "„A jednak ten Mraczewski jest infamis<sup>186<\/sup>! — myślał. — Jak można mówić takie rzeczy w sklepie? »Za parę dni otrzymam bilecik, a potem — schadzka!... Ha, sama sobie winna, nie trzeba kokietować błaznów... Zresztą — wszystko mi jedno.”",
+  "ua": "«І все-таки цей Мрачевський — негідник<sup>186<\/sup>!» — думав він. — «Як можна говорити такі речі в крамниці? „За кілька днів отримаю записочку, а потім — побачення!... Га, сама винна, не треба кокетувати з блазнями... До того ж — мені все одно».",
+  "para": 6,
+  "start": 87.54
+ },
+ {
+  "pl": "Czuł w duszy dziwną pustkę, a na samym jej dnie coś, jakby kroplę piekącej goryczy. Żadnych sił, żadnych pragnień, nic, tylko tę kroplę tak małą, że jej niepodobna dojrzeć, a tak gorzką, że cały świat można by nią zatruć.",
+  "ua": "Відчував у душі дивну порожнечу, а на самому її дні — щось, немов краплю пекучої гіркоти. Жодних сил, жодних бажань, нічого — лише цю краплю таку маленьку, що її неможливо розгледіти, і таку гірку, що нею можна б отруїти цілий світ.",
+  "para": 7,
+  "start": 103.62
+ },
+ {
+  "pl": "„Chwilowa apatia, wyczerpanie, brak wrażeń... Za dużo myślę o interesach” — mówił.",
+  "ua": "«Тимчасова апатія, виснаженість, брак вражень... Забагато думаю про справи» — говорив він.",
+  "para": 8,
+  "start": 123.81
+ },
+ {
+  "pl": "Stanął i patrzył. Dzień przedświąteczny i ładna pogoda wywabiły mnóstwo ludzi na bruk miejski. Sznur powozów i pstrokaty falujący tłum między Kopernikiem i Zygmuntem<sup>187<\/sup> wyglądał jak stado ptaków, które właśnie w tej chwili unosiły się nad miastem dążąc ku północy.",
+  "ua": "Зупинився і дивився. Передсвятковий день і гарна погода виманили безліч людей на міську бруківку. Лавина екіпажів і строкатий, хвилястий натовп між Коперником і Зигмунтом<sup>187<\/sup> виглядали, як зграя птахів, що саме в цю мить здіймалися над містом, рушаючи на північ.",
+  "para": 9,
+  "start": 129.86
+ },
+ {
+  "pl": "„Szczególna rzecz — mówił. — Każdy ptak w górze i każdy człowiek na ziemi wyobraża sobie, że idzie tam, dokąd chce. I dopiero ktoś stojący na boku widzi, że wszystkich razem pcha naprzód jakiś fatalny prąd, mocniejszy od ich przewidywań i pragnień.",
+  "ua": "«Дивна річ, — казав він. — Кожен птах у височині й кожна людина на землі уявляє, що йде туди, куди хоче. І аж хтось збоку бачить, що всіх разом штовхає вперед якийсь фатальний потік, сильніший за їхні передбачення й бажання.",
+  "para": 10,
+  "start": 150.16
+ },
+ {
+  "pl": "Może nawet ten sam, który unosi smugę iskier wydmuchniętych przez lokomotywę podczas nocy?... Błyszczą przez mgnienie oka, aby zgasnąć na całą wieczność, i to nazywa się życiem.",
+  "ua": "Може, той самий, що підіймає смугу іскор, викинутих локомотивою вночі?... Вони сяють мить ока, аби згаснути на вічність, — і це називається життям.",
+  "para": 10,
+  "start": 167.08
+ },
+ {
+  "pl": "Gdzie ja to czytałem?... Wszystko jedno.”",
+  "ua": "Де ж я це читав?... Все одно.",
+  "para": 11,
+  "start": 193.84
+ },
+ {
+  "pl": "Nieustanny turkot i szmer wydał się Wokulskiemu nieznośnym, a wewnętrzna pustka straszliwą. Chciał czymś się zająć i przypomniał sobie, że jeden z zagranicznych kapitalistów pytał go o zdanie w kwestii bulwarów nad Wisłą<sup>189<\/sup>.",
+  "ua": "Невпинний гуркіт і шелест здалися Вокульському нестерпними, а внутрішня порожнеча — жахливою. Захотів чимось зайнятися й пригадав, що один іноземний капіталіст питав його про думку щодо набережних над Віслою<sup>189<\/sup>.",
+  "para": 12,
+  "start": 198.5
+ },
+ {
+  "pl": "Zdanie już miał wyrobione: Warszawa całym swoim ogromem ciąży i zsuwa się ku Wiśle. Gdyby brzeg rzeki obwarować bulwarami, powstałaby tam najpiękniejsza część miasta: gmachy, sklepy, aleje...",
+  "ua": "Думку вже мав готову: Варшава всією своєю масою нахиляється й сповзає до Вісли. Якби берег ріки укріпити набережними, постала б там найкрасивіша частина міста: будівлі, крамниці, алеї...",
+  "para": 12,
+  "start": 213.07
+ },
+ {
+  "pl": "„Trzeba spojrzeć, jak by to wyglądało?” — szepnął Wokulski i skręcił na ulicę Karową<sup>190<\/sup>.",
+  "ua": "«Треба подивитися, як би це виглядало?» — прошепотів Вокульський і повернув на вулицю Карову<sup>190<\/sup>.",
+  "para": 13,
+  "start": 229.18
+ },
+ {
+  "pl": "Przy bramie<sup>191<\/sup> wiodącej tam zobaczył bosego, przewiązanego sznurami tragarza, który pił wodę prosto z wodotrysku; zachlapał się od stóp do głów, ale miał bardzo zadowoloną minę i śmiejące się oczy.",
+  "ua": "Біля брами<sup>191<\/sup>, що вела туди, він побачив босого вантажника, перев'язаного мотузками, який пив воду просто з фонтана; облився з голови до ніг, але мав дуже задоволене обличчя й усміхнені очі.",
+  "para": 14,
+  "start": 236.79
+ },
+ {
+  "pl": "„Jużci, ten ma, czego pragnął. Ja, ledwiem zbliżył się do źródła, widzę, że nie tylko ono znikło, ale nawet wysychają moje pragnienia. Pomimo to mnie zazdroszczą, a nad nim każą się litować. Co za potworne nieporozumienie!”",
+  "ua": "«Певно ж, має те, чого бажав. Я, ледве наблизився до джерела, бачу, що не лише воно зникло, але й мої бажання всихають. І попри це мені заздрять, а над ним велівають жаліти. Яке потворне непорозуміння!»",
+  "para": 15,
+  "start": 249.79
+ },
+ {
+  "pl": "Na Karowej odetchnął. Zdawało mu się, że jest jedną z plew, które już odrzucił młyn wielkomiejskiego życia, i że powoli spływa sobie gdzieś na dół tym rynsztokiem zaciśniętym odwiecznymi murami.",
+  "ua": "На Каровій він зітхнув з полегшенням. Здавалося йому, що він одна з висівок, які вже відкинуло жерново великого міста, і що повільно спливає десь донизу цим стоком, затисненим вічними мурами.",
+  "para": 16,
+  "start": 267.3
+ },
+ {
+  "pl": "„Cóż bulwary?... — myślał. — Postoją jakiś czas, a potem będą walić się, zarośnięte zielskiem i odrapane, jak te oto ściany. Ludzie, którzy je budowali z wielką pracą, mieli także na celu zdrowie, bezpieczeństwo, majątek, a może zabawy i pieszczoty. I gdzie oni są?...",
+  "ua": "«А набережні?... — думав він. — Постоять якийсь час, а потім заваляться, порослі бур'яном і обдерті, як оці стіни. Люди, які з великими трудами їх будували, мали на увазі також здоров'я, безпеку, добробут, а може, й розваги та ласки. І де вони тепер?...",
+  "para": 17,
+  "start": 281.24
+ },
+ {
+  "pl": "Zostały po nich spękane mury, jak skorupa po ślimaku dawnej epoki. A cały pożytek z tego stosu cegieł i tysiąca innych stosów będzie, że przyszły geolog nazwie je skałą ludzkiego wyrobu, jak my dziś koralowe rafy albo kredę nazywamy skałami wyrobu pierwotniaków.",
+  "ua": "Залишилися після них потріскані мури, немов панцир по равлику давньої доби. А весь із цієї купи цегли та тисячі інших куп буде тільки те, що майбутній геолог назве їх породою людського виробу, як ми сьогодні коралові рифи чи крейду називаємо породами виробу первісників.",
+  "para": 17,
+  "start": 301.0
+ },
+ {
+  "pl": "Gdziem ja to czytał, gdzie?... Mniejsza o to.”",
+  "ua": "Де ж я це читав, де?... Гаразд, неважливо.",
+  "para": 18,
+  "start": 334.24
+ },
+ {
+  "pl": "Zatrzymał się w połowie drogi i patrzył na ciągnącą się u jego stóp dzielnicę między Nowym Zjazdem<sup>192<\/sup> i Tamką. Uderzyło go podobieństwo do drabiny, której jeden bok stanowi ulica Dobra, drugi — linia od Garbarskiej do Topieli, a kilkanaście uliczek poprzecznych formują jakby szczeble.",
+  "ua": "Зупинився посередині шляху й дивився на квартал, що тягся його підніжжям між Новим З'їздом<sup>192<\/sup> і Тамкою. Вразила його схожість на драбину, чиї один бік утворює вулиця Добра, інший — лінія від Ґарбарської до Топелі, а кільканадцять поперечних провулків ніби складаються в її щаблі.",
+  "para": 19,
+  "start": 340.53
+ },
+ {
+  "pl": "„Nigdzie nie wejdziemy po tej leżącej drabinie — myślał. — To chory kąt, dziki kąt.”",
+  "ua": "«Нікуди не ввійдемо цією лежачою драбиною» — думав він. — «Це хворий кут, дикий кут».",
+  "para": 20,
+  "start": 360.76
+ },
+ {
+  "pl": "I rozważał pełen goryczy, że ten płat ziemi nadrzecznej, zasypany śmieciem z całego miasta, nie urodzi nic nad parterowe i jednopiętrowe domki barwy czekoladowej i jasnożółtej, ciemnozielonej i pomarańczowej.",
+  "ua": "І міркував, сповнений гіркоти, що ця клаптина землі над рікою, засипана сміттям з усього міста, не породить нічого понад одноповерхові та двоповерхові будиночки кольору шоколадного й світло-жовтого, темно-зеленого та помаранчевого.",
+  "para": 21,
+  "start": 368.18
+ },
+ {
+  "pl": "Nic, oprócz białych i czarnych parkanów, otaczających puste place, skąd gdzieniegdzie wyskakuje kilkupiętrowa kamienica jak sosna, która ocalała z wyciętego lasu, przestraszona własną samotnością.",
+  "ua": "Нічого, окрім білих і чорних парканів, що огортають порожні майдани, звідки тут і там вистрибує багатоповерхова кам'яниця, немов сосна, що вціліла в вирубаному лісі, налякана власною самотністю.",
+  "para": 21,
+  "start": 383.88
+ },
+ {
+  "pl": "„Nic, nic!...” — powtarzał tułając się po uliczkach, gdzie widać było rudery zapadnięte niżej bruku, z dachami porosłymi mchem, lokale z okiennicami dniem i nocą zamkniętymi na sztaby, drzwi zabite gwoździami, naprzód i w tył powychylane ściany, okna łatane papierem albo zatkane łachmanem.",
+  "ua": "«Нічого, нічого!...» — повторював, блукаючи провулками, де було видно руїни, що осіли нижче бруківки, з дахами, вкритими мохом, приміщення з віконницями, днями й ночами зачиненими на засови, двері, прибиті цвяхами, стіни, нахилені вперед і назад, вікони, латані папером або забиті лахміттям.",
+  "para": 22,
+  "start": 398.53
+ },
+ {
+  "pl": "Szedł, przez brudne szyby zaglądał do mieszkań i nasycał się widokiem szaf bez drzwi, krzeseł na trzech nogach, kanap z wydartym siedzeniem, zegarów o jednej skazówce z porozbijanymi cyferblatami.",
+  "ua": "Йшов, крізь брудні шиби заглядав у помешкання й насичувався видом шаф без дверей, стільців на трьох ніжках, канап із вирваним сидінням, годинників з однією стрілкою та розбитими циферблатами.",
+  "para": 22,
+  "start": 420.32
+ },
+ {
+  "pl": "Szedł i cicho śmiał się na widok wyrobników wiecznie czekających na robotę, rzemieślników, którzy trudnią się tylko łataniem starej odzieży, przekupek, których całym majątkiem jest kosz zeschłych ciastek — na widok obdartych mężczyzn, mizernych dzieci i kobiet niezwykle brudnych.",
+  "ua": "Йшов і тихо сміявся, бачучи заробітчан, що вічно чекають на роботу, ремісників, які промишляють лише латанням старого одягу, бабів, чиїм усім майном є кошик засохлих пиріжків, — бачучи обідраних чоловіків, жалюгідних дітей і надзвичайно брудних жінок.",
+  "para": 23,
+  "start": 435.44
+ },
+ {
+  "pl": "„Oto miniatura kraju — myślał — w którym wszystko dąży do spodlenia i wytępienia rasy. Jedni giną z niedostatku, drudzy z rozpusty.",
+  "ua": "«Ось мініатюра країни, — думав він, — де все прагне до здичавіння й винищення породи. Одні гинуть від нестатків, інші — від розпусти.",
+  "para": 24,
+  "start": 455.15
+ },
+ {
+  "pl": "Praca odejmuje sobie od ust, ażeby karmić niedołęgów; miłosierdzie hoduje bezczelnych próżniaków, a ubóstwo nie mogące zdobyć się na sprzęty otacza się wiecznie głodnymi dziećmi, których największą zaletą jest wczesna śmierć.",
+  "ua": "Праця змушує себе економити, аби годувати нездар; милосердя плекає нахабних ледарів, а бідність, що не спроможна роздобути обстановку, оточує себе вічно голодними дітьми, чиєю найбільшою чеснотою є рання смерть.",
+  "para": 24,
+  "start": 466.93
+ },
+ {
+  "pl": "Tu nie poradzi jednostka z inicjatywą, bo wszystko sprzysięgło się, ażeby ją spętać i zużyć w pustej walce — o nic.”",
+  "ua": "Тут не допоможе одиниця з ініціативою, бо все змовилося, аби її сковати й витратити в порожній боротьбі — за нічого».",
+  "para": 25,
+  "start": 482.54
+ },
+ {
+  "pl": "Potem w wielkich konturach przyszła mu na myśl jego własna historia. Kiedy dzieckiem będąc łaknął wiedzy — oddano go do sklepu z restauracją. Kiedy zabijał się nocną pracą będąc subiektem — wszyscy szydzili z niego, zacząwszy od kuchcików, skończywszy na upijającej się w sklepie inteligencji.",
+  "ua": "Потім у великих обрисах постала перед ним його власна історія. Коли, будучи дитиною, прагнув знань — його віддали до крамниці з рестораном. Коли, будучи прикажчиком, убивався нічною працею — всі насміхалися з нього, починаючи від кухарчуків, а кінчаючи п'яною в крамниці інтелігенцією.",
+  "para": 26,
+  "start": 493.2
+ },
+ {
+  "pl": "Kiedy nareszcie dostał się do uniwersytetu — prześladowano go porcjami, które niedawno podawał gościom.",
+  "ua": "Коли нарешті потрапив до університету — переслідували його порціями, які недавно подавав гостям.",
+  "para": 26,
+  "start": 513.46
+ },
+ {
+  "pl": "Odetchnął dopiero na Syberii. Tam mógł pracować, tam zdobył uznanie i przyjaźń Czerskich<sup>193<\/sup>, Czekanowskich<sup>194<\/sup>, Dybowskich<sup>195<\/sup>. Wrócił do kraju prawie uczonym, lecz gdy w tym kierunku szukał zajęcia, zakrzyczano go i odesłano do handlu...",
+  "ua": "Зітхнув аж на Сибіру. Там міг працювати, там здобув визнання й дружбу Черських<sup>193<\/sup>, Чекановських<sup>194<\/sup>, Дибовських<sup>195<\/sup>. Повернувся на батьківщину майже вченим, але коли шукав роботи в цьому напрямку, його перекричали й відіслали до торгівлі...",
+  "para": 27,
+  "start": 521.11
+ },
+ {
+  "pl": "„To taki piękny kawałek chleba w tak ciężkich czasach!”",
+  "ua": "«Ох і гарний шматок хліба в такі важкі часи!»",
+  "para": 28,
+  "start": 537.71
+ },
+ {
+  "pl": "No i wrócił do handlu, a wtedy zawołano, że się sprzedał i żyje na łasce żony, z pracy Minclów.",
+  "ua": "Отже повернувся до торгівлі, і тоді закричали, що він продався й живе на милості дружини, за рахунок праці Мінцлів.",
+  "para": 29,
+  "start": 541.93
+ },
+ {
+  "pl": "Traf zdarzył, iż po kilku latach żona umarła zostawiając mu dość spory majątek. Pochowawszy ją, Wokulski odsunął się nieco od sklepu, a znowu zbliżył się do książek. I może z galanteryjnego kupca zostałby na dobre uczonym przyrodnikiem, gdyby znalazłszy się raz w teatrze nie zobaczył panny Izabeli.",
+  "ua": "Доля так склалася, що за кілька років дружина померла, залишивши йому досить чималий маєток. Поховавши її, Вокульський віддалився від крамниці й знову наблизився до книжок. І, може, з галантерейного купця став би остаточно вченим-природником, якби, опинившись одного разу в театрі, не побачив панни Ізабели.",
+  "para": 30,
+  "start": 549.13
+ },
+ {
+  "pl": "Siedziała w loży z ojcem i panną Florentyną, ubrana w białą suknię. Nie patrzyła na scenę, która w tej chwili skupiała uwagę wszystkich, ale gdzieś przed siebie, nie wiadomo gdzie i na co. Może myślała o Apollinie?...",
+  "ua": "Сиділа в ложі з батьком і панною Флорентиною, вбрана в білу сукню. Не дивилася на сцену, яка в цю мить зосереджувала увагу всіх, а дивилась десь уперед, невідомо куди й на що. Може, думала про Аполлона?...",
+  "para": 31,
+  "start": 571.83
+ },
+ {
+  "pl": "Wokulski przypatrywał się jej cały czas.",
+  "ua": "Вокульський розглядав її весь час.",
+  "para": 32,
+  "start": 588.41
+ },
+ {
+  "pl": "Zrobiła na nim szczególne wrażenie. Zdawało mu się, że już kiedyś ją widział i że ją dobrze zna.",
+  "ua": "Справила на нього особливе враження. Здалося йому, що він уже колись її бачив і добре знає.",
+  "para": 33,
+  "start": 591.49
+ },
+ {
+  "pl": "Wpatrzył się lepiej w jej rozmarzone oczy i nie wiadomo skąd przypomniał sobie niezmierny spokój syberyjskich pustyń, gdzie bywa niekiedy tak cicho, że prawie słychać szelest duchów wracających ku zachodowi<sup>196<\/sup>.",
+  "ua": "Приглянувся уважніше до її мрійливих очей і, невідомо звідки, пригадав незмірний спокій сибірських пустель, де інколи буває так тихо, що чути майже шелест духів, які повертаються на захід<sup>196<\/sup>.",
+  "para": 33,
+  "start": 599.44
+ },
+ {
+  "pl": "Dopiero później przyszło mu na myśl, że on nigdzie i nigdy jej nie widział, ale — że jest tak coś — jakby na nią od dawna czekał.",
+  "ua": "Аж пізніше спадло йому на думку, що він ніде й ніколи її не бачив, але — що є щось таке — ніби він давно на неї чекав.",
+  "para": 33,
+  "start": 613.99
+ },
+ {
+  "pl": "„Tyżeś to czy nie ty?...” — pytał się w duchu, nie mogąc od niej oczu oderwać.",
+  "ua": "«Це ти чи не ти?...» — спитував у думці, не можучи відірвати від неї очей.",
+  "para": 34,
+  "start": 624.43
+ },
+ {
+  "pl": "Odtąd mało pamiętał o sklepie i o swoich książkach, lecz ciągle szukał okazji do widywania panny Izabeli w teatrze, na koncertach lub na odczytach. Uczuć swoich nie nazwałby miłością i w ogóle nie był pewny, czy dla oznaczenia ich istnieje w ludzkim języku odpowiedni wyraz.",
+  "ua": "Відтоді мало пам'ятав про крамницю й свої книжки, але постійно шукав нагоди бачити панну Ізабелу в театрі, на концертах чи лекціях. Своїх почуттів не назвав би любов'ю й узагалі не був певен, чи для їх позначення існує в людській мові відповідне слово.",
+  "para": 35,
+  "start": 632.26
+ },
+ {
+  "pl": "Czuł tylko, że stała się ona jakimś mistycznym punktem, w którym zbiegają się wszystkie jego wspomnienia, pragnienia i nadzieje, ogniskiem, bez którego życie nie miałoby stylu, a nawet sensu.",
+  "ua": "Відчував лише, що вона стала якимось містичним пунктом, у якому сходяться всі його спогади, бажання й надії, вогнищем, без якого життя не мало б стилю, а й сенсу.",
+  "para": 35,
+  "start": 651.55
+ },
+ {
+  "pl": "Służba w sklepie kolonialnym, uniwersytet, Syberia, ożenienie się z wdową po Minclu, a w końcu mimowolne pójście do teatru, gdy wcale nie miał chęci — wszystko to były ścieżki i etapy, którymi los prowadził go do zobaczenia panny Izabeli.",
+  "ua": "Служба в колоніальній крамниці, університет, Сибір, одруження з вдовою Мінцля, а наприкінці — мимовільний похід до театру, коли зовсім не мав охоти, — усе це були стежки й етапи, якими доля вела його до побачення панни Ізабели.",
+  "para": 35,
+  "start": 665.89
+ },
+ {
+  "pl": "Od tej pory czas miał dla niego dwie fazy. Kiedy patrzył na pannę Izabelę, czuł się absolutnie spokojnym i jakby większym; nie widząc — myślał o niej i tęsknił.",
+  "ua": "Відтоді час мав для нього дві фази. Коли дивився на панну Ізабелу, почувався абсолютно спокійним і ніби більшим; не бачачи її — думав про неї й тужив.",
+  "para": 36,
+  "start": 683.98
+ },
+ {
+  "pl": "Niekiedy zdawało mu się, że w jego uczuciach tkwi jakaś omyłka i że panna Izabela nie jest żadnym środkiem jego duszy, ale zwykłą, a może nawet bardzo pospolitą panną na wydaniu. A wówczas przychodził mu do głowy dziwaczny projekt:",
+  "ua": "Інколи здавалося йому, що в його почуттях криється якась помилка і що панна Ізабела не є жодним центром його душі, а звичайною, а може, й дуже пересічною дівчиною на виданні. І тоді спадала йому на думку дивний замір:",
+  "para": 36,
+  "start": 698.11
+ },
+ {
+  "pl": "„Zapoznam się z nią i wprost zapytam: czy ty jesteś tym, na co przez całe życie czekałem?... Jeżeli nie jesteś, odejdę bez pretensji i żalu...”",
+  "ua": "«Познакомлюся з нею й прямо спитаю: чи ти є тим, на кого все життя чекав?... Якщо ні — піду без докорів і жалю...»",
+  "para": 37,
+  "start": 715.38
+ },
+ {
+  "pl": "W chwilę później spostrzegał, że projekt ten zdradza umysłowe zboczenie. Kwestię więc: czym jest, a czym nie jest, odłożył na bok, a postanowił, bądź co bądź, zapoznać się z panną Izabelą.",
+  "ua": "Хвилю потому помічав, що цей замір видає душевну хворобу. Спитання ж: ким вона є, а ким ні, відкладів убік, а вирішив, що буде що буде, познайомитися з панною Ізабелою.",
+  "para": 38,
+  "start": 724.2
+ },
+ {
+  "pl": "Wtedy przekonał się, że między jego znajomymi nie ma człowieka, który mógłby go wprowadzić do domu Łęckich. Co gorsze: pan Łęcki i panna byli klientami jego sklepu, lecz taki stosunek, zamiast ułatwić, utrudniał raczej znajomość.",
+  "ua": "Тоді пересвідчився, що серед його знайомих немає людини, яка могла б увести його до дому Ленцьких. Що гірше: пан Ленцький і панна були клієнтами його крамниці, але таке знайомство замість полегшити, радше ускладнювало стосунки.",
+  "para": 39,
+  "start": 737.8
+ },
+ {
+  "pl": "Stopniowo sformułował sobie warunki zapoznania się z panną Izabelą. Ażeby mógł nic więcej tylko szczerze rozmówić się z nią, należało:",
+  "ua": "Поступово сформулював умови знайомства з панною Ізабелою. Аби міг щонайбільше щиро поговорити з нею, треба було:",
+  "para": 40,
+  "start": 753.7
+ },
+ {
+  "pl": "Nie być kupcem albo być bardzo bogatym kupcem.",
+  "ua": "Не бути купцем або бути дуже багатим купцем.",
+  "para": 41,
+  "start": 763.84
+ },
+ {
+  "pl": "Być co najmniej szlachcicem i posiadać stosunki w sferach arystokratycznych.",
+  "ua": "Бути щонайменше шляхтичем і мати зв'язки в аристократичних колах.",
+  "para": 42,
+  "start": 768.5
+ },
+ {
+  "pl": "Nade wszystko zaś mieć dużo pieniędzy.",
+  "ua": "А понад усе — мати багато грошей.",
+  "para": 43,
+  "start": 773.84
+ },
+ {
+  "pl": "Wylegitymowanie się ze szlachectwa nie było rzeczą trudną.",
+  "ua": "Легітимуватися шляхетством було не важко.",
+  "para": 44,
+  "start": 778.57
+ },
+ {
+  "pl": "W maju roku zeszłego Wokulski wziął się do tej sprawy, którą jego wyjazd do Bułgarii o tyle przyspieszył, że już w grudniu miał dyplom<sup>197<\/sup>, z majątkiem było znacznie trudniej; w tym przecie dopomógł mu los.",
+  "ua": "У травні минулого року Вокульський узявся за цю справу, яку його виїзд до Болгарії настільки прискорив, що вже в грудні він мав диплом<sup>197<\/sup>; з маєтком було значно важче; у цьому йому вдарила доля на руку.",
+  "para": 45,
+  "start": 781.73
+ },
+ {
+  "pl": "W początkach wojny wschodniej<sup>198<\/sup> przejeżdżał przez Warszawę bogaty moskiewski kupiec, Suzin, przyjaciel Wokulskiego jeszcze z Syberii. Odwiedził Wokulskiego i gwałtem zachęcał go do przyjęcia udziału w dostawach dla wojska.",
+  "ua": "На початку Східної війни<sup>198<\/sup> проїздив через Варшаву багатий московський купець Сузін, друг Вокульського ще з Сибіру. Навідав Вокульського й палко заохочував його взяти участь у постачанні для війська.",
+  "para": 46,
+  "start": 794.93
+ },
+ {
+  "pl": "— Zbierz pieniędzy, Stanisławie Piotrowiczu, ile się da — mówił — a uczciwe słowo, zrobisz okrągły milionik!...",
+  "ua": "— Збери грошей, Станіславе Петровичу, скільки зможеш, — казав, — і чесне слово, зробиш цілісінький мільйончик!...",
+  "para": 47,
+  "start": 810.97
+ },
+ {
+  "pl": "Następnie półgłosem wyłożył mu swoje plany.",
+  "ua": "Потім пошепки виклав йому свої плани.",
+  "para": 48,
+  "start": 820.16
+ },
+ {
+  "pl": "Wokulski wysłuchał jego projektów. Do wykonania jednych nie chciał należeć, inne przyjął, lecz wahał się. Żal mu było opuścić miasto, w którym przynajmniej widywał pannę Izabelę.",
+  "ua": "Вокульський вислухав його проєкти. До виконання одних не хотів належати, інші прийняв, але вагався. Шкодував йому полишити місто, в якому принаймні бачив панну Ізабелу.",
+  "para": 49,
+  "start": 823.7
+ },
+ {
+  "pl": "Ale gdy w czerwcu ona wyjechała do ciotki, a Suzin począł naglić go depeszami, Wokulski zdecydował się i podniósł całą gotówkę po żonie w ilości rs<sup>199<\/sup> trzydzieści tysięcy, którą nieboszczka trzymała nietykalną w banku.",
+  "ua": "Але коли в червні вона поїхала до тітки, а Сузін почав квапити його депешами, Вокульський вирішився й підняв усі готівкові гроші по дружині в сумі rs<sup>199<\/sup> тридцять тисяч, яку покійна тримала недоторканою в банку.",
+  "para": 49,
+  "start": 838.58
+ },
+ {
+  "pl": "Na kilka dni przed wyjazdem zaszedł do znajomego lekarza Szumana, z którym pomimo obustronnej życzliwości widywali się nieczęsto. Lekarz, Żyd, stary kawaler, żółty, mały, z czarną brodą, miał reputację dziwaka.",
+  "ua": "За кілька днів перед виїздом завітав до знайомого лікаря Шумана, з яким, попри взаємну прихильність, бачилися нечасто. Лікар, єврей, старий холостяк, жовтий, маленький, із чорною бородою, мав репутацію дивака.",
+  "para": 50,
+  "start": 854.97
+ },
+ {
+  "pl": "Posiadając majątek leczył darmo i o tyle tylko, o ile było mu to potrzebnym do studiów etnograficznych<sup>200<\/sup>; przyjaciołom zaś swoim raz na zawsze dał jedną receptę:",
+  "ua": "Майучи маєток, лікував безкоштовно й лише настільки, наскільки це було йому потрібно для етнографічних студій<sup>200<\/sup>; а своїм друзям раз і назавжди дав один рецепт:",
+  "para": 50,
+  "start": 869.63
+ },
+ {
+  "pl": "„Używaj wszystkich środków, od najmniejszej dozy oleju do największej dozy strychniny, a coś ci z tego pomoże, nawet na — nosaciznę.”",
+  "ua": "«Користуйся всіма засобами, від найменшої дози олії до найбільшої дози стрихніну, і щось тобі з цього допоможе, навіть на — ному».",
+  "para": 51,
+  "start": 882.01
+ },
+ {
+  "pl": "Gdy Wokulski zadzwonił do mieszkania lekarza, ten właśnie był zajęty gatunkowaniem włosów rozmaitych osobników rasy słowiańskiej, germańskiej i semickiej i przy pomocy mikroskopu mierzył dłuższe i krótsze średnice ich przekrojów.",
+  "ua": "Коли Вокульський подзвонив до помешкання лікаря, той саме був зайнятий класифікацією волосся різних осіб слов'янської, германської та семітської раси й за допомогою мікроскопа міряв довші й коротші діаметри їхніх перерізів.",
+  "para": 52,
+  "start": 895.42
+ },
+ {
+  "pl": "— A, jesteś?... — rzekł do Wokulskiego odwracając głowę. — Nałóż sobie fajkę, jeżeli chcesz, i kładź się na kanapie, jeżeli się zmieścisz.",
+  "ua": "— А, ти?... — сказав Вокульському, обернувши голову. — Накури собі люльку, якщо хочеш, і лягай на канапу, якщо вмістишся.",
+  "para": 53,
+  "start": 911.77
+ },
+ {
+  "pl": "Gość zapalił fajkę i położył się, jak mu kazano, doktór robił swoje. Przez pewien czas obaj milczeli, wreszcie odezwał się Wokulski:",
+  "ua": "Гість запалив люльку й ліг, як йому наказали, доктор робив своє. Певний час оба мовчали, нарешті озвався Вокульський:",
+  "para": 54,
+  "start": 921.12
+ },
+ {
+  "pl": "— Powiedz mi: czy medycyna zna taki stan umysłu, w którym człowiekowi wydaje się, że jego rozproszone dotychczas wiadomości i... uczucia złączyły się jakby w jeden organizm?",
+  "ua": "— Скажи мені: чи медицина знає такий стан духу, коли людині здається, що її досі розсіяні знання і... почуття з'єдналися немов в один організм?",
+  "para": 55,
+  "start": 930.7
+ },
+ {
+  "pl": "— Owszem. Przy ciągłej pracy umysłowej i dobrym odżywianiu mogą wytworzyć się w mózgu nowe komórki albo — skojarzyć się między sobą dawne. No i wówczas z rozmaitych departamentów<sup>201<\/sup> mózgu i z rozmaitych dziedzin wiedzy tworzy się jedna całość.",
+  "ua": "— Авжеж. За постійної розумової праці й доброго живлення можуть утворитися в мозку нові клітини або — поєднатися між собою давні. Ну, і тоді з різних департаментів<sup>201<\/sup> мозку й з різних галузей знання складається одна цілісність.",
+  "para": 56,
+  "start": 944.93
+ },
+ {
+  "pl": "— A co znaczy taki stan umysłu, w którym człowiek obojętnieje dla śmierci, ale za to poczyna tęsknić do legend o życiu wiecznym?...",
+  "ua": "— А що означає такий стан духу, коли людина байдужіє до смерті, а натомість починає тужити за легендами про вічне життя?...",
+  "para": 57,
+  "start": 963.47
+ },
+ {
+  "pl": "— Obojętność dla śmierci — odpowiedział doktór — jest cechą umysłów dojrzałych, a pociąg do życia wiecznego — zapowiedzią nadchodzącej starości.",
+  "ua": "— Байдужість до смерті, — відповів доктор, — є ознакою зрілого розуму, а потяг до вічного життя — передвістям наступної старості.",
+  "para": 58,
+  "start": 973.5
+ },
+ {
+  "pl": "Znowu umilkli. Gość palił fajkę, gospodarz kręcił się nad mikroskopem.",
+  "ua": "Знову замовкли. Гість курив люльку, господар крутився над мікроскопом.",
+  "para": 59,
+  "start": 985.58
+ },
+ {
+  "pl": "— Czy myślisz — spytał Wokulski — że można... kochać kobietę w sposób idealny, nie pożądając jej?",
+  "ua": "— Чи думаєш, — спитав Вокульський, — що можна... любити жінку ідеально, не прагнучи її?",
+  "para": 60,
+  "start": 991.52
+ },
+ {
+  "pl": "— Naturalnie. Jest to jedna z masek, w którą lubi przebierać się instynkt utrwalenia gatunku.",
+  "ua": "— Природно. Це одна з масок, у які любить вбиратися інстинкт збереження роду.",
+  "para": 61,
+  "start": 1000.52
+ },
+ {
+  "pl": "— Instynkt — gatunek — instynkt utrwalenia czegoś i — utrwalenie gatunku!... — powtórzył Wokulski. — Trzy wyrazy, a cztery głupstwa.",
+  "ua": "— Інстинкт — рід — інстинкт збереження чогось і — збереження роду!... — повторив Вокульський. — Три слова, а чотири дурниці.",
+  "para": 62,
+  "start": 1008.14
+ },
+ {
+  "pl": "— Zrób szóste — odpowiedział doktór nie odejmując oka od szkła — i ożeń się.",
+  "ua": "— Зроби шосту, — відповів доктор, не відводячи ока від скла, — і одружися.",
+  "para": 63,
+  "start": 1021.72
+ },
+ {
+  "pl": "— Szóste?... — rzekł Wokulski podnosząc się na kanapie. — A gdzież piąte?",
+  "ua": "— Шосту?... — сказав Вокульський, підводячись на канапі. — А де ж п'яту?",
+  "para": 64,
+  "start": 1027.97
+ },
+ {
+  "pl": "— Piąte już zrobiłeś: zakochałeś się.",
+  "ua": "— П'яту вже зробив: закохався.",
+  "para": 65,
+  "start": 1033.41
+ },
+ {
+  "pl": "— Ja?... W moim wieku?...",
+  "ua": "— Я?... У моєму віці?...",
+  "para": 66,
+  "start": 1036.93
+ },
+ {
+  "pl": "— Czterdzieści pięć lat — to epoka ostatniej miłości, najgorszej — odpowiedział doktór.",
+  "ua": "— Сорок п'ять років — це доба останнього кохання, найгіршого, — відповів доктор.",
+  "para": 67,
+  "start": 1039.85
+ },
+ {
+  "pl": "— Znawcy mówią, że pierwsza miłość jest najgorsza — szepnął Wokulski.",
+  "ua": "— Знавці кажуть, що перше кохання найгірше, — прошепотів Вокульський.",
+  "para": 68,
+  "start": 1047.22
+ },
+ {
+  "pl": "— Nieprawda. Po pierwszej czeka cię sto innych, ale po setnej pierwszej — już nic. Żeń się; jedyny to ratunek na twoją chorobę.",
+  "ua": "— Неправда. Після першого на тебе чекає ще сто, а після сотого першого — уже нічого. Одружуйся; це єдиний порятунок від твоєї хвороби.",
+  "para": 69,
+  "start": 1051.94
+ },
+ {
+  "pl": "— Dlaczegożeś ty się nie ożenił?",
+  "ua": "— Чому ж ти не одружився?",
+  "para": 70,
+  "start": 1062.52
+ },
+ {
+  "pl": "— Bo mi narzeczona umarła — odpowiedział doktór pochyliwszy się na tył fotelu i patrząc w sufit. — Więc zrobiłem, com mógł: otrułem się chloroformem. Było to na prowincji. Ale Bóg zesłał dobrego kolegę, który wysadził drzwi i uratował mnie. Najpodlejszy rodzaj miłosierdzia!...",
+  "ua": "— Бо моя наречена померла, — відповів доктор, відкинувшись на спинку крісла й дивлячись у стелю. — Отже зробив, що міг: отруївся хлороформом. Це було в глибинці. Але Бог послав доброго товариша, який вибив двері й урятував мене. Найпідліший вид милосердя!...",
+  "para": 71,
+  "start": 1064.82
+ },
+ {
+  "pl": "Ja zapłaciłem za drzwi zepsute, a kolega odziedziczył moją praktykę ogłosiwszy, żem wariat...",
+  "ua": "Я заплатив за зіпсовані двері, а товари успадкував мою практику, оголосивши, що я божевільний...",
+  "para": 71,
+  "start": 1085.53
+ },
+ {
+  "pl": "Znowu wrócił do włosów i mikroskopu.",
+  "ua": "Знову повернувся до волосся й мікроскопа.",
+  "para": 72,
+  "start": 1092.64
+ },
+ {
+  "pl": "— A jaki z tego sens moralny dla ostatniej miłości? — spytał Wokulski.",
+  "ua": "— А який із цього моральний зміст для останнього кохання? — спитав Вокульський.",
+  "para": 73,
+  "start": 1095.94
+ },
+ {
+  "pl": "— Ten, że samobójcom nie należy przeszkadzać — odpowiedział doktór.",
+  "ua": "— Той, що самогубцям не варто заважати, — відповів доктор.",
+  "para": 74,
+  "start": 1101.4
+ },
+ {
+  "pl": "Wokulski poleżał jeszcze z kwadrans, potem podniósł się, postawił w kącie fajkę i schyliwszy się nad doktorem ucałował go.",
+  "ua": "Вокульський ще полежав хвилин із чверть, потім підвівся, поставив люльку в кут і, нахилившись над доктором, поцілував його.",
+  "para": 75,
+  "start": 1107.42
+ },
+ {
+  "pl": "— Bywaj zdrów, Michale.",
+  "ua": "— Будь здоровий, Михайле.",
+  "para": 76,
+  "start": 1116.36
+ },
+ {
+  "pl": "Doktór zerwał się od stołu.",
+  "ua": "Доктор підскочив від столу.",
+  "para": 77,
+  "start": 1118.12
+ },
+ {
+  "pl": "— No?...",
+  "ua": "— Ну?...",
+  "para": 78,
+  "start": 1120.54
+ },
+ {
+  "pl": "— Wyjeżdżam do Bułgarii",
+  "ua": "— Виїжджаю до Болгарії",
+  "para": 79,
+  "start": 1121.74
+ },
+ {
+  "pl": "— Po co?",
+  "ua": "— Навіщо?",
+  "para": 80,
+  "start": 1124.14
+ },
+ {
+  "pl": "— Zostanę wojskowym dostawcą. Muszę zrobić duży majątek!... — odparł Wokulski.",
+  "ua": "— Стану військовим постачальником. Мушу зробити великий маєток!... — відповів Вокульський.",
+  "para": 81,
+  "start": 1125.68
+ },
+ {
+  "pl": "— Albo?...",
+  "ua": "— Або?...",
+  "para": 82,
+  "start": 1131.88
+ },
+ {
+  "pl": "— Albo... nie wrócę.",
+  "ua": "— Або... не повернуся.",
+  "para": 83,
+  "start": 1133.98
+ },
+ {
+  "pl": "Doktór popatrzył mu w oczy i mocno ścisnął go za rękę.",
+  "ua": "Доктор подивився йому в очі й міцно потиснув руку.",
+  "para": 84,
+  "start": 1138.52
+ },
+ {
+  "pl": "— Sit tibi terra levis<sup>202<\/sup> — rzekł spokojnie. Odprowadził go do drzwi i znowu wziął się do swojej roboty.",
+  "ua": "— Sit tibi terra levis<sup>202<\/sup> — сказав спокійно. Провів його до дверей і знову узявся до своєї роботи.",
+  "para": 85,
+  "start": 1143.46
+ },
+ {
+  "pl": "Już Wokulski był na schodach, gdy doktór wybiegł za nim i zawołał wychylając się przez poręcz:",
+  "ua": "Вокульський уже був на сходах, коли доктор вибіг за ним і крикнув, визирнувши через поручень:",
+  "para": 86,
+  "start": 1152.25
+ },
+ {
+  "pl": "— Gdybyś jednak wrócił, nie zapomnij przywieźć mi włosów: bułgarskich, tureckich i tak dalej, od obu płci. Tylko pamiętaj: w oddzielnych pakietach z notatkami. Wiesz przecie, jak to robić...",
+  "ua": "— Якщо все ж повернешся, не забудь привезти мені волосся: болгарське, турецьке й так далі, обох статей. Тільки пам'ятай: в окремих пакунках із нотатками. Ти ж знаєш, як це робиться...",
+  "para": 87,
+  "start": 1159.05
+ },
+ {
+  "pl": "...Wokulski ocknął się z tych dawnych wspomnień.",
+  "ua": "...Вокульський отямився з цих давніх спогадів.",
+  "para": 88,
+  "start": 1173.45
+ },
+ {
+  "pl": "Nie ma doktora ani jego mieszkania i nawet ich od dziesięciu miesięcy nie widział. Tu jest błotnista ulica Radna, tam Browarna. Na górze spoza nagich drzew wyglądają żółte gmachy uniwersyteckie; na dole parterowe domki, puste place i parkany, a niżej — Wisła.",
+  "ua": "Ні доктора, ні його помешкання — і бачив їх десять місяців тому. Тут брудна вулиця Радна, там — Броварна. Нагорі з-за оголених дерев визирають жовті університетські будівлі; внизу — одноповерхові будиночки, порожні майдани й паркани, а ще нижче — Вісла.",
+  "para": 89,
+  "start": 1177.28
+ },
+ {
+  "pl": "Obok niego stał jakiś człowiek w wypłowiałej kapocie z rudawym zarostem. Zdjął czapkę i pocałował Wokulskiego w rękę. Wokulski przypatrzył mu się uważniej.",
+  "ua": "Біля нього стояв якийсь чоловік у вицвілій капоті з рудуватою щетиною. Зняв шапку й поцілував Вокульського руку. Вокульський уважніше придивився до нього.",
+  "para": 90,
+  "start": 1198.09
+ },
+ {
+  "pl": "— Wysocki?... — rzekł. — Co ty tu robisz?",
+  "ua": "— Висоцький?... — сказав. — Що ти тут робиш?",
+  "para": 91,
+  "start": 1209.28
+ },
+ {
+  "pl": "— Tu mieszkamy, wielmożny panie, w tym domu — odpowiedział człowiek wskazując na niską lepiankę.",
+  "ua": "— Тут живемо, ваша милосте, у цьому домі, — відповів чоловік, вказавши на низьку хатину.",
+  "para": 92,
+  "start": 1212.79
+ },
+ {
+  "pl": "— Dlaczego nie przyjeżdżasz po transporta<sup>203<\/sup>? — pytał Wokulski.",
+  "ua": "— Чому не їдеш по вантажі<sup>203<\/sup>? — питав Вокульський.",
+  "para": 93,
+  "start": 1219.37
+ },
+ {
+  "pl": "— Czym przyjadę, panie, kiedy jeszcze na Nowy Rok koń mi padł.",
+  "ua": "— Чим мені їхати, пане, коли ще на Новий рік кінь у мене здох.",
+  "para": 94,
+  "start": 1223.13
+ },
+ {
+  "pl": "— Cóż robisz?",
+  "ua": "— Що ж робите?",
+  "para": 95,
+  "start": 1227.34
+ },
+ {
+  "pl": "— A ot tak — razem nic. Zimowaliśmy u brata, co jest dróżnikiem na Wiedeńskiej Kolei<sup>204<\/sup>. Ale i jemu bieda, bo go ze Skierniewic<sup>205<\/sup> przenieśli pod Częstochowę. W Skierniewicach ma trzy morgi<sup>206<\/sup> i żył jak bogacz, a dzisiaj i on kiepski, i grunt wynędznieje bez dozoru.",
+  "ua": "— А от так — разом нічого. Зимували в брата, що є колійником на Віденській залізниці<sup>204<\/sup>. Але йому теж біда, бо його зі Скерневиц<sup>205<\/sup> перевели під Ченстохову. У Скерневицях має три морги<sup>206<\/sup> й жив, як багатій, а сьогодні й він небагатий, і земля збідніє без догляду.",
+  "para": 96,
+  "start": 1228.82
+ },
+ {
+  "pl": "— No, a z wami co teraz?",
+  "ua": "— Ну, а з вами що тепер?",
+  "para": 97,
+  "start": 1247.86
+ },
+ {
+  "pl": "— Kobieta niby trochę pierze, ale takim, co nie bardzo mają czym płacić, a ja — ot tak... Marniejemy, panie... nie pierwsi i nie ostatni.",
+  "ua": "— Жінка наче трохи пере, але тим, що не дуже мають чим платити, а я — от так... Занепадаємо, пане... не перші й не останні.",
+  "para": 98,
+  "start": 1250.53
+ },
+ {
+  "pl": "Jeszcze póki wielkiego postu, to człowiek krzepi się mówiący<sup>207<\/sup>: dzisiaj pościsz za dusze zmarłe, jutro na pamiątkę, że Chrystus Pan nic nie jadł, pojutrze, na intencję, ażeby Bóg złe odmienił. Zaś po świętach nie będzie nawet sposobu i dzieciom wytłomaczyć, na jaką intencję nie jedzą...",
+  "ua": "Ще поки Великий піст, то людина підбадьорюється, кажучи<sup>207<\/sup>: сьогодні постиш за душі померлих, завтра на спомин, що Господь Христос нічого не їв, післязавтра — за намірення, аби Бог змінив лихе. А після свят не буде навіть способу й дітям пояснити, з яким наміренням вони не їдять...",
+  "para": 98,
+  "start": 1260.63
+ },
+ {
+  "pl": "Ale i wielmożny pan coś markotnie wygląda? Taki już widać czas nastał, że wszyscy muszą zginąć — westchnął ubogi człowiek.",
+  "ua": "А ваша милість чогось похмуро виглядає? Видно, уже такий час настав, що всі мусять загинути, — зітхнув бідний чоловік.",
+  "para": 99,
+  "start": 1278.88
+ },
+ {
+  "pl": "Wokulski zamyślił się.",
+  "ua": "Вокульський задумався.",
+  "para": 100,
+  "start": 1289.3
+ },
+ {
+  "pl": "— Komorne wasze zapłacone? — spytał.",
+  "ua": "— Ваш чинш сплачений? — спитав.",
+  "para": 101,
+  "start": 1290.76
+ },
+ {
+  "pl": "— Nawet nie ma, panie, co płacić, bo nas i tak wypędzą.",
+  "ua": "— Навіть нема, пане, чим платити, бо й так нас вигонять.",
+  "para": 102,
+  "start": 1293.52
+ },
+ {
+  "pl": "— A dlaczego nie przyszedłeś do sklepu, do pana Rzeckiego? — spytał Wokulski.",
+  "ua": "— А чому не прийшов до крамниці, до пана Ржецького? — спитав Вокульський.",
+  "para": 103,
+  "start": 1296.78
+ },
+ {
+  "pl": "— Nie śmiałem, panie. Koń odszedł, wóz u Żyda, kubrak na mnie jak na dziadzie... Z czymże było przyjść i jeszcze ludziom głowę zaprzątać?...",
+  "ua": "— Не смів, пане. Кінь пішов, віз у єврея, свита на мені, як на старці... З чим було прийти й ще людям голову займати?...",
+  "para": 104,
+  "start": 1301.05
+ },
+ {
+  "pl": "Wokulski wydobył portmonetkę.",
+  "ua": "Вокульський витяг гаманець.",
+  "para": 105,
+  "start": 1311.3
+ },
+ {
+  "pl": "— Masz tu — rzekł — dziesięć rubli na święta. Jutro w południe przyjdziesz do sklepu i dostaniesz kartkę na Pragę. Tam u handlarza wybierzesz sobie konia, a po świętach przyjeżdżaj do roboty. U mnie zarobisz ze trzy ruble na dzień, więc dług spłacisz łatwo. Zresztą dasz sobie radę.",
+  "ua": "— Ось тобі, — сказав, — десять рублів на свята. Завтра опівдні прийдеш до крамниці й отримаєш довідку на Прагу. Там у коноганця вибери собі коня, а після свят виїжджай на роботу. У мене заробиш зо три рублі на день, тож борг віддасиш легко. До того ж впораєшся.",
+  "para": 106,
+  "start": 1313.35
+ },
+ {
+  "pl": "Ubogi człowiek dotknąwszy pieniędzy zaczął się trząść.",
+  "ua": "Бідний чоловік, доторкнувшись до грошей, почав тремтіти.",
+  "para": 107,
+  "start": 1331.62
+ },
+ {
+  "pl": "Uważnie słuchał Wokulskiego, a łzy spływały mu po wychudzonej twarzy.",
+  "ua": "Уважно слухав Вокульського, а сльози стікали йому по виснаженому обличчю.",
+  "para": 108,
+  "start": 1335.31
+ },
+ {
+  "pl": "— Czy panu powiedział kto — zapytał po chwili — że z nami jest... ot tak?... Bo już nam ktoś — dodał szeptem — przysyłał siostrę miłosierdzia, będzie z miesiąc. Mówiła, że muszę być ladaco, i dała nam kartkę na pud<sup>208<\/sup> węgla z Żelaznej<sup>209<\/sup> ulicy. Czy może pan tak sam z siebie?...",
+  "ua": "— Чи хтось вам казав, — спитав за хвилину, — що з нами... от так?.. Бо вже нам хтось, — додав шепотом, — присилав сестру милосердя, буде місяць. Казала, що я мушу бути негідником, і дала нам квиток на пуд<sup>208<\/sup> вугілля з Залізної<sup>209<\/sup> вулиці. А може, це ви самі з себе?...",
+  "para": 109,
+  "start": 1340.75
+ },
+ {
+  "pl": "— Idź do domu, a jutro bądź w sklepie — odparł Wokulski.",
+  "ua": "— Іди додому, а завтра будь у крамниці, — відповів Вокульський.",
+  "para": 110,
+  "start": 1361.52
+ },
+ {
+  "pl": "— Idę, panie — odpowiedział człowiek kłaniając się do ziemi.",
+  "ua": "— Іду, пане, — відповів чоловік, вклоняючись аж до землі.",
+  "para": 111,
+  "start": 1365.52
+ },
+ {
+  "pl": "Odszedł, lecz przystawał na drodze; widocznie rozmyślał nad niespodziewanym szczęściem.",
+  "ua": "Пішов, але зупинявся дорогою; видно, міркував про несподіване щастя.",
+  "para": 112,
+  "start": 1369.66
+ },
+ {
+  "pl": "W tej chwili Wokulskiego tknęło szczególne przeczucie.",
+  "ua": "У цю мить Вокульського вразило особливе передчуття.",
+  "para": 113,
+  "start": 1375.5
+ },
+ {
+  "pl": "— Wysocki!... — zawołał. — A twemu bratu jak na imię?",
+  "ua": "— Висоцький!... — гукнув. — А як твоєму братові ім'я?",
+  "para": 114,
+  "start": 1378.78
+ },
+ {
+  "pl": "— Kasper — odpowiedział człowiek wracając pędem.",
+  "ua": "— Каспер, — відповів чоловік, миттю повертаючись.",
+  "para": 115,
+  "start": 1382.86
+ },
+ {
+  "pl": "— Przy jakiej mieszka stacji?",
+  "ua": "— При якій станції живе?",
+  "para": 116,
+  "start": 1386.63
+ },
+ {
+  "pl": "— Przy Częstochowie, panie.",
+  "ua": "— При Ченстохові, пане.",
+  "para": 117,
+  "start": 1388.29
+ },
+ {
+  "pl": "— Idź do domu. Może Kaspra przeniosą do Skierniewic.",
+  "ua": "— Іди додому. Може, Каспера переведуть до Скерневиць.",
+  "para": 118,
+  "start": 1390.37
+ },
+ {
+  "pl": "Ale ten zamiast iść, zbliżył się.",
+  "ua": "Але той замість іти — наблизився.",
+  "para": 119,
+  "start": 1394.21
+ },
+ {
+  "pl": "— Przepraszam, wielmożny panie — rzekł nieśmiało — ale jak mnie kto zaczepi: skąd mam tyle pieniędzy?...",
+  "ua": "— Вибачте, ваша милосте, — сказав сором'язливо, — але якщо мене хто запитає: звідки я маю стільки грошей?...",
+  "para": 120,
+  "start": 1397.47
+ },
+ {
+  "pl": "— Powiedz, że na rachunek wziąłeś ode mnie.",
+  "ua": "— Скажи, що взяв у мене під звіт.",
+  "para": 121,
+  "start": 1404.83
+ },
+ {
+  "pl": "— Rozumiem, panie... Bóg... niech Bóg...",
+  "ua": "— Зрозумів, пане... Бог... хай Бог...",
+  "para": 122,
+  "start": 1408.33
+ },
+ {
+  "pl": "Ale Wokulski już nie słuchał; szedł w stronę Wisły myśląc:",
+  "ua": "Але Вокульський уже не слухав; ішов у бік Вісли, думаючи:",
+  "para": 123,
+  "start": 1411.13
+ },
+ {
+  "pl": "„Jakże oni szczęśliwi, ci wszyscy, w których tylko głód wywołuje apatię, a jedynym cierpieniem jest zimno. I jak łatwo ich uszczęśliwić!... Nawet moim skromnym majątkiem mógłbym wydźwignąć parę tysięcy rodzin. Nieprawdopodobne, a przecież — tak jest.”",
+  "ua": "«Ох які ж вони щасливі, всі ці, в кого лише голод викликає апатію, а єдиним стражданням є холод. І як легко їх зробити щасливими!... Навіть моїм скромним маєтком міг би підняти кілька тисяч родин. Неймовірно, але так воно є».",
+  "para": 124,
+  "start": 1415.92
+ },
+ {
+  "pl": "Wokulski doszedł do brzegu Wisły i zdumiał się. Na kilkumorgowej<sup>210<\/sup> przestrzeni wznosił się tu pagórek najobrzydliwszych śmieci, cuchnących, nieomal ruszających się pod słońcem, a o kilkadziesiąt kroków dalej leżały zbiorniki wody, którą piła Warszawa.",
+  "ua": "Вокульський дійшов до берега Вісли й здивувався. На кількаморговій<sup>210<\/sup> площі підіймався тут горбик найогиднішого сміття, що смердів, майже ворушився на сонці, а за кількадесять кроків далі лежали водойми, з яких пила Варшава.",
+  "para": 125,
+  "start": 1435.16
+ },
+ {
+  "pl": "„O, tutaj — myślał — jest ognisko wszelkiej zarazy. Co człowiek dziś wyrzuci ze swego mieszkania, jutro wypije; później przenosi się na Powązki<sup>211<\/sup> i z drugiej znowu strony miasta razi bliźnich pozostałych przy życiu.",
+  "ua": "«О, тут, — думав він, — вогнище всякої зарази. Що людина сьогодні викине зі свого помешкання, завтра вип'є; потім переноситься на Повонзки<sup>211<\/sup> й з іншого боку міста вражає ближніх, що лишилися живими.",
+  "para": 126,
+  "start": 1453.43
+ },
+ {
+  "pl": "Bulwar tutaj, kanały i woda źródlana na górze i — można by ocalić rokrocznie kilka tysięcy ludzi od śmierci, a kilkadziesiąt tysięcy od chorób... Niewielka praca, a zysk nieobliczony; natura umie wynagradzać.”",
+  "ua": "Набережна тут, канали й джерельна вода нагорі — і можна б щороку врятувати кілька тисяч людей від смерті, а кількадесять тисяч — від хвороб... Невелика праця, а здобуток неймовірний; природа вміє винагороджувати».",
+  "para": 127,
+  "start": 1469.88
+ },
+ {
+  "pl": "Na stoku i w szczelinach obmierzłego wzgórza spostrzegł niby postacie ludzkie. Było tu kilku drzemiących na słońcu pijaków czy złodziei, dwie śmieciarki i jedna kochająca się para, złożona z trędowatej kobiety i suchotniczego mężczyzny, który nie miał nosa.",
+  "ua": "На схилі й у щілинах огидного пагорба він помітив немов людські постаті. Тут було кілька сплячих на сонці п'яниць чи злодіїв, дві смітнички й одна закохана пара — з прокаженої жінки та сухотного чоловіка, який не мав носа.",
+  "para": 128,
+  "start": 1485.64
+ },
+ {
+  "pl": "Zdawało się, że to nie ludzie, ale widma ukrytych tutaj chorób, które odziały się w wykopane w tym miejscu szmaty. Wszystkie te indywidua zwietrzyły obcego człowieka; nawet śpiący podnieśli głowy i z wyrazem zdziczałych psów przypatrywali się gościowi.",
+  "ua": "Здавалося, що це не люди, а марі хвороб, що ховалися тут, які вбралися в лахміття, вирвані на цьому місці. Усі ці особини відчули чужого; навіть сплячі підняли голови й, з виразом одичалих псів, розглядали гостя.",
+  "para": 128,
+  "start": 1503.58
+ },
+ {
+  "pl": "Wokulski uśmiechnął się.",
+  "ua": "Вокульський усміхнувся.",
+  "para": 129,
+  "start": 1521.64
+ },
+ {
+  "pl": "„Gdybym tu przyszedł w nocy, na pewno wyleczyliby mnie z melancholii. Jutro już spoczywałbym pod tymi śmieciami, które — wreszcie — są tak wygodnym grobem jak każdy inny. Na górze zrobiłby się wrzask, ścigano by i wyklinano tych poczciwców, a oni — może wyświadczyliby mi łaskę.",
+  "ua": "«Якби я прийшов сюди вночі, напевно вилікували б мене від меланхолії. Завтра вже спочивав би під цим сміттям, яке — нарешті — така зручна могила, як і будь-яка інша. Нагорі здійнявся б ґвалт, шукали б і проклинали цих добродіїв, а вони, може, вчинили б мені милість.",
+  "para": 130,
+  "start": 1523.59
+ },
+ {
+  "pl": "Ależ ja zaczynam być naprawdę sentymentalny?... muszę mieć nerwy dobrze rozbite. Bulwar jednak nie wytępiłby takich oto Mohikanów<sup>212<\/sup>; przenieśliby się na Pragę albo za Pragę, uprawialiby w dalszym ciągu swoje rzemiosło, kochaliby się jak ta dwójeczka, ba, nawet mnożyliby się.",
+  "ua": "Та невже я справді починаю бути сентиментальним?... мушу мати добре розхитані нерви. Набережна однак не винищила б оцих могикан<sup>212<\/sup>; перебралися б на Прагу або за Прагу, далі промишляли б своїм ремеслом, кохалися б, як оця парочка, ба навіть розмножувалися б.",
+  "para": 131,
+  "start": 1559.39
+ },
+ {
+  "pl": "Co za piękne, ojczyzno, będziesz miała potomstwo, urodzone i wychowane na tym śmietniku, z matki okrytej wysypką i beznosego ojca!...",
+  "ua": "Яке ж гарне, батьківщино, матимеш потомство, народжене й виховане на цьому сміттєвищі, від матері, вкритої висипом, і батька без носа!...",
+  "para": 131,
+  "start": 1581.22
+ },
+ {
+  "pl": "Moje dzieci byłyby inne; po niej wzięłyby piękność, po mnie siłę... No, ale ich nie będzie. W tym kraju tylko choroba, nędza i zbrodnia znajdują weselne łożnice, nawet przytułki dla potomstwa.",
+  "ua": "Мої діти були б інші; від неї взяли б красу, від мене — силу... Ну, але їх не буде. У цій країні лише хвороба, бідність і злочин знаходять шлюбні ложа, навіть притулки для потомства.",
+  "para": 132,
+  "start": 1591.48
+ },
+ {
+  "pl": "Strach, co tu się stanie za kilka generacji... A przecie jest proste lekarstwo: praca obowiązkowa — słusznie wynagradzana. Ona jedna może wzmocnić lepsze indywidua, a bez krzyku wytępić złe i... mielibyśmy ludność dzielną, jak dziś mamy zagłodzoną lub chorą.”",
+  "ua": "Страшно, що станеться тут за кілька поколінь... Але ж є прості ліки: обов'язкова праця — справедливо винагороджувана. Лише вона може зміцнити кращі особини й без крику винищити погані, і... мали б ми людність ділову, як нині маємо виснажену чи хвору».",
+  "para": 133,
+  "start": 1608.48
+ },
+ {
+  "pl": "A potem, nie wiadomo z jakiej racji, pomyślał:",
+  "ua": "А потім, невідомо з якої причини, подумав:",
+  "para": 134,
+  "start": 1630.28
+ },
+ {
+  "pl": "„Cóż z tego, że trochę kokietuje?... Kokieteria u kobiet jest jak barwa i zapach u kwiatów. Taka już ich natura, że każdemu chcą się podobać, nawet Mraczewskim...",
+  "ua": "«Що з того, що трохи кокетує?... Кокетство в жінок — як колір і запах у квітів. Така вже їхня натура, що кожному хочуть подобатися, навіть Мрачевським...",
+  "para": 135,
+  "start": 1633.22
+ },
+ {
+  "pl": "Dla wszystkich kokieteria, a dla mnie: »zapłać temu panu!...« Może ona myśli, że ja oszukałem ich na kupnie srebra?... To byłoby kapitalne!”",
+  "ua": "Для всіх кокетство, а для мене: „Заплати цьому панові!...“ Може, вона думає, що я їх ошукав на купівлі срібла?... Це було б капітально!»",
+  "para": 136,
+  "start": 1644.33
+ },
+ {
+  "pl": "Nad samym brzegiem Wisły leżał stos belek. Wokulski uczuł znużenie, siadł i patrzył. W spokojnej powierzchni wody odbijała się Saska Kępa<sup>213<\/sup>, już zieleniejąca, i praskie domy z czerwonymi dachami; na środku rzeki stała nieruchoma berlinka<sup>214<\/sup>.",
+  "ua": "Прямо біля берега Вісли лежала стос балок. Вокульський відчув утому, сів і дивився. У спокійній гладіні води відбивалася Саська Кемпа<sup>213<\/sup>, що вже зеленіла, й будинки Праги з червоними дахами; посеред ріки стояла нерухома барка<sup>214<\/sup>.",
+  "para": 137,
+  "start": 1655.91
+ },
+ {
+  "pl": "Nie większym wydawał się ten okręt, który zeszłego lata widział Wokulski na Morzu Czarnym, unieruchomiony z powodu zepsucia się machin.",
+  "ua": "Не більшим здавався цей корабель, який минулого літа бачив Вокульський у Чорному морі, нерухомий через поломку машин.",
+  "para": 137,
+  "start": 1676.54
+ },
+ {
+  "pl": "„Leciał jak ptak i nagle utknął; zabrakło w nim motoru. Spytałem się wówczas: a może i ja kiedyś stanę w biegu? — no, i stanąłem. Jakież to pospolite sprężyny wywołują ruch w świecie: trochę węgla ożywia okręt, trochę serca — człowieka...”",
+  "ua": "«Летів, як птах, і раптом зупинився; у ньому бракувало двигуна. Я тоді спитав: а може, колись і я зупинюся в бігу? — ну, й зупинився. Які ж буденні пружини спричиняють рух у світі: трохи вугілля оживлює корабель, трохи серця — людину...»",
+  "para": 138,
+  "start": 1684.88
+ },
+ {
+  "pl": "W tej chwili żółtawy, za wczesny motyl przeleciał mu nad głową w stronę miasta.",
+  "ua": "У цю мить жовтуватий, завчасний метелик пролетів йому над головою в бік міста.",
+  "para": 139,
+  "start": 1704.36
+ },
+ {
+  "pl": "„Ciekawym, skąd on się wziął? — myślał Wokulski. — Natura miewa kaprysy i — analogie — dodał. — Motyle istnieją także w rodzaju ludzkim: piękna barwa, latanie nad powierzchnią życia, karmienie się słodyczami, bez których giną — oto ich zajęcie.",
+  "ua": "«Цікаво, звідки він узявся? — думав Вокульський. — Природа має примхи і... аналогії, — додав. — Метелики існують і в людському роді: гарна барва, польоти над поверхнею життя, харчування солодощами, без яких гинуть — ось їхнє заняття.",
+  "para": 140,
+  "start": 1711.22
+ },
+ {
+  "pl": "A ty, robaku, nurtuj ziemię i przerabiaj ją na grunt zdolny do siewu. Oni bawią się, ty pracuj; dla nich istnieje wolna przestrzeń i światło, a ty ciesz się jednym tylko przywilejem: zrastania się, jeżeli cię rozdepcze ktoś nieuważny.",
+  "ua": "А ти, черв'яку, рий землю й переробляй її на ґрунт, придатний для сівби. Вони граються, ти працюй; для них існує вільний простір і світло, а ти тішся одним-єдиним привілеєм: зростанням, якщо тебе розтопче хтось неуважний.",
+  "para": 140,
+  "start": 1729.56
+ },
+ {
+  "pl": "I tobież to wzdychać do motyla, głupi?... I dziwić się, że ma wstręt do ciebie?... Jakiż łącznik może istnieć między mną i nią?...",
+  "ua": "І тобі ж тужити за метеликом, дурню?... І дивуватися, що він тебе оминає?... Який же зв'язок може бути між мною й нею?...",
+  "para": 141,
+  "start": 1747.68
+ },
+ {
+  "pl": "No, gąsienica jest także podobna do robaka, póki nie zostanie motylem. Ach więc to ty masz zostać motylem, kupcze galanteryjny? Dlaczegóż by nie? Ciągłe doskonalenie się jest prawem świata, a ileż to kupieckich rodów w Anglii zostało lordowskimi mościami?",
+  "ua": "Ну, гусениця теж схожа на черв'яка, поки не стане метеликом. Ага, отже тобі стати метеликом, купче галантерейний? А чому б і ні? Безперервне вдосконалення — закон світу, і скільки ж там купецьких родів в Англії зробилося лордами!",
+  "para": 142,
+  "start": 1758.02
+ },
+ {
+  "pl": "W Anglii!... Tam jeszcze istnieje epoka twórcza w społeczeństwie; tam wszystko doskonali się i wstępuje na wyższe szczeble. Owszem, tam nawet ci wyżsi przyciągają do siebie nowe siły.",
+  "ua": "В Англії!... Там ще існує творча доба в суспільстві; там усе вдосконалюється й сходить на вищі щаблі. Авжеж, там навіть вищі притягують до себе нові сили.",
+  "para": 143,
+  "start": 1775.96
+ },
+ {
+  "pl": "Lecz u nas wyższa warstwa zakrzepła jak woda na mrozie i nie tylko wytworzyła osobny gatunek, który nie łączy się z resztą, ma do niej wstręt fizyczny, ale jeszcze własną martwotą krępuje wszelki ruch z dołu. Co się tu łudzić: ona i ja to dwa różne gatunki istot, naprawdę jak motyl i robak.",
+  "ua": "Та у нас вищий шар закріп, як вода у мороз, і не лише утворив окрему породу, що не з'єднується з рештою, має до неї фізичну огиду, але й власною мертвечиною сковує будь-який рух знизу. Що тут себе дурити: вона й я — це дві різні породи істот, справді як метелик і черв'як.",
+  "para": 143,
+  "start": 1789.16
+ },
+ {
+  "pl": "Mam dla jej skrzydeł opuszczać swoją norę i innych robaków?... To są moi — ci, którzy leżą tam na śmietniku, i może dlatego są nędzni, a będą jeszcze nędzniejsi, że ja chcę wydawać po trzydzieści tysięcy rubli rocznie na zabawę w motyla. Głupi handlarzu, podły człowieku!...",
+  "ua": "Мені заради її крил полишати свою нірку й інших черв'яків?... Це мої — ті, що лежать там на сміттєвищі, і може саме тому вони злиденні, а будуть ще злиденніші, бо я хочу витрачати по тридцять тисяч рублів щороку на забаву в метелика. Дурний торгівцю, поганий чоловіче!...",
+  "para": 143,
+  "start": 1809.44
+ },
+ {
+  "pl": "Trzydzieści tysięcy rubli znaczą tyle, co sześćdziesiąt drobnych warsztatów albo sklepików, z których żyją całe rodziny. I to ja mam byt ich zniszczyć, wyssać z nich ludzkie dusze i wypędzić na ten śmietnik?...",
+  "ua": "Тридцять тисяч рублів означають стільки ж, скільки шістдесят дрібних майстерень або крамничок, якими живуть цілі родини. І це мені зруйнувати їхнє існування, висмоктати з них людські душі й вигнати на це сміттєвище?...",
+  "para": 144,
+  "start": 1830.17
+ },
+ {
+  "pl": "No dobrze, ale gdyby nie ona, czy miałbym dziś majątek?... Kto wie, co się stanie ze mną i z tymi pieniędzmi bez niej? Może właśnie dopiero przy niej nabiorą one twórczych własności; może choć kilkanaście rodzin z nich skorzysta?...”",
+  "ua": "Гаразд, але якби не вона, чи мав би я сьогодні маєток?... Хто зна, що сталося б зі мною й з цими грошима без неї? Може, саме аж при ній набудуть вони творчих властивостей; може, хоч кільканадцять родин ними скористає?...",
+  "para": 145,
+  "start": 1845.21
+ },
+ {
+  "pl": "Wokulski odwrócił się i nagle zobaczył na ziemi swój własny cień.",
+  "ua": "Вокульський обернувся й раптом побачив на землі власну тінь.",
+  "para": 146,
+  "start": 1862.16
+ },
+ {
+  "pl": "Potem przypomniał sobie, że ten cień chodzi przed nim, za nim albo obok niego zawsze i wszędzie, jak myśl o tamtej kobiecie chodziła za nim wszędzie i zawsze, na jawie i we śnie, mieszając się do wszystkich jego celów, planów i czynów.",
+  "ua": "Потім пригадав, що ця тінь іде перед ним, за ним чи поряд з ним завжди й усюди, як думка про ту жінку йшла за ним усюди й завжди, наяву й уві сні, втручаючись у всі його цілі, плани й учинки.",
+  "para": 146,
+  "start": 1867.33
+ },
+ {
+  "pl": "„Nie mogę wyrzec się jej” — szepnął rozkładając ręce, jakby tłomaczył się komuś.",
+  "ua": "«Не можу від неї відмовитися» — прошепотів, розставляючи руки, ніби виправдовуючись перед кимось.",
+  "para": 147,
+  "start": 1883.23
+ },
+ {
+  "pl": "Wstał z belek i wrócił do miasta.",
+  "ua": "Підвівся з балок і повернувся до міста.",
+  "para": 148,
+  "start": 1889.11
+ },
+ {
+  "pl": "Idąc przez ulicę Oboźną<sup>215<\/sup>, przypomniał sobie furmana Wysockiego, któremu koń padł, i zdawało mu się, że widzi cały szereg wozów, przed którymi leżą padłe konie, cały szereg rozpaczających nad nimi furmanów, a przy każdym gromadę mizernych dzieci i żonę, która pierze bieliznę takim,",
+  "ua": "Йдучи вулицею Обозною<sup>215<\/sup>, пригадав возника Висоцького, в якого помер кінь, і здавалося йому, що він бачить цілий ряд возів, перед якими лежать дохлі коні, цілий ряд розпачливих над ними возників, а при кожному — групу жалюгідних дітей і дружину, яка пере білизну тим,",
+  "para": 149,
+  "start": 1891.58
+ },
+ {
+  "pl": "co płacić nie mogą.",
+  "ua": "хто не може платити.",
+  "para": 149,
+  "start": 1911.2
+ },
+ {
+  "pl": "„Koń?...” — szepnął Wokulski i czegoś serce mu się ścisnęło.",
+  "ua": "«Кінь?...» — прошепотів Вокульський, і чогось серце в нього стиснулося.",
+  "para": 150,
+  "start": 1913.14
+ },
+ {
+  "pl": "Raz w marcu przechodząc Aleją Jerozolimską zobaczył tłum ludzi, czarny wóz węglarski stojący w poprzek drogi pod bramą, a o parę kroków dalej wyprzężonego konia.",
+  "ua": "В одного дня в березні, проходячи Єрусалимською алеєю, побачив натовп людей, чорний вугільний віз, що стояв упоперек дороги під брамою, а за кілька кроків далі — випряженого коня.",
+  "para": 151,
+  "start": 1919.84
+ },
+ {
+  "pl": "— Co się to stało?",
+  "ua": "— Що сталося?",
+  "para": 152,
+  "start": 1931.69
+ },
+ {
+  "pl": "— Koń złamał nogę — odparł wesoło jeden z przechodniów, który miał fiołkowy szalik na szyi i trzymał ręce w kieszeniach.",
+  "ua": "— Кінь зламав ногу, — весело відповів один із перехожих, що мав фіолетовий шарф на шиї й тримав руки в кишенях.",
+  "para": 153,
+  "start": 1932.75
+ },
+ {
+  "pl": "Wokulski mimochodem spojrzał na delikwenta. Chudy koń z wytartymi bokami stał przywiązany do młodego drzewka unosząc w górę tylną nogę. Stał cicho, patrzył wywróconym okiem na Wokulskiego i gryzł z bólu gałązkę okrytą szronem.",
+  "ua": "Вокульський мимохідь глянув на злочинця. Худий кінь зі стертими боками стояв прив'язаний до молодого деревця, піднявши задню ногу. Стояв тихо, дивився вивернутим оком на Вокульського й від болю гриз гілочку, вкриту інієм.",
+  "para": 154,
+  "start": 1940.96
+ },
+ {
+  "pl": "„Dlaczego dziś dopiero przypomniał mi się ten koń? — myślał Wokulski — dlaczego ogarnia mnie taki żal?”",
+  "ua": "«Чому аж сьогодні пригадався мені цей кінь? — думав Вокульський. — Чому мене огортає такий жаль?»",
+  "para": 155,
+  "start": 1958.3
+ },
+ {
+  "pl": "Szedł Oboźną pod górę, rozmarzony, i czuł, że w ciągu kilku godzin, które spędził w nadrzecznej dzielnicy, zaszła w nim jakaś zmiana. Dawniej — dziesięć lat temu, rok temu, wczoraj jeszcze, przechodząc ulicami nie spotykał na nich nic szczególnego.",
+  "ua": "Йшов Обозною вгору, мрійливий, і відчував, що за кілька годин, проведених у прирічному кварталі, у ньому сталася якась зміна. Раніше — десять років тому, рік тому, учора ще, проходячи вулицями, не зустрічав на них нічого особливого.",
+  "para": 156,
+  "start": 1965.79
+ },
+ {
+  "pl": "Snuli się ludzie, jeździły dorożki, sklepy otwierały gościnne objęcia dla przechodniów. Ale teraz przybył mu jakby nowy zmysł. Każdy obdarty człowiek wydawał mu się istotą wołającą o ratunek tym głośniej, że nic nie mówił, tylko rzucał trwożne spojrzenia jak ów koń ze złamaną nogą.",
+  "ua": "Снувалися люди, їздили фіакри, крамниці відчиняли гостинні обійми для перехожих. Але тепер додалося йому, ніби, нового чуття. Кожен обідраний чоловік здавався йому істотою, що кличе порятунку тим голосніше, що нічого не говорив, а лише кидав тривожні погляди, як оцей кінь зі зламаною ногою.",
+  "para": 156,
+  "start": 1982.53
+ },
+ {
+  "pl": "Każda uboga kobieta wydawała mu się praczką, która wyżartymi od mydła rękami powstrzymuje rodzinę nad brzegiem nędzy i upadku. Każde mizerne dziecko wydawało mu się skazanym na śmierć przedwczesną albo na spędzanie dni i nocy w śmietniku przy ulicy Dobrej.",
+  "ua": "Кожна бідна жінка здавалася йому прачкою, яка вимитими до дірок руками стримує родину над краєм злиднів і занепаду. Кожна жалюгідна дитина здавалася йому приреченою на передчасну смерть або на проживання днів і ночей на сміттєвищі при вулиці Добрій.",
+  "para": 156,
+  "start": 2003.92
+ },
+ {
+  "pl": "I nie tylko obchodzili go ludzie. Czuł zmęczenie koni ciągnących ciężkie wozy i ból ich karków tartych do krwi przez chomąto.",
+  "ua": "І не лише людей він помічав. Відчував утому коней, що тягли важкі вози, і біль їхніх ший, натертих до крові хомутом.",
+  "para": 157,
+  "start": 2021.19
+ },
+ {
+  "pl": "Czuł obawę psa, który szczekał na ulicy zgubiwszy pana, i rozpacz chudej suki z obwisłymi wymionami, która na próżno biegała od rynsztoka do rynsztoka szukając strawy dla siebie i szczeniąt.",
+  "ua": "Відчував страх пса, що гавкав на вулиці, загубивши господаря, і розпач худої суки з обвислими вименями, яка даремно бігала від стоку до стоку, шукаючи поживи для себе й цуценят.",
+  "para": 157,
+  "start": 2031.2
+ },
+ {
+  "pl": "Jeszcze, na domiar cierpień, bolały go drzewa obdarte z kory, bruki podobne do powybijanych zębów, wilgoć na ścianach, połamane sprzęty i podarta odzież.",
+  "ua": "Ще, на додачу до страждань, його боліли дерева, обдрані з кори, бруківки, схожі на вибиті зуби, волога на стінах, поламані речі й подертий одяг.",
+  "para": 157,
+  "start": 2044.02
+ },
+ {
+  "pl": "Zdawało mu się, że każda taka rzecz jest chora albo zraniona, że skarży się: „Patrz, jak cierpię...”, i że tylko on słyszy i rozumie jej skargi. A ta szczególna zdolność odczuwania cudzego bólu urodziła się w nim dopiero dziś, przed godziną.",
+  "ua": "Здавалося йому, що кожна така річ хвора або поранена, що вона скаржиться: «Дивись, як я страждаю», і що лише він чує й розуміє її скарги. А ось ця особлива здатність відчувати чужий біль народилася в ньому аж сьогодні, годину тому.",
+  "para": 158,
+  "start": 2055.25
+ },
+ {
+  "pl": "Rzecz dziwna! przecie miał już ustaloną opinię hojnego filantropa.",
+  "ua": "Дивна річ! Він уже ж мав усталену думку щедрого філантропа.",
+  "para": 159,
+  "start": 2072.99
+ },
+ {
+  "pl": "Członkowie Towarzystwa Dobroczynności we frakach składali mu podziękowania za ofiarę dla wiecznie łaknącej instytucji; hrabina Karolowa we wszystkich salonach opowiadała o pieniądzach, które złożył na jej ochronę; jego służba i subiekci sławili go za podwyższenie im pensji.",
+  "ua": "Члени Товариства благодійності в фраках складали йому подяки за пожертву для вічно голодної установи; графиня Каролова в усіх салонах розповідала про гроші, які він склав на її притулок; його служба й прикажчики прославляли його за підвищення їм платні.",
+  "para": 159,
+  "start": 2078.49
+ },
+ {
+  "pl": "Ale Wokulskiemu rzeczy te nie sprawiały żadnej przyjemności, tak jak on sam nie przywiązywał do nich żadnej wagi. Rzucał tysiące rubli do kas urzędowych dobroczyńców, ażeby kupić za to rozgłos nie pytając, co się zrobi z pieniędzmi.",
+  "ua": "Але Вокульському ці речі не завдавали жодної насолоди, так само як він сам не надавав їм жодної ваги. Кидав тисячі рублів у каси різних благодійників, аби купити за це розголос, не питаючи, що зроблять із грошима.",
+  "para": 159,
+  "start": 2097.39
+ },
+ {
+  "pl": "I dopiero dziś, kiedy dziesięcioma rublami wydobył człowieka z niedoli, kiedy nikt nie mógł głosić przed światem o jego szlachetności, dopiero dziś poznał: co to jest ofiara. Dopiero dziś przed jego zdumionym okiem stanęła nowa, nie znana dotychczas część świata — nędza, której trzeba pomagać.",
+  "ua": "І аж сьогодні, коли десятьма рублями витяг людину зі страждань, коли ніхто не міг проголосити перед світом про його шляхетність, аж сьогодні він зрозумів: що таке пожертва. Аж сьогодні перед його здивованим оком постала нова, досі невідома частина світу — злиденність, якій треба допомагати.",
+  "para": 160,
+  "start": 2112.49
+ },
+ {
+  "pl": "„Tak, alboż ja dawniej nie widywałem nędzy?...” — szepnął Wokulski.",
+  "ua": "«Так, хіба ж я раніше не бачив злиденності?...» — прошепотів Вокульський.",
+  "para": 161,
+  "start": 2137.78
+ },
+ {
+  "pl": "I przypomniał sobie całe szeregi ludzi obdartych, mizernych, a szukających pracy, chudych koni, głodnych psów, drzew z obdartą korą i połamanymi gałęźmi. Wszystko to przecie spotykał bez wrażenia.",
+  "ua": "І пригадав цілі ряди людей обідраних, жалюгідних, а таких, що шукали роботи, худих коней, голодних псів, дерев із обдраною корою й поламаними гіллями. Усе це ж він зустрічав без враження.",
+  "para": 162,
+  "start": 2142.72
+ },
+ {
+  "pl": "I dopiero gdy wielki ból osobisty zaorał mu i zbronował duszę, na tym gruncie użyźnionym krwią własną i skropionym niewidzialnymi dla świata łzami wyrosła osobliwa roślina: współczucie powszechne, ogarniające wszystko — ludzi, zwierzęta, nawet przedmioty, które nazywają martwymi.",
+  "ua": "І аж коли великий особистий біль зорав й переорав душу, на цій землі, удобреній власною кров'ю й омитій невидимими для світу сльозами, виросла особлива рослина: всезагальне співчуття, що охоплює все — людей, тварин, навіть речі, які називають мертвими.",
+  "para": 162,
+  "start": 2156.78
+ },
+ {
+  "pl": "„Doktór powiedziałby, że utworzyła mi się nowa komórka w mózgu albo że połączyło się kilka dawnych” — pomyślał.",
+  "ua": "«Доктор сказав би, що в мене утворилася нова клітина в мозку або що поєдналися кілька давніх» — подумав.",
+  "para": 163,
+  "start": 2178.72
+ },
+ {
+  "pl": "„Tak, ale co dalej?...”",
+  "ua": "«Так, а далі що?...»",
+  "para": 164,
+  "start": 2185.69
+ },
+ {
+  "pl": "Dotychczas bowiem miał tylko jeden cel: zbliżyć się do panny Izabeli. Dziś przybył mu drugi: wydobyć z niedostatku Wysockiego.",
+  "ua": "Досі ж бо він мав лише одну ціль: наблизитися до панни Ізабели. Сьогодні додалася друга: витягти зі злиднів Висоцького.",
+  "para": 165,
+  "start": 2187.68
+ },
+ {
+  "pl": "„Mała rzecz!...”",
+  "ua": "«Дрібниця!...»",
+  "para": 166,
+  "start": 2199.0
+ },
+ {
+  "pl": "„Przenieść jego brata pod Skierniewice...” — dodał jakiś głos.",
+  "ua": "«Перевезти його брата під Скерневиці...» — додав якийсь голос.",
+  "para": 167,
+  "start": 2200.54
+ },
+ {
+  "pl": "„Drobnostka.”",
+  "ua": "«Дріб'язок.»",
+  "para": 168,
+  "start": 2204.28
+ },
+ {
+  "pl": "Ale poza tymi dwoma ludźmi stanęło zaraz kilku innych, za nimi jeszcze kilku, potem olbrzymi tłum borykający się z wszelkiego rodzaju nędzą i wreszcie — cały ocean cierpień powszechnych, które wedle sił należało zmniejszać, a przynajmniej powściągnąć od dalszego rozlewu.",
+  "ua": "Але за цими двома людьми стало одразу ще кілька інших, за ними — ще кілька, потім величезний натовп, що боровся з усякою злиденністю, і нарешті — цілий океан загальних страждань, які слід було по можливості поменшити, а щонайменше — стримати від подальшого розливу.",
+  "para": 169,
+  "start": null
+ },
+ {
+  "pl": "„Przywidzenia... abstrakcyjne... zdenerwowanie!” — szepnął Wokulski.",
+  "ua": "«Марення... абстракції... нервовість!» — прошепотів Вокульський.",
+  "para": 170,
+  "start": 2223.6
+ },
+ {
+  "pl": "To była jedna droga. Na końcu bowiem drugiej widział cel realny i jasno określony — pannę Izabelę.",
+  "ua": "Це була одна стежка. Адже в кінці другої він бачив реальну й чітко окреслену ціль — панну Ізабелу.",
+  "para": 171,
+  "start": 2228.87
+ },
+ {
+  "pl": "„Nie jestem Chrystusem, ażeby poświęcać się za całą ludzkość.”",
+  "ua": "«Я не Христос, аби жертвувати за все людство.»",
+  "para": 172,
+  "start": 2237.97
+ },
+ {
+  "pl": "„Więc na początek zapomnij o Wysockich” — odparł głos wewnętrzny.",
+  "ua": "«Отже, для початку забудь про Висоцьких» — відповів внутрішній голос.",
+  "para": 173,
+  "start": 2242.41
+ },
+ {
+  "pl": "„No, głupstwo! Jakkolwiek jestem dziś rozkołysany, ależ nie mogę być śmieszny — myślał Wokulski. — Zrobię, co się da i komu można, lecz osobistego szczęścia nie wyrzeknę się, to darmo...”",
+  "ua": "«Ну, дурниця! Хоч я й сьогодні розхитаний, але ж не можу бути смішним» — думав Вокульський. — «Зроблю, що можна й кому можна, але від особистого щастя не відмовлюся, це марно...»",
+  "para": 174,
+  "start": 2246.93
+ },
+ {
+  "pl": "W tej chwili stanął przed drzwiami swego sklepu i wszedł tam.",
+  "ua": "У цю мить зупинився перед дверима своєї крамниці й увійшов туди.",
+  "para": 175,
+  "start": 2259.19
+ },
+ {
+  "pl": "W sklepie zastał Wokulski tylko jedną osobę. Była to dama wysoka, w czarnych szatach, nieokreślonego wieku. Przed nią leżał stos neseserek: drewnianych, skórzanych, pluszowych i metalowych, prostych i ozdobnych, najdroższych i najtańszych, a — wszyscy subiekci byli na służbie.",
+  "ua": "У крамниці Вокульський застав лише одну особу. Це була висока дама в чорному вбранні невизначеного віку. Перед нею лежав стос чемоданчиків: дерев'яних, шкіряних, плюшевих і металевих, простих і оздоблених, найдорожчих і найдешевших, а — усі прикажчики були на службі.",
+  "para": 176,
+  "start": 2263.14
+ },
+ {
+  "pl": "Klein podawał coraz nowe neseserki, Mraczewski chwalił towar, a Lisiecki akompaniował mu ruchami ręki i brody. Tylko pan Ignacy wybiegł naprzeciw pryncypała.",
+  "ua": "Клейн подавав усе нові чемоданчики, Мрачевський хвалив товар, а Лісецький акомпанував йому рухами руки й бороди. Лише пан Ігнаций вибіг назустріч хазяїнові.",
+  "para": 176,
+  "start": 2281.06
+ },
+ {
+  "pl": "— Z Paryża przyszedł transport — rzekł do Wokulskiego. — Myślę, że trzeba odebrać jutro.",
+  "ua": "— З Парижа прийшов транспорт, — сказав Вокульському. — Думаю, треба прийняти завтра.",
+  "para": 177,
+  "start": 2292.52
+ },
+ {
+  "pl": "— Jak chcesz.",
+  "ua": "— Як хочеш.",
+  "para": 178,
+  "start": 2297.7
+ },
+ {
+  "pl": "— Z Moskwy obstalunki za dziesięć tysięcy rubli, na początek maja.",
+  "ua": "— З Москви замовлення на десять тисяч рублів, на початок травня.",
+  "para": 179,
+  "start": 2298.98
+ },
+ {
+  "pl": "— Spodziewałem się.",
+  "ua": "— Сподівався.",
+  "para": 180,
+  "start": 2303.04
+ },
+ {
+  "pl": "— Z Radomia za dwieście rubli, ale furman upomina się na jutro.",
+  "ua": "— З Радома на двісті рублів, але возник наполягає на завтра.",
+  "para": 181,
+  "start": 2304.32
+ },
+ {
+  "pl": "Wokulski ruszył ramionami.",
+  "ua": "Вокульський знизав плечима.",
+  "para": 182,
+  "start": 2307.96
+ },
+ {
+  "pl": "— Trzeba raz zerwać z tym kramarstwem — odezwał się po chwili. — Interes żaden, a wymagania ogromne.",
+  "ua": "— Треба раз на завжди покінчити з цією крамарською справою, — озвався за хвилину. — Жодного інтересу, а вимоги величезні.",
+  "para": 183,
+  "start": 2310.06
+ },
+ {
+  "pl": "— Zerwać z naszymi kupcami?... — spytał zdziwiony Rzecki.",
+  "ua": "— Покінчити з нашими купцями?... — здивовано спитав Ржецький.",
+  "para": 184,
+  "start": 2315.94
+ },
+ {
+  "pl": "— Zerwać z Żydami — wtrącił półgłosem Lisiecki. — Bardzo dobrze robi szef wycofując się z tych parszywych stosunków. Nieraz aż wstyd wydawać reszty, tak pieniądze zalatują cebulą.",
+  "ua": "— Покінчити з євреями, — півголосом вставив Лісецький. — Дуже добре робить шеф, усуваючись від цих мерзенних стосунків. Не раз аж соромно видавати решту, так гроші тхнуть цибулею.",
+  "para": 185,
+  "start": 2320.83
+ },
+ {
+  "pl": "Wokulski nic nie odpowiedział. Usiadł do swej księgi i udawał, że rachuje, ale naprawdę nie robił nic, nie miał siły. Przypomniał sobie tylko swoje niedawne marzenia o uszczęśliwieniu ludzkości i osądził, że musi być mocno zdenerwowany.",
+  "ua": "Вокульський нічого не відповів. Сів до своєї книги й удавав, що рахує, але насправді нічого не робив, не мав сили. Лише пригадав свої недавні марення про зроблення людства щасливим і вирішив, що мусить бути сильно нервовим.",
+  "para": 186,
+  "start": 2332.82
+ },
+ {
+  "pl": "„Rozigrał się we mnie sentymentalizm i fantazja — myślał. — Zły to znak. Mogę ośmieszyć się, zrujnować...”",
+  "ua": "«Розгулялися в мені сентиментальність і фантазія» — думав він. — «Погана ознака. Можу осмішитися, розоритися...»",
+  "para": 187,
+  "start": 2348.7
+ },
+ {
+  "pl": "I machinalnie przypatrywał się niezwykłej fizjognomii damy, która wybierała neseserki. Była ubrana skromnie, miała gładko uczesane włosy.",
+  "ua": "І машинально розглядав незвичайне обличчя дами, що вибирала чемоданчики. Була вбрана скромно, мала гладко зачесане волосся.",
+  "para": 188,
+  "start": 2356.79
+ },
+ {
+  "pl": "Na jej twarzy białej i razem żółtej malował się głęboki smutek; spoza ust przyciętych wyglądała złość, a ze spuszczonych oczu błyskał czasami gniew, niekiedy pokora.",
+  "ua": "На її білому й водночас жовтому обличчі малувався глибокий смуток; з-під стиснутих губ визирала злість, а з опущених очей блищав інколи гнів, інколи покірність.",
+  "para": 188,
+  "start": 2367.55
+ },
+ {
+  "pl": "Mówiła głosem cichym i łagodnym, a targowała się jak stu skąpców. To było za drogie, tamto za tanie; tu plusz stracił barwę, tam zaraz odlezie skórka, a ówdzie ukazuje się rdza na okuciach.",
+  "ua": "Говорила тихим і лагідним голосом, а торгувалася, як сто скнар. Це було задорожче, те задешевше; тут плюш втратив барву, там одразу відійде шкірка, а там показується іржа на фурнітурі.",
+  "para": 189,
+  "start": 2379.34
+ },
+ {
+  "pl": "Lisiecki już cofnął się od niej rozgniewany, Klejn odpoczywał, a tylko Mraczewski rozmawiał z nią jak z osobą znajomą.",
+  "ua": "Лісецький уже відступив від неї розгніваний, Клейн відпочивав, а лише Мрачевський розмовляв з нею, як з особою знайомою.",
+  "para": 189,
+  "start": 2392.96
+ },
+ {
+  "pl": "W tej chwili otworzyły się drzwi sklepu i ukazał się w nich — jeszcze oryginalniejszy jegomość. Lisiecki powiedział o nim, że jest podobny do suchotnika, któremu w trumnie zaczęły odrastać wąsy i faworyty.",
+  "ua": "У цю мить відчинилися двері крамниці й з'явився в них — ще оригінальніший паночок. Лісецький казав про нього, що він схожий на сухотника, якому в труні почали відростати вуса й бакенбарди.",
+  "para": 190,
+  "start": 2400.32
+ },
+ {
+  "pl": "Wokulski zauważył, że gość ma gapiowato otwarte usta, a za ciemnymi binoklami nosi duże oczy, z których przeglądało jeszcze większe roztargnienie.",
+  "ua": "Вокульський помітив, що гість має дурнувато відкритий рот, а за темними окулярами носить великі очі, з яких визирала ще більша розсіяність.",
+  "para": 190,
+  "start": 2413.84
+ },
+ {
+  "pl": "Gość wszedł kończąc rozmowę z kimś na ulicy, lecz wnet cofnął się, aby swego towarzysza pożegnać. Potem znowu wszedł i znowu cofnął się zadzierając do góry głowę, jakby czytał szyld. Nareszcie wszedł na dobre, ale drzwi za sobą nie zamknął.",
+  "ua": "Гість увійшов, закінчуючи розмову з кимось на вулиці, але вмить відступив, аби попрощатися зі своїм супутником. Потім знову увійшов і знову відступив, задираючи догори голову, ніби читав вивіску. Нарешті увійшов остаточно, але двері за собою не зачинив.",
+  "para": 191,
+  "start": 2423.5
+ },
+ {
+  "pl": "Wypadkowo spojrzał na damę i — spadły mu z nosa ciemne binokle.",
+  "ua": "Випадково глянув на даму — і впали йому з носа темні окуляри.",
+  "para": 191,
+  "start": 2439.22
+ },
+ {
+  "pl": "— A... a... a!... — zawołał.",
+  "ua": "— А... а... а!... — гукнув.",
+  "para": 192,
+  "start": 2443.08
+ },
+ {
+  "pl": "Ale dama gwałtownie odwróciła się od niego do neseserek i upadła na krzesło.",
+  "ua": "Але дама рвучко відвернулася від нього до чемоданчиків і впала на стілець.",
+  "para": 193,
+  "start": 2445.22
+ },
+ {
+  "pl": "Do przybysza wybiegł Mraczewski i uśmiechając się dwuznacznie, zapytał:",
+  "ua": "До незнайомця вибіг Мрачевський й, усміхаючись двозначно, спитав:",
+  "para": 194,
+  "start": 2450.1
+ },
+ {
+  "pl": "— Pan baron rozkaże?...",
+  "ua": "— Пан барон звелить?...",
+  "para": 195,
+  "start": 2454.92
+ },
+ {
+  "pl": "— Spinki, uważa pan, spinki zwyczajne, złote albo stalowe... Tylko, rozumie pan, muszą być w kształcie czapki dżokejskiej i — z biczem...",
+  "ua": "— Запонки, бачите, запонки звичайні, золоті чи сталеві... Тільки, розумієте, мусуть бути у формі жокейського капелюха і — з батіжком...",
+  "para": 196,
+  "start": 2457.36
+ },
+ {
+  "pl": "Mraczewski otworzył gablotkę ze spinkami.",
+  "ua": "Мрачевський відчинив вітринку з запонками.",
+  "para": 197,
+  "start": 2464.94
+ },
+ {
+  "pl": "— Wody... — odezwała się dama słabym głosem.",
+  "ua": "— Води... — озвалася дама слабким голосом.",
+  "para": 198,
+  "start": 2467.88
+ },
+ {
+  "pl": "Rzecki nalał jej wody z karafki i podał z oznakami współczucia.",
+  "ua": "Ржецький налив їй води з карафки й подав із ознаками співчуття.",
+  "para": 199,
+  "start": 2471.58
+ },
+ {
+  "pl": "— Pani dobrodziejce słabo?... Może by doktora...",
+  "ua": "— Паній погано?... Може, лікаря...",
+  "para": 200,
+  "start": 2475.26
+ },
+ {
+  "pl": "— Już mi lepiej — odparła.",
+  "ua": "— Вже краще, — відповіла.",
+  "para": 201,
+  "start": 2479.1
+ },
+ {
+  "pl": "Baron oglądał spinki, ostentacyjnie odwracając się tyłem do damy.",
+  "ua": "Барон розглядав запонки, демонстративно відвертаючись спиною до дами.",
+  "para": 202,
+  "start": 2481.13
+ },
+ {
+  "pl": "— A może, czy nie sądzi pan, byłyby lepsze spinki w formie podków? — pytał Mraczewskiego.",
+  "ua": "— А може, пан не думає, що кращими були б шпильки у формі підков? — питав Мрачевського.",
+  "para": 203,
+  "start": 2485.77
+ },
+ {
+  "pl": "— Myślę, że panu baronowi potrzebne są i te, i te. Sportsmeni noszą tylko oznaki sportsmeńskie, ale lubią odmianę.",
+  "ua": "— Гадаю, пану барону потрібні й ті, й інші. Спортсмени носять лише спортивні знаки, але люблять різноманітність.",
+  "para": 204,
+  "start": 2492.73
+ },
+ {
+  "pl": "— Powiedz mi pan — odezwała się nagle dama do Klejna — na co podkowy ludziom, którzy nie mają za co utrzymywać koni?...",
+  "ua": "— Скажіть мені, — раптом озвалася дама до Клейна, — навіщо людям підкови, коли в них немає за що утримувати коней?...",
+  "para": 205,
+  "start": 2501.48
+ },
+ {
+  "pl": "— Otóż, proszę pana — mówił baron — wybrać mi jeszcze parę drobiazgów w formie podkowy...",
+  "ua": "— Отож, ось що, пане, — казав барон, — вибери мені ще пару дрібниць у формі підкови...",
+  "para": 206,
+  "start": 2508.32
+ },
+ {
+  "pl": "— Może by popielniczkę? — zapytał Mraczewski.",
+  "ua": "— Може, попільничку? — спитав Мрачевський.",
+  "para": 207,
+  "start": 2514.44
+ },
+ {
+  "pl": "— Dobrze, popielniczkę — odparł baron.",
+  "ua": "— Гаразд, попільничку, — відповів барон.",
+  "para": 208,
+  "start": 2517.74
+ },
+ {
+  "pl": "— Może gustowny kałamarz z siodłem, dżokejką, szpicrutą<sup>216<\/sup>?",
+  "ua": "— Може, гарний чорнильницю з сідлом, жокеєм, батогом<sup>216<\/sup>?",
+  "para": 209,
+  "start": 2520.52
+ },
+ {
+  "pl": "— Proszę o gustowny kałamarz z siodłem i dżokejką...",
+  "ua": "— Будь ласка, гарний чорнильницю з сідлом і жокеєм...",
+  "para": 210,
+  "start": 2524.1
+ },
+ {
+  "pl": "— Powiedz mi pan — mówiła dama do Klejna podniesionym głosem — czy wam nie wstyd zwozić tak kosztowne drobiazgi, kiedy kraj jest zrujnowany?... Czy nie wstyd kupować konie wyścigowe...",
+  "ua": "— Скажіть мені, — говорила дама до Клейна піднесеним голосом, — хіба вам не соромно возити такі дорогі дрібниці, коли країна розорена?... Хіба не соромно купувати бігових коней...",
+  "para": 211,
+  "start": 2527.64
+ },
+ {
+  "pl": "— Drogi panie — zawołał nie mniej głośno baron do Mraczewskiego — zapakuj wszystkie te garnitury, popielniczkę, kałamarz i odeszlij<sup>217<\/sup> mi do domu. Macie prześliczny wybór towarów... Serdecznie dziękuję... Adieu!...",
+  "ua": "— Дорогий пане, — гукнув не менш голосно барон до Мрачевського, — запакуй усі ці набори, попільничку, чорнильницю й надішли<sup>217<\/sup> мені додому. У вас чудовий вибір товару... Щиро дякую... Adieu!...",
+  "para": 212,
+  "start": 2538.86
+ },
+ {
+  "pl": "I wybiegł ze sklepu wracając się parę razy i spoglądając na szyld nad drzwiami.",
+  "ua": "І вибіг з крамниці, кілька разів обертаючись і позираючи на вивіску над дверима.",
+  "para": 213,
+  "start": 2552.62
+ },
+ {
+  "pl": "Po odejściu oryginalnego barona w sklepie zapanowało milczenie. Rzecki patrzył na drzwi, Klejn na Rzeckiego, a Lisiecki na Mraczewskiego, który znajdując się z tyłu damy krzywił się w sposób bardzo dwuznaczny.",
+  "ua": "Після відходу оригінального барона в крамниці запанувала тиша. Ржецький дивився на двері, Клейн — на Ржецького, а Лісецький — на Мрачевського, який, стоячи за спиною дами, кривився дуже двозначно.",
+  "para": 214,
+  "start": 2558.18
+ },
+ {
+  "pl": "Dama z wolna podniosła się z krzesła i zbliżyła się do kantorka, za którym siedział Wokulski.",
+  "ua": "Дама повільно піднялася зі стільця й наблизилася до конторки, за якою сидів Вокульський.",
+  "para": 215,
+  "start": 2572.21
+ },
+ {
+  "pl": "— Czy mogę spytać — rzekła drżącym głosem — ile panu winien jest ten pan, który dopiero co wyszedł?...",
+  "ua": "— Чи можна спитати, — сказала тремтячим голосом, — скільки винен вам отой пан, що щойно вийшов?...",
+  "para": 216,
+  "start": 2578.99
+ },
+ {
+  "pl": "— Rachunki tego pana ze mną, szanowna pani, gdyby je miał, należą tylko do niego i do mnie — odpowiedział Wokulski kłaniając się.",
+  "ua": "— Рахунки цього пане зі мною, шановна пані, якби вони й були, належать лише до нього й до мене, — відповів Вокульський, кланяючись.",
+  "para": 217,
+  "start": 2587.17
+ },
+ {
+  "pl": "— Panie — ciągnęła dalej rozdrażniona dama — jestem Krzeszowska, a ten pan jest moim mężem. Długi jego obchodzą mnie, ponieważ on zagarnął mój majątek, o który w tej chwili toczy się między nami proces...",
+  "ua": "— Пане, — продовжувала роздратована дама, — я Крежовська, а той пан — мій чоловік. Його борги стосуються мене, бо він привласнив моє майно, щодо якого зараз триває між нами судова справа...",
+  "para": 218,
+  "start": 2596.41
+ },
+ {
+  "pl": "— Daruje pani — przerwał Wokulski — ale stosunki między małżonkami do mnie nie należą.",
+  "ua": "— Вибачте, пані, — перервав Вокульський, — але стосунки між подружжям мене не стосуються.",
+  "para": 219,
+  "start": 2609.97
+ },
+ {
+  "pl": "— Ach, więc tak?... Zapewne, że dla kupca jest to najwygodniej. Adieu.",
+  "ua": "— Ах, отак?... Певно, що для купця це найзручніше. Adieu.",
+  "para": 220,
+  "start": 2615.95
+ },
+ {
+  "pl": "I opuściła sklep trzaskając drzwiami.",
+  "ua": "І полишила крамницю, грюкнувши дверима.",
+  "para": 221,
+  "start": 2621.78
+ },
+ {
+  "pl": "W kilka minut po jej odejściu wbiegł do sklepu baron. Parę razy wyjrzał na ulicę, a następnie zbliżył się do Wokulskiego.",
+  "ua": "Кілька хвилин після її відходу до крамниці вбіг барон. Кілька разів визирнув на вулицю, а потім наблизився до Вокульського.",
+  "para": 222,
+  "start": 2624.3
+ },
+ {
+  "pl": "— Najmocniej przepraszam — rzekł usiłując utrzymać binokle na nosie — ale jako stały gość pański, ośmielę się w zaufaniu zapytać: co mówiła dama, która wyszła przed chwilą?... Bardzo przepraszam za moją śmiałość, ale w zaufaniu...",
+  "ua": "— Найщиріше вибачаюсь, — сказав, намагаючись утримати бінокль на носі, — але як постійний ваш гість, осмілююся по-дружньому спитати: що казала дама, яка щойно вийшла?... Дуже вибачаюсь за свою нахабність, але по-дружньому...",
+  "para": 223,
+  "start": 2632.44
+ },
+ {
+  "pl": "— Nic nie mówiła, co by kwalifikowało się do powtórzenia — odparł Wokulski.",
+  "ua": "— Нічого не казала, що підлягало б повторенню, — відповів Вокульський.",
+  "para": 224,
+  "start": 2646.18
+ },
+ {
+  "pl": "— Bo uważa pan, jest to, niestety! moja żona... Pan wie, kto jestem... Baron Krzeszowski... Bardzo zacna kobieta, bardzo światła, ale skutkiem śmierci naszej córki trochę zdenerwowana i niekiedy... Pojmuje pan?... Więc nic?...",
+  "ua": "— Бо розумієте, це, на жаль!.. моя дружина... Пан знає, хто я... Барон Крежовський... Дуже порядна жінка, дуже світська, але внаслідок смерті нашої доньки дещо знервована й інколи... Розумієте?.. Отже нічого?...",
+  "para": 225,
+  "start": 2650.82
+ },
+ {
+  "pl": "— Nic.",
+  "ua": "— Нічого.",
+  "para": 226,
+  "start": 2666.78
+ },
+ {
+  "pl": "Baron ukłonił się i już we drzwiach skrzyżował spojrzenia z Mraczewskim, który mrugnął na niego.",
+  "ua": "Барон уклонився й уже в дверях склав погляд із Мрачевським, який йому підморгнув.",
+  "para": 227,
+  "start": 2668.07
+ },
+ {
+  "pl": "— Więc tak?... — rzekł baron, ostro patrząc na Wokulskiego.",
+  "ua": "— Отак?... — сказав барон, гостро дивлячись на Вокульського.",
+  "para": 228,
+  "start": 2675.04
+ },
+ {
+  "pl": "I wybiegł na ulicę. Mraczewski skamieniał i oblał się rumieńcem powyżej włosów. Wokulski trochę pobladł, lecz spokojnie usiadł do rachunków.",
+  "ua": "І вибіг на вулицю. Мрачевський скам'янів і залився рум'янцем вище волосся. Вокульський трохи збліднув, але спокійно сів до рахунків.",
+  "para": 229,
+  "start": 2679.36
+ },
+ {
+  "pl": "— Cóż to za oryginalne diabły, panie Mraczewski? — spytał Lisiecki.",
+  "ua": "— Що це за оригінальні біси, пане Мрачевський? — спитав Лісецький.",
+  "para": 230,
+  "start": 2689.26
+ },
+ {
+  "pl": "— A to cała historia! — odparł Mraczewski przypatrując się spod oka Wokulskiemu. — Jest to baron Krzeszowski, wielki dziwak, i jego żona, trochę narwana. Nawet skuzynowani ze mną, ale cóż!... — westchnął spoglądając w lustro.",
+  "ua": "— А от вся історія! — відповів Мрачевський, позираючи з-під лоба на Вокульського. — Це барон Крежовський, великий дивак, і його дружина, дещо неспокійна. Навіть із мною свояки, але що ж!... — зітхнув, позираючи в дзеркало.",
+  "para": 231,
+  "start": 2694.64
+ },
+ {
+  "pl": "— Ja nie mam pieniędzy, więc muszę być w handlu; oni jeszcze mają, więc są moimi kundmanami...",
+  "ua": "— Я не маю грошей, тож мушу бути в торгівлі; вони ще мають, тож вони мої кундмани...",
+  "para": 231,
+  "start": 2710.6
+ },
+ {
+  "pl": "— Mają bez pracy!... — wtrącił Klejn. — Ładny porządek świata, co?",
+  "ua": "— Мають без роботи!... — вставив Клейн. — Гарний порядок світу, правда?",
+  "para": 232,
+  "start": 2716.86
+ },
+ {
+  "pl": "— No, no... już mnie pan do swoich porządków nie nawracaj — odparł Mraczewski. — Otóż pan baron i pani baronowa od roku prowadzą ze sobą wojnę. On chce rozwodu, na co ona się nie zgadza; ona chce przepędzić go od zarządu swoim majątkiem, na co on się nie zgadza.",
+  "ua": "— Ну, ну... мене вже до своїх порядків не навертай, — відповів Мрачевський. — Отож пан барон і пані баронова рік воюють між собою. Він хоче розлучення, на що вона не згодна; вона хоче усунути його від управління своїм майном, на що він не згоден.",
+  "para": 233,
+  "start": 2721.62
+ },
+ {
+  "pl": "Ona nie pozwala mu trzymać koni, szczególniej jednego wyścigowca; a on nie pozwala jej kupić kamienicy po Łęckich, w której pani Krzeszowska mieszka i gdzie straciła córkę. Oryginały!... Bawią ludzi wymyślając jedno na drugie...",
+  "ua": "Вона не дозволяє йому тримати коней, особливо одного бігового; а він не дозволяє їй купувати кам'яницю по Ленцьких, у якій мешкає пані Крежовська і де вона втратила доньку. Оригінали!.. Розважають людей, вигадуючи одне на одного...",
+  "para": 233,
+  "start": 2737.56
+ },
+ {
+  "pl": "Opowiadał lekkim tonem i kręcił się po sklepie z miną panicza, który przyszedł tu na chwilkę, ale zaraz wyjdzie. Wokulski mienił się siedząc na fotelu; już nie mógł znieść głosu Mraczewskiego.",
+  "ua": "Розповідав легким тоном і крутився по крамниці з міною панича, який прийшов сюди на хвилинку, але зараз піде. Вокульський мінявся кольором, сидячи в кріслі; уже не міг зносити голосу Мрачевського.",
+  "para": 234,
+  "start": 2751.02
+ },
+ {
+  "pl": "„Kuzyn Krzeszowskich... — myślał. — Dostanie bilet miłosny od panny Izabeli... A, infamis!...”",
+  "ua": "«Свояк Крежовських... — думав він. — Отримає любовного листа від панни Ізабели... А, негідник!...»",
+  "para": 235,
+  "start": 2763.59
+ },
+ {
+  "pl": "I przemógłszy się wrócił do swej księgi. Do sklepu znowu poczęli wchodzić goście, wybierać towary, targować się, płacić. Ale Wokulski widział tylko ich cienie, pogrążony w pracy. A im dłuższe sumował kolumny, im większe wypadały mu sumy, tym bardziej czuł, że w sercu kipi mu jakiś gniew bezimienny.",
+  "ua": "І, пересил себе, повернувся до своєї книги. До крамниці знову почали входити гості, вибирати товар, торгуватися, платити. Але Вокульський бачив лише їхні тіні, поринувши в роботу. Що довше складав він колонки, що більші виходили в нього суми, то сильніше відчував, що в серці кипить якийсь безіменний гнів.",
+  "para": 236,
+  "start": 2769.76
+ },
+ {
+  "pl": "O co?... na kogo?... mniejsza. Dosyć, że ktoś za to zapłaci, pierwszy z brzegu.",
+  "ua": "Чого?.. На кого?.. Байдуже. Досить, що хтось за це заплатить, перший-ліпший.",
+  "para": 236,
+  "start": 2791.31
+ },
+ {
+  "pl": "Około siódmej sklep już stanowczo wyludnił się, subiekci rozmawiali, Wokulski wciąż rachował. Wtem znowu usłyszał nieznośny głos Mraczewskiego, który mówił aroganckim tonem:",
+  "ua": "Біля сьомої крамниця остаточно спорожніла, прикажчики розмовляли, Вокульський усе ще рахував. Раптом знову почув нестерпний голос Мрачевського, який говорив зарозумілим тоном:",
+  "para": 237,
+  "start": 2798.66
+ },
+ {
+  "pl": "— Co mi pan, panie Klejn, będzie zawracał głowę!... Wszyscy socjaliści są złodzieje, bo chcieliby dzielić się cudzym, i — szubrawcy, bo mają na dwu jedną parę butów i nie wierzą w chustki do nosa.",
+  "ua": "— Що мені, пане Клейне, голову завертаєш!.. Усі соціалісти — злодії, бо хотіли б ділитися чужим, і — негідники, бо мають на двох одну пару черевиків і не вірять у хустки для носа.",
+  "para": 238,
+  "start": 2810.72
+ },
+ {
+  "pl": "— Nie mówiłbyś pan tak — odparł smutnie Klejn — gdybyś przeczytał choć z parę broszurek, nawet niedużych.",
+  "ua": "— Не казав би ти так, — сумно відповів Клейн, — якби прочитав хоч пару брошур, навіть невеличких.",
+  "para": 239,
+  "start": 2822.26
+ },
+ {
+  "pl": "— Błazeństwo... — przerwał Mraczewski włożywszy ręce w kieszenie. — Będę czytał broszury, które chcą zniszczyć rodzinę, wiarę i własność!... No, takich głupich nie znajdziesz pan w Warszawie.",
+  "ua": "— Дурниця... — перервав Мрачевський, засунувши руки в кишені. — Читатиму брошури, які хочуть знищити родину, віру і власність!.. Ну, таких дурнів ти не знайдеш у Варшаві.",
+  "para": 240,
+  "start": 2829.1
+ },
+ {
+  "pl": "Wokulski zamknął księgę i włożył ją do kantorka. W tej chwili znowu weszły do sklepu trzy panie żądając rękawiczek.",
+  "ua": "Вокульський зачинив книгу й поклав її до конторки. У цю мить до крамниці знову ввійшли три пані, вимагаючи рукавичок.",
+  "para": 241,
+  "start": 2841.5
+ },
+ {
+  "pl": "Targ z nimi przeciągnął się z kwadrans. Wokulski siedział na fotelu i patrzył w okno; gdy zaś damy wyszły, odezwał się tonem bardzo spokojnym:",
+  "ua": "Торг із ними затягнувся на чверть години. Вокульський сидів у кріслі й дивився у вікно; а коли пані вийшли, озвався дуже спокійним тоном:",
+  "para": 242,
+  "start": 2849.75
+ },
+ {
+  "pl": "— Panie Mraczewski.",
+  "ua": "— Пане Мрачевський.",
+  "para": 243,
+  "start": 2858.91
+ },
+ {
+  "pl": "— Co pan każe?... — spytał piękny młodzieniec biegnąc do kantorka krokiem kontredansowym<sup>218<\/sup>.",
+  "ua": "— Що наказуєте?... — спитав гарний юнак, підбігаючи до конторки кроком контредансу<sup>218<\/sup>.",
+  "para": 244,
+  "start": 2860.43
+ },
+ {
+  "pl": "— Od jutra niech pan postara się o inne miejsce — rzekł krótko Wokulski.",
+  "ua": "— З завтрашнього дня пошукай собі іншого місця, — сказав коротко Вокульський.",
+  "para": 245,
+  "start": 2865.77
+ },
+ {
+  "pl": "Mraczewski osłupiał.",
+  "ua": "Мрачевський остовпів.",
+  "para": 246,
+  "start": 2870.91
+ },
+ {
+  "pl": "— Dlaczego, panie szefie?... Dlaczego?...",
+  "ua": "— Чому, пане шефе?.. Чому?..",
+  "para": 247,
+  "start": 2872.87
+ },
+ {
+  "pl": "— Dlatego, że u mnie już pan nie ma miejsca.",
+  "ua": "— Тому що в мене тобі вже немає місця.",
+  "para": 248,
+  "start": 2875.97
+ },
+ {
+  "pl": "— Jakiż powód?... Przecie chyba nic złego nie zrobiłem? Gdzież pójdę, jeżeli pan tak nagle pozbawi mię posady?...",
+  "ua": "— Яка ж причина?.. Адже ж я нічого поганого не зробив? Куди я піду, якщо ти так раптово позбавиш мене посади...",
+  "para": 249,
+  "start": 2879.81
+ },
+ {
+  "pl": "— Świadectwo dostanie pan dobre — odparł Wokulski. — Pan Rzecki wypłaci panu pensję za następny kwartał, wreszcie — za pięć miesięcy... A powód jest ten, że ja i pan nie pasujemy do siebie... Zupełnie nie pasujemy. — Mój Ignacy, zrób z panem Mraczewskim rachunek do pierwszego października.",
+  "ua": "— Довідку отримаєш добру, — відповів Вокульський. — Пан Ржецький виплатить тобі платню за наступний квартал, а врешті — за п'ять місяців... А причина ось, що я й ти не пасуємо одне одному... Зовсім не пасуємо. — Мій Ігнацію, зроби з паном Мрачевським рахунок до першого жовтня.",
+  "para": 250,
+  "start": 2886.46
+ },
+ {
+  "pl": "To powiedziawszy Wokulski wstał z fotelu i wyszedł na ulicę.",
+  "ua": "Сказавши це, Вокульський підвівся з крісла й вийшов на вулицю.",
+  "para": 251,
+  "start": 2905.7
+ },
+ {
+  "pl": "Dymisja Mraczewskiego zrobiła takie wrażenie, że subiekci nie przemówili między sobą ani słowa, a pan Rzecki kazał zamknąć sklep, chociaż nie było jeszcze ósmej. Pobiegł zaraz do mieszkania Wokulskiego, lecz go tam nie zastał.",
+  "ua": "Звільнення Мрачевського справило таке враження, що прикажчики не промовили між собою ані слова, а пан Ржецький наказав зачинити крамницю, хоча ще не було й восьмої. Одразу побіг до помешкання Вокульського, але не застав його там.",
+  "para": 252,
+  "start": 2911.06
+ },
+ {
+  "pl": "Przyszedł drugi raz o jedynastej w nocy, lecz w oknach było ciemno, i pan Ignacy wrócił do siebie zgnębiony.",
+  "ua": "Прийшов удруге о одинадцятій ночі, але у вікнах було темно, і пан Ігнацій повернувся до себе пригнічений.",
+  "para": 252,
+  "start": 2925.3
+ },
+ {
+  "pl": "Na drugi dzień, w Wielki Czwartek, Mraczewski już nie pokazał się w sklepie. Pozostali koledzy jego byli smutni i czasem naradzali się między sobą po cichu.",
+  "ua": "Наступного дня, в Чистий четвер, Мрачевський уже не з'явився в крамниці. Решта його товаришів були сумні й інколи радилися між собою потихеньку.",
+  "para": 253,
+  "start": 2932.9
+ },
+ {
+  "pl": "Około pierwszej przyszedł Wokulski. Lecz nim usiadł do kantorka, otworzyły się drzwi i zwykłym wahającym się krokiem wbiegł pan Krzeszowski zadając sobie wiele trudu nad osadzeniem binokli na nosie.",
+  "ua": "Біля першої прийшов Вокульський. Але ще не сів до конторки, як відчинилися двері й звичайним вагаючим кроком увійшов пан Крежовський, докладаючи чимало зусиль, аби встановити бінокль на носі.",
+  "para": 254,
+  "start": 2943.52
+ },
+ {
+  "pl": "— Panie Wokulski — zawołał roztargniony gość, prawie ode drzwi. — W tej chwili dowiaduję się... Jestem Krzeszowski... Dowiaduję się, że ten biedny Mraczewski z mojej winy otrzymał dymisję. Ależ, panie Wokulski, ja wczoraj bynajmniej nie miałem pretensji do pana...",
+  "ua": "— Пане Вокульський, — гукнув розсіяний гість, майже від дверей. — У цю мить дізнаюся... Я Крежовський... Дізнаюся, що бідний Мрачевський з моєї вини отримав звільнення. Та невже ж, пане Вокульський, я вчора аж ніяк не мав претензій до вас...",
+  "para": 255,
+  "start": 2955.8
+ },
+ {
+  "pl": "Ja szanuję dyskrecję, jaką okazał pan w sprawie mojej i mojej żony... Ja wiem, że pan jej odpowiedział, jak przystało na dżentelmena...",
+  "ua": "Я шаную стриманість, яку виявив пан у справі моїй і моєї дружини... Я знаю, що ви відповіли їй, як і личить джентльмену...",
+  "para": 255,
+  "start": 2970.8
+ },
+ {
+  "pl": "— Panie baronie — odparł Wokulski — ja nie prosiłem pana o świadectwo przyzwoitości. Poza obrębem tego — co pan każe?...",
+  "ua": "— Пане бароне, — відповів Вокульський, — я не просив вас про свідечення порядності. Поза цим — що наказуєте?..",
+  "para": 256,
+  "start": 2978.82
+ },
+ {
+  "pl": "— Przyszedłem prosić o przebaczenie biednemu Mraczewskiemu, który nawet...",
+  "ua": "— Прийшов просити прощення за бідного Мрачевського, який навіть...",
+  "para": 257,
+  "start": 2988.68
+ },
+ {
+  "pl": "— Do pana Mraczewskiego nie mam żadnej pretensji, nawet tej, ażeby do mnie wracał.",
+  "ua": "— До пана Мрачевського я не маю жодних претензій, навіть тієї, щоб він повертався до мене.",
+  "para": 258,
+  "start": 2992.28
+ },
+ {
+  "pl": "Baron przygryzł wargi. Chwilę milczał, jakby odurzony szorstką odmową; na koniec ukłonił się i cicho powiedziawszy: „Przepraszam...”, opuścił sklep.",
+  "ua": "Барон прикусив губи. Хвилинку мовчав, немов засліплений грубим відкошем; наостанок уклонився й, тихо сказавши: «Вибачаюсь...», полишив крамницю.",
+  "para": 259,
+  "start": 2997.58
+ },
+ {
+  "pl": "Panowie Klejn i Lisiecki cofnęli się za szafy i po krótkiej naradzie wrócili do sklepu, od czasu do czasu rzucając na siebie smutne, lecz wymowne spojrzenia.",
+  "ua": "Пани Клейн і Лісецький відступили за шафи й після короткої наради повернулися до крамниці, час від часу кидаючи одне на одного сумні, але красномовні погляди.",
+  "para": 260,
+  "start": 3009.16
+ },
+ {
+  "pl": "Około trzeciej po południu ukazała się pani Krzeszowska. Zdawało się, że jest bledsza, żółciejsza i jeszcze czarniej ubrana niż wczoraj. Lękliwie obejrzała się po sklepie, a spostrzegłszy Wokulskiego zbliżyła się do kantorka.",
+  "ua": "Біля третьої дня з'явилася пані Крежовська. Здалося, що вона була блідішою, жовтішою й ще чорніше вбраною, ніж учора. Налякано озирнулася по крамниці й, помітивши Вокульського, наблизилася до конторки.",
+  "para": 261,
+  "start": 3019.03
+ },
+ {
+  "pl": "— Panie — rzekła cicho — dziś dowiedziałam się, że pewien młody człowiek, Mraczewski, z mojej winy stracił u pana miejsce. Jego nieszczęśliwa matka...",
+  "ua": "— Пане, — сказала тихо, — сьогодні я дізналася, що певний молодий чоловік, Мрачевський, з моєї вини втратив у вас місце. Його нещасна мати...",
+  "para": 262,
+  "start": 3036.17
+ },
+ {
+  "pl": "— Pan Mraczewski już nie jest u mnie i nie będzie — odparł Wokulski z ukłonem. — Czym więc mogę pani służyć?...",
+  "ua": "— Пан Мрачевський уже не в мене й не буде, — відповів Вокульський з уклоном. — Чим же можу вам служити?..",
+  "para": 263,
+  "start": 3045.79
+ },
+ {
+  "pl": "Pani Krzeszowska miała widocznie ułożoną dłuższą mowę. Na nieszczęście, spojrzała Wokulskiemu w oczy i... z wyrazem: „Przepraszam...”, wyszła ze sklepu.",
+  "ua": "Пані Крежовська мала, очевидно, заготовлену довшу промову. На нещастя, подивилася Вокульському в очі й... з виразом: «Вибачаюсь...», вийшла з крамниці.",
+  "para": 264,
+  "start": 3052.51
+ },
+ {
+  "pl": "Panowie Klejn i Lisiecki — mrugnęli na siebie wymowniej niż dotychczas, lecz poprzestali na jednomyślnym wzruszeniu ramionami.",
+  "ua": "Пани Клейн і Лісецький — підморгнули одне одному ще красномовніше, ніж досі, але задовольнилися одностайним знизуванням плечей.",
+  "para": 265,
+  "start": 3063.1
+ },
+ {
+  "pl": "Dopiero około piątej po południu zbliżył się do Wokulskiego Rzecki. Oparł ręce na kantorku i rzekł półgłosem:",
+  "ua": "Аж біля п'ятої дня наблизився до Вокульського Ржецький. Спір руки на конторці й сказав півголосом:",
+  "para": 266,
+  "start": 3071.88
+ },
+ {
+  "pl": "— Matka tego Mraczewskiego, Staśku, jest bardzo biedna kobieta...",
+  "ua": "— Мати того Мрачевського, Стасю, дуже бідна жінка...",
+  "para": 267,
+  "start": 3079.5
+ },
+ {
+  "pl": "— Zapłać mu pensję do końca roku — odparł Wokulski.",
+  "ua": "— Виплати йому платню до кінця року, — відповів Вокульський.",
+  "para": 268,
+  "start": 3084.36
+ },
+ {
+  "pl": "— Myślę... Stasiu, myślę, że nie można aż tak karać człowieka za to, że ma inne niż my przekonania polityczne...",
+  "ua": "— Гадаю... Стасю, гадаю, що не можна так карати людину за те, що вона має інші, ніж ми, політичні переконання...",
+  "para": 269,
+  "start": 3088.36
+ },
+ {
+  "pl": "— Polityczne?... — powtórzył Wokulski takim tonem, że panu Ignacemu przeszedł mróz po kościach...",
+  "ua": "— Політичні?... — повторив Вокульський таким тоном, що пана Ігнація пройшов мороз по кістках...",
+  "para": 270,
+  "start": 3096.91
+ },
+ {
+  "pl": "— Zresztą, powiem ci — ciągnął dalej pan Ignacy — szkoda takiego subiekta. Chłopak piękny, kobiety go pasjami lubią...",
+  "ua": "— До речі, скажу тобі, — продовжував пан Ігнацій, — шкода такого прикажчика. Хлопець гарний, жінки його обожнюють...",
+  "para": 271,
+  "start": 3104.01
+ },
+ {
+  "pl": "— Piękny? — odparł Wokulski. — Więc niech pójdzie na utrzymanie, jeżeli taki piękny.",
+  "ua": "— Гарний? — відповів Вокульський. — Отже нехай іде на утримання, якщо такий гарний.",
+  "para": 272,
+  "start": 3111.09
+ },
+ {
+  "pl": "Pan Ignacy cofnął się. Panowie Lisiecki i Klejn już nawet nie spoglądali na siebie.",
+  "ua": "Пан Ігнацій відступив. Пани Лісецький і Клейн уже навіть не позирали один на одного.",
+  "para": 273,
+  "start": 3117.93
+ },
+ {
+  "pl": "W godzinę później przyszedł do sklepu niejaki pan Zięba, którego Wokulski przedstawił jako nowego subiekta.",
+  "ua": "За годину до крамниці прийшов певний пан Зємба, якого Вокульський представив як нового прикажчика.",
+  "para": 274,
+  "start": 3124.42
+ },
+ {
+  "pl": "Pan Zięba miał około lat trzydziestu; był może tak przystojny jak Mraczewski, ale wyglądał nierównie poważniej i taktowniej. Nim sklep zamknięto, już zaznajomił się, a nawet zdobył przyjaźń swoich kolegów.",
+  "ua": "Пан Зємба мав років тридцять; був, може, такий же гарний, як Мрачевський, але виглядав незрівнянно серйозніше й тактовніше. Перш ніж крамницю зачинили, вже здружився, а й навіть здобув дружбу своїх товаришів.",
+  "para": 275,
+  "start": 3132.58
+ },
+ {
+  "pl": "Pan Rzecki odkrył w nim zagorzałego bonapartystę; pan Lisiecki wyznał, że on sam obok Zięby jest bardzo bladym antysemitą, a pan Klejn doszedł do wniosku, że Zięba musi być co najmniej biskupem socjalizmu.",
+  "ua": "Пан Ржецький відкрив у ньому затятого бонапартиста; пан Лісецький зізнався, що він сам поряд із Зємбою дуже блідий антисеміт, а пан Клейн дійшов висновку, що Зємба мусить бути щонайменше єпископом соціалізму.",
+  "para": 275,
+  "start": 3147.86
+ },
+ {
+  "pl": "Słowem, wszyscy byli kontenci, a pan Zięba spokojny.",
+  "ua": "Словом, усі були задоволені, а пан Зємба — спокійний.",
+  "para": 276,
+  "start": 3163.76
+ }
+];
+const ANNOTATIONS = {"186": {"term": "infamis (łac.)", "definition": "człowiek bez czci, niegodziwy. [przypis redakcyjny]", "translation": "Людина без честі, негідник. [przypis redakcyjny]"}, "187": {"term": "między Kopernikiem i Zygmuntem...", "definition": "tj. wzdłuż całego Krakowskiego Przedmieścia: pomnik Kopernika wzniesiony został w r. 1830 według modelu słynnego duńskiego rzeźbiarza Bertolda Thorwaldsena (1770–1844). Zygmunt: znana kolumna z posągiem króla Zygmunta III Wazy (1587–1632), wzniesiona w r. 1644 przez jego syna Władysława IV na Placu Zamkowym. [przypis redakcyjny]", "translation": "тобто вздовж усього Краківського передмістя: пам'ятник Копернику було зведено 1830 р. за моделлю відомого данського скульптора Бертеля Торвальдсена (1770–1844). Зигмунт: відома колона зі статуєю короля Зигмунта III Вази (1587–1632), зведена 1644 р. його сином Владиславом IV на Замковій площі. [przypis redakcyjny]"}, "189": {"term": "...w kwestii bulwarów nad Wisłą", "definition": "sprawa budowy bulwarów nad Wisłą była wtedy rzeczywiście aktualna. „Kurier Warszawski” z 2 kwietnia 1879 roku donosi o powstaniu towarzystwa polsko–francuskiego, które zamierza wybudować te bulwary kosztem 25 milionów rubli. Projekt jednak nie został urzeczywistniony. [przypis redakcyjny]", "translation": "справа будівництва набережних над Віслою була тоді справді актуальною. „Кур'єр Варшавський” від 2 квітня 1879 року повідомляє про створення польсько-французького товариства, яке має намір збудувати ці набережні за 25 мільйонів рублів. Проте проект так і не було здійснено. [przypis redakcyjny]"}, "190": {"term": "ulica Karowa, Dobra, Garbarska, Topiel, Radna, Browarna, Tamka", "definition": "wymienione w tym rozdziale, są to ulice Powiśla, dzielnicy Warszawy między Krakowskim Przedmieściem a Wisłą, zamieszkiwanej przez biedotę. Położona w bezpośrednim sąsiedztwie śródmieścia, jaskrawo z nim kontrastowała. Przed 1939 r. część Powiśla bardzo się unowocześniła, jednak dopiero w ostatnich latach nowe budownictwo wyparło resztki starych ruder, pamiętających czasy Prusa. [przypis redakcyjny]", "translation": "згадані в цьому розділі, це вулиці Повісла — району Варшави між Краківським передмістям і Віслою, заселеного біднотою. Розташована безпосередньо поряд із центром міста, вона різко з ним контрастувала. До 1939 р. частина Повісло сильно модернізувалася, однак лише в останні роки нове будівництво витіснило рештки старих халуп, що пам'ятають часи Пруса. [przypis redakcyjny]"}, "191": {"term": "Przy bramie", "definition": "wejście z Krakowskiego Przedmieścia na Karową prowadziło przez wielką stylową bramę (projektu Marconiego) z dwoma wodotryskami w bocznych kolumnach. Zburzono ją przy budowie hotelu „Bristol” w 1899 r. [przypis redakcyjny]", "translation": "вхід із Краківського передмістя на Карову вів через велику стилізовану браму (проекту Марконі) з двома фонтанами в бічних колонах. Її зруйнували під час будівництва готелю „Брістоль” у 1899 р. [przypis redakcyjny]"}, "192": {"term": "Nowy Zjazd", "definition": "Nowy Zjazd biegł od Placu Zamkowego do żelaznego mostu na Wiśle i tworzył rodzaj wiaduktu na arkadach, w połączeniu z nasypem ziemnym (wiadukt Pancera). Nowy Zjazd był bardzo ruchliwym punktem Warszawy ze wzglądu na most (Kierbedzia) łączący Warszawę z Pragą. Tędy przechodzi obecnie Trasa W-Z i Most Śląsko-Dąbrowski. [przypis redakcyjny]", "translation": "Новий З'їзд пролягав від Замкової площі до залізного мосту над Віслою і утворював рід віадуку на аркадах у поєднанні із земляним насипом (віадук Панцера). Новий З'їзд був дуже оживленою точкою Варшави через міст (Кербедза), що з'єднував Варшаву з Прагою. Нині тут проходить траса В-З і Сілезько-Домбровський міст. [przypis redakcyjny]"}, "193": {"term": "Czerski Jan (1845–1892)", "definition": "przyrodnik i geolog, zesłany w r. 1863 na Syberię, badał tam faunę i pokłady węgla. [przypis redakcyjny]", "translation": "Ян Черський (1845–1892) — природознавець і геолог, засланий 1863 р. на Сибір, досліджував там фауну та вугільні пласти. [przypis redakcyjny]"}, "194": {"term": "Czekanowski Aleksander (1830–1876)", "definition": "geograf i geolog, zesłany w r. 1863 na Syberię. [przypis redakcyjny]", "translation": "Олександр Чекановський (1830–1876) — географ і геолог, засланий 1863 р. на Сибір. [przypis redakcyjny]"}, "195": {"term": "Dybowski Benedykt (1833–1930)", "definition": "uczony polski, zesłany w r. 1864 na Syberię, badał tamtejszą przyrodę, antropologię i języki ludów syberyjskich. [przypis redakcyjny]", "translation": "Бенедикт Димбовський (1833–1930) — польський учений, засланий 1864 р. на Сибір, досліджував тамтешню природу, антропологію та мови народів Сибіру. [przypis redakcyjny]"}, "196": {"term": "słychać szelest duchów wracających ku zachodowi", "definition": "prawdopodobnie reminiscencja epizodu w *Anhellim* (1838) Juliusza Słowackiego, kiedy dusza bohatera, wywołana przez Szamana, pragnie powrócić do ojczyzny. [przypis redakcyjny]", "translation": "ймовірно, ремінісценція епізоду в *Ангелах* (1838) Юліуша Словацького, коли душа героя, викликана Шаманом, прагне повернутися на батьківщину. [przypis redakcyjny]"}, "197": {"term": "dyplom", "definition": "tu: dokument stwierdzający pochodzenie szlacheckie. [przypis redakcyjny]", "translation": "тут: документ, що підтверджує шляхетське походження. [przypis redakcyjny]"}, "198": {"term": "wojna wschodnia", "definition": "wojna rosyjsko-turecka. [przypis redakcyjny]", "translation": "російсько-турецька війна. [przypis redakcyjny]"}, "199": {"term": "rs", "definition": "skrót: rubli srebrnych. [przypis redakcyjny]", "translation": "скорочення: рублів срібних. [przypis redakcyjny]"}, "200": {"term": "studia etnograficzne", "definition": "zainteresowania Szumana zbliżają się raczej do antropologii. [przypis redakcyjny]", "translation": "зацікавлення Шумана ближчі до антропології. [przypis redakcyjny]"}, "201": {"term": "departamenty", "definition": "tu: w znaczeniu części. [przypis redakcyjny]", "translation": "тут: у значенні частин. [przypis redakcyjny]"}, "202": {"term": "Sit tibi terra levis (łac.)", "definition": "niech ci ziemia lekką będzie. [przypis redakcyjny]", "translation": "Нехай земля тобі буде легкою. [przypis redakcyjny]"}, "203": {"term": "transporta", "definition": "dziś: transporty, towary do przewiezienia. [przypis redakcyjny]", "translation": "нині: транспорти, товари для перевезення. [przypis redakcyjny]"}, "204": {"term": "Kolej Wiedeńska", "definition": "linia kolejowa Warszawa—Skierniewice—Koluszki—Piotrków—Częstochowa—Dąbrowa Górnicza na Kraków i Wiedeń, najdawniejsza w Królestwie Kongresowym, zbudowana w latach 1838–1848. [przypis redakcyjny]", "translation": "залізнична лінія Варшава—Скерневиці—Колюшки—Пйотркув—Ченстохова—Домброва-Гурнича на Краків і Відень, найстаріша в Царстві Польському, збудована в 1838–1848 рр. [przypis redakcyjny]"}, "205": {"term": "Skierniewice", "definition": "miasto powiatowe i węzeł kolejowy, 66 km na południowy zachód od Warszawy. [przypis redakcyjny]", "translation": "повітове місто та залізничний вузол, 66 км на південний захід від Варшави. [przypis redakcyjny]"}, "206": {"term": "mórg", "definition": "miara powierzchni: mórg polski — ok. 55 arów. [przypis redakcyjny]", "translation": "одиниця площі: польська морга — близько 55 арів. [przypis redakcyjny]"}, "207": {"term": "człowiek krzepi się mówiący", "definition": "dawna forma imiesłowowa; dziś: człowiek krzepi się mówiąc. [przypis edytorski]", "translation": "давня форма дієприслівника; нині: людину бадьорить мовлення. [przypis edytorski]"}, "208": {"term": "pud", "definition": "rosyjska jednostka wagi, ok. 16 kg. [przypis redakcyjny]", "translation": "російська одиниця ваги, близько 16 кг. [przypis redakcyjny]"}, "209": {"term": "ulica Żelazna", "definition": "w zachodniej części Warszawy (w czasie wojny poważnie zniszczona). [przypis redakcyjny]", "translation": "у західній частині Варшави (під час війни серйозно зруйнована). [przypis redakcyjny]"}, "210": {"term": "kilkumorgowa", "definition": "od: morga, miara powierzchni ziemi, wynosząca 0,56 ha. [przypis edytorski]", "translation": "від: морга, одиниця площі землі, що дорівнює 0,56 га. [przypis edytorski]"}, "211": {"term": "Powązki", "definition": "w północno–zachodniej części Warszawy; dzielnica cmentarzy (największy i najstarszy z nich — cmentarz katolicki, założony w 1791). W latach 1877–1881 śmiertelność wynosiła w Warszawie 36,8%; a po wybudowaniu wodociągów i kanalizacji spadła do 19,5%. [przypis redakcyjny]", "translation": "у північно-західній частині Варшави; район кладовищ (найбільше й найстаріше з них — католицьке кладовище, засноване 1791 р.). У 1877–1881 рр. смертність у Варшаві становила 36,8%; а після будівництва водогонів і каналізації впала до 19,5%. [przypis redakcyjny]"}, "212": {"term": "Mohikanie", "definition": "wymarłe plemię Indian w Ameryce Północnej. [przypis redakcyjny]", "translation": "вимерле плем'я індіанців у Північній Америці. [przypis redakcyjny]"}, "213": {"term": "Saska Kępa", "definition": "nazwą tą oznaczano wówczas naturalną wyspę na Wiśle, obejmującą wtedy część dzisiejszej Pragi i Grochowa; północna jej część znajdowała się naprzeciw Powiśla. Saska Kępa została później podzielona, najpierw na dwie części (przy budowie Mostu Poniatowskiego w latach 1904–1913), a następnie na trzy — po usypaniu Alei Waszyngtona w 1935 r. Dziś nazwą tą określa się dzielnicę nadwiślańską leżącą na południe od Mostu Poniatowskiego. [przypis redakcyjny]", "translation": "цим ім'ям позначали тоді природний острів на Віслі, що охоплював тоді частину сучасної Праги та Грохова; його північна частина знаходилася навпроти Повісла. Саску Кемпу пізніше поділили: спочатку на дві частини (під час будівництва мосту Понятовського в 1904–1913 рр.), а потім на три — після насипання Алеї Вашингтона 1935 р. Нині цим ім'ям називають надвіслянський район, що лежить на південь від мосту Понятовського. [przypis redakcyjny]"}, "214": {"term": "berlinka", "definition": "duża łódź żaglowa z pomostem przykrywającym przewożony ładunek. [przypis redakcyjny]", "translation": "велика вітрильна лодка з настилом, що вкриває перевезений вантаж. [przypis redakcyjny]"}, "215": {"term": "ulica Oboźna", "definition": "ulica w śródmieściu Warszawy, w czasie wojny zupełnie zniszczona, obecnie odbudowana. [przypis redakcyjny]", "translation": "вулиця в центрі Варшави, під час війни цілком зруйнована, нині відбудована. [przypis redakcyjny]"}, "216": {"term": "szpicruta", "definition": "giętki pręt, zazwyczaj obciągnięty skórą, używany przy jeździe konnej. [przypis redakcyjny]", "translation": "гнучкий прут, зазвичай вкритий шкірою, що вживається під час їзди верхи. [przypis redakcyjny]"}, "217": {"term": "odeszlij", "definition": "dziś: odeślij. [przypis edytorski]", "translation": "нині: надішли. [przypis edytorski]"}, "218": {"term": "krok kontredansowy", "definition": "kontredans: taniec zbiorowy z różnymi figurami. [przypis redakcyjny]", "translation": "контреданс: груповий танець із різними фігурами. [przypis redakcyjny]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into audio/chapter-08.webm, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  6.37,    // [  0] conf 1.00  "Znalazłszy się na ulicy Wokulski stanął n…"
+  26.67,   // [  1] conf 1.00  "„Dziwna rzecz, jak mnie to wszystko mało…"
+  45.19,   // [  2] conf 1.00  "i o tych tysiącach, którzy dzięki jego ta…"
+  59.80,   // [  3] conf 1.00  "„Sklep odstąpię, nie zawiążę spółki i wyj…"
+  65.59,   // [  4] conf 1.00  "„A zawód, jaki zrobisz ludziom, którzy w…"
+  69.99,   // [  5] conf 1.00  "„Zawód?... Alboż mnie samego nie spotkał…"
+  74.72,   // [  6] conf 1.00  "Wokulski idąc poczuł jakąś niewygodę; lec…"
+  87.54,   // [  7] conf 0.86  "„A jednak ten Mraczewski jest infamis<sup…"
+  103.62,  // [  8] conf 0.92  "Czuł w duszy dziwną pustkę, a na samym je…"
+  123.81,  // [  9] conf 1.00  "„Chwilowa apatia, wyczerpanie, brak wraże…"
+  129.86,  // [ 10] conf 0.91  "Stanął i patrzył. Dzień przedświąteczny i…"
+  150.16,  // [ 11] conf 1.00  "„Szczególna rzecz — mówił. — Każdy ptak w…"
+  167.08,  // [ 12] conf 0.96  "Może nawet ten sam, który unosi smugę isk…"
+  193.84,  // [ 13] conf 1.00  "Gdzie ja to czytałem?... Wszystko jedno.”"
+  198.50,  // [ 14] conf 0.89  "Nieustanny turkot i szmer wydał się Wokul…"
+  213.07,  // [ 15] conf 1.00  "Zdanie już miał wyrobione: Warszawa całym…"
+  229.18,  // [ 16] conf 0.69  "„Trzeba spojrzeć, jak by to wyglądało?” —…"
+  236.79,  // [ 17] conf 0.91  "Przy bramie<sup>191</sup> wiodącej tam zo…"
+  249.79,  // [ 18] conf 0.92  "„Jużci, ten ma, czego pragnął. Ja, ledwie…"   // start word fuzzy-corrected
+  267.30,  // [ 19] conf 0.93  "Na Karowej odetchnął. Zdawało mu się, że…"
+  281.24,  // [ 20] conf 1.00  "„Cóż bulwary?... — myślał. — Postoją jaki…"
+  301.00,  // [ 21] conf 1.00  "Zostały po nich spękane mury, jak skorupa…"
+  334.24,  // [ 22] conf 0.75  "Gdziem ja to czytał, gdzie?... Mniejsza o…"
+  340.53,  // [ 23] conf 0.94  "Zatrzymał się w połowie drogi i patrzył n…"
+  360.76,  // [ 24] conf 1.00  "„Nigdzie nie wejdziemy po tej leżącej dra…"
+  368.18,  // [ 25] conf 0.93  "I rozważał pełen goryczy, że ten płat zie…"
+  383.88,  // [ 26] conf 0.96  "Nic, oprócz białych i czarnych parkanów,…"
+  398.53,  // [ 27] conf 1.00  "„Nic, nic!...” — powtarzał tułając się po…"
+  420.32,  // [ 28] conf 1.00  "Szedł, przez brudne szyby zaglądał do mie…"
+  435.44,  // [ 29] conf 1.00  "Szedł i cicho śmiał się na widok wyrobnik…"
+  455.15,  // [ 30] conf 1.00  "„Oto miniatura kraju — myślał — w którym…"
+  466.93,  // [ 31] conf 0.94  "Praca odejmuje sobie od ust, ażeby karmić…"
+  482.54,  // [ 32] conf 1.00  "Tu nie poradzi jednostka z inicjatywą, bo…"
+  493.20,  // [ 33] conf 0.77  "Potem w wielkich konturach przyszła mu na…"
+  513.46,  // [ 34] conf 1.00  "Kiedy nareszcie dostał się do uniwersytet…"
+  521.11,  // [ 35] conf 0.79  "Odetchnął dopiero na Syberii. Tam mógł pr…"
+  537.71,  // [ 36] conf 1.00  "„To taki piękny kawałek chleba w tak cięż…"
+  541.93,  // [ 37] conf 1.00  "No i wrócił do handlu, a wtedy zawołano,…"
+  549.13,  // [ 38] conf 1.00  "Traf zdarzył, iż po kilku latach żona uma…"
+  571.83,  // [ 39] conf 1.00  "Siedziała w loży z ojcem i panną Florenty…"
+  588.41,  // [ 40] conf 1.00  "Wokulski przypatrywał się jej cały czas."
+  591.49,  // [ 41] conf 1.00  "Zrobiła na nim szczególne wrażenie. Zdawa…"
+  599.44,  // [ 42] conf 0.91  "Wpatrzył się lepiej w jej rozmarzone oczy…"
+  613.99,  // [ 43] conf 1.00  "Dopiero później przyszło mu na myśl, że o…"
+  624.43,  // [ 44] conf 0.93  "„Tyżeś to czy nie ty?...” — pytał się w d…"   // start word fuzzy-corrected
+  632.26,  // [ 45] conf 1.00  "Odtąd mało pamiętał o sklepie i o swoich…"
+  651.55,  // [ 46] conf 1.00  "Czuł tylko, że stała się ona jakimś misty…"
+  665.89,  // [ 47] conf 0.97  "Służba w sklepie kolonialnym, uniwersytet…"
+  683.98,  // [ 48] conf 1.00  "Od tej pory czas miał dla niego dwie fazy…"
+  698.11,  // [ 49] conf 1.00  "Niekiedy zdawało mu się, że w jego uczuci…"
+  715.38,  // [ 50] conf 1.00  "„Zapoznam się z nią i wprost zapytam: czy…"
+  724.20,  // [ 51] conf 0.97  "W chwilę później spostrzegał, że projekt…"
+  737.80,  // [ 52] conf 1.00  "Wtedy przekonał się, że między jego znajo…"
+  753.70,  // [ 53] conf 0.95  "Stopniowo sformułował sobie warunki zapoz…"
+  763.84,  // [ 54] conf 1.00  "Nie być kupcem albo być bardzo bogatym ku…"
+  768.50,  // [ 55] conf 1.00  "Być co najmniej szlachcicem i posiadać st…"
+  773.84,  // [ 56] conf 1.00  "Nade wszystko zaś mieć dużo pieniędzy."
+  778.57,  // [ 57] conf 0.88  "Wylegitymowanie się ze szlachectwa nie by…"
+  781.73,  // [ 58] conf 0.92  "W maju roku zeszłego Wokulski wziął się d…"
+  794.93,  // [ 59] conf 0.91  "W początkach wojny wschodniej<sup>198</su…"
+  810.97,  // [ 60] conf 1.00  "— Zbierz pieniędzy, Stanisławie Piotrowic…"
+  820.16,  // [ 61] conf 1.00  "Następnie półgłosem wyłożył mu swoje plan…"
+  823.70,  // [ 62] conf 1.00  "Wokulski wysłuchał jego projektów. Do wyk…"
+  838.58,  // [ 63] conf 0.86  "Ale gdy w czerwcu ona wyjechała do ciotki…"
+  854.97,  // [ 64] conf 0.97  "Na kilka dni przed wyjazdem zaszedł do zn…"
+  869.63,  // [ 65] conf 0.90  "Posiadając majątek leczył darmo i o tyle…"
+  882.01,  // [ 66] conf 1.00  "„Używaj wszystkich środków, od najmniejsz…"
+  895.42,  // [ 67] conf 1.00  "Gdy Wokulski zadzwonił do mieszkania leka…"
+  911.77,  // [ 68] conf 1.00  "— A, jesteś?... — rzekł do Wokulskiego od…"
+  921.12,  // [ 69] conf 0.95  "Gość zapalił fajkę i położył się, jak mu…"
+  930.70,  // [ 70] conf 1.00  "— Powiedz mi: czy medycyna zna taki stan…"
+  944.93,  // [ 71] conf 0.93  "— Owszem. Przy ciągłej pracy umysłowej i…"
+  963.47,  // [ 72] conf 1.00  "— A co znaczy taki stan umysłu, w którym…"
+  973.50,  // [ 73] conf 0.94  "— Obojętność dla śmierci — odpowiedział d…"
+  985.58,  // [ 74] conf 1.00  "Znowu umilkli. Gość palił fajkę, gospodar…"
+  991.52,  // [ 75] conf 1.00  "— Czy myślisz — spytał Wokulski — że możn…"
+  1000.52, // [ 76] conf 1.00  "— Naturalnie. Jest to jedna z masek, w kt…"
+  1008.14, // [ 77] conf 1.00  "— Instynkt — gatunek — instynkt utrwaleni…"
+  1021.72, // [ 78] conf 0.83  "— Zrób szóste — odpowiedział doktór nie o…"
+  1027.97, // [ 79] conf 1.00  "— Szóste?... — rzekł Wokulski podnosząc s…"
+  1033.41, // [ 80] conf 1.00  "— Piąte już zrobiłeś: zakochałeś się."
+  1036.93, // [ 81] conf 1.00  "— Ja?... W moim wieku?..."
+  1039.85, // [ 82] conf 0.90  "— Czterdzieści pięć lat — to epoka ostatn…"
+  1047.22, // [ 83] conf 1.00  "— Znawcy mówią, że pierwsza miłość jest n…"
+  1051.94, // [ 84] conf 1.00  "— Nieprawda. Po pierwszej czeka cię sto i…"
+  1062.52, // [ 85] conf 0.80  "— Dlaczegożeś ty się nie ożenił?"   // start word fuzzy-corrected
+  1064.82, // [ 86] conf 0.95  "— Bo mi narzeczona umarła — odpowiedział…"
+  1085.53, // [ 87] conf 0.92  "Ja zapłaciłem za drzwi zepsute, a kolega…"
+  1092.64, // [ 88] conf 0.83  "Znowu wrócił do włosów i mikroskopu."   // start word fuzzy-corrected
+  1095.94, // [ 89] conf 0.91  "— A jaki z tego sens moralny dla ostatnie…"
+  1101.40, // [ 90] conf 0.88  "— Ten, że samobójcom nie należy przeszkad…"
+  1107.42, // [ 91] conf 1.00  "Wokulski poleżał jeszcze z kwadrans, pote…"
+  1116.36, // [ 92] conf 1.00  "— Bywaj zdrów, Michale."
+  1118.12, // [ 93] conf 0.80  "Doktór zerwał się od stołu."   // start word fuzzy-corrected
+  1120.54, // [ 94] conf 1.00  "— No?..."
+  1121.74, // [ 95] conf 1.00  "— Wyjeżdżam do Bułgarii"
+  1124.14, // [ 96] conf 1.00  "— Po co?"
+  1125.68, // [ 97] conf 1.00  "— Zostanę wojskowym dostawcą. Muszę zrobi…"
+  1131.88, // [ 98] conf 1.00  "— Albo?..."
+  1133.98, // [ 99] conf 1.00  "— Albo... nie wrócę."
+  1138.52, // [100] conf 0.91  "Doktór popatrzył mu w oczy i mocno ścisną…"   // start word fuzzy-corrected
+  1143.46, // [101] conf 0.85  "— Sit tibi terra levis<sup>202</sup> — rz…"
+  1152.25, // [102] conf 0.94  "Już Wokulski był na schodach, gdy doktór…"
+  1159.05, // [103] conf 1.00  "— Gdybyś jednak wrócił, nie zapomnij przy…"
+  1173.45, // [104] conf 1.00  "...Wokulski ocknął się z tych dawnych wsp…"
+  1177.28, // [105] conf 1.00  "Nie ma doktora ani jego mieszkania i nawe…"
+  1198.09, // [106] conf 1.00  "Obok niego stał jakiś człowiek w wypłowia…"
+  1209.28, // [107] conf 1.00  "— Wysocki?... — rzekł. — Co ty tu robisz?"
+  1212.79, // [108] conf 1.00  "— Tu mieszkamy, wielmożny panie, w tym do…"
+  1219.37, // [109] conf 0.70  "— Dlaczego nie przyjeżdżasz po transporta…"
+  1223.13, // [110] conf 1.00  "— Czym przyjadę, panie, kiedy jeszcze na…"
+  1227.34, // [111] conf 1.00  "— Cóż robisz?"
+  1228.82, // [112] conf 0.81  "— A ot tak — razem nic. Zimowaliśmy u bra…"
+  1247.86, // [113] conf 1.00  "— No, a z wami co teraz?"
+  1250.53, // [114] conf 1.00  "— Kobieta niby trochę pierze, ale takim,…"
+  1260.63, // [115] conf 0.88  "Jeszcze póki wielkiego postu, to człowiek…"
+  1278.88, // [116] conf 1.00  "Ale i wielmożny pan coś markotnie wygląda…"
+  1289.30, // [117] conf 1.00  "Wokulski zamyślił się."
+  1290.76, // [118] conf 1.00  "— Komorne wasze zapłacone? — spytał."
+  1293.52, // [119] conf 1.00  "— Nawet nie ma, panie, co płacić, bo nas…"
+  1296.78, // [120] conf 1.00  "— A dlaczego nie przyszedłeś do sklepu, d…"
+  1301.05, // [121] conf 1.00  "— Nie śmiałem, panie. Koń odszedł, wóz u…"
+  1311.30, // [122] conf 1.00  "Wokulski wydobył portmonetkę."
+  1313.35, // [123] conf 1.00  "— Masz tu — rzekł — dziesięć rubli na świ…"
+  1331.62, // [124] conf 1.00  "Ubogi człowiek dotknąwszy pieniędzy zaczą…"
+  1335.31, // [125] conf 1.00  "Uważnie słuchał Wokulskiego, a łzy spływa…"
+  1340.75, // [126] conf 0.87  "— Czy panu powiedział kto — zapytał po ch…"
+  1361.52, // [127] conf 1.00  "— Idź do domu, a jutro bądź w sklepie — o…"
+  1365.52, // [128] conf 1.00  "— Idę, panie — odpowiedział człowiek kłan…"
+  1369.66, // [129] conf 1.00  "Odszedł, lecz przystawał na drodze; widoc…"
+  1375.50, // [130] conf 1.00  "W tej chwili Wokulskiego tknęło szczególn…"
+  1378.78, // [131] conf 1.00  "— Wysocki!... — zawołał. — A twemu bratu…"
+  1382.86, // [132] conf 1.00  "— Kasper — odpowiedział człowiek wracając…"
+  1386.63, // [133] conf 1.00  "— Przy jakiej mieszka stacji?"
+  1388.29, // [134] conf 1.00  "— Przy Częstochowie, panie."
+  1390.37, // [135] conf 1.00  "— Idź do domu. Może Kaspra przeniosą do S…"
+  1394.21, // [136] conf 1.00  "Ale ten zamiast iść, zbliżył się."
+  1397.47, // [137] conf 1.00  "— Przepraszam, wielmożny panie — rzekł ni…"
+  1404.83, // [138] conf 1.00  "— Powiedz, że na rachunek wziąłeś ode mni…"
+  1408.33, // [139] conf 1.00  "— Rozumiem, panie... Bóg... niech Bóg..."
+  1411.13, // [140] conf 1.00  "Ale Wokulski już nie słuchał; szedł w str…"
+  1415.92, // [141] conf 0.97  "„Jakże oni szczęśliwi, ci wszyscy, w któr…"
+  1435.16, // [142] conf 0.89  "Wokulski doszedł do brzegu Wisły i zdumia…"
+  1453.43, // [143] conf 0.91  "„O, tutaj — myślał — jest ognisko wszelki…"
+  1469.88, // [144] conf 1.00  "Bulwar tutaj, kanały i woda źródlana na g…"
+  1485.64, // [145] conf 0.95  "Na stoku i w szczelinach obmierzłego wzgó…"
+  1503.58, // [146] conf 1.00  "Zdawało się, że to nie ludzie, ale widma…"
+  1521.64, // [147] conf 1.00  "Wokulski uśmiechnął się."
+  1523.59, // [148] conf 0.93  "„Gdybym tu przyszedł w nocy, na pewno wyl…"
+  1559.39, // [149] conf 0.93  "Ależ ja zaczynam być naprawdę sentymental…"
+  1581.22, // [150] conf 1.00  "Co za piękne, ojczyzno, będziesz miała po…"
+  1591.48, // [151] conf 0.97  "Moje dzieci byłyby inne; po niej wzięłyby…"
+  1608.48, // [152] conf 1.00  "Strach, co tu się stanie za kilka generac…"
+  1630.28, // [153] conf 1.00  "A potem, nie wiadomo z jakiej racji, pomy…"
+  1633.22, // [154] conf 1.00  "„Cóż z tego, że trochę kokietuje?... Koki…"
+  1644.33, // [155] conf 0.95  "Dla wszystkich kokieteria, a dla mnie: »z…"
+  1655.91, // [156] conf 0.83  "Nad samym brzegiem Wisły leżał stos belek…"
+  1676.54, // [157] conf 0.90  "Nie większym wydawał się ten okręt, który…"
+  1684.88, // [158] conf 1.00  "„Leciał jak ptak i nagle utknął; zabrakło…"
+  1704.36, // [159] conf 0.86  "W tej chwili żółtawy, za wczesny motyl pr…"
+  1711.22, // [160] conf 0.97  "„Ciekawym, skąd on się wziął? — myślał Wo…"
+  1729.56, // [161] conf 1.00  "A ty, robaku, nurtuj ziemię i przerabiaj…"
+  1747.68, // [162] conf 0.87  "I tobież to wzdychać do motyla, głupi?...…"
+  1758.02, // [163] conf 0.92  "No, gąsienica jest także podobna do robak…"
+  1775.96, // [164] conf 1.00  "W Anglii!... Tam jeszcze istnieje epoka t…"
+  1789.16, // [165] conf 1.00  "Lecz u nas wyższa warstwa zakrzepła jak w…"
+  1809.44, // [166] conf 1.00  "Mam dla jej skrzydeł opuszczać swoją norę…"
+  1830.17, // [167] conf 0.94  "Trzydzieści tysięcy rubli znaczą tyle, co…"   // start word fuzzy-corrected
+  1845.21, // [168] conf 1.00  "No dobrze, ale gdyby nie ona, czy miałbym…"
+  1862.16, // [169] conf 1.00  "Wokulski odwrócił się i nagle zobaczył na…"
+  1867.33, // [170] conf 1.00  "Potem przypomniał sobie, że ten cień chod…"
+  1883.23, // [171] conf 0.92  "„Nie mogę wyrzec się jej” — szepnął rozkł…"
+  1889.11, // [172] conf 1.00  "Wstał z belek i wrócił do miasta."
+  1891.58, // [173] conf 0.94  "Idąc przez ulicę Oboźną<sup>215</sup>, pr…"
+  1911.20, // [174] conf 1.00  "co płacić nie mogą."
+  1913.14, // [175] conf 1.00  "„Koń?...” — szepnął Wokulski i czegoś ser…"
+  1919.84, // [176] conf 1.00  "Raz w marcu przechodząc Aleją Jerozolimsk…"
+  1931.69, // [177] conf 0.75  "— Co się to stało?"
+  1932.75, // [178] conf 1.00  "— Koń złamał nogę — odparł wesoło jeden z…"
+  1940.96, // [179] conf 0.97  "Wokulski mimochodem spojrzał na delikwent…"
+  1958.30, // [180] conf 1.00  "„Dlaczego dziś dopiero przypomniał mi się…"
+  1965.79, // [181] conf 0.97  "Szedł Oboźną pod górę, rozmarzony, i czuł…"
+  1982.53, // [182] conf 1.00  "Snuli się ludzie, jeździły dorożki, sklep…"
+  2003.92, // [183] conf 0.95  "Każda uboga kobieta wydawała mu się pracz…"
+  2021.19, // [184] conf 0.95  "I nie tylko obchodzili go ludzie. Czuł zm…"
+  2031.20, // [185] conf 1.00  "Czuł obawę psa, który szczekał na ulicy z…"
+  2044.02, // [186] conf 0.91  "Jeszcze, na domiar cierpień, bolały go dr…"
+  2055.25, // [187] conf 0.98  "Zdawało mu się, że każda taka rzecz jest…"
+  2072.99, // [188] conf 1.00  "Rzecz dziwna! przecie miał już ustaloną o…"
+  2078.49, // [189] conf 0.97  "Członkowie Towarzystwa Dobroczynności we…"
+  2097.39, // [190] conf 1.00  "Ale Wokulskiemu rzeczy te nie sprawiały ż…"
+  2112.49, // [191] conf 0.95  "I dopiero dziś, kiedy dziesięcioma rublam…"
+  2137.78, // [192] conf 0.89  "„Tak, alboż ja dawniej nie widywałem nędz…"
+  2142.72, // [193] conf 1.00  "I przypomniał sobie całe szeregi ludzi ob…"
+  2156.78, // [194] conf 1.00  "I dopiero gdy wielki ból osobisty zaorał…"
+  2178.72, // [195] conf 0.94  "„Doktór powiedziałby, że utworzyła mi się…"   // start word fuzzy-corrected
+  2185.69, // [196] conf 1.00  "„Tak, ale co dalej?...”"
+  2187.68, // [197] conf 1.00  "Dotychczas bowiem miał tylko jeden cel: z…"
+  2199.00, // [198] conf 1.00  "„Mała rzecz!...”"
+  2200.54, // [199] conf 0.88  "„Przenieść jego brata pod Skierniewice...…"
+  2204.28, // [200] conf 1.00  "„Drobnostka.”"   // absorbed short next unit
+  null,    // [201] conf 1.00  "Ale poza tymi dwoma ludźmi stanęło zaraz…"   // merged into previous section; merged into previous (<0.8s)
+  2223.60, // [202] conf 1.00  "„Przywidzenia... abstrakcyjne... zdenerwo…"
+  2228.87, // [203] conf 1.00  "To była jedna droga. Na końcu bowiem drug…"
+  2237.97, // [204] conf 1.00  "„Nie jestem Chrystusem, ażeby poświęcać s…"
+  2242.41, // [205] conf 1.00  "„Więc na początek zapomnij o Wysockich” —…"
+  2246.93, // [206] conf 1.00  "„No, głupstwo! Jakkolwiek jestem dziś roz…"
+  2259.19, // [207] conf 1.00  "W tej chwili stanął przed drzwiami swego…"
+  2263.14, // [208] conf 1.00  "W sklepie zastał Wokulski tylko jedną oso…"
+  2281.06, // [209] conf 1.00  "Klein podawał coraz nowe neseserki, Mracz…"
+  2292.52, // [210] conf 1.00  "— Z Paryża przyszedł transport — rzekł do…"
+  2297.70, // [211] conf 1.00  "— Jak chcesz."
+  2298.98, // [212] conf 0.90  "— Z Moskwy obstalunki za dziesięć tysięcy…"
+  2303.04, // [213] conf 1.00  "— Spodziewałem się."
+  2304.32, // [214] conf 0.91  "— Z Radomia za dwieście rubli, ale furman…"
+  2307.96, // [215] conf 1.00  "Wokulski ruszył ramionami."
+  2310.06, // [216] conf 1.00  "— Trzeba raz zerwać z tym kramarstwem — o…"
+  2315.94, // [217] conf 1.00  "— Zerwać z naszymi kupcami?... — spytał z…"
+  2320.83, // [218] conf 0.96  "— Zerwać z Żydami — wtrącił półgłosem Lis…"
+  2332.82, // [219] conf 0.97  "Wokulski nic nie odpowiedział. Usiadł do…"
+  2348.70, // [220] conf 1.00  "„Rozigrał się we mnie sentymentalizm i fa…"
+  2356.79, // [221] conf 1.00  "I machinalnie przypatrywał się niezwykłej…"
+  2367.55, // [222] conf 1.00  "Na jej twarzy białej i razem żółtej malow…"
+  2379.34, // [223] conf 0.97  "Mówiła głosem cichym i łagodnym, a targow…"
+  2392.96, // [224] conf 0.95  "Lisiecki już cofnął się od niej rozgniewa…"
+  2400.32, // [225] conf 1.00  "W tej chwili otworzyły się drzwi sklepu i…"
+  2413.84, // [226] conf 1.00  "Wokulski zauważył, że gość ma gapiowato o…"
+  2423.50, // [227] conf 1.00  "Gość wszedł kończąc rozmowę z kimś na uli…"
+  2439.22, // [228] conf 1.00  "Wypadkowo spojrzał na damę i — spadły mu…"
+  2443.08, // [229] conf 1.00  "— A... a... a!... — zawołał."
+  2445.22, // [230] conf 1.00  "Ale dama gwałtownie odwróciła się od nieg…"
+  2450.10, // [231] conf 1.00  "Do przybysza wybiegł Mraczewski i uśmiech…"
+  2454.92, // [232] conf 1.00  "— Pan baron rozkaże?..."
+  2457.36, // [233] conf 1.00  "— Spinki, uważa pan, spinki zwyczajne, zł…"
+  2464.94, // [234] conf 1.00  "Mraczewski otworzył gablotkę ze spinkami."
+  2467.88, // [235] conf 1.00  "— Wody... — odezwała się dama słabym głos…"
+  2471.58, // [236] conf 0.91  "Rzecki nalał jej wody z karafki i podał z…"
+  2475.26, // [237] conf 1.00  "— Pani dobrodziejce słabo?... Może by dok…"
+  2479.10, // [238] conf 1.00  "— Już mi lepiej — odparła."
+  2481.13, // [239] conf 0.89  "Baron oglądał spinki, ostentacyjnie odwra…"
+  2485.77, // [240] conf 1.00  "— A może, czy nie sądzi pan, byłyby lepsz…"
+  2492.73, // [241] conf 1.00  "— Myślę, że panu baronowi potrzebne są i…"
+  2501.48, // [242] conf 1.00  "— Powiedz mi pan — odezwała się nagle dam…"
+  2508.32, // [243] conf 1.00  "— Otóż, proszę pana — mówił baron — wybra…"
+  2514.44, // [244] conf 0.80  "— Może by popielniczkę? — zapytał Mraczew…"
+  2517.74, // [245] conf 1.00  "— Dobrze, popielniczkę — odparł baron."
+  2520.52, // [246] conf 0.60  "— Może gustowny kałamarz z siodłem, dżoke…"
+  2524.10, // [247] conf 0.88  "— Proszę o gustowny kałamarz z siodłem i…"
+  2527.64, // [248] conf 1.00  "— Powiedz mi pan — mówiła dama do Klejna…"
+  2538.86, // [249] conf 0.73  "— Drogi panie — zawołał nie mniej głośno…"
+  2552.62, // [250] conf 1.00  "I wybiegł ze sklepu wracając się parę raz…"
+  2558.18, // [251] conf 1.00  "Po odejściu oryginalnego barona w sklepie…"
+  2572.21, // [252] conf 0.88  "Dama z wolna podniosła się z krzesła i zb…"
+  2578.99, // [253] conf 1.00  "— Czy mogę spytać — rzekła drżącym głosem…"
+  2587.17, // [254] conf 1.00  "— Rachunki tego pana ze mną, szanowna pan…"
+  2596.41, // [255] conf 1.00  "— Panie — ciągnęła dalej rozdrażniona dam…"
+  2609.97, // [256] conf 0.92  "— Daruje pani — przerwał Wokulski — ale s…"   // start word fuzzy-corrected
+  2615.95, // [257] conf 0.91  "— Ach, więc tak?... Zapewne, że dla kupca…"
+  2621.78, // [258] conf 1.00  "I opuściła sklep trzaskając drzwiami."
+  2624.30, // [259] conf 1.00  "W kilka minut po jej odejściu wbiegł do s…"
+  2632.44, // [260] conf 1.00  "— Najmocniej przepraszam — rzekł usiłując…"
+  2646.18, // [261] conf 1.00  "— Nic nie mówiła, co by kwalifikowało się…"
+  2650.82, // [262] conf 1.00  "— Bo uważa pan, jest to, niestety! moja ż…"
+  2666.78, // [263] conf 1.00  "— Nic."
+  2668.07, // [264] conf 1.00  "Baron ukłonił się i już we drzwiach skrzy…"
+  2675.04, // [265] conf 1.00  "— Więc tak?... — rzekł baron, ostro patrz…"
+  2679.36, // [266] conf 1.00  "I wybiegł na ulicę. Mraczewski skamieniał…"
+  2689.26, // [267] conf 1.00  "— Cóż to za oryginalne diabły, panie Mrac…"
+  2694.64, // [268] conf 1.00  "— A to cała historia! — odparł Mraczewski…"
+  2710.60, // [269] conf 1.00  "— Ja nie mam pieniędzy, więc muszę być w…"
+  2716.86, // [270] conf 0.89  "— Mają bez pracy!... — wtrącił Klejn. — Ł…"
+  2721.62, // [271] conf 1.00  "— No, no... już mnie pan do swoich porząd…"
+  2737.56, // [272] conf 0.91  "Ona nie pozwala mu trzymać koni, szczegól…"
+  2751.02, // [273] conf 1.00  "Opowiadał lekkim tonem i kręcił się po sk…"
+  2763.59, // [274] conf 0.91  "„Kuzyn Krzeszowskich... — myślał. — Dosta…"
+  2769.76, // [275] conf 0.98  "I przemógłszy się wrócił do swej księgi.…"
+  2791.31, // [276] conf 1.00  "O co?... na kogo?... mniejsza. Dosyć, że…"
+  2798.66, // [277] conf 1.00  "Około siódmej sklep już stanowczo wyludni…"
+  2810.72, // [278] conf 0.97  "— Co mi pan, panie Klejn, będzie zawracał…"
+  2822.26, // [279] conf 0.93  "— Nie mówiłbyś pan tak — odparł smutnie K…"
+  2829.10, // [280] conf 1.00  "— Błazeństwo... — przerwał Mraczewski wło…"
+  2841.50, // [281] conf 1.00  "Wokulski zamknął księgę i włożył ją do ka…"
+  2849.75, // [282] conf 1.00  "Targ z nimi przeciągnął się z kwadrans. W…"
+  2858.91, // [283] conf 1.00  "— Panie Mraczewski."
+  2860.43, // [284] conf 0.79  "— Co pan każe?... — spytał piękny młodzie…"
+  2865.77, // [285] conf 1.00  "— Od jutra niech pan postara się o inne m…"
+  2870.91, // [286] conf 0.50  "Mraczewski osłupiał."   // LOW CONFIDENCE; low match ratio; start word fuzzy-corrected
+  2872.87, // [287] conf 1.00  "— Dlaczego, panie szefie?... Dlaczego?..."
+  2875.97, // [288] conf 1.00  "— Dlatego, że u mnie już pan nie ma miejs…"
+  2879.81, // [289] conf 0.88  "— Jakiż powód?... Przecie chyba nic złego…"
+  2886.46, // [290] conf 1.00  "— Świadectwo dostanie pan dobre — odparł…"
+  2905.70, // [291] conf 1.00  "To powiedziawszy Wokulski wstał z fotelu…"
+  2911.06, // [292] conf 1.00  "Dymisja Mraczewskiego zrobiła takie wraże…"
+  2925.30, // [293] conf 0.95  "Przyszedł drugi raz o jedynastej w nocy,…"
+  2932.90, // [294] conf 1.00  "Na drugi dzień, w Wielki Czwartek, Mracze…"
+  2943.52, // [295] conf 1.00  "Około pierwszej przyszedł Wokulski. Lecz…"
+  2955.80, // [296] conf 1.00  "— Panie Wokulski — zawołał roztargniony g…"
+  2970.80, // [297] conf 1.00  "Ja szanuję dyskrecję, jaką okazał pan w s…"
+  2978.82, // [298] conf 1.00  "— Panie baronie — odparł Wokulski — ja ni…"
+  2988.68, // [299] conf 1.00  "— Przyszedłem prosić o przebaczenie biedn…"
+  2992.28, // [300] conf 1.00  "— Do pana Mraczewskiego nie mam żadnej pr…"
+  2997.58, // [301] conf 1.00  "Baron przygryzł wargi. Chwilę milczał, ja…"
+  3009.16, // [302] conf 0.96  "Panowie Klejn i Lisiecki cofnęli się za s…"
+  3019.03, // [303] conf 1.00  "Około trzeciej po południu ukazała się pa…"
+  3036.17, // [304] conf 0.95  "— Panie — rzekła cicho — dziś dowiedziała…"
+  3045.79, // [305] conf 0.95  "— Pan Mraczewski już nie jest u mnie i ni…"
+  3052.51, // [306] conf 1.00  "Pani Krzeszowska miała widocznie ułożoną…"
+  3063.10, // [307] conf 1.00  "Panowie Klejn i Lisiecki — mrugnęli na si…"
+  3071.88, // [308] conf 1.00  "Dopiero około piątej po południu zbliżył…"
+  3079.50, // [309] conf 1.00  "— Matka tego Mraczewskiego, Staśku, jest…"
+  3084.36, // [310] conf 1.00  "— Zapłać mu pensję do końca roku — odparł…"
+  3088.36, // [311] conf 1.00  "— Myślę... Stasiu, myślę, że nie można aż…"
+  3096.91, // [312] conf 1.00  "— Polityczne?... — powtórzył Wokulski tak…"
+  3104.01, // [313] conf 1.00  "— Zresztą, powiem ci — ciągnął dalej pan…"
+  3111.09, // [314] conf 1.00  "— Piękny? — odparł Wokulski. — Więc niech…"
+  3117.93, // [315] conf 0.93  "Pan Ignacy cofnął się. Panowie Lisiecki i…"
+  3124.42, // [316] conf 1.00  "W godzinę później przyszedł do sklepu nie…"
+  3132.58, // [317] conf 1.00  "Pan Zięba miał około lat trzydziestu; był…"
+  3147.86, // [318] conf 0.97  "Pan Rzecki odkrył w nim zagorzałego bonap…"
+  3163.76, // [319] conf 1.00  "Słowem, wszyscy byli kontenci, a pan Zięb…"
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const AUDIO_URL = "audio/chapter-08.webm";
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+let audioObjectUrl = null;
+async function loadAudio(url) {
+  // Browsers block fetch() from file:// pages; direct media loading still works there.
+  if (location.protocol === "file:") {
+    audio.src = url;
+    audio.load();
+    return;
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Audio request failed (${response.status})`);
+    const blob = await response.blob();
+    audioObjectUrl = URL.createObjectURL(blob);
+    audio.src = audioObjectUrl;
+    audio.load();
+  } catch (error) {
+    console.error("Could not load chapter audio:", error);
+    showBanner();
+  }
+}
+loadAudio(AUDIO_URL);
+window.addEventListener("pagehide", () => {
+  if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+}, { once: true });
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function setStudyText(element, text) {
+  // Render supported numeric footnotes; all annotation content is inserted as text.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      appendTooltipText(tooltip, note.definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function appendTooltipText(parent, text) {
+  // Support the source table's *italic* notation and escaped literal asterisks.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- Ukrainian reveal chip and block --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+    toggles.append(uaChip);
+
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, uaBox, pbar);
+
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, uaChip, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: ${AUDIO_URL}`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = "UA " + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(open) {
+  state.uaOpen = open;
+  els.forEach((e, i) => setUa(i, open));
+  toggleUaEl.textContent = (open ? "Hide all UA" : "Reveal all UA");
+  toggleUaEl.setAttribute("aria-pressed", String(open));
+  toggleUaEl.classList.toggle("is-on", open);
+}
+
+toggleUaEl.addEventListener("click", () => setAll(!state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+// If metadata never arrives (missing file / unsupported codec), tell the user.
+setTimeout(() => { if (audio.readyState < 1) showBanner(); }, 2500);
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll(!state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

@@ -189,7 +189,8 @@ def build(folder: Path, book_path: Path, out: Path, inject: bool) -> int:
 
     stats = [f"<span><b>{len(chapters)}</b> chapters</span>"]
     if total_units:
-        h, m = int(total_sec // 3600), int(round((total_sec % 3600) / 60))
+        m_total = int(round(total_sec / 60))
+        h, m = divmod(m_total, 60)
         stats += [f"<span><b>{total_units:,}</b> sections</span>",
                   f"<span><b>{h} h {m:02d} min</b> of narration</span>" if h else f"<span><b>{m} min</b> of narration</span>"]
     if n_vocab:
