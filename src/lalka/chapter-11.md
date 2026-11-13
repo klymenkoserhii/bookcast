@@ -1,0 +1,2376 @@
+# «Lalka» — Chapter 11: Stare marzenia i nowe znajomości
+<!-- bilingual study edition: PL → UA -->
+
+**PL:** Pani Meliton przeszła twardą szkołę życia, w której nauczyła się nawet lekceważyć powszechnie przyjęte opinie.
+
+**UA:** Пані Мелітон пройшла сувору школу життя, в якій навчилася навіть зневажати загальноприйняті погляди.
+
+---
+
+**PL:** Za młodu mówiono jej powszechnie, że panna ładna i dobra, choćby nie miała majątku, może jednak wyjść za mąż. Była dobrą i ładną, lecz za mąż nie wyszła. Później mówiono również powszechnie, że wykształcona nauczycielka zdobywa sobie miłość pupilów i szacunek ich rodziców.
+
+**UA:** Замолоду їй повсюдно казали, що гарна й добра панна, навіть не маючи статків, може вийти заміж. Вона була доброю й гарною, проте заміж не вийшла. Пізніше так само повсюдно твердили, що освічена вчителька здобуває любов вихованців і повагу їхніх батьків.
+
+**PL:** Była wykształconą, nawet zamiłowaną nauczycielką, lecz mimo to pupilki jej dokuczały, a ich rodzice drwili z niej od pierwszego śniadania do kolacji.
+
+**UA:** Вона була освіченою, навіть відданою своїй справі вчителькою, та вихованки дошкуляли їй, а їхні батьки насміхалися з неї від сніданку до вечері.
+
+**PL:** Potem czytała dużo romansów, w których powszechnie dowodzono, że zakochani książęta, hrabiowie i baronowie są ludźmi szlachetnymi, którzy w zamian za serce mają zwyczaj oddawać ubogim nauczycielkom rękę. Jakoż oddała serce młodemu i szlachetnemu hrabiemu, lecz nie pozyskała jego ręki.
+
+**UA:** Потім вона багато читала романів, у яких загалом доводили, що закохані князі, графи й барони — шляхетні люди, які за серце зазвичай віддають руку бідним учителькам. І справді, вона віддала серце молодому й шляхетному графові, та його руки не здобула.
+
+---
+
+**PL:** Już po trzydziestym roku życia wyszła za mąż za podstarzałego guwernera, Melitona, w tym jedynie celu, ażeby moralnie podźwignąć człowieka, który nieco się upijał. Nowożeniec jednak po ślubie więcej pił aniżeli przed ślubem, a małżonkę, dźwigającą go moralnie, czasami okładał kijem.
+
+**UA:** Після тридцяти вона вийшла заміж за немолодого гувернера Мелітон лише для того, щоб морально підтримати чоловіка, який трохи зловживав спиртним. Однак після весілля молодий чоловік пив більше, ніж до нього, а дружину, яка морально його підтримувала, часом лупцював палицею.
+
+---
+
+**PL:** Gdy umarł, podobno na ulicy, pani Meliton odprowadziwszy go na cmentarz i przekonawszy się, że jest niezawodnie zakopany, wzięła na opiekę psa; znowu bowiem powszechnie mówiono, że pies jest najwdzięczniejszym stworzeniem.
+
+**UA:** Коли він помер, здається, просто на вулиці, пані Мелітон провела його на цвинтар і, переконавшись, що його напевно поховали, взяла під опіку собаку; адже знову повсюдно казали, що пес — найвдячніша істота.
+
+**PL:** Istotnie, był wdzięcznym, dopóki nie wściekł się i nie pokąsał służącej, co samą panią Meliton przyprawiło o ciężką chorobę.
+
+**UA:** І справді, він був вдячним, аж поки не сказився й не покусав служницю, через що сама пані Мелітон тяжко занедужала.
+
+---
+
+**PL:** Pół roku leżała w szpitalu, w osobnym gabinecie, samotna i zapomniana przez swoje pupilki, ich rodziców i hrabiów, którym oddawała serce. Był czas do rozmyślań.
+
+**UA:** Пів року вона пролежала в лікарні, в окремій палаті, самотня й забута своїми вихованками, їхніми батьками та графами, яким віддавала серце. Часу на роздуми було вдосталь.
+
+**PL:** Toteż gdy wyszła stamtąd chuda, stara, z posiwiałymi i przerzedzonymi włosami, znowu zaczęto mówić powszechnie, że choroba zmieniła ją do niepoznania.
+
+**UA:** Тож коли вона вийшла звідти худа, стара, із сивим і поріділим волоссям, знову повсюдно почали казати, що хвороба змінила її до невпізнання.
+
+---
+
+**PL:** — Zmądrzałam — odpowiedziała pani Meliton.
+
+**UA:** — Я порозумнішала, — відповіла пані Мелітон.
+
+---
+
+**PL:** Nie była już nauczycielką, ale rekomendowała nauczycielki; nie myślała o zamążpójściu, ale swatała młode pary; nikomu nie oddawała swego serca, ale we własnym mieszkaniu ułatwiała schadzki zakochanym. Że zaś każdy i za wszystko musiał jej płacić, więc miała trochę pieniędzy i z nich żyła.
+
+**UA:** Вона вже не була вчителькою, а рекомендувала вчительок; сама не думала про заміжжя, зате сватала молоді пари; нікому не віддавала свого серця, але у власному помешканні допомагала закоханим таємно зустрічатися. А оскільки кожен мусив платити їй за все, вона мала трохи грошей і ними жила.
+
+---
+
+**PL:** W początkach nowej kariery była posępna i nawet cyniczna.
+
+**UA:** На початку нової кар'єри вона була похмурою й навіть цинічною.
+
+---
+
+**PL:** — Ksiądz — mówiła osobom zaufanym — ma dochody ze ślubów, ja z zaręczyn. Hrabia... bierze pieniądze za ułatwianie stosunków koniom, ja za ułatwianie znajomości ludziom.
+
+**UA:** — Ксьондз, — казала вона довіреним людям, — має прибуток із вінчань, а я — із заручин. Граф... бере гроші за те, що зводить коней, а я — за те, що знайомлю людей.
+
+---
+
+**PL:** Z czasem jednak stała się powściągliwszą w mowie, a niekiedy nawet moralizującą, spostrzegłszy, że wygłaszanie zdań i opinii przyjętych przez ogół wpływa na wzrost dochodów.
+
+**UA:** Згодом вона стала стриманішою у висловлюваннях, а часом навіть моралізувала, помітивши, що виголошення загальноприйнятих суджень і поглядів збільшує її прибутки.
+
+---
+
+**PL:** Pani Meliton od dawna znała się z Wokulskim. A że lubiła widowiska publiczne i miała zwyczaj wszystko śledzić, więc prędko zauważyła, że Wokulski zbyt nabożnie przypatruje się pannie Izabeli.
+
+**UA:** Пані Мелітон давно зналася з Вокульським. А оскільки любила публічні видовища й мала звичку стежити за всім, то швидко помітила, що Вокульський надто побожно задивляється на панну Ізабелу.
+
+**PL:** Zrobiwszy to odkrycie wzruszyła ramionami; cóż ją mógł obchodzić kupiec galanteryjny zakochany w pannie Łęckiej? Gdyby upodobał sobie jakąś bogatą kupcównę albo córkę fabrykanta, pani Meliton miałaby materiał do swatów. Ale tak!...
+
+**UA:** Зробивши це відкриття, вона знизала плечима: що їй було до галантерейного крамаря, закоханого в панну Ленцьку? Якби він уподобав якусь багату купецьку доньку чи фабрикантову дочку, пані Мелітон мала б матеріал для сватання. А так!...
+
+---
+
+**PL:** Dopiero gdy Wokulski powrócił z Bułgarii i przywiózł majątek, o którym opowiadano cuda, pani Meliton sama zaczepiła go o pannę Izabelę, ofiarowując swoje usługi.
+
+**UA:** Лише коли Вокульський повернувся з Болгарії й привіз багатство, про яке розповідали дива, пані Мелітон сама заговорила з ним про панну Ізабелу, запропонувавши свої послуги.
+
+**PL:** I stanął milczący układ: Wokulski płacił hojnie, a pani Meliton udzielała mu wszelkich informacji o rodzinie Łęckich i związanych z nimi osobach wyższego świata. Za jej nawet pośrednictwem Wokulski nabył weksle Łęckiego i srebra panny Izabeli.
+
+**UA:** І виникла мовчазна домовленість: Вокульський щедро платив, а пані Мелітон надавала йому всілякі відомості про родину Ленцьких та пов'язаних із нею людей вищого світу. Навіть за її посередництвом Вокульський придбав векселі Ленцького й срібло панни Ізабели.
+
+---
+
+**PL:** Przy tej okazji pani Meliton odwiedziła Wokulskiego w jego prywatnym mieszkaniu, ażeby mu powinszować.
+
+**UA:** З цієї нагоди пані Мелітон завітала до Вокульського в його приватне помешкання, щоб привітати його.
+
+---
+
+**PL:** — Bardzo rozsądnie przystępujesz pan do rzeczy — mówiła. — Wprawdzie ze sreber i serwisu niewielka będzie pociecha, ale skup weksli Łęckiego jest arcydziełem... Znać kupca!...
+
+**UA:** — Дуже розважливо ви беретеся до справи, — казала вона. — Щоправда, зі срібла та сервізу користі буде небагато, зате викуп векселів Ленцького — справжній шедевр... Одразу видно крамаря!...
+
+---
+
+**PL:** Usłyszawszy taką pochwałę Wokulski otworzył biurko, poszukał w nim i za chwilę wydobył paczkę weksli.
+
+**UA:** Почувши таку похвалу, Вокульський відчинив письмовий стіл, пошукав у ньому й за мить дістав пачку векселів.
+
+---
+
+**PL:** — Te same? — rzekł pokazując je pani Meliton.
+
+**UA:** — Ті самі? — сказав він, показуючи їх пані Мелітон.
+
+---
+
+**PL:** — Tak. Chciałabym mieć te pieniądze!... — odpowiedziała z westchnieniem.
+
+**UA:** — Так. Я хотіла б мати ці гроші!... — відповіла вона зітхнувши.
+
+---
+
+**PL:** Wokulski ujął paczkę w obie ręce i rozdarł ją.
+
+**UA:** Вокульський узяв пачку в обидві руки й розірвав її.
+
+---
+
+**PL:** — Znać kupca?... — spytał.
+
+**UA:** — Одразу видно крамаря?... — спитав він.
+
+---
+
+**PL:** Pani Meliton przypatrzyła mu się ciekawie i kiwając głową mruknęła:
+
+**UA:** Пані Мелітон зацікавлено придивилася до нього й, киваючи головою, пробурмотіла:
+
+---
+
+**PL:** — Szkoda pana.
+
+**UA:** — Шкода вас, пане.
+
+---
+
+**PL:** — Dlaczegóż to, jeżeli łaska?...
+
+**UA:** — Чому ж, коли ваша ласка?...
+
+---
+
+**PL:** — Szkoda pana — powtórzyła. — Sama jestem kobietą i wiem, że kobiet nie zdobywa się ofiarami, tylko siłą.
+
+**UA:** — Шкода вас, — повторила вона. — Я сама жінка й знаю, що жінок здобувають не жертвами, а силою.
+
+---
+
+**PL:** — Czy tak?
+
+**UA:** — Невже?
+
+---
+
+**PL:** — Siłą piękności, zdrowia, pieniędzy...
+
+**UA:** — Силою вроди, здоров'я, грошей...
+
+---
+
+**PL:** — Rozumu... — wtrącił Wokulski jej tonem.
+
+**UA:** — Розуму... — підхопив Вокульський її тоном.
+
+---
+
+**PL:** — Rozumu nie tyle, prędzej pięści — dodała pani Meliton z szyderczym uśmiechem. — Znam dobrze moją płeć i nieraz miałam okazję litować się nad naiwnością męską.
+
+**UA:** — Розуму не стільки, радше кулаків, — додала пані Мелітон із глузливою усмішкою. — Я добре знаю свою стать і не раз мала нагоду жаліти чоловічу наївність.
+
+---
+
+**PL:** — Dla mnie niech pani sobie nie zadaje tego trudu.
+
+**UA:** — Мене не варто завдавати собі такого клопоту.
+
+---
+
+**PL:** — Myślisz pan, że nie będzie potrzebny? — spytała patrząc mu w oczy.
+
+**UA:** — Думаєте, він вам не знадобиться? — спитала вона, дивлячись йому в очі.
+
+---
+
+**PL:** — Łaskawa, pani — odparł Wokulski — jeżeli panna Izabela jest taką, jak mi się wydaje, to może mnie kiedyś oceni. A jeżeli nią nie jest, zawsze będę miał czas rozczarować się...
+
+**UA:** — Ласкава пані, — відповів Вокульський, — якщо панна Ізабела така, якою мені здається, то колись, може, мене й оцінить. А якщо вона не така, я завжди встигну розчаруватися...
+
+---
+
+**PL:** — Zrób to wcześniej, panie Wokulski, zrób wcześniej — rzekła podnosząc się z fotelu. — Bo wierz mi, łatwiej wyrzucić tysiące rubli z kieszeni aniżeli jedno przywiązanie z serca. Szczególniej, gdy się już zagnieździ. A nie zapomnij pan — dodała — dobrze umieścić mój kapitalik.
+
+**UA:** — Зробіть це раніше, пане Вокульський, зробіть раніше, — сказала вона, підводячись із крісла. — Бо повірте, легше викинути з кишені тисячі рублів, ніж вирвати з серця одну прив'язаність. Особливо коли вона вже пустила коріння. І не забудьте, — додала, — добре вкласти мій капіталець.
+
+**PL:** Nie darłbyś paru tysięcy, gdybyś wiedział, jak ciężko nieraz trzeba na nie pracować.
+
+**UA:** Ти не жбурляв би кілька тисяч, якби знав, як тяжко часом доводиться їх заробляти.
+
+---
+
+**PL:** W maju i czerwcu wizyty pani Meliton stały się częstszymi, ku zmartwieniu Rzeckiego, który podejrzewał spisek. I nie mylił się. Był spisek, ale przeciw pannie Izabeli; stara dama dostarczała ważnych informacyj Wokulskiemu, ale dotyczących tylko panny Izabeli.
+
+**UA:** У травні й червні візити пані Мелітон почастішали, на превеликий жаль Ржецького, який підозрював змову. І не помилявся. Змова була, але проти панни Ізабели; стара дама постачала Вокульському важливі відомості, та стосувалися вони лише панни Ізабели.
+
+**PL:** Zawiadamiała go mianowicie: w których dniach hrabina wybiera się ze swoją siostrzenicą na spacer do Łazienek.
+
+**UA:** Зокрема, вона повідомляла йому, в які дні графиня збирається зі своєю небогою на прогулянку до Лазєнок.
+
+---
+
+**PL:** W takich wypadkach pani Meliton wpadała do sklepu i zrealizowawszy sobie wynagrodzenie w formie kilku- lub kilkunastorublowego drobiazgu, mówiła Rzeckiemu dzień i godzinę.
+
+**UA:** У таких випадках пані Мелітон заходила до крамниці й, одержавши свою винагороду у вигляді дрібнички вартістю кілька або й десяток із лишком рублів, називала Ржецькому день і годину.
+
+---
+
+**PL:** Dziwne to bywały epoki dla Wokulskiego. Dowiedziawszy się, że jutro będą panie w Łazienkach, już dziś tracił spokojność. Obojętniał dla interesów, był rozdrażniony; zdawało mu się, że czas stoi w miejscu i że owe jutro nie nadejdzie nigdy.
+
+**UA:** То були дивні часи для Вокульського. Дізнавшись, що завтра пані будуть у Лазєнках, він уже сьогодні втрачав спокій. До справ йому ставало байдуже, він дратувався; здавалося, ніби час зупинився й те завтра ніколи не настане.
+
+**PL:** Noc miał pełną dzikich marzeń; niekiedy w półśnie, półjawie szeptał:
+
+**UA:** Ніч була сповнена шалених марень; часом, напівсонний, напівпритомний, він шепотів:
+
+---
+
+**PL:** „Cóż to jest w rezultacie?... nic!... Ach, jakież ze mnie bydlę...”
+
+**UA:** «Що ж це, зрештою?... Нічого!... Ах, який же я скотина...»
+
+---
+
+**PL:** Lecz gdy nadszedł ranek, bał się spojrzeć w okno, ażeby nie zobaczyć zachmurzonego nieba, i znowu do południa czas rozciągał mu się tak, że w jego ramach mógł był pomieścić całe swoje życie, zatrute dziś okropną goryczą.
+
+**UA:** Та коли настав ранок, він боявся глянути у вікно, щоб не побачити захмареного неба, і до полудня час знову тягнувся так, що вмістив би в собі ціле його життя, отруєне нині страшною гіркотою.
+
+---
+
+**PL:** „Czyliż to może być miłość?...” — zapytywał sam siebie z desperacją.
+
+**UA:** «Невже це може бути кохання?...» — запитував він себе у відчаї.
+
+---
+
+**PL:** Rozgorączkowany, już w południe kazał zaprzęgać i jechać. Co chwilę zdawało mu się, że spotyka wracający powóz hrabiny, to znowu, że jego rwące się z cugli konie idą zbyt wolno.
+
+**UA:** Розпалений, уже опівдні він наказував запрягати й їхати. Щомиті йому здавалося, що він зустрічає повіз графині, який повертається, то знову — що його коні, рвучи повіддя, ідуть надто повільно.
+
+---
+
+**PL:** Znalazłszy się w Łazienkach wyskakiwał z powozu i biegł nad sadzawkę, gdzie zazwyczaj spacerowała hrabina lubiąca karmić łabędzie. Przychodził zawczasu, a wtedy padał gdzieś na ławkę, zalany zimnym potem, i siedział bez ruchu, z oczyma skierowanymi w stronę pałacu, zapominając o świecie.
+
+**UA:** Приїхавши до Лазєнок, він вискакував із повоза й біг до ставка, де зазвичай прогулювалася графиня, яка любила годувати лебедів. Він прибував заздалегідь, а тоді падав десь на лавку, облитий холодним потом, і нерухомо сидів, втупивши очі в бік палацу й забувши про світ.
+
+---
+
+**PL:** Nareszcie na końcu alei ukazały się dwie kobiece figury, czarna i szara. Wokulskiemu krew uderzyła do głowy.
+
+**UA:** Нарешті в кінці алеї з'являлися дві жіночі постаті — чорна й сіра. Вокульському кров ударяла в голову.
+
+---
+
+**PL:** „One!... Czy mnie choć zatrzymają?...”
+
+**UA:** «Вони!... Чи хоч зупиняться біля мене?...»
+
+---
+
+**PL:** Podniósł się z ławki i szedł naprzeciw nich jak lunatyk, bez tchu. Tak, to jest panna Izabela: prowadzi ciotkę i o czymś z nią rozmawia.
+
+**UA:** Він підводився з лавки й ішов їм назустріч, наче сновида, затамувавши подих. Так, це панна Ізабела: вона веде тітку й про щось із нею розмовляє.
+
+---
+
+**PL:** Wokulski przypatruje się jej i myśli:
+
+**UA:** Вокульський придивлявся до неї й думав:
+
+---
+
+**PL:** „No i cóż jest w niej nadzwyczajnego?... Kobieta jak inne... Zdaje mi się, że bez potrzeby szaleję na jej rachunek...”
+
+**UA:** «Ну і що в ній надзвичайного?... Звичайна жінка... Здається, я даремно шаленію через неї...»
+
+---
+
+**PL:** Ukłonił się, panie się odkłoniły. Idzie dalej nie odwracając głowy, ażeby się nie zdradzić. Nareszcie ogląda się: obie panie znikły między zielonością.
+
+**UA:** Він уклонився, пані відповіли поклоном. Він ішов далі, не обертаючи голови, щоб не видати себе. Нарешті озирнувся: обидві пані зникли серед зелені.
+
+---
+
+**PL:** „Wrócę się — myśli — jeszcze raz spojrzę... Nie, nie wypada!”
+
+**UA:** «Повернуся, — думає, — ще раз гляну... Ні, так не годиться!»
+
+---
+
+**PL:** I czuje w tej chwili, że połyskująca woda sadzawki ciągnie go z nieprzepartą siłą.
+
+**UA:** І в цю мить він відчував, як блискуча вода ставка вабить його з непереборною силою.
+
+---
+
+**PL:** „Ach, gdybym wiedział, że śmierć jest zapomnieniem... A jeżeli nie jest?... Nie, w naturze nie ma miłosierdzia... Czy godzi się w nędzne ludzkie serce wlać bezmiar tęsknoty, a nie dać nawet tej pociechy, że śmierć jest nicością?”
+
+**UA:** «Ах, якби я знав, що смерть — це забуття... А якщо ні?... Ні, у природі немає милосердя... Чи можна влити в убоге людське серце безмежну тугу й не дати навіть тієї втіхи, що смерть — це небуття?»
+
+---
+
+**PL:** Prawie w tym samym czasie hrabina mówiła do panny Izabeli:
+
+**UA:** Майже в той самий час графиня казала панні Ізабелі:
+
+---
+
+**PL:** — Coraz bardziej przekonywam się, Belu, że pieniądze nie dają szczęścia. Ten Wokulski zrobił świetną jak dla niego karierę, lecz — cóż stąd?... Już nie pracuje w sklepie, ale nudzi się w Łazienkach. Uważałaś, jaką on ma znudzoną minę?
+
+**UA:** — Щораз більше переконуюся, Белло, що гроші не дають щастя. Цей Вокульський зробив блискучу, як на нього, кар'єру, але — що з того?... Він уже не працює в крамниці, зате нудьгує в Лазєнках. Ти помітила, який у нього нудьгуючий вигляд?
+
+---
+
+**PL:** — Znudzoną? — powtórzyła panna Izabela. — Mnie on wydaje się przede wszystkim zabawnym.
+
+**UA:** — Нудьгуючий? — перепитала панна Ізабела. — Мені він здається насамперед кумедним.
+
+---
+
+**PL:** — Nie dostrzegłam tego — zdziwiła się hrabina.
+
+**UA:** — Я цього не помітила, — здивувалася графиня.
+
+---
+
+**PL:** — Więc... nieprzyjemnym — poprawiła się panna Izabela.
+
+**UA:** — Тоді... неприємним, — поправилася панна Ізабела.
+
+---
+
+**PL:** Wokulski nie miał odwagi wyjść z Łazienek. Chodził po drugiej stronie sadzawki i z daleka przypatrywał się migającej między drzewami szarej sukni. Dopiero później spostrzegł, że przypatruje się aż dwom szarym sukniom, a trzeciej niebieskiej, że żadna z nich — nie należy do panny Izabeli.
+
+**UA:** Вокульський не наважувався піти з Лазєнок. Він ходив по той бік ставка й здалеку дивився на сіру сукню, що миготіла поміж дерев. Лише згодом помітив, що придивляється аж до двох сірих суконь і третьої, блакитної, і що жодна з них — не панни Ізабели.
+
+---
+
+**PL:** „Jestem piramidalnie głupi” — pomyślał.
+
+**UA:** «Я просто неймовірний дурень», — подумав він.
+
+---
+
+**PL:** Ale nic mu to nie pomogło.
+
+**UA:** Але це йому не допомогло.
+
+---
+
+**PL:** Pewnego dnia, w pierwszej połowie czerwca, pani Meliton dała znać Wokulskiemu, że jutro w południe panna Izabela będzie na spacerze z hrabiną i — z prezesową. Drobny ten wypadek mógł mieć pierwszorzędne znaczenie.
+
+**UA:** Одного дня, у першій половині червня, пані Мелітон дала Вокульському знати, що завтра опівдні панна Ізабела гулятиме з графинею та — пані президентовою. Ця дрібна пригода могла мати першорядне значення.
+
+---
+
+**PL:** Wokulski bowiem od pamiętnej Wielkanocy parę razy odwiedzał prezesową i poznał, że staruszka jest mu bardzo życzliwa. Zwykle słuchał jej opowiadań o dawnych czasach, rozmawiał o swoim stryju, nawet ostatecznie umówił się o nagrobek dla niego.
+
+**UA:** Адже від пам'ятного Великодня Вокульський кілька разів відвідував пані президентову й зрозумів, що старенька ставиться до нього дуже прихильно. Зазвичай він слухав її розповіді про давні часи, говорив про свого стрийка й зрештою навіть домовився про надгробок для нього.
+
+**PL:** W toku tej wymiany myśli, nie wiadomo skąd, wplątało się imię panny Izabeli tak nagle, że Wokulski nie mógł ukryć wzruszenia; twarz mu się zmieniła, głos stłumił się.
+
+**UA:** Під час цієї розмови, невідомо звідки, так раптово виринуло ім'я панни Ізабели, що Вокульський не зміг приховати хвилювання: обличчя змінилося, голос стишився.
+
+---
+
+**PL:** Staruszka przyłożyła binokle do oczu i wpatrzywszy się w Wokulskiego spytała:
+
+**UA:** Старенька приклала лорнет до очей, придивилася до Вокульського й спитала:
+
+---
+
+**PL:** — Czy mi się tylko wydaje, czyli też panna Łęcka nie jest ci obojętną?
+
+**UA:** — Чи це мені лише здається, чи панна Ленцька тобі небайдужа?
+
+---
+
+**PL:** — Prawie nie znam jej... Mówiłem z nią raz w życiu... — tłomaczył się zmieszany Wokulski.
+
+**UA:** — Я її майже не знаю... Говорив із нею раз у житті... — ніяково виправдовувався Вокульський.
+
+---
+
+**PL:** Prezesowa wpadła w zamyślenie i kiwając głową szepnęła:
+
+**UA:** Пані президентова замислилася й, киваючи головою, прошепотіла:
+
+---
+
+**PL:** — Ha...
+
+**UA:** — Га...
+
+---
+
+**PL:** Wokulski pożegnał ją, ale owe<sup>350</sup> „ha...” utkwiło mu w pamięci. W każdym razie był pewny, że w prezesowej nie ma nieprzyjaciółki. I otóż w niecały tydzień po tej rozmowie dowiedział się, że prezesowa jedzie z hrabiną i z panną Izabelą na spacer do Łazienek.
+
+**UA:** Вокульський попрощався з нею, але оте<sup>350</sup> «га...» закарбувалося йому в пам'яті. У всякому разі він був певен, що пані президентова йому не ворог. І ось менш ніж за тиждень після тієї розмови він довідався, що пані президентова їде з графинею та панною Ізабелою на прогулянку до Лазєнок.
+
+**PL:** Czyżby dowiedziała się, że panie go tam spotykają?... A może chce ich zbliżyć?...
+
+**UA:** Невже вона дізналася, що пані зустрічають його там?... А може, хоче їх зблизити?...
+
+---
+
+**PL:** Wokulski spojrzał na zegarek: była trzecia po południu.
+
+**UA:** Вокульський глянув на годинник: була третя по обіді.
+
+---
+
+**PL:** „Więc to jutro — pomyślał — za godzin... dwadzieścia cztery... Nie, nie tyle... Za ileż to?...”
+
+**UA:** «Отже, це завтра, — подумав він, — за годин... двадцять чотири... Ні, не стільки... То скільки ж?...»
+
+---
+
+**PL:** Nie mógł zrachować, ile godzin upłynie od trzeciej do pierwszej w południe. Ogarnął go niepokój; nie jadł obiadu; fantazja rwała się naprzód, ale trzeźwy rozum hamował ją.
+
+**UA:** Він не міг порахувати, скільки годин мине від третьої до першої дня. Його охопив неспокій; він не обідав; фантазія рвалася вперед, але тверезий розум її стримував.
+
+---
+
+**PL:** „Zobaczymy, co będzie jutro. A nuż będzie deszcz albo która z pań zachoruje?”
+
+**UA:** «Побачимо, що буде завтра. Ану ж піде дощ або хтось із пані занедужає?»
+
+---
+
+**PL:** Wybiegł na ulicę i błąkając się bez celu, powtarzał:
+
+**UA:** Він вибіг на вулицю й, блукаючи без мети, повторював:
+
+---
+
+**PL:** „No, zobaczymy, co będzie jutro... A może mnie nie zatrzymają?... Zresztą panna Izabela jest sobie piękna panna, przypuśćmy, że nawet niezwykle piękna, ale tylko panna, nie nadprzyrodzone zjawisko. Tysiące równie ładnych chodzi po świecie, a ja też nie myślę czepiać się zębami jednej spódnicy.
+
+**UA:** «Ну, побачимо, що буде завтра... А може, вони мене не затримають?... Зрештою, панна Ізабела — просто гарна панна; припустімо, навіть незвичайно гарна, але тільки панна, а не надприродне явище. Тисячі не менш вродливих ходять світом, та я теж не збираюся зубами чіплятися за одну спідницю.
+
+**PL:** Odepchnie mnie?... Dobrze!... Z tym większym rozmachem padnę w objęcia innej...”
+
+**UA:** Вона мене відштовхне?... Чудово!... З тим більшим розмахом упаду в обійми іншої...»
+
+---
+
+**PL:** Wieczorem poszedł do teatru, lecz opuścił go po pierwszym akcie. Znowu wałęsał się po mieście, a gdzie stąpił, prześladowała go myśl jutrzejszego spaceru i niejasne przeczucie, że jutro zbliży się do panny Izabeli.
+
+**UA:** Увечері він пішов до театру, але вийшов після першої дії. Знову блукав містом, і куди б не ступив, його переслідувала думка про завтрашню прогулянку й невиразне передчуття, що завтра він наблизиться до панни Ізабели.
+
+---
+
+**PL:** Minęła noc, ranek. O dwunastej kazał zaprząc powóz. Napisał kartkę do sklepu, że przyjdzie później, i poszarpał jedną parę rękawiczek. Nareszcie wszedł służący.
+
+**UA:** Минули ніч і ранок. О дванадцятій він наказав запрягти коней. Написав у крамницю записку, що прийде пізніше, й роздер одну пару рукавичок. Нарешті увійшов слуга.
+
+---
+
+**PL:** „Konie gotowe!” — błysnęło Wokulskiemu.
+
+**UA:** «Коні готові!» — майнуло у Вокульського.
+
+---
+
+**PL:** Wyciągnął rękę po kapelusz.
+
+**UA:** Він простягнув руку по капелюх.
+
+---
+
+**PL:** — Książę!... — zameldował służący.
+
+**UA:** — Князь!... — доповів слуга.
+
+---
+
+**PL:** Wokulskiemu pociemniało w oczach.
+
+**UA:** У Вокульського потемніло в очах.
+
+---
+
+**PL:** — Proś.
+
+**UA:** — Проси.
+
+---
+
+**PL:** Książę wszedł.
+
+**UA:** Увійшов князь.
+
+---
+
+**PL:** — Dzień dobry, panie Wokulski — zawołał. — Pan gdzieś wyjeżdża? — Zapewne do składów albo na kolej. Ale nic z tego. Aresztuję pana i zabieram do siebie. Będę nawet tak niegrzeczny, że zakwateruję się do pańskiego powozu, bo dziś swego nie wziąłem.
+
+**UA:** — Добридень, пане Вокульський, — гукнув він. — Ви кудись їдете? Мабуть, до складів або на вокзал. Але ні, цього не буде. Я вас заарештовую й забираю до себе. Буду навіть такий нечемний, що вмощуся у вашому повозі, бо сьогодні не взяв свого.
+
+**PL:** Jestem jednak pewny, że wszystko to wybaczy mi pan ze względu na doskonałe wiadomości.
+
+**UA:** Однак я певен, що ви мені все це пробачите заради чудових новин.
+
+---
+
+**PL:** — Raczy książę spocząć?...
+
+**UA:** — Князь зволить присісти?...
+
+---
+
+**PL:** — Na chwilkę. Niech pan sobie wyobrazi — mówił książę siadając — że dopóty dokuczałem naszym panom bratom<sup>351</sup>... Czy dobrze powiedziałem?... Dopóty ich prześladowałem, aż obiecali przyjść w kilku do mnie i wysłuchać projektu pańskiej spółki.
+
+**UA:** — На хвильку. Уявіть собі, — говорив князь, сідаючи, — я так дошкуляв нашим панам-братам<sup>351</sup>... Чи добре я сказав?... Так їх переслідував, аж поки вони не пообіцяли прийти до мене гуртом і вислухати проєкт вашої спілки.
+
+**PL:** Natychmiast więc pana zabieram, a raczej zabieram się z panem i — jedziemy do mnie.
+
+**UA:** Тож я негайно забираю вас, чи радше — вирушаю з вами, і їдемо до мене.
+
+---
+
+**PL:** Wokulski doznał takiego wrażenia jak człowiek, który spadł z wysokości i uderzył piersiami o ziemię.
+
+**UA:** Вокульський відчув себе так, ніби людина впала з висоти й ударилася грудьми об землю.
+
+---
+
+**PL:** Pomieszanie jego nie uszło uwagi księcia, który uśmiechnął się przypisując to radości z jego wizyty i zaprosin. Przez głowę mu nawet nie przeszło, że dla Wokulskiego może być ważniejszym spacer do Łazienek aniżeli wszyscy książęta i spółki.
+
+**UA:** Збентеження Вокульського не сховалося від князя; той усміхнувся, приписавши його радості від свого візиту та запрошення. Йому навіть на думку не спало, що для Вокульського прогулянка до Лазєнок може бути важливішою за всіх князів і всі спілки.
+
+---
+
+**PL:** — A więc jesteśmy gotowi? — spytał książę powstając z fotelu.
+
+**UA:** — Ну що, ми готові? — спитав князь, підводячись із крісла.
+
+---
+
+**PL:** Sekundy brakowało, ażeby Wokulski powiedział, że nie pojedzie i nie chce żadnych spółek. Ale w tym samym momencie przebiegła mu myśl:
+
+**UA:** Вокульському бракувало однієї секунди, щоб сказати, що він не поїде й не хоче жодних спілок. Але тієї ж миті йому промайнула думка:
+
+---
+
+**PL:** „Spacer — to dla mnie, spółka — dla niej.”
+
+**UA:** «Прогулянка — для мене, спілка — для неї».
+
+---
+
+**PL:** Wziął kapelusz i pojechał z księciem. Zdawało mu się, że powóz nie jedzie po bruku, ale po jego własnym mózgu.
+
+**UA:** Він узяв капелюх і поїхав із князем. Йому здавалося, що повіз їде не бруківкою, а просто по його мозку.
+
+---
+
+**PL:** „Kobiet nie zdobywa się ofiarami, tylko siłą, bodaj pięści...” — przypomniał sobie zdanie pani Meliton. Pod wpływem tego aforyzmu chciał porwać księcia za kołnierz i wyrzucić go na ulicę. Ale trwało to tylko chwilę.
+
+**UA:** «Жінок здобувають не жертвами, а силою, хоч би й кулаками...» — згадав він слова пані Мелітон. Під впливом цього афоризму йому захотілося схопити князя за комір і викинути на вулицю. Та це тривало лише мить.
+
+---
+
+**PL:** Książę przypatrywał mu się spod rzęs, a widząc, że Wokulski to czerwienieje, to blednie, myślał:
+
+**UA:** Князь позиркував на нього з-під вій, а бачачи, як Вокульський то червоніє, то блідне, думав:
+
+---
+
+**PL:** „Nie spodziewałem się, że zrobię aż taką przyjemność temu poczciwemu Wokulskiemu. Tak, trzeba zawsze podawać rękę nowym ludziom...”
+
+**UA:** «Не сподівався, що так ощасливлю цього доброго Вокульського. Так, треба завжди простягати руку новим людям...»
+
+---
+
+**PL:** W swoim towarzystwie książę nosił tytuł zagorzałego patrioty, prawie szowinisty; poza towarzystwem cieszył się opinią jednego z najlepszych obywateli. Bardzo lubił mówić po polsku, a nawet treścią jego francuskich rozmów były interesa publiczne.
+
+**UA:** У своєму товаристві князь мав славу запеклого патріота, майже шовініста; поза товариством його вважали одним із найкращих громадян. Він дуже любив говорити польською, а навіть темою його французьких розмов були суспільні справи.
+
+---
+
+**PL:** Był arystokratą od włosów do nagniotków, duszą, sercem, krwią. Wierzył, że każde społeczeństwo składa się z dwu materiałów: zwyczajnego tłumu i klas wybranych. Zwyczajny tłum był dziełem natury i mógł nawet pochodzić od małpy, jak to wbrew Pismu świętemu utrzymywał Darwin.
+
+**UA:** Він був аристократом до мозолів — душею, серцем і кров'ю. Вірив, що кожне суспільство складається з двох верств: звичайного натовпу й обраних класів. Звичайний натовп був витвором природи й міг навіть походити від мавпи, як усупереч Святому Письму твердив Дарвін.
+
+**PL:** Lecz klasy wybrane miały jakiś wyższy początek i pochodziły, jeżeli nie od bogów, to przynajmniej od pokrewnych im bohaterów, jak Herkules<sup>352</sup>, Prometeusz<sup>353</sup>, od biedy — Orfeusz<sup>354</sup>.
+
+**UA:** Але обрані класи мали якесь вище походження й вели рід, якщо не від богів, то бодай від споріднених із ними героїв — як Геркулес<sup>352</sup>, Прометей<sup>353</sup>, а в крайньому разі Орфей<sup>354</sup>.
+
+---
+
+**PL:** Książę miał we Francji przyjaciela, hrabiego (w najwyższym stopniu dotkniętego zarazą demokratyczną), który drwił sobie z nadziemskich początków arystokracji.
+
+**UA:** У Франції князь мав приятеля-графа, вкрай ураженого демократичною пошестю, який глузував із небесного походження аристократії.
+
+---
+
+**PL:** — Mój kuzynie — mówił — myślę, że nie zdajesz sobie należycie sprawy z kwestii rodów. Cóż to są wielkie rody? Są nimi takie, których przodkowie byli hetmanami, senatorami, wojewodami, czyli po dzisiejszemu: marszałkami, członkami izby wyższej<sup>355</sup> lub prefektami departamentów<sup>356</sup>.
+
+**UA:** — Любий кузене, — казав він, — мені здається, ти не зовсім розумієшся на родах. Що таке великі роди? Це ті, чиї предки були гетьманами, сенаторами, воєводами, тобто сьогоднішніми маршалками, членами верхньої палати<sup>355</sup> або префектами департаментів<sup>356</sup>.
+
+**PL:** No — a przecie takich panów znamy, nic w nich nadzwyczajnego... Jedzą, piją, grają w karty, umizgają się do kobiet, zaciągają długi — jak reszta śmiertelników, od których są niekiedy głupsi.
+
+**UA:** Ну, а таких панів ми знаємо чимало, і нічого надзвичайного в них немає... Їдять, п'ють, грають у карти, залицяються до жінок, залазять у борги — як решта смертних, від яких вони часом ще й дурніші.
+
+---
+
+**PL:** Księciu na twarz występowały chorobliwe rumieńce.
+
+**UA:** На обличчі князя виступали хворобливі рум'янці.
+
+---
+
+**PL:** — Czy spotkałeś kiedy, kuzynie — odparł — prefekta lub marszałka z takim wyrazem majestatu, jaki widujemy na portretach naszych przodków?...
+
+**UA:** — А ти, кузене, коли-небудь зустрічав префекта чи маршалка з таким величним виглядом, який бачимо на портретах наших предків?...
+
+---
+
+**PL:** — Cóż w tym dziwnego — śmiał się zarażony hrabia. — Malarze nadawali obrazom wyraz, o jakim nie śniło się żadnemu z oryginałów; tak jak heraldycy<sup>357</sup> i historycy opowiadali o nich bajeczne legendy. To wszystko kłamstwa, mój kuzynie!...
+
+**UA:** — А що тут дивного? — сміявся граф, заражений демократизмом. — Художники надавали портретам виразу, про який самим оригіналам і не снилося; так само геральдисти<sup>357</sup> й історики оповідали про них казкові легенди. Усе це брехня, любий кузене!...
+
+**PL:** To tylko kulisy i kostiumy, które z jednego Wojtka robią księcia, a z innego parobka. W rzeczywistości jeden i drugi jest tylko lichym aktorem.
+
+**UA:** Це лише декорації та костюми, що з одного Войтека роблять князя, а з іншого — наймита. Насправді і той, і той — лише нікчемний актор.
+
+---
+
+**PL:** — Z szyderstwem, kuzynie, nie ma rozprawy! — wybuchał książę i uciekał. Biegł do siebie, kładł się na szezlongu z rękoma splecionymi pod głową i patrząc w sufit widział przesuwające się na nim postacie nadludzkiego wzrostu, siły, odwagi, rozumu, bezinteresowności.
+
+**UA:** — Із глузуванням, кузене, сперечатися годі! — вигукував князь і тікав. Біг до себе, лягав на шезлонг, склавши руки під головою, і, дивлячись у стелю, бачив постаті надлюдського зросту, сили, відваги, розуму й безкорисливості, що пропливали над ним.
+
+**PL:** To byli — przodkowie jego i hrabiego; tylko że hrabia zapierał się ich. Czyżby istniała w nim jaka przymieszka krwi?...
+
+**UA:** То були його предки й предки графа; тільки граф від них відрікався. Невже в ньому була домішка чужої крові?...
+
+---
+
+**PL:** Tłumem zwyczajnych śmiertelników książę nie tylko nie gardził, ale owszem: miał dla nich życzliwość, a nawet stykał się z nimi i interesował ich potrzebami. Wyobrażał sobie, że jest jednym z Prometeuszów, którzy mają poniekąd honorowy obowiązek sprowadzić tym biednym ludziom ogień z nieba na ziemię.
+
+**UA:** До натовпу звичайних смертних князь не лише не ставився з погордою, а навпаки — прихильно; він навіть спілкувався з ними й цікавився їхніми потребами. Уявляв себе одним із Прометеїв, які мають почесний обов'язок принести цим бідолашним людям вогонь із неба на землю.
+
+**PL:** Zresztą religia nakazywała mu sympatię dla maluczkich i książę rumienił się na samą myśl, że większa część towarzystwa stanie kiedyś przed boskim sądem bez tego rodzaju zasługi.
+
+**UA:** До того ж релігія веліла йому співчувати малим світу цього, і князь червонів від самої думки, що більша частина його товариства постане перед Божим судом, не маючи такої заслуги.
+
+---
+
+**PL:** Więc aby uniknąć wstydu dla siebie, bywał i nawet zwoływał do swego mieszkania rozmaite sesje, wydawał po dwadzieścia pięć i po sto rubli na akcje rozmaitych przedsiębiorstw publicznych, nade wszystko zaś — ciągle martwił się nieszczęśliwym położeniem kraju, a każdą mowę swoją kończył frazesem:
+
+**UA:** Тож, аби самому не осоромитися, він відвідував різні зібрання й навіть скликав їх до себе, витрачав по двадцять п'ять і по сто рублів на акції різних громадських підприємств, а найбільше — без упину журився нещасним становищем краю й кожну свою промову завершував фразою:
+
+---
+
+**PL:** — Bo, panowie, myślmy najpierw o tym, ażeby podźwignąć nasz nieszczęśliwy kraj...
+
+**UA:** — Бо, панове, думаймо насамперед про те, як піднести наш нещасний край...
+
+---
+
+**PL:** A gdy to powiedział, czuł, że z serca spada mu jakiś ciężar; tym większy, im więcej było słuchaczów albo im więcej rubli wydał na akcje.
+
+**UA:** А коли він це казав, то відчував, ніби з серця спадає якийсь тягар; що більше було слухачів або що більше рублів він витрачав на акції, то легше йому ставало.
+
+---
+
+**PL:** Zwołać sesję, zachęcić do przedsiębiorstwa i cierpieć, wciąż cierpieć nad nieszczęśliwym krajem, oto jego zdaniem były obowiązki obywatela.
+
+**UA:** Скликати засідання, заохочувати до підприємства й страждати, безупинно страждати за нещасний край — ось, на його думку, були обов'язки громадянина.
+
+**PL:** Gdyby go jednak spytano, czy zasadził kiedy drzewo, którego cień ochroniłby ludzi i ziemię od spiekoty? albo czy kiedy usunął z drogi kamień raniący koniom kopyta? — byłby szczerze zdziwiony.
+
+**UA:** Якби його, однак, спитали, чи посадив він коли-небудь дерево, що його тінь захистила б людей і землю від спеки, або чи прибрав він із дороги камінь, що ранить кінські копита, — він був би щиро здивований.
+
+---
+
+**PL:** Czuł i myślał, pragnął i cierpiał — za miliony. Tylko — nic nigdy nie zrobił użytecznego. Zdawało mu się, że ciągłe frasowanie się całym krajem ma bez miary wyższą wartość od utarcia nosa zasmolonemu dziecku.
+
+**UA:** Він відчував і думав, бажав і страждав — за мільйони. Та нічого корисного так і не зробив. Йому здавалося, що безперервна журба за цілим краєм незмірно цінніша за те, щоб витерти носа закіптюженій дитині.
+
+---
+
+**PL:** W czerwcu fizjognomia Warszawy ulega widocznej zmianie. Puste przedtem hotele napełniają się i podwyższają ceny, na wielu domach ukazują się ogłoszenia: „Apartament z meblami do wynajęcia na kilka tygodni.” Wszystkie dorożki są zajęte, wszyscy posłańcy biegają.
+
+**UA:** У червні вигляд Варшави помітно змінювався. Порожні досі готелі заповнювалися й підвищували ціни; на багатьох будинках з'являлися оголошення: «Здам мебльовані апартаменти на кілька тижнів». Усі візники були зайняті, усі посильні бігали.
+
+**PL:** Na ulicach, w ogrodach, teatrach, w restauracjach, na wystawach, w sklepach i magazynach strojów damskich widać figury nie spotykane w zwykłym czasie.
+
+**UA:** На вулицях, у садах, театрах, ресторанах, на виставках, у крамницях і магазинах жіночого одягу з'являлися постаті, яких зазвичай не побачиш.
+
+**PL:** Są nimi tędzy i opaleni mężczyźni w granatowych czapkach z daszkami, w zbyt obszernych butach, w ciasnych rękawiczkach, w garniturach pomysłu prowincjonalnego krawca.
+
+**UA:** Це були дебелі й засмаглі чоловіки в темно-синіх кашкетах із козирками, у надто просторих чоботях, тісних рукавичках і костюмах за задумом провінційного кравця.
+
+**PL:** Towarzyszą im gromadki dam, nie odznaczających się pięknością ani warszawskim szykiem, tudzież nie mniej liczne gromadki niezręcznych dzieci, którym z ust szeroko otwartych wygląda zdrowie.
+
+**UA:** Їм товаришували гурти пань, які не вирізнялися ані вродою, ані варшавським шиком, а також не менш численні гурти незграбних дітей, чиє здоров'я аж випирало з широко роззявлених ротів.
+
+---
+
+**PL:** Jedni z wiejskich gości przyjeżdżają tu z wełną na jarmark, drudzy na wyścigi, inni, ażeby zobaczyć wełnę i wyścigi; ci dla spotkania się z sąsiadami, których na miejscu mają o wiorstę drogi, tamci dla odświeżenia się w stolicy mętnej wody i pyłu,
+
+**UA:** Одні сільські гості приїздили сюди з вовною на ярмарок, другі — на перегони, інші — подивитися і на вовну, і на перегони; хтось — зустрітися із сусідами, що живуть за версту від нього,
+
+**PL:** a owi męczą się przez kilkudniową podróż sami nie wiedząc po co.
+
+**UA:** а хтось виснажував себе кількаденними мандрами, сам не знаючи навіщо.
+
+---
+
+**PL:** Z podobnego zjazdu skorzystał książę, ażeby zbliżyć Wokulskiego z ziemiaństwem.
+
+**UA:** Князь скористався таким з'їздом, щоб зблизити Вокульського із землевласниками.
+
+---
+
+**PL:** Książę we własnym pałacu, na pierwszym piętrze, zajmował ogromne mieszkanie. Część jego, złożona z gabinetu pana, biblioteki i fajczarni<sup>358</sup>, była miejscem męskich zebrań, na których książę przedstawiał swoje lub cudze projekta dotyczące spraw publicznych.
+
+**UA:** У власному палаці, на другому поверсі, князь займав величезні апартаменти. Їхня частина — кабінет господаря, бібліотека й курильня<sup>358</sup> — була місцем чоловічих зібрань, на яких князь представляв свої або чужі проєкти щодо громадських справ.
+
+**PL:** Zdarzało się to po kilka razy w roku. Ostatnia nawet sesja wiosenna była poświęcona kwestii statków śrubowych<sup>359</sup> na Wiśle, przy czym bardzo wyraźnie zarysowały się trzy stronnictwa.
+
+**UA:** Такі засідання відбувалися кілька разів на рік. Останнє, весняне, було присвячене питанню гвинтових пароплавів<sup>359</sup> на Віслі, і тоді виразно окреслилися три партії.
+
+**PL:** Pierwsze, złożone z księcia i jego osobistych przyjaciół, koniecznie domagało się śrubowców, drugie zaś, mieszczańskie, uznając w zasadzie piękność projektu, uważało go jednak za przedwczesny i nie chciało dać na ten cel pieniędzy.
+
+**UA:** Перша, що складалася з князя та його близьких приятелів, неодмінно вимагала гвинтових пароплавів; друга, міщанська, загалом визнавала красу задуму, але вважала його передчасним і не хотіла давати на це гроші.
+
+**PL:** Trzecie stronnictwo składało się tylko z dwu osób: pewnego technika, który twierdził, że śrubowce nie mogą pływać po Wiśle, i pewnego głuchego magnata, który na wszystkie odezwy, skierowane do jego kieszeni, stale odpowiadał:
+
+**UA:** Третя партія складалася лише з двох осіб: одного техніка, який твердив, що гвинтові пароплави не зможуть плавати Віслою, та одного глухого магната, який на всі прохання, звернені до його гаманця, незмінно відповідав:
+
+---
+
+**PL:** — Proszę trochę głośniej, bo nic nie słychać...
+
+**UA:** — Прошу трохи голосніше, бо нічого не чути...
+
+---
+
+**PL:** Książę z Wokulskim przyjechali o pierwszej, a w kwadrans po nich zaczęli schodzić się i zjeżdżać inni uczestnicy sesji. Książę witał każdego z uprzejmą poufałością, prezentował Wokulskiego, a następnie podkreślał przybysza na liście zaproszonych bardzo długim i bardzo czerwonym ołówkiem.
+
+**UA:** Князь із Вокульським приїхали о першій, а за чверть години почали сходитися й з'їжджатися інші учасники засідання. Князь вітав кожного з чемною фамільярністю, представляв Вокульського, а потім підкреслював нового гостя у списку запрошених довжелезним і дуже червоним олівцем.
+
+---
+
+**PL:** Jednym z pierwszych gości był pan Łęcki; wziął Wokulskiego na stronę i jeszcze raz wypytał go o cel i znaczenie spółki, do której należał już całą duszą, ale nigdy nie mógł dobrze spamiętać, o co chodzi. Tymczasem inni panowie przypatrywali się intruzowi i zniżonym głosem robili o nim uwagi.
+
+**UA:** Одним із перших гостей був пан Ленцький. Він відвів Вокульського вбік і ще раз розпитав про мету й значення спілки, до якої вже приєднався всією душею, але ніяк не міг добре запам'ятати, у чому річ. Тим часом інші пани придивлялися до чужинця й пошепки перемовлялися про нього.
+
+---
+
+**PL:** — Bycza mina! — szepnął otyły marszałek wskazując okiem na Wokulskiego. — Szczeć na głowie jeży mu się jak dzikowi, pierś — upadam do nóg, oko bystre... Ten by nie ustał na polowaniu!
+
+**UA:** — Бичача пика! — прошепотів огрядний маршалок, показуючи на Вокульського очима. — Волосся на голові стирчить, як у кабана, груди — хоч до ніг падай, око гостре... Такий на полюванні не встояв би!
+
+---
+
+**PL:** — I twarz, panie... — dodał baron z fizjognomią Mefistofelesa<sup>360</sup>. — Czoło, panie... wąsik, panie, mała hiszpanka, panie... Wcale, panie... wcale... Rysy trochę, panie... ale całość, panie...
+
+**UA:** — І обличчя, пане... — додав барон із фізіономією Мефістофеля<sup>360</sup>. — Лоб, пане... вусики, пане, маленька еспаньйолка, пане... Дуже, пане... дуже... Риси трохи, пане... але загалом, пане...
+
+---
+
+**PL:** — Zobaczymy, jaki będzie w interesach — dorzucił nieco przygarbiony hrabia.
+
+**UA:** — Побачимо, який він у справах, — докинув трохи згорблений граф.
+
+---
+
+**PL:** — Rzutki, ryzykowny, tek — odezwał się jakby z piwnicy drugi hrabia, który siedział sztywnie na krześle, nosił bujne faworyty i porcelanowymi oczyma patrzył tylko przed siebie jak Anglik z »Journal Amusant«<sup>361</sup>.
+
+**UA:** — Спритний, ризиковий, так... — озвався наче з льоху другий граф, що сидів випроставшись на стільці, мав пишні бакенбарди й порцеляновими очима дивився просто перед себе, як англієць із «Journal Amusant»<sup>361</sup>.
+
+---
+
+**PL:** Książę powstał z fotelu i chrząknął; zebrani umilkli, dzięki czemu można było usłyszeć resztę opowiadania marszałka:
+
+**UA:** Князь підвівся з крісла й відкашлявся; зібрання стихло, тож можна було почути решту розповіді маршалка:
+
+---
+
+**PL:** — Wszyscy patrzymy na las, a tu coś skwierczy pod kopytami. Wyobraź sobie acan dobrodziej, że chart idący przy koniach na smyczy zdusił w bruździe szaraka!...
+
+**UA:** — Усі дивимося на ліс, аж тут щось зашкварчало під копитами. Уявіть собі, ваша милосте: хорт, що біг на повідку поряд із кіньми, задавив у борозні зайця!...
+
+---
+
+**PL:** To powiedziawszy marszałek uderzył olbrzymią dłonią w udo, z którego mógł był wyciąć sobie sekretarza i jego pomocnika.
+
+**UA:** Сказавши це, маршалок ляснув велетенською долонею по стегну, з якого міг би вирізати собі секретаря та його помічника.
+
+---
+
+**PL:** Książę chrząknął drugi raz, marszałek zmieszał się i niezwykle wielkim fularem<sup>362</sup> otarł spocone czoło.
+
+**UA:** Князь відкашлявся вдруге, маршалок зніяковів і величезним шовковим шарфом<sup>362</sup> витер спітніле чоло.
+
+---
+
+**PL:** — Szanowni panowie — odezwał się książę. — Poważyłem się fatygować szanownych panów w pewnym... nader ważnym interesie publicznym, który, jak to wszyscy czujemy, powinien zawsze stać na straży naszych interesów publicznych... Chciałem powiedzieć... naszych idei... to jest...
+
+**UA:** — Шановні панове, — озвався князь. — Я наважився потурбувати вас у певній... надзвичайно важливій громадській справі, яка, як ми всі відчуваємо, завжди має стояти на сторожі наших громадських інтересів... Хотів сказати... наших ідей... тобто...
+
+---
+
+**PL:** Książę zdawał się być zakłopotany; wnet jednak ochłonął i mówił dalej:
+
+**UA:** Князь, здавалося, розгубився, але швидко оговтався й повів далі:
+
+---
+
+**PL:** — Chodzi o inte... to jest o plan, a raczej... o projekt zawiązania spółki do ułatwienia handlu...
+
+**UA:** — Йдеться про торгів... тобто про план, а радше... про проєкт створення спілки, яка полегшила б торгівлю...
+
+---
+
+**PL:** — Zbożem — wtrącił ktoś z kąta.
+
+**UA:** — Зерном, — укинув хтось із кутка.
+
+---
+
+**PL:** — Właściwie — ciągnął książę — chodzi nie o handel zbożem, ale...
+
+**UA:** — Власне, — повів далі князь, — ідеться не про торгівлю зерном, а...
+
+---
+
+**PL:** — Okowitą — pośpieszył ten sam głos.
+
+**UA:** — Горілкою, — поквапився той самий голос.
+
+---
+
+**PL:** — Ależ nie!... O handel, a raczej o ułatwienie handlu między Rosją i zagranicą towarami, no... towarami... Miasto zaś nasze, pożądane jest, ażeby się stało centrum takowego...
+
+**UA:** — Та ні ж!... Про торгівлю, а радше про полегшення торгівлі між Росією та закордоном різними товарами, ну... товарами... А бажано, щоб наше місто стало центром такої торгівлі...
+
+---
+
+**PL:** — A jakież to towary? — spytał przygarbiony hrabia.
+
+**UA:** — А що це за товари? — спитав згорблений граф.
+
+---
+
+**PL:** — Stronę fachową kwestii raczy objaśnić nam łaskawie pan Wokulski, człowiek... człowiek fachowy — zakończył książę. — Pamiętajmy jednak, panowie, o obowiązkach, jakie na nas wkłada troska o interesa publiczne i ten nieszczęśliwy kraj...
+
+**UA:** — Фахову сторону справи зволить ласкаво пояснити нам пан Вокульський, людина... людина фахова, — завершив князь. — Але пам'ятаймо, панове, про обов'язки, які покладають на нас турбота про громадські справи й цей нещасний край...
+
+---
+
+**PL:** — Jak Boga kocham, zaraz daję dziesięć tysięcy rubli!... — wrzasnął marszałek.
+
+**UA:** — Як Бога люблю, зараз даю десять тисяч рублів!... — заверещав маршалок.
+
+---
+
+**PL:** — Na co? — spytał hrabia udający autentycznego Anglika.
+
+**UA:** — На що? — спитав граф, який удавав справжнього англійця.
+
+---
+
+**PL:** — Wszystko jedno!... — odparł wielkim głosem marszałek. — Powiedziałem: rzucę w Warszawie pięćdziesiąt tysięcy rubli, więc niech dziesięć pójdzie na cele dobroczynne, bo kochany nasz książę mówi cudownie!... Z rozumu i z serca, jak Boga kocham...
+
+**UA:** — Байдуже!... — гримнув маршалок. — Я сказав: кину у Варшаві п'ятдесят тисяч рублів, то хай десять підуть на доброчинність, бо наш любий князь говорить чудово!... І розумом, і серцем, як Бога люблю...
+
+---
+
+**PL:** — Przepraszam — odezwał się Wokulski — ale nie chodzi tu o spółkę dobroczynną, tylko o spółkę zapewniającą zyski.
+
+**UA:** — Перепрошую, — озвався Вокульський, — але йдеться не про доброчинну спілку, а про спілку, що забезпечуватиме прибуток.
+
+---
+
+**PL:** — Otóż to!... — wtrącił hrabia zgarbiony.
+
+**UA:** — Отож-бо!... — укинув згорблений граф.
+
+---
+
+**PL:** — Tek!... — potwierdził hrabia–Anglik.
+
+**UA:** — Так!... — підтвердив граф-англієць.
+
+---
+
+**PL:** — Co mnie za zysk z dziesięciu tysięcy? — zaoponował marszałek. — Z torbami bym poszedł pod Ostrą Bramę<sup>363</sup> przy takich zyskach.
+
+**UA:** — Який мені зиск із десяти тисяч? — заперечив маршалок. — За такого прибутку я б пішов із торбами під Остру Браму<sup>363</sup>.
+
+---
+
+**PL:** Zgarbiony hrabia wybuchnął:
+
+**UA:** Згорблений граф вибухнув:
+
+---
+
+**PL:** — Proszę o głos w kwestii: czy należy lekceważyć małe zyski!... To nas gubi!... to, panowie — wołał pukając paznokciem w poręcz fotelu.
+
+**UA:** — Прошу слова у справі: чи варто нехтувати малими прибутками!... У цьому наша погибель!... Ось у чому річ, панове, — вигукував він, постукуючи нігтем по поруччю крісла.
+
+---
+
+**PL:** — Hrabio — przerwał słodko książę — pan Wokulski ma głos.
+
+**UA:** — Графе, — лагідно перебив князь, — слово має пан Вокульський.
+
+---
+
+**PL:** — Tek!... — poparł go hrabia–Anglik czesząc bujne faworyty.
+
+**UA:** — Так!... — підтримав його граф-англієць, розчісуючи пишні бакенбарди.
+
+---
+
+**PL:** — Prosimy więc szanownego pana Wokulskiego — odezwał się nowy głos — ażeby ten publiczny interes, który nas zgromadził tu, do gościnnych salonów księcia, raczył nam przedstawić z właściwą mu jasnością i zwięzłością.
+
+**UA:** — Тож просимо шановного пана Вокульського, — озвався новий голос, — ласкаво представити нам цю громадську справу, що зібрала нас у гостинних салонах князя, з властивою йому ясністю та стислістю.
+
+---
+
+**PL:** Wokulski spojrzał na osobę przyznającą mu jasność i zwięzłość. Był to znakomity adwokat, przyjaciel i prawa ręka księcia; lubił mówić kwieciście, wybijając takt ręką i przysłuchując się własnym frazesom, które zawsze znajdował wybornymi<sup>364</sup>.
+
+**UA:** Вокульський глянув на того, хто приписував йому ясність і стислість. То був видатний адвокат, приятель і права рука князя; він любив говорити пишномовно, відбиваючи рукою такт і прислухаючись до власних фраз, які завжди вважав чудовими<sup>364</sup>.
+
+---
+
+**PL:** — Tylko żebyśmy zrozumieli wszyscy — mruknął ktoś w kącie zajętym przez szlachtę, która nienawidziła magnatów.
+
+**UA:** — Тільки б ми всі зрозуміли, — пробурмотів хтось із кутка, де сиділа шляхта, яка ненавиділа магнатів.
+
+---
+
+**PL:** — Wiadomo panom — zaczął Wokulski — że Warszawa jest handlową stacją między Europą zachodnią i wschodnią. Tu zbiera się i przechodzi przez nasze ręce część towarów francuskich i niemieckich przeznaczonych dla Rosji, z czego moglibyśmy mieć pewne zyski, gdyby nasz handel...
+
+**UA:** — Панове знають, — почав Вокульський, — що Варшава — торговельна станція між Західною та Східною Європою. Тут збирається й проходить через наші руки частина французьких і німецьких товарів, призначених для Росії, з чого ми могли б мати певний зиск, якби наша торгівля...
+
+---
+
+**PL:** — Nie znajdował się w ręku Żydów — wtrącił półgłosem ktoś od stołu, gdzie siedzieli kupcy i przemysłowcy.
+
+**UA:** — Не була в руках євреїв, — тихо вкинув хтось зі столу, де сиділи крамарі й промисловці.
+
+---
+
+**PL:** — Nie — odparł Wokulski. — Zyski istniałyby wówczas, gdyby nasz handel był prowadzony porządnie.
+
+**UA:** — Ні, — відповів Вокульський. — Прибуток був би, якби наша торгівля велася належно.
+
+---
+
+**PL:** — Z Żydami nie może być porządny...
+
+**UA:** — З євреями належно не вестиметься...
+
+---
+
+**PL:** — Dziś jednak — przerwał adwokat księcia — szanowny pan Wokulski daje nam możność podstawienia kapitałów chrześcijańskich w miejsce kapitału starozakonnych...
+
+**UA:** — Сьогодні ж, — перебив князів адвокат, — шановний пан Вокульський дає нам можливість підставити християнські капітали замість капіталу старозаконників...
+
+---
+
+**PL:** — Pan Wokulski sam wprowadza Żydów do handlu — bryznął oponent ze stanu kupieckiego.
+
+**UA:** — Пан Вокульський сам уводить євреїв у торгівлю, — випалив опонент із купецького стану.
+
+---
+
+**PL:** Zrobiło się cicho.
+
+**UA:** Запала тиша.
+
+---
+
+**PL:** — Ze sposobu prowadzenia moich interesów nie zdaję sprawy przed nikim — ciągnął dalej Wokulski. — Wskazuję panom drogę uporządkowania handlu Warszawy z zagranicą, co stanowi pierwszą połowę mego projektu i jedno źródło zysku dla krajowych kapitałów. Drugim źródłem jest handel z Rosją<sup>365</sup>.
+
+**UA:** — За те, як я веду свої справи, я ні перед ким не звітую, — продовжив Вокульський. — Я показую вам шлях до впорядкування варшавської торгівлі із закордоном. Це перша половина мого проєкту й одне джерело прибутку для вітчизняного капіталу. Друге джерело — торгівля з Росією<sup>365</sup>.
+
+**PL:** Znajdują się tam towary poszukiwane u nas i tanie. Spółka, która zajęłaby się nimi, mogłaby mieć piętnaście do dwudziestu procentów rocznie od wyłożonego kapitału. Na pierwszym miejscu stawiam tkaniny...
+
+**UA:** Там є товари, які в нас мають попит і коштують дешево. Спілка, що ними займатиметься, могла б давати п'ятнадцять-двадцять відсотків річного прибутку на вкладений капітал. Насамперед я пропоную тканини...
+
+---
+
+**PL:** — To jest podkopywanie naszego przemysłu — odezwał się oponent z grupy kupieckiej.
+
+**UA:** — Це підриває нашу промисловість, — озвався опонент із купецького гурту.
+
+---
+
+**PL:** — Mnie nie obchodzą fabrykanci, tylko konsumenci... — odpowiedział Wokulski.
+
+**UA:** — Мене цікавлять не фабриканти, а споживачі... — відповів Вокульський.
+
+---
+
+**PL:** Kupcy i przemysłowcy poczęli szeptać między sobą w sposób mało życzliwy dla Wokulskiego.
+
+**UA:** Крамарі й промисловці почали перешіптуватися між собою, явно недоброзичливо до Вокульського.
+
+---
+
+**PL:** — Otóż i dotarliśmy do interesu publicznego!... — zawołał wzruszonym głosem książę. — Kwestia zarysowuje się tak: czy projekta szanownego pana Wokulskiego są objawem pomyślnym dla kraju?... Panie mecenasie<sup>366</sup>...
+
+**UA:** — Ось ми й дісталися до громадської справи!... — схвильовано вигукнув князь. — Питання постає так: чи є проєкти шановного пана Вокульського сприятливими для краю?... Пане адвокате<sup>366</sup>...
+
+**PL:** — zwrócił się książę do adwokata, czując potrzebę wyręczenia się nim w kłopotliwej nieco sytuacji.
+
+**UA:** — звернувся князь до адвоката, бо відчув потребу доручити йому вихід із дещо скрутного становища.
+
+---
+
+**PL:** — Szanowny pan Wokulski — zabrał głos adwokat — z właściwą mu gruntownością raczy nas objaśnić: czy sprowadzanie owych tkanin aż z tak daleka nie przyniesie uszczerbku naszym fabrykom?
+
+**UA:** — Шановний пан Вокульський з властивою йому ґрунтовністю зволить пояснити нам: чи не зашкодить нашим фабрикам завезення цих тканин аж із такої далечини?
+
+---
+
+**PL:** — Przede wszystkim — rzekł Wokulski — owe nasze fabryki nie są naszymi, lecz niemieckimi...
+
+**UA:** — Насамперед, — сказав Вокульський, — ті наші фабрики не наші, а німецькі...
+
+---
+
+**PL:** — Oho!... — zawołał oponent z grupy kupców.
+
+**UA:** — Ого!... — вигукнув опонент із купецького гурту.
+
+---
+
+**PL:** — Jestem gotów — mówił Wokulski — natychmiast wyliczyć fabryki, w których cała administracja i wszyscy lepiej płatni robotnicy są Niemcami, których kapitał jest niemiecki, a rada zarządzająca rezyduje w Niemczech; gdzie nareszcie robotnik nasz nie ma możności ukształcić się wyżej w swoim fachu,
+
+**UA:** — Я готовий, — говорив Вокульський, — негайно перелічити фабрики, де вся адміністрація й усі краще оплачувані робітники — німці, капітал — німецький, а правління міститься в Німеччині; де, зрештою, наш робітник не має змоги підвищити кваліфікацію у своєму фаху,
+
+**PL:** ale jest parobkiem źle płatnym, źle traktowanym i na dobitkę germanizowanym...
+
+**UA:** а лишається погано оплачуваним, погано трактованим і до того ж онімечуваним наймитом...
+
+---
+
+**PL:** — To jest ważne!... — wtrącił hrabia zgarbiony.
+
+**UA:** — Це важливо!... — укинув згорблений граф.
+
+---
+
+**PL:** — Tek... — szepnął Anglik.
+
+**UA:** — Так... — прошепотів англієць.
+
+---
+
+**PL:** — Jak Boga kocham, doświadczam emocji słuchając!... — zawołał marszałek. — Nigdym nie myślał, że tak można zabawić się przy podobnej rozmowie... Zaraz wrócę...
+
+**UA:** — Як Бога люблю, я хвилююся, слухаючи вас!... — вигукнув маршалок. — Ніколи не думав, що можна так розважитися подібною розмовою... Зараз повернуся...
+
+---
+
+**PL:** I opuścił gabinet, aż uginała się pod jego stopami podłoga.
+
+**UA:** І він вийшов із кабінету, аж підлога вгиналася під його ногами.
+
+---
+
+**PL:** — Czy mam wyliczać nazwiska? — spytał Wokulski.
+
+**UA:** — Називати прізвища? — спитав Вокульський.
+
+---
+
+**PL:** Grupa kupców i przemysłowców złożyła w tej chwili dowód rzadkiej powściągliwości nie domagając się nazwisk. Adwokat szybko podniósł się z fotelu i zatrzepotawszy rękoma zawołał:
+
+**UA:** Купецький гурт цієї миті виявив рідкісну стриманість, не зажадавши прізвищ. Адвокат швидко підвівся з крісла й, замахавши руками, вигукнув:
+
+---
+
+**PL:** — Sądzę, że nad kwestią miejscowych fabryk możemy przejść do porządku. Teraz szanowny pan Wokulski raczy nam, z właściwą mu jędrnością, objaśnić: jakie pozytywne korzyści z jego projektu odniesie...
+
+**UA:** — Гадаю, питання місцевих фабрик можна залишити без розгляду. Тепер шановний пан Вокульський з властивою йому виразністю зволить пояснити: яку конкретну користь від його проєкту матиме...
+
+---
+
+**PL:** — Nasz nieszczęśliwy kraj — zakończył książę.
+
+**UA:** — Наш нещасний край, — завершив князь.
+
+---
+
+**PL:** — Proszę panów — mówił Wokulski — gdyby łokieć mego perkalu kosztował tylko o dwa grosze taniej niż dziś, wówczas na każdym milionie kupionych tu łokci ogół oszczędziłby dziesięć tysięcy rubli...
+
+**UA:** — Панове, — говорив Вокульський, — якби лікоть мого перкалю коштував лише на два гроші дешевше, ніж тепер, то на кожному мільйоні ліктів, придбаних тут, усі заощадили б десять тисяч рублів...
+
+---
+
+**PL:** — Cóż to znaczy dziesięć tysięcy rubli?... — spytał marszałek, który już powrócił do gabinetu, ale jeszcze nie wpadł w tok rozpraw.
+
+**UA:** — Що таке десять тисяч рублів?... — спитав маршалок, який уже повернувся до кабінету, але ще не встиг долучитися до дискусії.
+
+---
+
+**PL:** — To wiele znaczy... bardzo wiele! — zawołał hrabia zgarbiony. — Raz nauczmy się szanować zyski groszowe...
+
+**UA:** — Це багато... дуже багато! — вигукнув згорблений граф. — Навчімося нарешті цінувати дрібні прибутки...
+
+---
+
+**PL:** — Tek... Pens<sup>367</sup> jest ojcem gwinei<sup>368</sup>... — dodał hrabia ucharakteryzowany na Anglika.
+
+**UA:** — Так... Пенс<sup>367</sup> — батько гінеї<sup>368</sup>... — додав граф, який удавав англійця.
+
+---
+
+**PL:** — Dziesięć tysięcy rubli — ciągnął Wokulski — jest to fundament dobrobytu dla dwudziestu rodzin co najmniej...
+
+**UA:** — Десять тисяч рублів, — продовжив Вокульський, — це основа добробуту принаймні для двадцяти родин...
+
+---
+
+**PL:** — Kropla w morzu — mruknął jeden z kupców.
+
+**UA:** — Крапля в морі, — пробурмотів один із крамарів.
+
+---
+
+**PL:** — Ale jest jeszcze inny wzgląd — mówił Wokulski — obchodzący wprawdzie tylko kapitalistów. Mam do dyspozycji towaru za trzy do czterech milionów rubli rocznie...
+
+**UA:** — Але є ще одна обставина, — казав Вокульський, — що цікавить, щоправда, лише капіталістів. Я маю в розпорядженні товару на три-чотири мільйони рублів щороку...
+
+---
+
+**PL:** — Upadam do nóg!... — szepnął marszałek.
+
+**UA:** — До ваших ніг!... — прошепотів маршалок.
+
+---
+
+**PL:** — To nie jest mój majątek — wtrącił Wokulski — mój jest znacznie skromniejszy...
+
+**UA:** — Це не моє багатство, — втрутився Вокульський, — моє значно скромніше...
+
+---
+
+**PL:** — Lubię takich!... — rzekł zgarbiony hrabia.
+
+**UA:** — Люблю таких!... — сказав згорблений граф.
+
+---
+
+**PL:** — Tek... — dodał Anglik.
+
+**UA:** — Так... — додав англієць.
+
+---
+
+**PL:** — Owe trzy miliony rubli stanowią mój osobisty kredyt i przynoszą mi bardzo mały procent jako pośrednikowi — mówił Wokulski. — Oświadczam jednak, że o ile w miejsce kredytu podstawiłoby się gotówkę, zysk z niej wynosiłby piętnaście do dwudziestu procentów, a może więcej.
+
+**UA:** — Ці три мільйони рублів — мій особистий кредит, і як посередникові він приносить мені дуже малий відсоток, — говорив Вокульський. — Однак заявляю: якби замість кредиту вкласти готівку, прибуток становив би п'ятнадцять-двадцять відсотків, а може, й більше.
+
+**PL:** Otóż ten punkt sprawy obchodzi panów, którzy składacie pieniądze w bankach na niski procent. Pieniędzmi tymi obracają inni i zyski ciągną dla siebie. Ja zaś ofiaruję panom sposobność użycia ich bezpośredniego i powiększenia własnych dochodów. Skończyłem.
+
+**UA:** Отже, цей пункт справи цікавить панів, які тримають гроші в банках під низький відсоток. Ними розпоряджаються інші й забирають собі прибутки. А я пропоную панам нагоду безпосередньо використати ці кошти й збільшити власні доходи. Я закінчив.
+
+---
+
+**PL:** — Pysznie! — zawołał przygarbiony hrabia. — Czy jednak nie można by dowiedzieć się szczegółów bliższych?
+
+**UA:** — Чудово! — вигукнув згорблений граф. — А чи можна було б довідатися про докладніші подробиці?
+
+---
+
+**PL:** — O tych mogę mówić tylko z moimi wspólnikami — odpowiedział Wokulski.
+
+**UA:** — Про них я можу говорити лише зі своїми спільниками, — відповів Вокульський.
+
+---
+
+**PL:** — Jestem — rzekł zgarbiony hrabia i podał mu rękę.
+
+**UA:** — Я згоден, — сказав згорблений граф і подав йому руку.
+
+---
+
+**PL:** — Tek — dodał pseudo–Anglik wyciągnąwszy do Wokulskiego dwa palce.
+
+**UA:** — Так, — додав псевдоанглієць, простягаючи Вокульському два пальці.
+
+---
+
+**PL:** — Moi panowie! — odezwał się wygolony mężczyzna z grupy szlachty nienawidzącej magnatów. — Mówicie tu o handlu perkalami, który nas nic nie obchodzi... Ale panowie!...
+
+**UA:** — Панове! — озвався поголений чоловік із гурту шляхти, що ненавиділа магнатів. — Ви тут говорите про торгівлю перкалем, яка нас не обходить... Але, панове!...
+
+**PL:** — ciągnął dalej płaczliwym głosem — my mamy za to zboże w spichlerzach, my mamy okowitę w składach, na której wyzyskują nas pośrednicy w sposób — że nie powiem — niegodny...
+
+**UA:** — провадив далі плаксивим голосом, — зате ми маємо зерно в коморах, маємо горілку на складах, а посередники визискують нас так, що — не скажу як — негідно...
+
+---
+
+**PL:** Obejrzał się po gabinecie. Grupa szlachty gardzącej magnatami dała mu brawo.
+
+**UA:** Він озирнувся довкола кабінету. Гурт шляхти, що зневажала магнатів, зааплодував йому.
+
+---
+
+**PL:** Promieniejąca dyskretną radością twarz księcia zajaśniała w tej chwili blaskiem prawdziwego natchnienia.
+
+**UA:** Обличчя князя, що сяяло стриманою радістю, цієї миті осяялося справжнім натхненням.
+
+---
+
+**PL:** — Ależ, panowie! — zawołał — dziś mówimy o handlu tkaninami, lecz jutro i pojutrze któż zabroni nam naradzić się nad innymi kwestiami?... Proponuję więc...
+
+**UA:** — Але, панове! — вигукнув він. — Сьогодні ми говоримо про торгівлю тканинами, але хто заборонить нам завтра чи післязавтра порадитися щодо інших питань?... Тож пропоную...
+
+---
+
+**PL:** — Jak Boga kocham, cudnie mówi ten kochany książę — zawołał marszałek.
+
+**UA:** — Як Бога люблю, чудово говорить наш любий князь, — вигукнув маршалок.
+
+---
+
+**PL:** — Słuchamy... słuchamy!... — poparł go adwokat, silnie okazując, że stara się pohamować zapał dla księcia.
+
+**UA:** — Слухаємо... слухаємо!... — підтримав його адвокат, усім виглядом показуючи, як намагається стримати запал до князя.
+
+---
+
+**PL:** — A więc, panowie — ciągnął wzruszony książę — proponuję jeszcze następujące sesje: jedną w sprawie handlu zbożem, drugą w sprawie handlu okowitą...
+
+**UA:** — Отже, панове, — схвильовано провадив князь, — пропоную ще такі засідання: одне — про торгівлю зерном, друге — про торгівлю горілкою...
+
+---
+
+**PL:** — A kredyt dla rolników?... — spytał ktoś z nieprzejednanej szlachty.
+
+**UA:** — А кредит для хліборобів?... — спитав хтось із непримиренної шляхти.
+
+---
+
+**PL:** — Trzecią w sprawie kredytu dla rolników — mówił książę. — Czwartą...
+
+**UA:** — Третє — про кредит для хліборобів, — говорив князь. — Четверте...
+
+---
+
+**PL:** Tu zaciął się.
+
+**UA:** Тут він запнувся.
+
+---
+
+**PL:** — Czwartą i piątą — pochwycił adwokat — poświęcimy rozważaniu ogólnej ekonomicznej sytuacji...
+
+**UA:** — Четверте й п'яте, — підхопив адвокат, — присвятимо обговоренню загальної економічної ситуації...
+
+---
+
+**PL:** — Naszego nieszczęśliwego kraju — dokończył książę prawie ze łzami w oczach.
+
+**UA:** — Нашого нещасного краю, — завершив князь, мало не плачучи.
+
+---
+
+**PL:** — Panowie!... — wrzasnął adwokat obcierając nos z akcentem rozrzewnienia. — Uczcijmy naszego gospodarza, znakomitego obywatela, najzacniejszego z ludzi...
+
+**UA:** — Панове!... — вигукнув адвокат, зворушено витираючи ніс. — Вшануймо нашого господаря, видатного громадянина, найшляхетнішого з людей...
+
+---
+
+**PL:** — Dziesięć tysięcy rubli, jak Bo... — zawołał marszałek.
+
+**UA:** — Десять тисяч рублів, як Бог... — вигукнув маршалок.
+
+---
+
+**PL:** — Przez powstanie! — szybko dokończył adwokat.
+
+**UA:** — За повстання! — хутко докінчив адвокат.
+
+---
+
+**PL:** — Brawo!... niech żyje książę!... — zawołano przy akompaniamencie łoskotu nóg i krzeseł.
+
+**UA:** — Браво!... Хай живе князь!... — залунало під акомпанемент тупоту ніг і стільців.
+
+---
+
+**PL:** Grupa szlachty gardzącej arystokracją krzyczała najgłośniej. Książę zaczął ściskać swoich gości nie panując już nad wzruszeniem; pomagał mu adwokat, wszystkich całował, a sam bez ceremonii płakał. Kilka osób skupiło się przy Wokulskim.
+
+**UA:** Гурт шляхти, що зневажала аристократію, кричав найгучніше. Князь заходився обіймати гостей, уже не володіючи собою від хвилювання; йому допомагав адвокат, цілував усіх, а сам без жодних церемоній плакав. Кілька осіб оточили Вокульського.
+
+---
+
+**PL:** — Przystępuję na początek z pięćdziesięcioma tysiącami rubli — mówił zgarbiony hrabia. — Na rok przyszły zaś... zobaczymy...
+
+**UA:** — Спершу вкладаю п'ятдесят тисяч рублів, — казав згорблений граф. — А на наступний рік... побачимо...
+
+---
+
+**PL:** — Trzydzieści, panie... trzydzieści tysięcy rubli, panie... Bardzo, panie... bardzo! — dodał baron z fizjognomią Mefistofelesa.
+
+**UA:** — Тридцять, пане... тридцять тисяч рублів, пане... Дуже, пане... дуже! — додав барон із фізіономією Мефістофеля.
+
+---
+
+**PL:** — I ja trzydzieści tysięcy... tek!... — dorzucił hrabia–Anglik kiwając głową.
+
+**UA:** — І я тридцять тисяч... так!... — докинув граф-англієць, киваючи головою.
+
+---
+
+**PL:** — A ja dam dwa... trzy razy tyle, co... kochany książę. Jak Boga kocham!... — rzekł marszałek.
+
+**UA:** — А я дам удвічі... утричі більше, ніж... наш любий князь. Як Бога люблю!... — сказав маршалок.
+
+---
+
+**PL:** Paru oponentów z grupy kupieckiej również zbliżyło się do Wokulskiego. Milczeli, lecz tkliwe ich spojrzenia stokroć więcej miały wymowy aniżeli najczulsze słowa.
+
+**UA:** Кілька опонентів із купецького гурту теж підійшли до Вокульського. Вони мовчали, але їхні зворушені погляди були в сто разів красномовніші за найніжніші слова.
+
+---
+
+**PL:** Z kolei zbliżył się do Wokulskiego człowiek młody, mizerny, z rzadkim zarostem na twarzy, ale z niewątpliwymi śladami przedwczesnego zniszczenia w całej postaci. Wokulski spotykał go na rozmaitych widowiskach, wreszcie i na ulicy, jeżdżącego najszybszymi dorożkami.
+
+**UA:** Потім до Вокульського підійшов молодий, хирлявий чоловік із рідкою борідкою, але з незаперечними слідами передчасного занепаду в усій постаті. Вокульський зустрічав його на різних видовищах, а зрештою й на вулиці, де той їздив найшвидшими екіпажами.
+
+---
+
+**PL:** — Jestem Maruszewicz — rzekł zniszczony młody człowiek z miłym uśmiechem. — Wybaczy pan, że prezentuję się tak obcesowo i w dodatku przy pierwszej znajomości będę miał prośbę...
+
+**UA:** — Я Марушевич, — сказав знеможений молодик із привітною усмішкою. — Вибачте, що так безцеремонно представляюся, та ще й при першому знайомстві маю до вас прохання...
+
+---
+
+**PL:** — Słucham pana.
+
+**UA:** — Слухаю вас.
+
+---
+
+**PL:** Młodzieniec wziął Wokulskiego pod ramię i zaprowadziwszy go do okna mówił:
+
+**UA:** Молодик узяв Вокульського під руку, підвів до вікна й заговорив:
+
+---
+
+**PL:** — Kładę od razu karty na stół; z takimi ludźmi jak pan nie można inaczej. Jestem niemajętny, mam dobre instynkta i chciałbym znaleźć zajęcie. Pan tworzy spółkę, czy nie mógłbym pracować pod pańskim kierunkiem?...
+
+**UA:** — Кладу карти на стіл одразу: з такими людьми, як ви, інакше не можна. Я незаможний, маю добрі інстинкти й хотів би знайти роботу. Ви створюєте спілку; чи не міг би я працювати під вашим керівництвом?...
+
+---
+
+**PL:** Wokulski przypatrywał mu się z uwagą. Propozycja, którą słyszał, jakoś nie pasowała do wyniszczonej figury i niepewnych spojrzeń młodzieńca. Wokulski uczuł niesmak, mimo to spytał:
+
+**UA:** Вокульський уважно придивлявся до нього. Пропозиція, яку він почув, якось не пасувала до виснаженої постаті й непевного погляду молодика. Вокульський відчув відразу, проте спитав:
+
+---
+
+**PL:** — Cóż pan umie? jaki pański fach?
+
+**UA:** — Що ви вмієте? Який у вас фах?
+
+---
+
+**PL:** — Fachu, uważa pan, jeszcze nie wybrałem, ale mam wielkie zdolności i mogę podjąć się każdego zajęcia.
+
+**UA:** — Фаху, розумієте, я ще не обрав, але маю великі здібності й можу взятися до будь-якої роботи.
+
+---
+
+**PL:** — A na jaką pan liczy pensję?
+
+**UA:** — А на яку платню ви розраховуєте?
+
+---
+
+**PL:** — Tysiąc... dwa tysiące rubli... — odparł zakłopotany młodzieniec.
+
+**UA:** — Тисячу... дві тисячі рублів... — відповів збентежений молодик.
+
+---
+
+**PL:** Wokulski mimo woli potrząsnął głową.
+
+**UA:** Вокульський мимоволі похитав головою.
+
+---
+
+**PL:** — Wątpię — odparł — czy będziemy mieli posady odpowiadające pańskim wymaganiom. Niech pan jednak wstąpi kiedy do mnie...
+
+**UA:** — Сумніваюся, — відповів він, — що ми матимемо посади, які відповідали б вашим вимогам. Але якось завітайте до мене...
+
+---
+
+**PL:** Na środku gabinetu przygarbiony hrabia zabrał głos.
+
+**UA:** Посеред кабінету слово взяв згорблений граф.
+
+---
+
+**PL:** — A zatem — mówił — szanowni panowie, w zasadzie przystępujemy do spółki proponowanej przez pana Wokulskiego. Interes wydaje się bardzo dobrym, a obecnie chodzi tylko o bliższe szczegóły i spisanie aktu. Zapraszam więc panów, chcących zostać uczestnikami, do mnie na jutro, o dziewiątej wieczór...
+
+**UA:** — Отже, — сказав він, — шановні панове, у принципі ми пристаємо до спілки, запропонованої паном Вокульським. Справа здається дуже доброю, і тепер залишається лише узгодити подробиці й укласти договір. Тож запрошую панів, які хочуть стати учасниками, завтра о дев'ятій вечора до мене...
+
+---
+
+**PL:** — Będę u ciebie, kochany hrabio, jak Boga kocham — odezwał się otyły marszałek — i może jeszcze przyprowadzę ci z paru Litwinów<sup>369</sup>; no, ale powiedz, dlaczegóż to my mamy zawiązywać spółki kupieckie?... Niechby już sami kupcy...
+
+**UA:** — Буду в тебе, любий графе, як Бога люблю, — озвався огрядний маршалок, — і, може, приведу ще кількох литвинів<sup>369</sup>; але скажи, навіщо нам створювати торговельні спілки?... Хай би вже самі крамарі...
+
+---
+
+**PL:** — Choćby dlatego — odparł hrabia gorąco — ażeby nie mówiono, że nic nie robimy, tylko obcinamy kupony<sup>370</sup>...
+
+**UA:** — Хоча б для того, — запально відповів граф, — щоб не казали, ніби ми нічого не робимо, а лише стрижемо купони<sup>370</sup>...
+
+---
+
+**PL:** Książę poprosił o głos.
+
+**UA:** Князь попросив слова.
+
+---
+
+**PL:** — Zresztą — rzekł — mamy na widoku jeszcze dwie spółki: do handlu zbożem i — okowitą. Kto nie zechce należeć do jednej, może należeć do drugiej... Nadto zaprosimy szanownego pana Wokulskiego, ażeby w innych naszych naradach chciał przyjąć udział...
+
+**UA:** — До того ж, — сказав він, — ми маємо на думці ще дві спілки: для торгівлі зерном і — горілкою. Хто не схоче долучитися до однієї, може пристати до другої... Крім того, запросимо шановного пана Вокульського брати участь і в інших наших нарадах...
+
+---
+
+**PL:** — Tek!... — wtrącił hrabia–Anglik.
+
+**UA:** — Так!... — укинув граф-англієць.
+
+---
+
+**PL:** — I z właściwym mu talentem raczył oświetlać kwestie — dokończył adwokat.
+
+**UA:** — І з властивим йому хистом зволив висвітлювати питання, — докінчив адвокат.
+
+---
+
+**PL:** — Wątpię, czy przydam się panom na co — odparł Wokulski. — Miałem wprawdzie do czynienia ze zbożem i okowitą, ale w wyjątkowych warunkach. Chodziło o duże ilości i pośpiech, nie o ceny... Nie znam zresztą tutejszego handlu zbożem...
+
+**UA:** — Сумніваюся, чи зможу стати вам у пригоді, — відповів Вокульський. — Щоправда, я мав справу із зерном і горілкою, але за виняткових обставин. Ішлося про великі обсяги й поспіх, а не про ціни... Та й місцевої торгівлі зерном я не знаю...
+
+---
+
+**PL:** — Będą specjaliści, szanowny panie Wokulski — przerwał mu adwokat. — Oni nam dostarczą szczegółów, które pan raczysz tylko uporządkować i rozjaśnić z właściwą mu genialnością...
+
+**UA:** — Будуть фахівці, шановний пане Вокульський, — перебив його адвокат. — Вони нададуть нам подробиці, які ви з властивою вам геніальністю лише впорядкуєте й поясните...
+
+---
+
+**PL:** — Prosimy... bardzo prosimy!... — wołali hrabiowie, a za nimi jeszcze głośniej szlachta nienawidząca magnatów.
+
+**UA:** — Просимо... дуже просимо!... — гукали графи, а за ними ще голосніше — шляхта, що ненавиділа магнатів.
+
+---
+
+**PL:** Była blisko piąta po południu i zgromadzeni poczęli się rozchodzić. W tej chwili Wokulski spostrzegł, że z dalszych pokojów zbliża się do niego pan Łęcki w towarzystwie młodzieńca, którego już widział obok panny Izabeli podczas kwesty i na święconym u hrabiny. Obaj panowie zatrzymali się przy nim.
+
+**UA:** Було близько п'ятої вечора, і присутні почали розходитися. Вокульський помітив, що з дальніх кімнат до нього наближається пан Ленцький у товаристві молодика, якого він уже бачив поруч із панною Ізабелою під час збору пожертв і на великодньому прийнятті у графині. Обидва пани зупинилися біля нього.
+
+---
+
+**PL:** — Pozwolisz, panie Wokulski — odezwał się Łęcki — że przedstawię ci pana Juliana Ochockiego<sup>371</sup>. Nasz kuzyn... trochę oryginał, ale...
+
+**UA:** — Дозволиш, пане Вокульський, — озвався Ленцький, — представити тобі пана Юліана Охоцького<sup>371</sup>. Наш кузен... трохи дивак, але...
+
+---
+
+**PL:** — Dawno już chciałem poznać się z panem i porozmawiać — rzekł Ochocki ściskając go za rękę.
+
+**UA:** — Я давно хотів познайомитися з вами й поговорити, — сказав Охоцький, потискаючи йому руку.
+
+---
+
+**PL:** Wokulski w milczeniu przypatrywał się. Młody człowiek nie dosięgnął jeszcze lat trzydziestu i rzeczywiście odznaczał się niezwykłą fizjognomią. Zdawało się, że ma rysy Napoleona Pierwszego, przysłonięte jakimś obłokiem marzycielstwa.
+
+**UA:** Вокульський мовчки придивлявся до нього. Молодик ще не досяг тридцяти й справді мав незвичайну зовнішність. Здавалося, він успадкував риси Наполеона Першого, прикриті якоюсь хмарою мрійливості.
+
+---
+
+**PL:** — W którą stronę pan idzie? — spytał młody człowiek Wokulskiego. — Mogę pana podprowadzić.
+
+**UA:** — Куди ви йдете? — спитав молодик Вокульського. — Можу вас провести.
+
+---
+
+**PL:** — Będzie się pan fatygował...
+
+**UA:** — Ви завдасте собі клопоту...
+
+---
+
+**PL:** — O, ja mam dosyć czasu — odpowiedział młody człowiek.
+
+**UA:** — О, у мене вдосталь часу, — відповів молодик.
+
+---
+
+**PL:** „Czego on chce ode mnie?” — pomyślał Wokulski, a głośno rzekł: — Możemy pójść w stronę Łazienek...
+
+**UA:** «Чого він від мене хоче?» — подумав Вокульський, а вголос сказав: — Можемо пройти в бік Лазєнок...
+
+---
+
+**PL:** — Owszem — odparł Ochocki. — Wpadnę jeszcze na chwilę pożegnać się z księżną i dogonię pana.
+
+**UA:** — Залюбки, — відповів Охоцький. — Ще на хвильку зайду попрощатися з княгинею й наздожену вас.
+
+---
+
+**PL:** Ledwie odszedł, pochwycił Wokulskiego adwokat.
+
+**UA:** Щойно він відійшов, як Вокульського перехопив адвокат.
+
+---
+
+**PL:** — Winszuję panu zupełnego triumfu — rzekł półgłosem. — Książę formalnie zakochany w panu, obaj hrabiowie i baron toż samo... Oryginały to są, jak pan widział, ale ludzie dobrych chęci... Chcieliby coś robić, mają nawet rozum i ukształcenie, ale... energii brak!...
+
+**UA:** — Вітаю вас із цілковитим тріумфом, — сказав він пошепки. — Князь просто закоханий у вас, обидва графи й барон — так само... Диваки, як ви бачили, але люди доброзичливі... Хотіли б щось робити, мають навіть розум і освіту, але... бракує енергії!...
+
+**PL:** Choroba woli, panie: cała klasa jest nią dotknięta... Wszystko mają: pieniądze, tytuły, poważanie, nawet powodzenie u kobiet, więc niczego nie pragną. Bez tej zaś sprężyny, panie Wokulski, muszą być narzędziem w ręku ludzi nowych i ambitnych...
+
+**UA:** Хвороба волі, пане: нею вражений увесь клас... Мають усе: гроші, титули, пошану, навіть успіх у жінок, тож нічого не прагнуть. Без цієї рушійної сили, пане Вокульський, мусять стати знаряддям у руках нових і честолюбних людей...
+
+**PL:** My, panie, my jeszcze wielu rzeczy pragniemy — dodał ciszej. — Ich szczęście, że trafili na nas...
+
+**UA:** А ми, пане, ми ще багато чого прагнемо, — додав він тихіше. — Їм пощастило, що вони натрапили на нас...
+
+---
+
+**PL:** Ponieważ Wokulski nie odpowiedział nic, więc adwokat począł uważać go za bardzo przebiegłego dyplomatę i żałował w duszy, że sam był zanadto szczery.
+
+**UA:** Оскільки Вокульський нічого не відповів, адвокат вирішив, що той дуже спритний дипломат, і в душі пошкодував, що сам був надто відвертим.
+
+---
+
+**PL:** „Zresztą — myślał adwokat patrząc na Wokulskiego spod oka — choćby powtórzył księciu naszą rozmowę, cóż mi zrobi?... Powiem, że chciałem go wybadać...”
+
+**UA:** «Зрештою, — думав адвокат, скоса позираючи на Вокульського, — навіть якби він переказав князеві нашу розмову, що той мені зробить?... Скажу, що хотів його розвідати...»
+
+---
+
+**PL:** „O jakie on mnie ambicje posądza?...” — zapytywał się w duchu Wokulski.
+
+**UA:** «Які ж честолюбні задуми він мені приписує?...» — запитував себе подумки Вокульський.
+
+---
+
+**PL:** Pożegnał księcia, obiecał przychodzić odtąd na wszystkie sesje i wyszedłszy na ulicę odesłał powóz do domu.
+
+**UA:** Він попрощався з князем, пообіцяв відтепер приходити на всі засідання, а вийшовши на вулицю, відіслав повіз додому.
+
+---
+
+**PL:** „Czego chce ode mnie ten pan Ochocki? — myślał podejrzliwie. — Naturalnie, że idzie mu o pannę Izabelę... Może ma zamiar odstraszyć mnie od niej?... Głupi... Jeżeli ona go kocha, nie potrzebuje tracić nawet słów; sam się usunę... Ale jeżeli go nie kocha, niech się strzeże usuwać mnie od niej...
+
+**UA:** «Чого хоче від мене цей пан Охоцький? — підозріливо думав він. — Звичайно, йдеться про панну Ізабелу... Може, він хоче відстрашити мене від неї?... Дурень... Якщо вона його кохає, мені й слова не треба втрачати — сам усунуся... Але якщо не кохає, хай стережеться відганяти мене від неї...
+
+**PL:** Zdaje się, że zrobię w życiu jedno kapitalne głupstwo, zapewne dla panny Izabeli. Bodajby nie padło na niego, szkoda chłopaka...”
+
+**UA:** Здається, я в житті зроблю одну капітальну дурницю — напевно, заради панни Ізабели. От би ця дурниця його не спіткала, шкода хлопця...»
+
+---
+
+**PL:** W bramie rozległo się pośpieszne stąpanie; Wokulski odwrócił się i zobaczył Ochockiego.
+
+**UA:** У брамі почулися швидкі кроки; Вокульський обернувся й побачив Охоцького.
+
+---
+
+**PL:** — Pan czekał?... przepraszam!... — zawołał młody człowiek.
+
+**UA:** — Ви чекали?... Перепрошую!... — вигукнув молодик.
+
+---
+
+**PL:** — Idziemy ku Łazienkom? — spytał Wokulski.
+
+**UA:** — Ми йдемо до Лазєнок? — спитав Вокульський.
+
+---
+
+**PL:** — Owszem.
+
+**UA:** — Так.
+
+---
+
+**PL:** Jakiś czas szli milcząc. Młody człowiek był zamyślony. Wokulski zirytowany.
+
+**UA:** Якийсь час вони йшли мовчки. Молодик замислився. Вокульський дратувався.
+
+---
+
+**PL:** Postanowił od razu chwycić byka za rogi.
+
+**UA:** Він вирішив одразу взяти бика за роги.
+
+---
+
+**PL:** — Pan jest bliskim kuzynem państwa Łęckich? — zapytał.
+
+**UA:** — Ви близький кузен родини Ленцьких? — спитав він.
+
+---
+
+**PL:** — Trochę — odpowiedział młody człowiek. — Matka moja była aż Łęcka — rzekł z ironią — ale ojciec tylko Ochocki. To bardzo osłabia związki rodzinne... Pana Tomasza, który jest dla mnie jakimś ciotecznym stryjem, nie znałbym do dziś dnia, gdyby nie stracił majątku.
+
+**UA:** — Трохи, — відповів молодик. — Моя мати була аж Ленцька, — сказав він іронічно, — а батько — лише Охоцький. Це дуже послаблює родинні зв'язки... Пана Томаша, який доводиться мені якимось двоюрідним дядьком, я б і досі не знав, якби він не втратив статків.
+
+---
+
+**PL:** — Panna Łęcka jest bardzo dystyngowaną osobą — rzekł Wokulski patrząc przed siebie.
+
+**UA:** — Панна Ленцька — дуже вишукана особа, — сказав Вокульський, дивлячись перед себе.
+
+---
+
+**PL:** — Dystyngowana?... — powtórzył Ochocki. — Powiedz pan: bogini!... Kiedy rozmawiam z nią, zdaje mi się, że potrafiłaby mi zapełnić całe życie. Przy niej jednej czuję spokój i zapominam o trapiącej mnie tęsknocie. Ale cóż!...
+
+**UA:** — Вишукана?... — перепитав Охоцький. — Скажіть краще: богиня!... Коли я з нею розмовляю, мені здається, що вона могла б наповнити все моє життя. Лише поруч із нею я відчуваю спокій і забуваю про тугу, що мене мучить. Але що ж!...
+
+**PL:** Ja nie umiałbym siedzieć z nią cały dzień w salonie ani ona ze mną w laboratorium...
+
+**UA:** Я не зміг би цілий день сидіти з нею в салоні, як і вона зі мною в лабораторії...
+
+---
+
+**PL:** Wokulski stanął na ulicy.
+
+**UA:** Вокульський зупинився посеред вулиці.
+
+---
+
+**PL:** — Pan zajmuje się fizyką czy chemią?... — spytał zdziwiony.
+
+**UA:** — Ви займаєтеся фізикою чи хімією?... — здивовано спитав він.
+
+---
+
+**PL:** — Ach, czym ja się nie zajmuję!... — odparł Ochocki. — Fizyką, chemią i technologią... Przecież skończyłem wydział przyrodniczy w uniwersytecie<sup>372</sup> i mechaniczny w politechnice<sup>373</sup>... Zajmuję się wszystkim; czytam i pracuję od rana do nocy, ale — nie robię nic.
+
+**UA:** — Ах, чим я тільки не займаюся!... — відповів Охоцький. — Фізикою, хімією й технологією... Адже я закінчив природничий факультет університету<sup>372</sup> та механічний факультет політехніки<sup>373</sup>... Беруся за все; читаю й працюю від ранку до ночі, але — нічого не роблю.
+
+**PL:** Udało mi się trochę ulepszyć mikroskop, zbudować jakiś nowy stos elektryczny<sup>374</sup>, jakąś tam lampę...
+
+**UA:** Мені вдалося трохи вдосконалити мікроскоп, збудувати якусь нову електричну батарею<sup>374</sup>, якусь там лампу...
+
+---
+
+**PL:** Wokulski zdumiewał się coraz więcej.
+
+**UA:** Вокульський дедалі більше дивувався.
+
+---
+
+**PL:** — Więc to pan jest tym Ochockim, wynalazcą?...
+
+**UA:** — То це ви той Охоцький, винахідник?...
+
+---
+
+**PL:** — Ja — odparł młody człowiek. — No, ale i cóż to znaczy?... Razem nic. Kiedy pomyślę, że w dwudziestym ósmym roku tylko tyle zrobiłem, ogarnia mnie desperacja. Mam ochotę albo porozbijać swoje laboratorium i utonąć w życiu salonowym, do którego mnie ciągną, albo — trzasnąć sobie w łeb...
+
+**UA:** — Я, — відповів молодик. — Ну, але що з того?... Разом — нічого. Коли подумаю, що до двадцяти восьми років зробив лише стільки, мене охоплює відчай. Хочеться або розтрощити свою лабораторію й потонути в салонному житті, до якого мене тягнуть, або — вистрілити собі в голову...
+
+**PL:** Ogniwo Ochockiego albo — lampa elektryczna Ochockiego... jakież to głupie!... Rwać się gdzieś od dzieciństwa i utknąć na lampie — to okropne... Dobiegać środka życia i nie znaleźć nawet śladu drogi, po której by się iść chciało — cóż to za rozpacz!...
+
+**UA:** «Електричний стовп Охоцького» або «лампа Охоцького»... Яка ж дурниця!... З дитинства рватися кудись і застрягти на лампі — це жахливо... Доживати до середини життя й не знайти навіть сліду дороги, якою хотів би йти, — який це відчай!...
+
+---
+
+**PL:** Młody człowiek umilkł, a że byli w Ogrodzie Botanicznym<sup>375</sup>, więc zdjął kapelusz. Wokulski przypatrywał mu się z uwagą i zrobił nowe odkrycie. Młody człowiek, aczkolwiek wyglądał elegancko, nie był wcale elegantem; nawet nie zdawał się troszczyć o swoją powierzchowność.
+
+**UA:** Молодик замовк, а оскільки вони були в Ботанічному саду<sup>375</sup>, то зняв капелюха. Вокульський уважно придивлявся до нього й зробив нове відкриття. Молодик, хоч і мав елегантний вигляд, зовсім не був франтом; навіть не схоже було, що він дбає про свою зовнішність.
+
+**PL:** Miał rozrzucone włosy, nieco zsunięty krawat, u kamizelki guzik nie zapięty.
+
+**UA:** Волосся в нього було розкуйовджене, краватка трохи сповзла, ґудзик на жилеті не застібнутий.
+
+**PL:** Można było domyślać się, że ktoś bardzo starannie czuwa nad jego bielizną i garderobą, z którą jednak on sam postępuje niedbale, i właśnie to niedbalstwo, przejawiające się w dziwnie szlachetnych formach, nadawało mu oryginalny wdzięk. Każdy jego ruch był mimowolny, rozrzucony, lecz piękny.
+
+**UA:** Можна було здогадатися, що хтось дуже старанно дбає про його білизну й одяг, з яким сам він поводиться недбало; і саме ця недбалість, що виявлялася в дивовижно шляхетних формах, надавала йому своєрідного шарму. Кожен його рух був мимовільний, недбалий, але прекрасний.
+
+**PL:** Równie piękny był sposób patrzenia, słuchania, a raczej niesłuchania, nawet — gubienia kapelusza.
+
+**UA:** Так само прекрасною була його манера дивитися, слухати, а радше не слухати, навіть губити капелюха.
+
+---
+
+**PL:** Weszli na wzgórze, skąd widać studnię zwaną Okrąglakiem<sup>376</sup>. Ze wszystkich stron otaczali ich spacerujący, ale Ochocki nie krępował się ich obecnością i wskazawszy kapeluszem jedną z ławek, mówił:
+
+**UA:** Вони піднялися на пагорб, звідки було видно криницю, що звалася Округляком<sup>376</sup>. З усіх боків їх оточували перехожі, та Охоцький не соромився їхньої присутності; показавши капелюхом на одну з лавок, він сказав:
+
+---
+
+**PL:** — Dużo czytałem, że szczęśliwy jest człowiek, który ma wielkie aspiracje. To kłamstwo. Ja przecież mam niepowszednie pragnienia, które jednak robią mnie śmiesznym i zrażają do mnie najbliższych. Spojrzyj pan na tę ławkę...
+
+**UA:** — Багато читав, що щаслива людина — та, яка має великі прагнення. Це брехня. Я ж маю незвичайні бажання, але вони роблять мене смішним і відштовхують найближчих. Погляньте на цю лавку...
+
+**PL:** Tu, w początkach czerwca, koło dziesiątej wieczorem, siedzieliśmy z kuzynką i z panną Florentyną. Świecił jakiś księżyc i nawet jeszcze śpiewały słowiki. Byłem rozmarzony.
+
+**UA:** Тут, на початку червня, близько десятої вечора, ми сиділи з кузинкою й панною Флорентиною. Світив якийсь місяць і ще навіть співали солов'ї. Я був замріяний.
+
+**PL:** Nagle kuzynka odzywa się: „Znasz, kuzynie, astronomię?” — „Trochę.” — „Więc powiedz mi, jaka to gwiazda?” — „Nie wiem — odpowiedziałem — ale to jest pewne, że nigdy nie dostaniemy się na nią.
+
+**UA:** Раптом кузинка питає: «Ти, кузене, знаєш астрономію?» — «Трохи». — «То скажи мені, яка це зоря?» — «Не знаю, — відповів я, — але певен, що ми ніколи на неї не потрапимо.
+
+**PL:** Człowiek jest przykuty do ziemi jak ostryga do skały...” W tej chwili — ciągnął dalej Ochocki — zbudziła się we mnie moja idea czy mój obłęd... Zapomniałem o pięknej kuzynce, a zacząłem myśleć o machinach latających.
+
+**UA:** Людина прикута до землі, як устриця до скелі...» Тієї миті, — вів далі Охоцький, — в мені прокинулася моя ідея чи моє божевілля... Я забув про вродливу кузинку й почав думати про літальні апарати.
+
+**PL:** A ponieważ myśląc muszę chodzić, więc wstałem z ławki i bez pożegnania opuściłem kuzynkę!... Na drugi dzień panna Flora nazwała mnie impertynentem, pan Łęcki oryginałem, a kuzynka przez tydzień nie chciała ze mną rozmawiać...
+
+**UA:** А оскільки, коли думаю, мушу ходити, то я підвівся з лавки й, не попрощавшись, покинув кузинку!... Наступного дня панна Флора назвала мене нахабою, пан Ленцький — диваком, а кузинка цілий тиждень не хотіла зі мною розмовляти...
+
+**PL:** I żebym jeszcze co wymyślił; ale nic, literalnie nic, choć byłbym przysiągł, że nim z tego pagórka zejdę do studni, urodzi mi się w głowie przynajmniej ogólny szkic machiny latającej... Prawda, jakie to głupie?...
+
+**UA:** І якби я ще щось вигадав; але нічого, буквально нічого, хоча ладен був присягнути, що, поки зійду з пагорба до криниці, в голові народиться бодай загальний ескіз літального апарата... Правда, яка дурниця?...
+
+---
+
+**PL:** „Więc oni tu przepędzają wieczory przy księżycu i śpiewie słowika?... — pomyślał Wokulski i poczuł straszny ból w sercu. — Panna Izabela już kocha się w Ochockim, a jeżeli się nie kocha, to tylko z winy jego dziwactw... No i ma słuszność... piękny człowiek i niezwykły...”
+
+**UA:** «Невже вони проводять тут вечори під місяцем і під спів солов'я?... — подумав Вокульський і відчув страшний біль у серці. — Панна Ізабела вже закохана в Охоцького, а якщо й не закохана, то лише через його дивацтва... І має рацію... вродливий і незвичайний...»
+
+---
+
+**PL:** — Naturalnie — prawił dalej Ochocki — ani słówka nie wspomniałem o tym mojej ciotce, która, ile razy bodaj wpina mi jakąś szpilkę w odzienie, ma zwyczaj powtarzać: „Kochany Julku, staraj się podobać Izabeli, bo to żona akurat dla ciebie...
+
+**UA:** — Звичайно, — провадив далі Охоцький, — я й словечка не сказав про це своїй тітці, яка щоразу, бодай приколюючи мені до одягу якусь шпильку, має звичку повторювати: «Любий Юльку, намагайся сподобатися Ізабелі, бо вона саме тобі пасуватиме за дружину...
+
+**PL:** Mądra i piękna; ona jedna wyleczyłaby cię z twoich przywidzeń...” A ja myślę: co to za żona dla mnie?... Gdyby chociaż mogła być moim pomocnikiem, jeszcze pół biedy... Ale gdzieżby ona dla laboratorium mogła opuścić salon!...
+
+**UA:** Розумна й гарна; лише вона вилікувала б тебе від твоїх марень...» А я думаю: що це за дружина для мене?... Якби вона могла бути моєю помічницею, то ще пів біди... Але де ж їй покинути салон заради лабораторії!...
+
+**PL:** Ma rację, to jej właściwe otoczenie; ptak potrzebuje powietrza, ryba wody... Ach, jaki piękny wieczór!... — dodał po chwili. — Jestem dziś podniecony jak rzadko. Ale... co panu jest, panie Wokulski?...
+
+**UA:** Це її природне середовище; птахові потрібне повітря, рибі — вода... Ах, який гарний вечір!... — додав він за мить. — Я сьогодні збуджений, як рідко буваю. Але... що з вами, пане Вокульський?...
+
+---
+
+**PL:** — Trochę zmęczyłem się — odparł głucho Wokulski. — Może byśmy siedli, choćby o! tu...
+
+**UA:** — Трохи втомився, — глухо відповів Вокульський. — Може, присядемо, хоча б он... там...
+
+---
+
+**PL:** Usiedli na stoku wzgórza, na granicy Łazienek. Ochocki oparł brodę na kolanach i wpadł w zadumę, Wokulski przypatrywał mu się z uczuciem, w którym podziw mieszał się z nienawiścią.
+
+**UA:** Вони сіли на схилі пагорба, на межі Лазєнок. Охоцький сперся підборіддям на коліна й поринув у задуму, а Вокульський дивився на нього з почуттям, у якому захоплення змішувалося з ненавистю.
+
+---
+
+**PL:** „Głupi czy przebiegły?... Po co on mi to wszystko opowiada?” — myślał Wokulski.
+
+**UA:** «Дурний чи хитрий?... Навіщо він мені все це розповідає?» — думав Вокульський.
+
+---
+
+**PL:** Musiał jednak przyznać, że gadulstwo Ochockiego miało te same cechy szczerości i rozrzucenia, jak jego ruchy i cała wreszcie osoba. Spotkali się pierwszy raz i już Ochocki tak z nim rozmawiał, jak gdyby znali się od dzieci.
+
+**UA:** Однак мусив визнати, що балакучість Охоцького була так само щира й недбала, як його рухи й узагалі вся його натура. Вони зустрілися вперше, а Охоцький уже розмовляв із ним так, наче знав його змалку.
+
+---
+
+**PL:** „Skończę z nim” — rzekł do siebie Wokulski i głęboko odetchnąwszy spytał głośno:
+
+**UA:** «Я з ним покінчу», — сказав собі Вокульський і, глибоко зітхнувши, голосно спитав:
+
+---
+
+**PL:** — Zatem żeni się pan, panie Ochocki?...
+
+**UA:** — Отже, ви одружуєтеся, пане Охоцький?...
+
+---
+
+**PL:** — Chybabym zwariował — mruknął młody człowiek wzruszając ramionami.
+
+**UA:** — Я, мабуть, збожеволів би, — пробурмотів молодик, знизавши плечима.
+
+---
+
+**PL:** — Jak to?... Przecież kuzynka pańska podoba się panu?
+
+**UA:** — Як це?... Адже ваша кузинка вам подобається?
+
+---
+
+**PL:** — I nawet bardzo, ale to jeszcze nie wszystko. Ożeniłbym się z nią, gdybym miał pewność, że już nic w nauce nie zrobię...
+
+**UA:** — І навіть дуже, але це ще не все. Я б із нею одружився, якби був певен, що вже нічого не зроблю в науці...
+
+---
+
+**PL:** W sercu Wokulskiego obok nienawiści i podziwu błysnęła radość. W tej chwili Ochocki przetarł czoło jak zbudzony ze snu i patrząc na Wokulskiego nagle rzekł:
+
+**UA:** У серці Вокульського поряд із ненавистю та захопленням блиснула радість. Цієї миті Охоцький, наче прокинувшись зі сну, провів рукою по чолу, глянув на Вокульського й раптом сказав:
+
+---
+
+**PL:** — Ale, ale... Nawet zapomniałem, że mam ważny interes do pana...
+
+**UA:** — Але, до речі... Я й забув, що маю до вас важливу справу...
+
+---
+
+**PL:** „Czego on chce?...” — pomyślał Wokulski podziwiając w duszy mądre spojrzenie swego rywala i nagłą zmianę tonu. Zdawało się, że przez jego usta przemówił inny człowiek.
+
+**UA:** «Чого він хоче?...» — подумав Вокульський, подумки захоплюючись розумним поглядом суперника й раптовою зміною тону. Здавалося, його устами заговорила інша людина.
+
+---
+
+**PL:** — Chcę zadać panu pytanie... nie... dwa pytania, bardzo poufne, a może nawet drażliwe — mówił Ochocki. — Czy nie obrazi się pan?...
+
+**UA:** — Я хочу поставити вам запитання... ні... два запитання, дуже довірчі, а може, навіть делікатні, — говорив Охоцький. — Ви не образитеся?...
+
+---
+
+**PL:** — Słucham — odparł Wokulski.
+
+**UA:** — Слухаю, — відповів Вокульський.
+
+---
+
+**PL:** Gdyby stał na szafocie, nie doznałby tak strasznych wrażeń jak w tej chwili. Był pewny, że chodzi o pannę Izabelę i że w tym samym miejscu zdecydują się jego losy.
+
+**UA:** Якби він стояв на ешафоті, то й тоді не переживав би таких страшних відчуттів, як цієї миті. Він був певен, що йдеться про панну Ізабелу й саме тут вирішиться його доля.
+
+---
+
+**PL:** — Pan był przyrodnikiem? — spytał Ochocki.
+
+**UA:** — Ви були природознавцем? — спитав Охоцький.
+
+---
+
+**PL:** — Tak.
+
+**UA:** — Так.
+
+---
+
+**PL:** — I w dodatku przyrodnikiem entuzjastą. Wiem, co pan przeszedł, od dawna szanuję pana z tego powodu... To za mało; powiem więcej... Od roku wspomnienie o trudnościach, z jakimi szamotał się pan, dodawało mi otuchy...
+
+**UA:** — І до того ж природознавцем-ентузіастом. Я знаю, через що ви пройшли, і давно вас за це поважаю... Цього замало; скажу більше... Вже рік спогад про труднощі, з якими ви боролися, додає мені відваги...
+
+**PL:** Mówiłem sobie: zrobię przynajmniej to, co ten człowiek, a ponieważ nie mam takich przeszkód, więc — zajdę dalej od niego...
+
+**UA:** Я казав собі: зроблю принаймні те, що зробив цей чоловік, а оскільки не маю таких перешкод, то — піду далі за нього...
+
+---
+
+**PL:** Wokulski słuchając myślał, że marzy albo że rozmawia z wariatem.
+
+**UA:** Вокульський слухав і думав, що марить або розмовляє з божевільним.
+
+---
+
+**PL:** — Skąd pan to wie?... — spytał Ochockiego.
+
+**UA:** — Звідки ви це знаєте?... — спитав він Охоцького.
+
+---
+
+**PL:** — Od doktora Szumana.
+
+**UA:** — Від доктора Шумана.
+
+---
+
+**PL:** — Ach, od Szumana. Ale do czego to wszystko prowadzi?...
+
+**UA:** — А, від Шумана. Але до чого це все веде?...
+
+---
+
+**PL:** — Zaraz powiem — odparł Ochocki. — Byłeś pan przyrodnikiem entuzjastą i... w rezultacie rzuciłeś pan nauki przyrodnicze. Otóż, w którym roku życia osłabnął pański zapał w tym kierunku?...
+
+**UA:** — Зараз скажу, — відповів Охоцький. — Ви були природознавцем-ентузіастом, а... зрештою кинули природничі науки. То в якому віці ваш запал до них ослаб?...
+
+---
+
+**PL:** Wokulski poczuł jakby uderzenie toporem w głowę. Pytanie było tak przykre i niespodziewane, że przez chwilę nie tylko nie umiał odpowiedzieć, ale nawet zebrać myśli.
+
+**UA:** Вокульський відчув, ніби його вдарили сокирою по голові. Запитання було таким болісним і несподіваним, що він якусь мить не міг ані відповісти, ані навіть зібратися з думками.
+
+---
+
+**PL:** Ochocki powtórzył, bystro przypatrując się swemu towarzyszowi.
+
+**UA:** Охоцький повторив запитання, пильно придивляючись до співрозмовника.
+
+---
+
+**PL:** — W którym roku?... — rzekł Wokulski. — W zeszłym roku... Dziś mam czterdziesty szósty rok...
+
+**UA:** — У якому році життя?... — сказав Вокульський. — Торік... Мені йде сорок шостий рік...
+
+---
+
+**PL:** — A zatem ja do kompletnego ochłodzenia się mam jeszcze przeszło piętnaście lat. To mi trochę dodaje odwagi... — rzekł jakby do siebie Ochocki.
+
+**UA:** — Отже, до цілковитого охолодження в мене ще понад п'ятнадцять років. Це трохи додає мені відваги... — сказав Охоцький, наче до себе.
+
+---
+
+**PL:** I znowu po chwili dodał:
+
+**UA:** І за мить додав:
+
+---
+
+**PL:** — To jedno pytanie, a teraz drugie, ale — nie obraź się pan. W którym roku życia zaczynają mężczyźnie obojętnieć kobiety?...
+
+**UA:** — Це було перше запитання, а тепер друге, тільки — не ображайтеся. У якому віці чоловікові починають байдужіти жінки?...
+
+---
+
+**PL:** Drugi cios. Był moment, że Wokulski chciał schwycić młodzieńca za gardło i udusić. Opamiętał się jednak i odparł ze słabym uśmiechem:
+
+**UA:** Другий удар. На мить Вокульському захотілося схопити молодика за горло й задушити. Однак він опанував себе й зі слабкою усмішкою відповів:
+
+---
+
+**PL:** — Myślę, że one nigdy nie obojętnieją... Owszem, coraz wydają się droższymi...
+
+**UA:** — Думаю, вони ніколи не байдужіють... Навпаки, щораз дорожчають...
+
+---
+
+**PL:** — Źle! — szepnął Ochocki. — Ha, zobaczymy, kto mocniejszy.
+
+**UA:** — Погано! — прошепотів Охоцький. — Ну, побачимо, хто сильніший.
+
+---
+
+**PL:** — Kobiety, panie Ochocki.
+
+**UA:** — Жінки, пане Охоцький.
+
+---
+
+**PL:** — Jak dla kogo, panie — odpowiedział młody człowiek wpadając znowu w zamyślenie.
+
+**UA:** — Для кого як, пане, — відповів молодик і знову поринув у задуму.
+
+---
+
+**PL:** I zaczął mówić jakby do siebie.
+
+**UA:** І заговорив, ніби до себе.
+
+---
+
+**PL:** — Kobiety, ważna rzecz. Kochałem się już, zaraz, ileż to?... Cztery... sześć... ze siedem, tak, siedem razy... Zabiera to dużo czasu i napędza desperackie myśli... Głupia rzecz, miłość... Poznajesz, kochasz, cierpisz... Potem jesteś znudzony albo zdradzony...
+
+**UA:** — Жінки — важлива річ. Я вже закохувався, зараз, скільки ж разів?... Чотири... шість... разів сім, так, сім разів... Це забирає багато часу й навіює відчайдушні думки... Дурна річ — кохання... Знайомишся, кохаєш, страждаєш... Потім тобі набридає або тебе зраджують...
+
+**PL:** Tak, dwa razy byłem znudzony, a pięć razy zdradzony... Potem znajdujesz nową kobietę, doskonalszą od innych — a potem ona robi to samo, co mniej doskonałe... Ach, jakiż podły gatunek zwierząt te baby!... Bawią się nami, choć ograniczony ich mózg nawet nie jest w stanie nas pojąć...
+
+**UA:** Так, двічі мені набридло, а п'ять разів мене зрадили... Потім знаходиш нову жінку, досконалішу за інших, — а згодом вона робить те саме, що й менш досконалі... Ах, яка підла порода тварин — ці баби!... Вони граються нами, хоч їхній обмежений розум навіть не здатен нас зрозуміти...
+
+**PL:** No, prawda, że i tygrys może bawić się człowiekiem... Podłe, ale miłe... Mniejsza o nie! A tymczasem gdy raz opanuje człowieka idea, już go nie opuszcza i nie zdradza nigdy...
+
+**UA:** Що ж, тигр теж може гратися людиною... Підло, але приємно... Та годі про них! А тим часом, коли ідея раз опанує людину, то вже ніколи її не покидає й не зраджує...
+
+---
+
+**PL:** Położył rękę na ramieniu Wokulskiego i patrząc mu w oczy jakimś rozstrzelonym i rozmarzonym wzrokiem spytał:
+
+**UA:** Він поклав руку на плече Вокульського й, дивлячись йому в очі розсіяним і мрійливим поглядом, спитав:
+
+---
+
+**PL:** — Wszakże pan myślał kiedyś o machinach latających?... Nie o kierowaniu balonami, które są lżejsze od powietrza, bo to błazeństwo, ale — o locie machiny ciężkiej, napełnionej i obwarowanej jak pancernik?... Czy pan rozumie, jaki nastąpiłby przewrót w świecie po podobnym wynalazku?...
+
+**UA:** — Ви ж колись думали про літальні апарати?... Не про керування повітряними кулями, легшими за повітря, бо це дурниця, а про політ важкої машини, наповненої й укріпленої, наче броненосець?... Розумієте, який переворот у світі спричинив би такий винахід?...
+
+**PL:** Nie ma fortec, armii, granic... Znikają narody, lecz za to w nadziemskich budowlach przychodzą na świat istoty podobne do aniołów lub starożytnych bogów... Już ujarzmiliśmy wiatr, ciepło, światło, piorun... Czy więc nie sądzisz pan, że nadeszła pora nam samym wyzwolić się z oków ciężkości?...
+
+**UA:** Не буде фортець, армій, кордонів... Зникатимуть народи, зате в надземних спорудах народжуватимуться істоти, схожі на ангелів чи давніх богів... Ми вже підкорили вітер, тепло, світло, блискавку... То чи не настав час і нам самим визволитися з кайданів тяжіння?...
+
+**PL:** To idea leżąca dziś w duchu czasu... Inni już pracują nad nią; mnie ona dopiero nasyca, ale od stóp do głów... Co mnie ciotka z jej radami i prawidłami dobrego tonu!... Co mnie żeniaczka, kobiety, a nawet mikroskopy, stosy i lampy elektryczne?... Oszaleję albo... przypnę ludzkości skrzydła...
+
+**UA:** Це ідея, що нині панує в дусі часу... Інші вже працюють над нею; мене вона тільки-но опанувала, але всього, від голови до ніг... Та що мені тітка з її порадами й правилами гарного тону!... Що мені одруження, жінки, навіть мікроскопи, електричні стовпи й лампи?... Я збожеволію або... причеплю людству крила...
+
+---
+
+**PL:** — A gdybyś pan je nawet przypiął, to co?... — spytał Wokulski.
+
+**UA:** — А якби ви й причепили їх, то що?... — спитав Вокульський.
+
+---
+
+**PL:** — Sława, jakiej nie dosięgnął jeszcze żaden człowiek — odparł Ochocki. — To moja żona, to moja kobieta... Bądź pan zdrów, muszę iść...
+
+**UA:** — Слава, якої ще не здобув жоден чоловік, — відповів Охоцький. — Оце моя дружина, оце моя жінка... Бувайте здорові, я мушу йти...
+
+---
+
+**PL:** Uścisnął Wokulskiemu rękę, zbiegł ze wzgórza i zniknął między drzewami.
+
+**UA:** Він потиснув Вокульському руку, збіг із пагорба й зник між деревами.
+
+---
+
+**PL:** Na Ogród Botaniczny i na Łazienki zapadał już mrok.
+
+**UA:** На Ботанічний сад і Лазєнки вже спускався морок.
+
+---
+
+**PL:** „Wariat czy geniusz?... — szepnął Wokulski czując, że sam jest w najwyższym stopniu rozstrojony. — A jeżeli geniusz?...”
+
+**UA:** «Божевільний чи геній?... — прошепотів Вокульський, відчуваючи, що сам украй розладнаний. — А якщо геній?...»
+
+---
+
+**PL:** Wstał i poszedł w głąb ogrodu, między spacerujących ludzi. Zdawało mu się, że nad pagórkiem, z którego uciekł, unosi się jakaś święta groza.
+
+**UA:** Він підвівся й пішов углиб саду, поміж людей, що прогулювалися. Йому здавалося, що над пагорбом, звідки він утік, ширяє якийсь священний жах.
+
+---
+
+**PL:** W Ogrodzie Botanicznym było prawie ciasno; na każdej ulicy tłoczyły się kolumny, gromady, a przynajmniej szeregi spacerujących; każda ławka uginała się pod ciżbą osób. Zastępowano Wokulskiemu drogę, deptano po piętach, potrącano łokciami; rozmawiano i śmiano się ze wszystkich stron.
+
+**UA:** У Ботанічному саду було майже тісно; на кожній алеї юрмилися колони, гурти, а то й просто ряди перехожих; кожна лавка прогиналася під натовпом. Вокульському заступали дорогу, наступали на п'яти, штовхали ліктями; звідусіль лунали розмови й сміх.
+
+**PL:** Wzdłuż Alei Ujazdowskiej, pod murem Belwederskiego ogrodu, pod sztachetami od strony szpitala, na ulicach najmniej uczęszczanych, nawet na zagrodzonych ścieżkach, wszędzie było pełno i wesoło. Im więcej ciemniało w naturze, tym gęściej i hałaśliwiej robiło się między ludźmi.
+
+**UA:** Уздовж Уяздовської алеї, під муром саду Бельведера, за огорожею з боку шпиталю, на найменш людних вулицях, навіть на загороджених стежках — скрізь було людно й весело. Що більше сутеніло в природі, то густіше й галасливіше ставало серед людей.
+
+---
+
+**PL:** „Zaczyna mi już braknąć miejsca na świecie!...” — szepnął.
+
+**UA:** «Мені вже й місця у світі бракує!...» — прошепотів він.
+
+---
+
+**PL:** Przeszedł do Łazienek i tu znalazł spokojniejsze ustronie. Na niebie zaiskrzyło się kilka gwiazd, przez powietrze, od Alei, ciągnął szmer przechodniów, a od stawu wilgoć.
+
+**UA:** Він перейшов до Лазєнок і знайшов там затишніше місце. На небі засяяло кілька зірок; з алеї крізь повітря долинав гомін перехожих, а від ставка тягнуло вологою.
+
+**PL:** Czasem nad głową przeleciał mu huczny chrabąszcz albo cicho przemknął nietoperz; w głębi parku kwilił żałośnie jakiś ptak, na próżno wzywający towarzysza; na stawie rozlegał się daleki plusk wioseł i śmiechy młodych kobiet.
+
+**UA:** Часом над головою пролітав гучно дзижчущий хрущ або безшумно промайнула кажаня; у глибині парку жалібно щебетав якийсь птах, марно кличучи товариша; на ставку долинали далекі сплески весел і сміх молодих жінок.
+
+---
+
+**PL:** Naprzeciw zobaczył parę ludzi pochylonych ku sobie i szepczących. Ustąpili mu z drogi i ukryli się w cieniu drzew. Opanował go żal i szyderstwo.
+
+**UA:** Навпроти він побачив пару, що схилилася одне до одного й шепотілася. Вони поступилися йому дорогою й сховалися в тіні дерев. Його охопили жаль і глузування.
+
+---
+
+**PL:** „Oto są szczęśliwi zakochani! — pomyślał. — Szepczą i uciekają jak złodzieje... Pięknie urządzony świat, co?... Ciekawym, o ile byłoby lepiej, gdyby władał nim Lucyper?... A gdyby mi zastąpił drogę jaki bandyta i zabił w tym kącie?...”
+
+**UA:** «Ось вони, щасливі закохані! — подумав він. — Шепочуться й тікають, наче злодії... Гарно влаштований світ, еге ж?... Цікаво, наскільки краще було б, якби ним правив Люцифер?... А якби на мене наскочив бандит і вбив у цьому закутку?...»
+
+---
+
+**PL:** I wyobrażał sobie, jaki to przyjemny musi być chłód noża wbitego w rozgorączkowane serce.
+
+**UA:** І він уявляв, якою приємною мусить бути прохолода ножа, встромленого в гарячкове серце.
+
+---
+
+**PL:** „Na nieszczęście — westchnął — dziś nie wolno zabijać innych, tylko siebie można; byle od razu i dobrze. No!...”
+
+**UA:** «На жаль, — зітхнув він, — сьогодні не можна вбивати інших, можна лише себе; аби тільки одразу й напевно. Ну!...»
+
+---
+
+**PL:** Wspomnienie o tak niezawodnym środku ucieczki uspokoiło go. Stopniowo pogrążał się w jakimś uroczystym nastroju; zdawało mu się, że nadchodzi moment, w którym powinien zrobić rachunek sumienia czy też ogólny bilans życia.
+
+**UA:** Спогад про такий безвідмовний спосіб утечі заспокоїв його. Поступово він занурювався в урочистий настрій; йому здавалося, що наближається мить, коли слід сповідатися перед собою чи підбити загальний підсумок життя.
+
+---
+
+**PL:** „Gdybym był najwyższym sędzią — myślał — i gdyby spytano mnie, kto jest wart panny Izabeli: Ochocki czy Wokulski, musiałbym przyznać, że — Ochocki... O osiemnaście lat młodszy ode mnie (osiemnaście lat!...) i taki piękny...
+
+**UA:** «Якби я був найвищим суддею, — думав він, — і якби мене спитали, хто гідний панни Ізабели: Охоцький чи Вокульський, я мусив би визнати: Охоцький... Він на вісімнадцять років молодший за мене (вісімнадцять років!...) і такий вродливий...
+
+**PL:** W dwudziestym ósmym roku życia skończył dwa fakultety (ja w tym wieku ledwie zaczynałem się uczyć...) i już zrobił trzy wynalazki (ja żadnego!) A nad to wszystko jest naczyniem, w którym wylęga się wielka idea...
+
+**UA:** У двадцять вісім років він закінчив два факультети (а я в його віці ледве починав учитися...) і вже зробив три винаходи (а я — жодного!). Та понад усе він — посудина, в якій зароджується велика ідея...
+
+**PL:** Dziwaczna to rzecz: machina latająca, ale faktem jest, że on znalazł dla niej genialny i jedynie możliwy punkt wyjścia.
+
+**UA:** Дивна річ: літальний апарат, але факт у тому, що він знайшов для нього геніальну й єдино можливу відправну точку.
+
+**PL:** Machina latająca musi być cięższa, nie zaś jak balon lżejsza od powietrza; boć wszystko, co prawidłowo lata, począwszy od muchy, skończywszy na olbrzymim sępie, jest od powietrza cięższe.
+
+**UA:** Літальний апарат мусить бути важчим, а не легшим за повітря, як повітряна куля; адже все, що правильно літає, від мухи до велетенського грифа, важче за повітря.
+
+**PL:** Ma prawdziwy punkt wyjścia, ma twórczy umysł, czego dowiódł bodajby swoim mikroskopem i lampą; któż wie, zatem, czy nie uda mu się zbudować machiny latającej? A w takim razie będzie większym dla ludzkości od Newtona i Napoleona razem wziętych... I ja mam z nim współzawodniczyć?...
+
+**UA:** Він має справжню відправну точку, творчу думку, що довів хоча б своїм мікроскопом і лампою; хто знає, може, йому вдасться збудувати літальний апарат? Тоді він буде важливішим для людства, ніж Ньютон і Наполеон разом... І я маю з ним змагатися?...
+
+**PL:** A jeżeli stanie kiedy kwestia: który z nas dwu powinien się usunąć, czyliż będę się wahał?... Cóż to za piekło powiedzieć sobie, że muszę moją nicość złożyć na ofiarę człowiekowi ostatecznie takiemu jak ja, śmiertelnemu, ulegającemu chorobom i omyłkom, a nade wszystko — tak naiwnemu...
+
+**UA:** А якщо колись постане питання, хто з нас двох має поступитися, невже я вагатимуся?... Яке жахіття — сказати собі, що мушу принести своє нікчемне «я» в жертву людині, яка, зрештою, така сама смертна, як і я, підвладна хворобам та помилкам, а понад усе — така наївна...
+
+**PL:** Boć to jeszcze dzieciak, co on mi nie wygadywał?...”
+
+**UA:** Бо ж він іще дитина; чого тільки він мені не наговорив?...»
+
+---
+
+**PL:** Dziwny traf. Gdy Wokulski był subiektem w sklepie kolonialnym, marzył o perpetuum mobile<sup>377</sup>, machinie, która by się sama poruszała.
+
+**UA:** Дивний збіг. Коли Вокульський був приказчиком у колоніальній крамниці, він мріяв про вічний двигун (perpetuum mobile)<sup>377</sup> — машину, яка рухалася б сама.
+
+**PL:** Gdy zaś wstąpiwszy do Szkoły Przygotowawczej poznał, że taka machina jest niedorzecznością, wówczas najtajniejszym i najulubieńszym jego pragnieniem było — wynaleźć sposób kierowania balonami.
+
+**UA:** А коли, вступивши до Підготовчої школи, зрозумів, що така машина — безглуздя, його найпотаємнішим і найулюбленішим бажанням стало винайти спосіб керувати повітряними кулями.
+
+**PL:** To, co dla Wokulskiego było tylko fantastycznym cieniem, błąkającym się po fałszywych drogach, w Ochockim przybrało już formę praktycznego zagadnienia.
+
+**UA:** Те, що для Вокульського було лише фантастичною тінню, яка блукала хибними шляхами, в Охоцького вже набуло форми практичної задачі.
+
+---
+
+**PL:** „Cóż to za okrucieństwo losów! — myślał z goryczą. — Dwom ludziom dano prawie te same aspiracje, tylko jeden urodził się o osiemnaście lat wcześniej, drugi później; jeden w nędzy, drugi w dostatku; jeden nie mógł wdrapać się na pierwsze piętro wiedzy, drugi lekkim krokiem przeszedł dwa piętra...
+
+**UA:** «Яка жорстокість долі! — з гіркотою думав він. — Двом людям дали майже однакові прагнення, тільки один народився на вісімнадцять років раніше, другий — пізніше; один у злиднях, другий — у достатку; один не міг видертися на перший щабель знань, другий легким кроком подолав два...
+
+**PL:** Jego nie zepchną z drogi burze polityczne, tak jak mnie; jemu nie przeszkodzi miłość, którą traktuje jak zabawkę; podczas gdy dla mnie, który sześć lat spędziłem na pustyni, uczucie to jest niebem i zbawieniem... Więcej nawet!...
+
+**UA:** Його не зіб'ють зі шляху політичні бурі, як мене; йому не завадить кохання, до якого він ставиться як до забавки; тоді як для мене, що шість років провів у пустелі, це почуття — небо й спасіння... І навіть більше!...
+
+**PL:** No i on triumfuje nade mną na każdym polu, choć przecież ja mam te same uczucia, tę samą świadomość położenia, a pracę z pewnością większą...”
+
+**UA:** І він перемагає мене на кожному полі, хоча ж я маю ті самі почуття, так само розумію своє становище, та й працюю, безперечно, більше...»
+
+---
+
+**PL:** Wokulski dobrze znał ludzi i często porównywał się z nimi. Lecz gdziekolwiek był, wszędzie widział się trochę lepszym od innych.
+
+**UA:** Вокульський добре знав людей і часто порівнював себе з ними. Але де б він не був, усюди вважав себе трохи кращим за інших.
+
+**PL:** Czy jako subiekt, który spędzał noce nad książką, czy jako student, który przez nędzę szedł do wiedzy, czy jako żołnierz pod deszczem kul, czy jako wygnaniec, który w śniegiem zasypanej lepiance pracował nad nauką — zawsze miał w duszy ideę sięgającą poza kilka lat naprzód.
+
+**UA:** Чи приказчиком, що ночами сидів над книжкою, чи студентом, який крізь злидні пробивався до знань, чи солдатом під зливою куль, чи вигнанцем, який у засипаній снігом халупі працював над наукою, — завжди мав у душі ідею, що сягала на кілька років уперед.
+
+**PL:** Inni żyli z dnia na dzień, dla swego żołądka albo kieszeni.
+
+**UA:** Інші жили одним днем — заради шлунка чи кишені.
+
+---
+
+**PL:** I dopiero dziś spotkał człowieka wyższego od siebie, wariata, który chce budować machiny latające!...
+
+**UA:** І лише сьогодні він зустрів людину, вищу за себе, божевільного, який хоче будувати літальні апарати!...
+
+---
+
+**PL:** „A ja czy dzisiaj nie mam idei, dla której pracuję przeszło rok, zdobyłem majątek, pomagam ludziom i zmuszam ich do szacunku?...”
+
+**UA:** «А хіба я сьогодні не маю ідеї, заради якої вже понад рік працюю, нажив багатство, допомагаю людям і змушую їх шанувати мене?...»
+
+---
+
+**PL:** „Tak, ale miłość to uczucie osobiste; wszystkie zasługi towarzyszące jej są jak ryby zaplątane w odmęt morskiego cyklonu. Gdyby na świecie zniknęła jedna kobieta, a w tobie pamięć o niej, czymże byś został?... Zwyczajnym kapitalistą, który z nudów grywa w karty w resursie.
+
+**UA:** «Так, але кохання — особисте почуття; усі заслуги, що його супроводжують, — наче риби, заплутані у вирі морського циклону. Якби у світі зникла одна жінка, а з тобою залишився спогад про неї, ким би ти став?... Звичайним капіталістом, що з нудьги грає в карти у клубі.
+
+**PL:** A tymczasem Ochocki ma ideę, która będzie rwała go zawsze naprzód, chyba że umysł mu zagaśnie...”
+
+**UA:** А тим часом Охоцький має ідею, яка завжди штовхатиме його вперед, хіба що його розум згасне...»
+
+---
+
+**PL:** „Dobrze, a jeżeli on nic nie zrobi i zamiast zbudować machinę latającą pójdzie do szpitala wariatów?... Ja tymczasem faktycznie coś zrobię, a mikroskop, stos czy nawet lampa elektryczna z pewnością nie znaczą więcej od setek ludzi, którym ja daję byt.
+
+**UA:** «Гаразд, а якщо він нічого не зробить і замість збудувати літальний апарат потрапить до божевільні?... А я тим часом справді щось зроблю, та мікроскоп, електричний стовп чи навіть лампа, безперечно, не важать більше за сотні людей, яким я даю засоби до життя.
+
+**PL:** Skądże więc we mnie ta ultrachrześcijańska pokora?... Co kto zrobi, jeszcze nie wiadomo. Ja tymczasem jestem dziś człowiek czynu, a on marzyciel... Zaczekajmy z rok...”
+
+**UA:** То звідки ж у мені ця надхристиянська покора?... Хто чого досягне, ще невідомо. А я сьогодні — людина дії, а він — мрійник... Почекаймо рік...»
+
+---
+
+**PL:** Rok! Wokulski wstrząsnął się. Zdawało mu się, że w końcu drogi nazwanej rokiem widzi tylko niezmierną otchłań, która pochłania wszystko, ale nie mieści w sobie nic...
+
+**UA:** Рік! Вокульський здригнувся. Йому здавалося, що наприкінці шляху, який зветься роком, він бачить лише безмірну прірву, що все поглинає, але сама нічого не вміщує...
+
+---
+
+**PL:** „Więc nic... nic!...”
+
+**UA:** «То нічого... нічого!...»
+
+---
+
+**PL:** Instynktownie rozejrzał się. Był w głębi łazienkowskiego parku, na jakiejś ulicy, do której żaden szmer nie dolatywał. Nawet gęstwina ogromnych drzew stała cicho.
+
+**UA:** Він інстинктивно озирнувся. Стояв у глибині Лазєнківського парку, на якійсь алеї, куди не долинало жодного звуку. Навіть густе віття велетенських дерев стояло тихо.
+
+---
+
+**PL:** — Która godzina? — zapytał go nagle jakiś głos zachrypnięty.
+
+**UA:** — Котра година? — раптом спитав його якийсь хрипкий голос.
+
+---
+
+**PL:** — Godzina?...
+
+**UA:** — Година?...
+
+---
+
+**PL:** Wokulski przetarł oczy. Przed nim, z mroku, wynurzył się obdarty człowiek.
+
+**UA:** Вокульський протер очі. Перед ним із темряви виринув обідраний чоловік.
+
+---
+
+**PL:** — Kiedy grzecznie pytają, to grzecznie trzeba odpowiadać — rzekł człowiek i podszedł bliżej.
+
+**UA:** — Коли ввічливо питають, то й відповідати треба ввічливо, — сказав чоловік і підійшов ближче.
+
+---
+
+**PL:** — Zabij mnie, to sam zobaczysz — odparł Wokulski.
+
+**UA:** — Убий мене — сам побачиш, — відповів Вокульський.
+
+---
+
+**PL:** Obdarty człowiek cofnął się. Na lewo od drogi widać było parę ludzkich cieni.
+
+**UA:** Обідраний чоловік відступив. Ліворуч від дороги виднілося кілька людських тіней.
+
+---
+
+**PL:** — Głupcy! — zawołał Wokulski idąc naprzód — mam złoty zegarek i kilkaset rubli gotówką... Bronić się nie będę, no!...
+
+**UA:** — Дурні! — вигукнув Вокульський, ідучи вперед. — У мене золотий годинник і кількасот рублів готівкою... Я не оборонятимуся, ну!...
+
+---
+
+**PL:** Cienie usunęły się między drzewa i któryś rzekł zniżonym głosem:
+
+**UA:** Тіні відступили між дерева, і хтось сказав стишеним голосом:
+
+---
+
+**PL:** — Taki to, psiakrew, zejdzie<sup>378</sup>, gdzie go nie posieją...
+
+**UA:** — Такого, хай йому грець, занесе туди, де його й не сіяли<sup>378</sup>...
+
+---
+
+**PL:** — Bydlęta!... tchórze!... — krzyczał Wokulski prawie nieprzytomny.
+
+**UA:** — Скотиняки!... Боягузи!... — кричав Вокульський, майже непритомний.
+
+---
+
+**PL:** Odpowiedział mu tętent uciekających.
+
+**UA:** У відповідь залунав тупіт тих, хто тікав.
+
+---
+
+**PL:** Wokulski zebrał myśli.
+
+**UA:** Вокульський зібрався з думками.
+
+---
+
+**PL:** „Gdzie ja jestem?... Jużci, w Łazienkach, ale w którym miejscu?... Trzeba iść w drugą stronę...”
+
+**UA:** «Де я?... Так, у Лазєнках, але в якому місці?... Треба йти в інший бік...»
+
+---
+
+**PL:** Obrócił się parę razy i już nie wiedział, dokąd idzie. Serce zaczęło mu bić gwałtownie, zimny pot wystąpił na czoło, pierwszy raz w życiu uczuł obawę nocy i zbłąkania...
+
+**UA:** Він кілька разів повернувся й уже не знав, куди йде. Серце почало шалено калатати, на чолі виступив холодний піт; уперше в житті він відчув страх перед ніччю й перед тим, що заблукав...
+
+---
+
+**PL:** Przez parę minut biegł bez celu, prawie bez tchu; dzikie myśli wirowały mu w głowie. Wreszcie na lewo zobaczył mur, a dalej budynek.
+
+**UA:** Кілька хвилин він біг без мети, майже задихаючись; у голові вирували шалені думки. Нарешті ліворуч він побачив мур, а далі — будівлю.
+
+---
+
+**PL:** „Aha, Pomarańczarnia<sup>379</sup>...”
+
+**UA:** «Ага, Оранжерея<sup>379</sup>...»
+
+---
+
+**PL:** Potem doszedł do jakiegoś mostka, odpoczął i oparłszy się na barierze myślał:
+
+**UA:** Потім він дійшов до якогось містка, перепочив і, спершись на поруччя, замислився:
+
+---
+
+**PL:** „Więc do tego doszedłem?... Niebezpieczny rywal... rozbite nerwy... Zdaje mi się, że już dziś mógłbym napisać ostatni akt tej komedii!...”
+
+**UA:** «То ось до чого я дійшов?... Небезпечний суперник... розхитані нерви... Здається, я вже сьогодні міг би написати останній акт цієї комедії!...»
+
+---
+
+**PL:** Prosta droga doprowadziła go do stawu, później do łazienkowskiego pałacu. We dwadzieścia minut był w Alejach Ujazdowskich i siadł w przejeżdżającą dorożkę; w kwadrans później znalazł się we własnym mieszkaniu.
+
+**UA:** Пряма дорога привела його до ставка, а потім до Лазєнківського палацу. За двадцять хвилин він опинився на Уяздовських алеях і сів у повіз, що проїжджав повз; за чверть години був уже у власному помешканні.
+
+---
+
+**PL:** Na widok świateł i ulicznego ruchu odzyskał wesołość; nawet uśmiechał się i szeptał:
+
+**UA:** Побачивши світло й вуличний рух, він знову повеселішав; навіть усміхався й шепотів:
+
+---
+
+**PL:** „Cóż znowu za przywidzenia?... Jakiś Ochocki... samobójstwo!... Ach, głupota... Dostałem się przecież między arystokrację, a co będzie dalej — zobaczymy...”
+
+**UA:** «Що це ще за марення?... Якийсь Охоцький... самогубство!... Ах, дурниці... Я ж потрапив до аристократії, а що буде далі — побачимо...»
+
+---
+
+**PL:** Gdy wszedł do gabinetu, służący oddał mu list pisany na jego własnym papierze przez panią Meliton.
+
+**UA:** Коли він увійшов до кабінету, слуга подав йому листа від пані Мелітон, написаного на його власному папері.
+
+---
+
+**PL:** — Ta pani była tu dziś dwa raży<sup>380</sup> — rzekł wierny sługa. — Raż o piąty, drugi raż o ószmy...
+
+**UA:** — Ця пані сьогодні була тут двічі<sup>380</sup>, — сказав вірний слуга. — Раз о п'ятій, удруге — о восьмій...

@@ -1,0 +1,2508 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to ../../public/lalka/audio/chapter-11.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-11.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Tom I, Rozdział XI — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Tom I, Rozdział XI · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="../../public/lalka/audio/chapter-11.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Pani Meliton przeszła twardą szkołę życia, w której nauczyła się nawet lekceważyć powszechnie przyjęte opinie.",
+  "start": 7.75
+ },
+ {
+  "i": 1,
+  "pl": "Za młodu mówiono jej powszechnie, że panna ładna i dobra, choćby nie miała majątku, może jednak wyjść za mąż. Była dobrą i ładną, lecz za mąż nie wyszła. Później mówiono również powszechnie, że wykształcona nauczycielka zdobywa sobie miłość pupilów i szacunek ich rodziców.",
+  "start": 15.09
+ },
+ {
+  "i": 2,
+  "pl": "Była wykształconą, nawet zamiłowaną nauczycielką, lecz mimo to pupilki jej dokuczały, a ich rodzice drwili z niej od pierwszego śniadania do kolacji.",
+  "start": 33.49
+ },
+ {
+  "i": 3,
+  "pl": "Potem czytała dużo romansów, w których powszechnie dowodzono, że zakochani książęta, hrabiowie i baronowie są ludźmi szlachetnymi, którzy w zamian za serce mają zwyczaj oddawać ubogim nauczycielkom rękę. Jakoż oddała serce młodemu i szlachetnemu hrabiemu, lecz nie pozyskała jego ręki.",
+  "start": 43.05
+ },
+ {
+  "i": 4,
+  "pl": "Już po trzydziestym roku życia wyszła za mąż za podstarzałego guwernera, Melitona, w tym jedynie celu, ażeby moralnie podźwignąć człowieka, który nieco się upijał. Nowożeniec jednak po ślubie więcej pił aniżeli przed ślubem, a małżonkę, dźwigającą go moralnie, czasami okładał kijem.",
+  "start": 63.76
+ },
+ {
+  "i": 5,
+  "pl": "Gdy umarł, podobno na ulicy, pani Meliton odprowadziwszy go na cmentarz i przekonawszy się, że jest niezawodnie zakopany, wzięła na opiekę psa; znowu bowiem powszechnie mówiono, że pies jest najwdzięczniejszym stworzeniem.",
+  "start": 83.39
+ },
+ {
+  "i": 6,
+  "pl": "Istotnie, był wdzięcznym, dopóki nie wściekł się i nie pokąsał służącej, co samą panią Meliton przyprawiło o ciężką chorobę.",
+  "start": 97.87
+ },
+ {
+  "i": 7,
+  "pl": "Pół roku leżała w szpitalu, w osobnym gabinecie, samotna i zapomniana przez swoje pupilki, ich rodziców i hrabiów, którym oddawała serce. Był czas do rozmyślań.",
+  "start": 106.35
+ },
+ {
+  "i": 8,
+  "pl": "Toteż gdy wyszła stamtąd chuda, stara, z posiwiałymi i przerzedzonymi włosami, znowu zaczęto mówić powszechnie, że choroba zmieniła ją do niepoznania.",
+  "start": 118.36
+ },
+ {
+  "i": 9,
+  "pl": "— Zmądrzałam — odpowiedziała pani Meliton.",
+  "start": 129.36
+ },
+ {
+  "i": 10,
+  "pl": "Nie była już nauczycielką, ale rekomendowała nauczycielki; nie myślała o zamążpójściu, ale swatała młode pary; nikomu nie oddawała swego serca, ale we własnym mieszkaniu ułatwiała schadzki zakochanym. Że zaś każdy i za wszystko musiał jej płacić, więc miała trochę pieniędzy i z nich żyła.",
+  "start": 133.24
+ },
+ {
+  "i": 11,
+  "pl": "W początkach nowej kariery była posępna i nawet cyniczna.",
+  "start": 154.19
+ },
+ {
+  "i": 12,
+  "pl": "— Ksiądz — mówiła osobom zaufanym — ma dochody ze ślubów, ja z zaręczyn. Hrabia... bierze pieniądze za ułatwianie stosunków koniom, ja za ułatwianie znajomości ludziom.",
+  "start": 158.91
+ },
+ {
+  "i": 13,
+  "pl": "Z czasem jednak stała się powściągliwszą w mowie, a niekiedy nawet moralizującą, spostrzegłszy, że wygłaszanie zdań i opinii przyjętych przez ogół wpływa na wzrost dochodów.",
+  "start": 170.45
+ },
+ {
+  "i": 14,
+  "pl": "Pani Meliton od dawna znała się z Wokulskim. A że lubiła widowiska publiczne i miała zwyczaj wszystko śledzić, więc prędko zauważyła, że Wokulski zbyt nabożnie przypatruje się pannie Izabeli.",
+  "start": 183.88
+ },
+ {
+  "i": 15,
+  "pl": "Zrobiwszy to odkrycie wzruszyła ramionami; cóż ją mógł obchodzić kupiec galanteryjny zakochany w pannie Łęckiej? Gdyby upodobał sobie jakąś bogatą kupcównę albo córkę fabrykanta, pani Meliton miałaby materiał do swatów. Ale tak!...",
+  "start": 196.83
+ },
+ {
+  "i": 16,
+  "pl": "Dopiero gdy Wokulski powrócił z Bułgarii i przywiózł majątek, o którym opowiadano cuda, pani Meliton sama zaczepiła go o pannę Izabelę, ofiarowując swoje usługi.",
+  "start": 213.67
+ },
+ {
+  "i": 17,
+  "pl": "I stanął milczący układ: Wokulski płacił hojnie, a pani Meliton udzielała mu wszelkich informacji o rodzinie Łęckich i związanych z nimi osobach wyższego świata. Za jej nawet pośrednictwem Wokulski nabył weksle Łęckiego i srebra panny Izabeli.",
+  "start": 225.76
+ },
+ {
+  "i": 18,
+  "pl": "Przy tej okazji pani Meliton odwiedziła Wokulskiego w jego prywatnym mieszkaniu, ażeby mu powinszować.",
+  "start": 243.54
+ },
+ {
+  "i": 19,
+  "pl": "— Bardzo rozsądnie przystępujesz pan do rzeczy — mówiła. — Wprawdzie ze sreber i serwisu niewielka będzie pociecha, ale skup weksli Łęckiego jest arcydziełem... Znać kupca!...",
+  "start": 250.85
+ },
+ {
+  "i": 20,
+  "pl": "Usłyszawszy taką pochwałę Wokulski otworzył biurko, poszukał w nim i za chwilę wydobył paczkę weksli.",
+  "start": 264.07
+ },
+ {
+  "i": 21,
+  "pl": "— Te same? — rzekł pokazując je pani Meliton.",
+  "start": 269.53
+ },
+ {
+  "i": 22,
+  "pl": "— Tak. Chciałabym mieć te pieniądze!... — odpowiedziała z westchnieniem.",
+  "start": 273.65
+ },
+ {
+  "i": 23,
+  "pl": "Wokulski ujął paczkę w obie ręce i rozdarł ją.",
+  "start": 278.15
+ },
+ {
+  "i": 24,
+  "pl": "— Znać kupca?... — spytał.",
+  "start": 282.59
+ },
+ {
+  "i": 25,
+  "pl": "Pani Meliton przypatrzyła mu się ciekawie i kiwając głową mruknęła:",
+  "start": 285.78
+ },
+ {
+  "i": 26,
+  "pl": "— Szkoda pana.",
+  "start": 290.54
+ },
+ {
+  "i": 27,
+  "pl": "— Dlaczegóż to, jeżeli łaska?...",
+  "start": 292.23
+ },
+ {
+  "i": 28,
+  "pl": "— Szkoda pana — powtórzyła. — Sama jestem kobietą i wiem, że kobiet nie zdobywa się ofiarami, tylko siłą.",
+  "start": 294.47
+ },
+ {
+  "i": 29,
+  "pl": "— Czy tak?",
+  "start": 302.81
+ },
+ {
+  "i": 30,
+  "pl": "— Siłą piękności, zdrowia, pieniędzy...",
+  "start": 303.71
+ },
+ {
+  "i": 31,
+  "pl": "— Rozumu... — wtrącił Wokulski jej tonem.",
+  "start": 308.09
+ },
+ {
+  "i": 32,
+  "pl": "— Rozumu nie tyle, prędzej pięści — dodała pani Meliton z szyderczym uśmiechem. — Znam dobrze moją płeć i nieraz miałam okazję litować się nad naiwnością męską.",
+  "start": 311.67
+ },
+ {
+  "i": 33,
+  "pl": "— Dla mnie niech pani sobie nie zadaje tego trudu.",
+  "start": 324.24
+ },
+ {
+  "i": 34,
+  "pl": "— Myślisz pan, że nie będzie potrzebny? — spytała patrząc mu w oczy.",
+  "start": 328.24
+ },
+ {
+  "i": 35,
+  "pl": "— Łaskawa, pani — odparł Wokulski — jeżeli panna Izabela jest taką, jak mi się wydaje, to może mnie kiedyś oceni. A jeżeli nią nie jest, zawsze będę miał czas rozczarować się...",
+  "start": 332.64
+ },
+ {
+  "i": 36,
+  "pl": "— Zrób to wcześniej, panie Wokulski, zrób wcześniej — rzekła podnosząc się z fotelu. — Bo wierz mi, łatwiej wyrzucić tysiące rubli z kieszeni aniżeli jedno przywiązanie z serca. Szczególniej, gdy się już zagnieździ. A nie zapomnij pan — dodała — dobrze umieścić mój kapitalik.",
+  "start": 346.54
+ },
+ {
+  "i": 37,
+  "pl": "Nie darłbyś paru tysięcy, gdybyś wiedział, jak ciężko nieraz trzeba na nie pracować.",
+  "start": 365.42
+ },
+ {
+  "i": 38,
+  "pl": "W maju i czerwcu wizyty pani Meliton stały się częstszymi, ku zmartwieniu Rzeckiego, który podejrzewał spisek. I nie mylił się. Był spisek, ale przeciw pannie Izabeli; stara dama dostarczała ważnych informacyj Wokulskiemu, ale dotyczących tylko panny Izabeli.",
+  "start": 372.04
+ },
+ {
+  "i": 39,
+  "pl": "Zawiadamiała go mianowicie: w których dniach hrabina wybiera się ze swoją siostrzenicą na spacer do Łazienek.",
+  "start": 390.02
+ },
+ {
+  "i": 40,
+  "pl": "W takich wypadkach pani Meliton wpadała do sklepu i zrealizowawszy sobie wynagrodzenie w formie kilku- lub kilkunastorublowego drobiazgu, mówiła Rzeckiemu dzień i godzinę.",
+  "start": 397.66
+ },
+ {
+  "i": 41,
+  "pl": "Dziwne to bywały epoki dla Wokulskiego. Dowiedziawszy się, że jutro będą panie w Łazienkach, już dziś tracił spokojność. Obojętniał dla interesów, był rozdrażniony; zdawało mu się, że czas stoi w miejscu i że owe jutro nie nadejdzie nigdy.",
+  "start": 410.3
+ },
+ {
+  "i": 42,
+  "pl": "Noc miał pełną dzikich marzeń; niekiedy w półśnie, półjawie szeptał:",
+  "start": 426.74
+ },
+ {
+  "i": 43,
+  "pl": "„Cóż to jest w rezultacie?... nic!... Ach, jakież ze mnie bydlę...”",
+  "start": 430.96
+ },
+ {
+  "i": 44,
+  "pl": "Lecz gdy nadszedł ranek, bał się spojrzeć w okno, ażeby nie zobaczyć zachmurzonego nieba, i znowu do południa czas rozciągał mu się tak, że w jego ramach mógł był pomieścić całe swoje życie, zatrute dziś okropną goryczą.",
+  "start": 435.96
+ },
+ {
+  "i": 45,
+  "pl": "„Czyliż to może być miłość?...” — zapytywał sam siebie z desperacją.",
+  "start": 451.66
+ },
+ {
+  "i": 46,
+  "pl": "Rozgorączkowany, już w południe kazał zaprzęgać i jechać. Co chwilę zdawało mu się, że spotyka wracający powóz hrabiny, to znowu, że jego rwące się z cugli konie idą zbyt wolno.",
+  "start": 456.88
+ },
+ {
+  "i": 47,
+  "pl": "Znalazłszy się w Łazienkach wyskakiwał z powozu i biegł nad sadzawkę, gdzie zazwyczaj spacerowała hrabina lubiąca karmić łabędzie. Przychodził zawczasu, a wtedy padał gdzieś na ławkę, zalany zimnym potem, i siedział bez ruchu, z oczyma skierowanymi w stronę pałacu, zapominając o świecie.",
+  "start": 468.78
+ },
+ {
+  "i": 48,
+  "pl": "Nareszcie na końcu alei ukazały się dwie kobiece figury, czarna i szara. Wokulskiemu krew uderzyła do głowy.",
+  "start": 488.1
+ },
+ {
+  "i": 49,
+  "pl": "„One!... Czy mnie choć zatrzymają?...”",
+  "start": 496.0
+ },
+ {
+  "i": 50,
+  "pl": "Podniósł się z ławki i szedł naprzeciw nich jak lunatyk, bez tchu. Tak, to jest panna Izabela: prowadzi ciotkę i o czymś z nią rozmawia.",
+  "start": 501.37
+ },
+ {
+  "i": 51,
+  "pl": "Wokulski przypatruje się jej i myśli:",
+  "start": 511.64
+ },
+ {
+  "i": 52,
+  "pl": "„No i cóż jest w niej nadzwyczajnego?... Kobieta jak inne... Zdaje mi się, że bez potrzeby szaleję na jej rachunek...”",
+  "start": 514.54
+ },
+ {
+  "i": 53,
+  "pl": "Ukłonił się, panie się odkłoniły. Idzie dalej nie odwracając głowy, ażeby się nie zdradzić. Nareszcie ogląda się: obie panie znikły między zielonością.",
+  "start": 523.06
+ },
+ {
+  "i": 54,
+  "pl": "„Wrócę się — myśli — jeszcze raz spojrzę... Nie, nie wypada!”",
+  "start": 535.89
+ },
+ {
+  "i": 55,
+  "pl": "I czuje w tej chwili, że połyskująca woda sadzawki ciągnie go z nieprzepartą siłą.",
+  "start": 541.07
+ },
+ {
+  "i": 56,
+  "pl": "„Ach, gdybym wiedział, że śmierć jest zapomnieniem... A jeżeli nie jest?... Nie, w naturze nie ma miłosierdzia... Czy godzi się w nędzne ludzkie serce wlać bezmiar tęsknoty, a nie dać nawet tej pociechy, że śmierć jest nicością?”",
+  "start": 547.47
+ },
+ {
+  "i": 57,
+  "pl": "Prawie w tym samym czasie hrabina mówiła do panny Izabeli:",
+  "start": 564.14
+ },
+ {
+  "i": 58,
+  "pl": "— Coraz bardziej przekonywam się, Belu, że pieniądze nie dają szczęścia. Ten Wokulski zrobił świetną jak dla niego karierę, lecz — cóż stąd?... Już nie pracuje w sklepie, ale nudzi się w Łazienkach. Uważałaś, jaką on ma znudzoną minę?",
+  "start": 568.54
+ },
+ {
+  "i": 59,
+  "pl": "— Znudzoną? — powtórzyła panna Izabela. — Mnie on wydaje się przede wszystkim zabawnym.",
+  "start": 584.76
+ },
+ {
+  "i": 60,
+  "pl": "— Nie dostrzegłam tego — zdziwiła się hrabina.",
+  "start": 591.33
+ },
+ {
+  "i": 61,
+  "pl": "— Więc... nieprzyjemnym — poprawiła się panna Izabela.",
+  "start": 594.37
+ },
+ {
+  "i": 62,
+  "pl": "Wokulski nie miał odwagi wyjść z Łazienek. Chodził po drugiej stronie sadzawki i z daleka przypatrywał się migającej między drzewami szarej sukni. Dopiero później spostrzegł, że przypatruje się aż dwom szarym sukniom, a trzeciej niebieskiej, że żadna z nich — nie należy do panny Izabeli.",
+  "start": 599.86
+ },
+ {
+  "i": 63,
+  "pl": "„Jestem piramidalnie głupi” — pomyślał.",
+  "start": 619.42
+ },
+ {
+  "i": 64,
+  "pl": "Ale nic mu to nie pomogło.",
+  "start": 623.4
+ },
+ {
+  "i": 65,
+  "pl": "Pewnego dnia, w pierwszej połowie czerwca, pani Meliton dała znać Wokulskiemu, że jutro w południe panna Izabela będzie na spacerze z hrabiną i — z prezesową. Drobny ten wypadek mógł mieć pierwszorzędne znaczenie.",
+  "start": 627.1
+ },
+ {
+  "i": 66,
+  "pl": "Wokulski bowiem od pamiętnej Wielkanocy parę razy odwiedzał prezesową i poznał, że staruszka jest mu bardzo życzliwa. Zwykle słuchał jej opowiadań o dawnych czasach, rozmawiał o swoim stryju, nawet ostatecznie umówił się o nagrobek dla niego.",
+  "start": 641.96
+ },
+ {
+  "i": 67,
+  "pl": "W toku tej wymiany myśli, nie wiadomo skąd, wplątało się imię panny Izabeli tak nagle, że Wokulski nie mógł ukryć wzruszenia; twarz mu się zmieniła, głos stłumił się.",
+  "start": 657.94
+ },
+ {
+  "i": 68,
+  "pl": "Staruszka przyłożyła binokle do oczu i wpatrzywszy się w Wokulskiego spytała:",
+  "start": 670.31
+ },
+ {
+  "i": 69,
+  "pl": "— Czy mi się tylko wydaje, czyli też panna Łęcka nie jest ci obojętną?",
+  "start": 674.55
+ },
+ {
+  "i": 70,
+  "pl": "— Prawie nie znam jej... Mówiłem z nią raz w życiu... — tłomaczył się zmieszany Wokulski.",
+  "start": 682.48
+ },
+ {
+  "i": 71,
+  "pl": "Prezesowa wpadła w zamyślenie i kiwając głową szepnęła:",
+  "start": 689.68
+ },
+ {
+  "i": 72,
+  "pl": "— Ha...",
+  "start": 693.32
+ },
+ {
+  "i": 73,
+  "pl": "Wokulski pożegnał ją, ale owe<sup>350<\/sup> „ha...” utkwiło mu w pamięci. W każdym razie był pewny, że w prezesowej nie ma nieprzyjaciółki. I otóż w niecały tydzień po tej rozmowie dowiedział się, że prezesowa jedzie z hrabiną i z panną Izabelą na spacer do Łazienek.",
+  "start": 696.11
+ },
+ {
+  "i": 74,
+  "pl": "Czyżby dowiedziała się, że panie go tam spotykają?... A może chce ich zbliżyć?...",
+  "start": 716.25
+ },
+ {
+  "i": 75,
+  "pl": "Wokulski spojrzał na zegarek: była trzecia po południu.",
+  "start": 722.95
+ },
+ {
+  "i": 76,
+  "pl": "„Więc to jutro — pomyślał — za godzin... dwadzieścia cztery... Nie, nie tyle... Za ileż to?...”",
+  "start": 725.81
+ },
+ {
+  "i": 77,
+  "pl": "Nie mógł zrachować, ile godzin upłynie od trzeciej do pierwszej w południe. Ogarnął go niepokój; nie jadł obiadu; fantazja rwała się naprzód, ale trzeźwy rozum hamował ją.",
+  "start": 732.63
+ },
+ {
+  "i": 78,
+  "pl": "„Zobaczymy, co będzie jutro. A nuż będzie deszcz albo która z pań zachoruje?”",
+  "start": 745.04
+ },
+ {
+  "i": 79,
+  "pl": "Wybiegł na ulicę i błąkając się bez celu, powtarzał:",
+  "start": 750.08
+ },
+ {
+  "i": 80,
+  "pl": "„No, zobaczymy, co będzie jutro... A może mnie nie zatrzymają?... Zresztą panna Izabela jest sobie piękna panna, przypuśćmy, że nawet niezwykle piękna, ale tylko panna, nie nadprzyrodzone zjawisko. Tysiące równie ładnych chodzi po świecie, a ja też nie myślę czepiać się zębami jednej spódnicy.",
+  "start": 753.08
+ },
+ {
+  "i": 81,
+  "pl": "Odepchnie mnie?... Dobrze!... Z tym większym rozmachem padnę w objęcia innej...”",
+  "start": 772.36
+ },
+ {
+  "i": 82,
+  "pl": "Wieczorem poszedł do teatru, lecz opuścił go po pierwszym akcie. Znowu wałęsał się po mieście, a gdzie stąpił, prześladowała go myśl jutrzejszego spaceru i niejasne przeczucie, że jutro zbliży się do panny Izabeli.",
+  "start": 777.85
+ },
+ {
+  "i": 83,
+  "pl": "Minęła noc, ranek. O dwunastej kazał zaprząc powóz. Napisał kartkę do sklepu, że przyjdzie później, i poszarpał jedną parę rękawiczek. Nareszcie wszedł służący.",
+  "start": 791.66
+ },
+ {
+  "i": 84,
+  "pl": "„Konie gotowe!” — błysnęło Wokulskiemu.",
+  "start": 803.58
+ },
+ {
+  "i": 85,
+  "pl": "Wyciągnął rękę po kapelusz.",
+  "start": 806.72
+ },
+ {
+  "i": 86,
+  "pl": "— Książę!... — zameldował służący.",
+  "start": 809.22
+ },
+ {
+  "i": 87,
+  "pl": "Wokulskiemu pociemniało w oczach.",
+  "start": 811.9
+ },
+ {
+  "i": 88,
+  "pl": "— Proś.",
+  "start": 814.28
+ },
+ {
+  "i": 89,
+  "pl": "Książę wszedł.",
+  "start": 815.46
+ },
+ {
+  "i": 90,
+  "pl": "— Dzień dobry, panie Wokulski — zawołał. — Pan gdzieś wyjeżdża? — Zapewne do składów albo na kolej. Ale nic z tego. Aresztuję pana i zabieram do siebie. Będę nawet tak niegrzeczny, że zakwateruję się do pańskiego powozu, bo dziś swego nie wziąłem.",
+  "start": 816.98
+ },
+ {
+  "i": 91,
+  "pl": "Jestem jednak pewny, że wszystko to wybaczy mi pan ze względu na doskonałe wiadomości.",
+  "start": 831.36
+ },
+ {
+  "i": 92,
+  "pl": "— Raczy książę spocząć?...",
+  "start": 837.1
+ },
+ {
+  "i": 93,
+  "pl": "— Na chwilkę. Niech pan sobie wyobrazi — mówił książę siadając — że dopóty dokuczałem naszym panom bratom<sup>351<\/sup>... Czy dobrze powiedziałem?... Dopóty ich prześladowałem, aż obiecali przyjść w kilku do mnie i wysłuchać projektu pańskiej spółki.",
+  "start": 838.88
+ },
+ {
+  "i": 94,
+  "pl": "Natychmiast więc pana zabieram, a raczej zabieram się z panem i — jedziemy do mnie.",
+  "start": 853.9
+ },
+ {
+  "i": 95,
+  "pl": "Wokulski doznał takiego wrażenia jak człowiek, który spadł z wysokości i uderzył piersiami o ziemię.",
+  "start": 859.24
+ },
+ {
+  "i": 96,
+  "pl": "Pomieszanie jego nie uszło uwagi księcia, który uśmiechnął się przypisując to radości z jego wizyty i zaprosin. Przez głowę mu nawet nie przeszło, że dla Wokulskiego może być ważniejszym spacer do Łazienek aniżeli wszyscy książęta i spółki.",
+  "start": 865.85
+ },
+ {
+  "i": 97,
+  "pl": "— A więc jesteśmy gotowi? — spytał książę powstając z fotelu.",
+  "start": 881.51
+ },
+ {
+  "i": 98,
+  "pl": "Sekundy brakowało, ażeby Wokulski powiedział, że nie pojedzie i nie chce żadnych spółek. Ale w tym samym momencie przebiegła mu myśl:",
+  "start": 885.87
+ },
+ {
+  "i": 99,
+  "pl": "„Spacer — to dla mnie, spółka — dla niej.”",
+  "start": 894.84
+ },
+ {
+  "i": 100,
+  "pl": "Wziął kapelusz i pojechał z księciem. Zdawało mu się, że powóz nie jedzie po bruku, ale po jego własnym mózgu.",
+  "start": 899.85
+ },
+ {
+  "i": 101,
+  "pl": "„Kobiet nie zdobywa się ofiarami, tylko siłą, bodaj pięści...” — przypomniał sobie zdanie pani Meliton. Pod wpływem tego aforyzmu chciał porwać księcia za kołnierz i wyrzucić go na ulicę. Ale trwało to tylko chwilę.",
+  "start": 907.52
+ },
+ {
+  "i": 102,
+  "pl": "Książę przypatrywał mu się spod rzęs, a widząc, że Wokulski to czerwienieje, to blednie, myślał:",
+  "start": 922.99
+ },
+ {
+  "i": 103,
+  "pl": "„Nie spodziewałem się, że zrobię aż taką przyjemność temu poczciwemu Wokulskiemu. Tak, trzeba zawsze podawać rękę nowym ludziom...”",
+  "start": 929.63
+ },
+ {
+  "i": 104,
+  "pl": "W swoim towarzystwie książę nosił tytuł zagorzałego patrioty, prawie szowinisty; poza towarzystwem cieszył się opinią jednego z najlepszych obywateli. Bardzo lubił mówić po polsku, a nawet treścią jego francuskich rozmów były interesa publiczne.",
+  "start": 938.82
+ },
+ {
+  "i": 105,
+  "pl": "Był arystokratą od włosów do nagniotków, duszą, sercem, krwią. Wierzył, że każde społeczeństwo składa się z dwu materiałów: zwyczajnego tłumu i klas wybranych. Zwyczajny tłum był dziełem natury i mógł nawet pochodzić od małpy, jak to wbrew Pismu świętemu utrzymywał Darwin.",
+  "start": 954.06
+ },
+ {
+  "i": 106,
+  "pl": "Lecz klasy wybrane miały jakiś wyższy początek i pochodziły, jeżeli nie od bogów, to przynajmniej od pokrewnych im bohaterów, jak Herkules<sup>352<\/sup>, Prometeusz<sup>353<\/sup>, od biedy — Orfeusz<sup>354<\/sup>.",
+  "start": 974.02
+ },
+ {
+  "i": 107,
+  "pl": "Książę miał we Francji przyjaciela, hrabiego (w najwyższym stopniu dotkniętego zarazą demokratyczną), który drwił sobie z nadziemskich początków arystokracji.",
+  "start": 986.99
+ },
+ {
+  "i": 108,
+  "pl": "— Mój kuzynie — mówił — myślę, że nie zdajesz sobie należycie sprawy z kwestii rodów. Cóż to są wielkie rody? Są nimi takie, których przodkowie byli hetmanami, senatorami, wojewodami, czyli po dzisiejszemu: marszałkami, członkami izby wyższej<sup>355<\/sup> lub prefektami departamentów<sup>356<\/sup>.",
+  "start": 997.67
+ },
+ {
+  "i": 109,
+  "pl": "No — a przecie takich panów znamy, nic w nich nadzwyczajnego... Jedzą, piją, grają w karty, umizgają się do kobiet, zaciągają długi — jak reszta śmiertelników, od których są niekiedy głupsi.",
+  "start": 1017.13
+ },
+ {
+  "i": 110,
+  "pl": "Księciu na twarz występowały chorobliwe rumieńce.",
+  "start": 1032.25
+ },
+ {
+  "i": 111,
+  "pl": "— Czy spotkałeś kiedy, kuzynie — odparł — prefekta lub marszałka z takim wyrazem majestatu, jaki widujemy na portretach naszych przodków?...",
+  "start": 1035.39
+ },
+ {
+  "i": 112,
+  "pl": "— Cóż w tym dziwnego — śmiał się zarażony hrabia. — Malarze nadawali obrazom wyraz, o jakim nie śniło się żadnemu z oryginałów; tak jak heraldycy<sup>357<\/sup> i historycy opowiadali o nich bajeczne legendy. To wszystko kłamstwa, mój kuzynie!...",
+  "start": 1043.17
+ },
+ {
+  "i": 113,
+  "pl": "To tylko kulisy i kostiumy, które z jednego Wojtka robią księcia, a z innego parobka. W rzeczywistości jeden i drugi jest tylko lichym aktorem.",
+  "start": 1059.27
+ },
+ {
+  "i": 114,
+  "pl": "— Z szyderstwem, kuzynie, nie ma rozprawy! — wybuchał książę i uciekał. Biegł do siebie, kładł się na szezlongu z rękoma splecionymi pod głową i patrząc w sufit widział przesuwające się na nim postacie nadludzkiego wzrostu, siły, odwagi, rozumu, bezinteresowności.",
+  "start": 1070.34
+ },
+ {
+  "i": 115,
+  "pl": "To byli — przodkowie jego i hrabiego; tylko że hrabia zapierał się ich. Czyżby istniała w nim jaka przymieszka krwi?...",
+  "start": 1088.08
+ },
+ {
+  "i": 116,
+  "pl": "Tłumem zwyczajnych śmiertelników książę nie tylko nie gardził, ale owszem: miał dla nich życzliwość, a nawet stykał się z nimi i interesował ich potrzebami. Wyobrażał sobie, że jest jednym z Prometeuszów, którzy mają poniekąd honorowy obowiązek sprowadzić tym biednym ludziom ogień z nieba na ziemię.",
+  "start": 1097.73
+ },
+ {
+  "i": 117,
+  "pl": "Zresztą religia nakazywała mu sympatię dla maluczkich i książę rumienił się na samą myśl, że większa część towarzystwa stanie kiedyś przed boskim sądem bez tego rodzaju zasługi.",
+  "start": 1116.19
+ },
+ {
+  "i": 118,
+  "pl": "Więc aby uniknąć wstydu dla siebie, bywał i nawet zwoływał do swego mieszkania rozmaite sesje, wydawał po dwadzieścia pięć i po sto rubli na akcje rozmaitych przedsiębiorstw publicznych, nade wszystko zaś — ciągle martwił się nieszczęśliwym położeniem kraju, a każdą mowę swoją kończył frazesem:",
+  "start": 1128.63
+ },
+ {
+  "i": 119,
+  "pl": "— Bo, panowie, myślmy najpierw o tym, ażeby podźwignąć nasz nieszczęśliwy kraj...",
+  "start": 1149.87
+ },
+ {
+  "i": 120,
+  "pl": "A gdy to powiedział, czuł, że z serca spada mu jakiś ciężar; tym większy, im więcej było słuchaczów albo im więcej rubli wydał na akcje.",
+  "start": 1156.35
+ },
+ {
+  "i": 121,
+  "pl": "Zwołać sesję, zachęcić do przedsiębiorstwa i cierpieć, wciąż cierpieć nad nieszczęśliwym krajem, oto jego zdaniem były obowiązki obywatela.",
+  "start": 1166.2
+ },
+ {
+  "i": 122,
+  "pl": "Gdyby go jednak spytano, czy zasadził kiedy drzewo, którego cień ochroniłby ludzi i ziemię od spiekoty? albo czy kiedy usunął z drogi kamień raniący koniom kopyta? — byłby szczerze zdziwiony.",
+  "start": 1176.2
+ },
+ {
+  "i": 123,
+  "pl": "Czuł i myślał, pragnął i cierpiał — za miliony. Tylko — nic nigdy nie zrobił użytecznego. Zdawało mu się, że ciągłe frasowanie się całym krajem ma bez miary wyższą wartość od utarcia nosa zasmolonemu dziecku.",
+  "start": 1189.73
+ },
+ {
+  "i": 124,
+  "pl": "W czerwcu fizjognomia Warszawy ulega widocznej zmianie. Puste przedtem hotele napełniają się i podwyższają ceny, na wielu domach ukazują się ogłoszenia: „Apartament z meblami do wynajęcia na kilka tygodni.” Wszystkie dorożki są zajęte, wszyscy posłańcy biegają.",
+  "start": 1210.36
+ },
+ {
+  "i": 125,
+  "pl": "Na ulicach, w ogrodach, teatrach, w restauracjach, na wystawach, w sklepach i magazynach strojów damskich widać figury nie spotykane w zwykłym czasie.",
+  "start": 1228.38
+ },
+ {
+  "i": 126,
+  "pl": "Są nimi tędzy i opaleni mężczyźni w granatowych czapkach z daszkami, w zbyt obszernych butach, w ciasnych rękawiczkach, w garniturach pomysłu prowincjonalnego krawca.",
+  "start": 1238.4
+ },
+ {
+  "i": 127,
+  "pl": "Towarzyszą im gromadki dam, nie odznaczających się pięknością ani warszawskim szykiem, tudzież nie mniej liczne gromadki niezręcznych dzieci, którym z ust szeroko otwartych wygląda zdrowie.",
+  "start": 1250.1
+ },
+ {
+  "i": 128,
+  "pl": "Jedni z wiejskich gości przyjeżdżają tu z wełną na jarmark, drudzy na wyścigi, inni, ażeby zobaczyć wełnę i wyścigi; ci dla spotkania się z sąsiadami, których na miejscu mają o wiorstę drogi, tamci dla odświeżenia się w stolicy mętnej wody i pyłu,",
+  "start": 1263.32
+ },
+ {
+  "i": 129,
+  "pl": "a owi męczą się przez kilkudniową podróż sami nie wiedząc po co.",
+  "start": 1280.32
+ },
+ {
+  "i": 130,
+  "pl": "Z podobnego zjazdu skorzystał książę, ażeby zbliżyć Wokulskiego z ziemiaństwem.",
+  "start": 1285.18
+ },
+ {
+  "i": 131,
+  "pl": "Książę we własnym pałacu, na pierwszym piętrze, zajmował ogromne mieszkanie. Część jego, złożona z gabinetu pana, biblioteki i fajczarni<sup>358<\/sup>, była miejscem męskich zebrań, na których książę przedstawiał swoje lub cudze projekta dotyczące spraw publicznych.",
+  "start": 1292.1
+ },
+ {
+  "i": 132,
+  "pl": "Zdarzało się to po kilka razy w roku. Ostatnia nawet sesja wiosenna była poświęcona kwestii statków śrubowych<sup>359<\/sup> na Wiśle, przy czym bardzo wyraźnie zarysowały się trzy stronnictwa.",
+  "start": 1307.78
+ },
+ {
+  "i": 133,
+  "pl": "Pierwsze, złożone z księcia i jego osobistych przyjaciół, koniecznie domagało się śrubowców, drugie zaś, mieszczańskie, uznając w zasadzie piękność projektu, uważało go jednak za przedwczesny i nie chciało dać na ten cel pieniędzy.",
+  "start": 1318.6
+ },
+ {
+  "i": 134,
+  "pl": "Trzecie stronnictwo składało się tylko z dwu osób: pewnego technika, który twierdził, że śrubowce nie mogą pływać po Wiśle, i pewnego głuchego magnata, który na wszystkie odezwy, skierowane do jego kieszeni, stale odpowiadał:",
+  "start": 1332.44
+ },
+ {
+  "i": 135,
+  "pl": "— Proszę trochę głośniej, bo nic nie słychać...",
+  "start": 1345.38
+ },
+ {
+  "i": 136,
+  "pl": "Książę z Wokulskim przyjechali o pierwszej, a w kwadrans po nich zaczęli schodzić się i zjeżdżać inni uczestnicy sesji. Książę witał każdego z uprzejmą poufałością, prezentował Wokulskiego, a następnie podkreślał przybysza na liście zaproszonych bardzo długim i bardzo czerwonym ołówkiem.",
+  "start": 1349.16
+ },
+ {
+  "i": 137,
+  "pl": "Jednym z pierwszych gości był pan Łęcki; wziął Wokulskiego na stronę i jeszcze raz wypytał go o cel i znaczenie spółki, do której należał już całą duszą, ale nigdy nie mógł dobrze spamiętać, o co chodzi. Tymczasem inni panowie przypatrywali się intruzowi i zniżonym głosem robili o nim uwagi.",
+  "start": 1367.72
+ },
+ {
+  "i": 138,
+  "pl": "— Bycza mina! — szepnął otyły marszałek wskazując okiem na Wokulskiego. — Szczeć na głowie jeży mu się jak dzikowi, pierś — upadam do nóg, oko bystre... Ten by nie ustał na polowaniu!",
+  "start": 1387.44
+ },
+ {
+  "i": 139,
+  "pl": "— I twarz, panie... — dodał baron z fizjognomią Mefistofelesa<sup>360<\/sup>. — Czoło, panie... wąsik, panie, mała hiszpanka, panie... Wcale, panie... wcale... Rysy trochę, panie... ale całość, panie...",
+  "start": 1401.99
+ },
+ {
+  "i": 140,
+  "pl": "— Zobaczymy, jaki będzie w interesach — dorzucił nieco przygarbiony hrabia.",
+  "start": 1417.99
+ },
+ {
+  "i": 141,
+  "pl": "— Rzutki, ryzykowny, tek — odezwał się jakby z piwnicy drugi hrabia, który siedział sztywnie na krześle, nosił bujne faworyty i porcelanowymi oczyma patrzył tylko przed siebie jak Anglik z »Journal Amusant«<sup>361<\/sup>.",
+  "start": 1423.59
+ },
+ {
+  "i": 142,
+  "pl": "Książę powstał z fotelu i chrząknął; zebrani umilkli, dzięki czemu można było usłyszeć resztę opowiadania marszałka:",
+  "start": 1438.72
+ },
+ {
+  "i": 143,
+  "pl": "— Wszyscy patrzymy na las, a tu coś skwierczy pod kopytami. Wyobraź sobie acan dobrodziej, że chart idący przy koniach na smyczy zdusił w bruździe szaraka!...",
+  "start": 1447.28
+ },
+ {
+  "i": 144,
+  "pl": "To powiedziawszy marszałek uderzył olbrzymią dłonią w udo, z którego mógł był wyciąć sobie sekretarza i jego pomocnika.",
+  "start": 1458.52
+ },
+ {
+  "i": 145,
+  "pl": "Książę chrząknął drugi raz, marszałek zmieszał się i niezwykle wielkim fularem<sup>362<\/sup> otarł spocone czoło.",
+  "start": 1467.12
+ },
+ {
+  "i": 146,
+  "pl": "— Szanowni panowie — odezwał się książę. — Poważyłem się fatygować szanownych panów w pewnym... nader ważnym interesie publicznym, który, jak to wszyscy czujemy, powinien zawsze stać na straży naszych interesów publicznych... Chciałem powiedzieć... naszych idei... to jest...",
+  "start": 1473.79
+ },
+ {
+  "i": 147,
+  "pl": "Książę zdawał się być zakłopotany; wnet jednak ochłonął i mówił dalej:",
+  "start": 1493.09
+ },
+ {
+  "i": 148,
+  "pl": "— Chodzi o inte... to jest o plan, a raczej... o projekt zawiązania spółki do ułatwienia handlu...",
+  "start": 1498.37
+ },
+ {
+  "i": 149,
+  "pl": "— Zbożem — wtrącił ktoś z kąta.",
+  "start": 1507.69
+ },
+ {
+  "i": 150,
+  "pl": "— Właściwie — ciągnął książę — chodzi nie o handel zbożem, ale...",
+  "start": 1510.49
+ },
+ {
+  "i": 151,
+  "pl": "— Okowitą — pośpieszył ten sam głos.",
+  "start": 1514.93
+ },
+ {
+  "i": 152,
+  "pl": "— Ależ nie!... O handel, a raczej o ułatwienie handlu między Rosją i zagranicą towarami, no... towarami... Miasto zaś nasze, pożądane jest, ażeby się stało centrum takowego...",
+  "start": 1518.01
+ },
+ {
+  "i": 153,
+  "pl": "— A jakież to towary? — spytał przygarbiony hrabia.",
+  "start": 1532.37
+ },
+ {
+  "i": 154,
+  "pl": "— Stronę fachową kwestii raczy objaśnić nam łaskawie pan Wokulski, człowiek... człowiek fachowy — zakończył książę. — Pamiętajmy jednak, panowie, o obowiązkach, jakie na nas wkłada troska o interesa publiczne i ten nieszczęśliwy kraj...",
+  "start": 1536.07
+ },
+ {
+  "i": 155,
+  "pl": "— Jak Boga kocham, zaraz daję dziesięć tysięcy rubli!... — wrzasnął marszałek.",
+  "start": 1552.72
+ },
+ {
+  "i": 156,
+  "pl": "— Na co? — spytał hrabia udający autentycznego Anglika.",
+  "start": 1557.6
+ },
+ {
+  "i": 157,
+  "pl": "— Wszystko jedno!... — odparł wielkim głosem marszałek. — Powiedziałem: rzucę w Warszawie pięćdziesiąt tysięcy rubli, więc niech dziesięć pójdzie na cele dobroczynne, bo kochany nasz książę mówi cudownie!... Z rozumu i z serca, jak Boga kocham...",
+  "start": 1562.24
+ },
+ {
+  "i": 158,
+  "pl": "— Przepraszam — odezwał się Wokulski — ale nie chodzi tu o spółkę dobroczynną, tylko o spółkę zapewniającą zyski.",
+  "start": 1577.04
+ },
+ {
+  "i": 159,
+  "pl": "— Otóż to!... — wtrącił hrabia zgarbiony.",
+  "start": 1586.8
+ },
+ {
+  "i": 160,
+  "pl": "— Tek!... — potwierdził hrabia–Anglik.",
+  "start": 1590.16
+ },
+ {
+  "i": 161,
+  "pl": "— Co mnie za zysk z dziesięciu tysięcy? — zaoponował marszałek. — Z torbami bym poszedł pod Ostrą Bramę<sup>363<\/sup> przy takich zyskach.",
+  "start": 1593.55
+ },
+ {
+  "i": 162,
+  "pl": "Zgarbiony hrabia wybuchnął:",
+  "start": 1600.65
+ },
+ {
+  "i": 163,
+  "pl": "— Proszę o głos w kwestii: czy należy lekceważyć małe zyski!... To nas gubi!... to, panowie — wołał pukając paznokciem w poręcz fotelu.",
+  "start": 1602.87
+ },
+ {
+  "i": 164,
+  "pl": "— Hrabio — przerwał słodko książę — pan Wokulski ma głos.",
+  "start": 1612.72
+ },
+ {
+  "i": 165,
+  "pl": "— Tek!... — poparł go hrabia–Anglik czesząc bujne faworyty.",
+  "start": 1617.22
+ },
+ {
+  "i": 166,
+  "pl": "— Prosimy więc szanownego pana Wokulskiego — odezwał się nowy głos — ażeby ten publiczny interes, który nas zgromadził tu, do gościnnych salonów księcia, raczył nam przedstawić z właściwą mu jasnością i zwięzłością.",
+  "start": 1622.2
+ },
+ {
+  "i": 167,
+  "pl": "Wokulski spojrzał na osobę przyznającą mu jasność i zwięzłość. Był to znakomity adwokat, przyjaciel i prawa ręka księcia; lubił mówić kwieciście, wybijając takt ręką i przysłuchując się własnym frazesom, które zawsze znajdował wybornymi<sup>364<\/sup>.",
+  "start": 1636.87
+ },
+ {
+  "i": 168,
+  "pl": "— Tylko żebyśmy zrozumieli wszyscy — mruknął ktoś w kącie zajętym przez szlachtę, która nienawidziła magnatów.",
+  "start": 1654.19
+ },
+ {
+  "i": 169,
+  "pl": "— Wiadomo panom — zaczął Wokulski — że Warszawa jest handlową stacją między Europą zachodnią i wschodnią. Tu zbiera się i przechodzi przez nasze ręce część towarów francuskich i niemieckich przeznaczonych dla Rosji, z czego moglibyśmy mieć pewne zyski, gdyby nasz handel...",
+  "start": 1663.94
+ },
+ {
+  "i": 170,
+  "pl": "— Nie znajdował się w ręku Żydów — wtrącił półgłosem ktoś od stołu, gdzie siedzieli kupcy i przemysłowcy.",
+  "start": 1682.19
+ },
+ {
+  "i": 171,
+  "pl": "— Nie — odparł Wokulski. — Zyski istniałyby wówczas, gdyby nasz handel był prowadzony porządnie.",
+  "start": 1689.73
+ },
+ {
+  "i": 172,
+  "pl": "— Z Żydami nie może być porządny...",
+  "start": 1697.91
+ },
+ {
+  "i": 173,
+  "pl": "— Dziś jednak — przerwał adwokat księcia — szanowny pan Wokulski daje nam możność podstawienia kapitałów chrześcijańskich w miejsce kapitału starozakonnych...",
+  "start": 1700.69
+ },
+ {
+  "i": 174,
+  "pl": "— Pan Wokulski sam wprowadza Żydów do handlu — bryznął oponent ze stanu kupieckiego.",
+  "start": 1711.75
+ },
+ {
+  "i": 175,
+  "pl": "Zrobiło się cicho.",
+  "start": 1718.81
+ },
+ {
+  "i": 176,
+  "pl": "— Ze sposobu prowadzenia moich interesów nie zdaję sprawy przed nikim — ciągnął dalej Wokulski. — Wskazuję panom drogę uporządkowania handlu Warszawy z zagranicą, co stanowi pierwszą połowę mego projektu i jedno źródło zysku dla krajowych kapitałów. Drugim źródłem jest handel z Rosją<sup>365<\/sup>.",
+  "start": 1720.87
+ },
+ {
+  "i": 177,
+  "pl": "Znajdują się tam towary poszukiwane u nas i tanie. Spółka, która zajęłaby się nimi, mogłaby mieć piętnaście do dwudziestu procentów rocznie od wyłożonego kapitału. Na pierwszym miejscu stawiam tkaniny...",
+  "start": 1740.14
+ },
+ {
+  "i": 178,
+  "pl": "— To jest podkopywanie naszego przemysłu — odezwał się oponent z grupy kupieckiej.",
+  "start": 1756.54
+ },
+ {
+  "i": 179,
+  "pl": "— Mnie nie obchodzą fabrykanci, tylko konsumenci... — odpowiedział Wokulski.",
+  "start": 1762.2
+ },
+ {
+  "i": 180,
+  "pl": "Kupcy i przemysłowcy poczęli szeptać między sobą w sposób mało życzliwy dla Wokulskiego.",
+  "start": 1766.89
+ },
+ {
+  "i": 181,
+  "pl": "— Otóż i dotarliśmy do interesu publicznego!... — zawołał wzruszonym głosem książę. — Kwestia zarysowuje się tak: czy projekta szanownego pana Wokulskiego są objawem pomyślnym dla kraju?... Panie mecenasie<sup>366<\/sup>...",
+  "start": 1773.04
+ },
+ {
+  "i": 182,
+  "pl": "— zwrócił się książę do adwokata, czując potrzebę wyręczenia się nim w kłopotliwej nieco sytuacji.",
+  "start": 1789.44
+ },
+ {
+  "i": 183,
+  "pl": "— Szanowny pan Wokulski — zabrał głos adwokat — z właściwą mu gruntownością raczy nas objaśnić: czy sprowadzanie owych tkanin aż z tak daleka nie przyniesie uszczerbku naszym fabrykom?",
+  "start": 1795.85
+ },
+ {
+  "i": 184,
+  "pl": "— Przede wszystkim — rzekł Wokulski — owe nasze fabryki nie są naszymi, lecz niemieckimi...",
+  "start": 1811.27
+ },
+ {
+  "i": 185,
+  "pl": "— Oho!... — zawołał oponent z grupy kupców.",
+  "start": 1817.59
+ },
+ {
+  "i": 186,
+  "pl": "— Jestem gotów — mówił Wokulski — natychmiast wyliczyć fabryki, w których cała administracja i wszyscy lepiej płatni robotnicy są Niemcami, których kapitał jest niemiecki, a rada zarządzająca rezyduje w Niemczech; gdzie nareszcie robotnik nasz nie ma możności ukształcić się wyżej w swoim fachu,",
+  "start": 1821.67
+ },
+ {
+  "i": 187,
+  "pl": "ale jest parobkiem źle płatnym, źle traktowanym i na dobitkę germanizowanym...",
+  "start": 1840.83
+ },
+ {
+  "i": 188,
+  "pl": "— To jest ważne!... — wtrącił hrabia zgarbiony.",
+  "start": 1846.6
+ },
+ {
+  "i": 189,
+  "pl": "— Tek... — szepnął Anglik.",
+  "start": 1850.3
+ },
+ {
+  "i": 190,
+  "pl": "— Jak Boga kocham, doświadczam emocji słuchając!... — zawołał marszałek. — Nigdym nie myślał, że tak można zabawić się przy podobnej rozmowie... Zaraz wrócę...",
+  "start": 1852.4
+ },
+ {
+  "i": 191,
+  "pl": "I opuścił gabinet, aż uginała się pod jego stopami podłoga.",
+  "start": 1863.1
+ },
+ {
+  "i": 192,
+  "pl": "— Czy mam wyliczać nazwiska? — spytał Wokulski.",
+  "start": 1867.2
+ },
+ {
+  "i": 193,
+  "pl": "Grupa kupców i przemysłowców złożyła w tej chwili dowód rzadkiej powściągliwości nie domagając się nazwisk. Adwokat szybko podniósł się z fotelu i zatrzepotawszy rękoma zawołał:",
+  "start": 1871.41
+ },
+ {
+  "i": 194,
+  "pl": "— Sądzę, że nad kwestią miejscowych fabryk możemy przejść do porządku. Teraz szanowny pan Wokulski raczy nam, z właściwą mu jędrnością, objaśnić: jakie pozytywne korzyści z jego projektu odniesie...",
+  "start": 1882.99
+ },
+ {
+  "i": 195,
+  "pl": "— Nasz nieszczęśliwy kraj — zakończył książę.",
+  "start": 1897.25
+ },
+ {
+  "i": 196,
+  "pl": "— Proszę panów — mówił Wokulski — gdyby łokieć mego perkalu kosztował tylko o dwa grosze taniej niż dziś, wówczas na każdym milionie kupionych tu łokci ogół oszczędziłby dziesięć tysięcy rubli...",
+  "start": 1901.49
+ },
+ {
+  "i": 197,
+  "pl": "— Cóż to znaczy dziesięć tysięcy rubli?... — spytał marszałek, który już powrócił do gabinetu, ale jeszcze nie wpadł w tok rozpraw.",
+  "start": 1915.97
+ },
+ {
+  "i": 198,
+  "pl": "— To wiele znaczy... bardzo wiele! — zawołał hrabia zgarbiony. — Raz nauczmy się szanować zyski groszowe...",
+  "start": 1924.59
+ },
+ {
+  "i": 199,
+  "pl": "— Tek... Pens<sup>367<\/sup> jest ojcem gwinei<sup>368<\/sup>... — dodał hrabia ucharakteryzowany na Anglika.",
+  "start": 1932.35
+ },
+ {
+  "i": 200,
+  "pl": "— Dziesięć tysięcy rubli — ciągnął Wokulski — jest to fundament dobrobytu dla dwudziestu rodzin co najmniej...",
+  "start": 1939.28
+ },
+ {
+  "i": 201,
+  "pl": "— Kropla w morzu — mruknął jeden z kupców.",
+  "start": 1946.8
+ },
+ {
+  "i": 202,
+  "pl": "— Ale jest jeszcze inny wzgląd — mówił Wokulski — obchodzący wprawdzie tylko kapitalistów. Mam do dyspozycji towaru za trzy do czterech milionów rubli rocznie...",
+  "start": 1950.22
+ },
+ {
+  "i": 203,
+  "pl": "— Upadam do nóg!... — szepnął marszałek.",
+  "start": 1961.86
+ },
+ {
+  "i": 204,
+  "pl": "— To nie jest mój majątek — wtrącił Wokulski — mój jest znacznie skromniejszy...",
+  "start": 1964.46
+ },
+ {
+  "i": 205,
+  "pl": "— Lubię takich!... — rzekł zgarbiony hrabia.",
+  "start": 1969.18
+ },
+ {
+  "i": 206,
+  "pl": "— Tek... — dodał Anglik.",
+  "start": 1972.48
+ },
+ {
+  "i": 207,
+  "pl": "— Owe trzy miliony rubli stanowią mój osobisty kredyt i przynoszą mi bardzo mały procent jako pośrednikowi — mówił Wokulski. — Oświadczam jednak, że o ile w miejsce kredytu podstawiłoby się gotówkę, zysk z niej wynosiłby piętnaście do dwudziestu procentów, a może więcej.",
+  "start": 1974.8
+ },
+ {
+  "i": 208,
+  "pl": "Otóż ten punkt sprawy obchodzi panów, którzy składacie pieniądze w bankach na niski procent. Pieniędzmi tymi obracają inni i zyski ciągną dla siebie. Ja zaś ofiaruję panom sposobność użycia ich bezpośredniego i powiększenia własnych dochodów. Skończyłem.",
+  "start": 1993.58
+ },
+ {
+  "i": 209,
+  "pl": "— Pysznie! — zawołał przygarbiony hrabia. — Czy jednak nie można by dowiedzieć się szczegółów bliższych?",
+  "start": 2013.83
+ },
+ {
+  "i": 210,
+  "pl": "— O tych mogę mówić tylko z moimi wspólnikami — odpowiedział Wokulski.",
+  "start": 2020.57
+ },
+ {
+  "i": 211,
+  "pl": "— Jestem — rzekł zgarbiony hrabia i podał mu rękę.",
+  "start": 2025.53
+ },
+ {
+  "i": 212,
+  "pl": "— Tek — dodał pseudo–Anglik wyciągnąwszy do Wokulskiego dwa palce.",
+  "start": 2029.39
+ },
+ {
+  "i": 213,
+  "pl": "— Moi panowie! — odezwał się wygolony mężczyzna z grupy szlachty nienawidzącej magnatów. — Mówicie tu o handlu perkalami, który nas nic nie obchodzi... Ale panowie!...",
+  "start": 2034.83
+ },
+ {
+  "i": 214,
+  "pl": "— ciągnął dalej płaczliwym głosem — my mamy za to zboże w spichlerzach, my mamy okowitę w składach, na której wyzyskują nas pośrednicy w sposób — że nie powiem — niegodny...",
+  "start": 2045.31
+ },
+ {
+  "i": 215,
+  "pl": "Obejrzał się po gabinecie. Grupa szlachty gardzącej magnatami dała mu brawo.",
+  "start": 2057.07
+ },
+ {
+  "i": 216,
+  "pl": "Promieniejąca dyskretną radością twarz księcia zajaśniała w tej chwili blaskiem prawdziwego natchnienia.",
+  "start": 2062.9
+ },
+ {
+  "i": 217,
+  "pl": "— Ależ, panowie! — zawołał — dziś mówimy o handlu tkaninami, lecz jutro i pojutrze któż zabroni nam naradzić się nad innymi kwestiami?... Proponuję więc...",
+  "start": 2069.26
+ },
+ {
+  "i": 218,
+  "pl": "— Jak Boga kocham, cudnie mówi ten kochany książę — zawołał marszałek.",
+  "start": 2080.24
+ },
+ {
+  "i": 219,
+  "pl": "— Słuchamy... słuchamy!... — poparł go adwokat, silnie okazując, że stara się pohamować zapał dla księcia.",
+  "start": 2085.38
+ },
+ {
+  "i": 220,
+  "pl": "— A więc, panowie — ciągnął wzruszony książę — proponuję jeszcze następujące sesje: jedną w sprawie handlu zbożem, drugą w sprawie handlu okowitą...",
+  "start": 2092.52
+ },
+ {
+  "i": 221,
+  "pl": "— A kredyt dla rolników?... — spytał ktoś z nieprzejednanej szlachty.",
+  "start": 2102.0
+ },
+ {
+  "i": 222,
+  "pl": "— Trzecią w sprawie kredytu dla rolników — mówił książę. — Czwartą...",
+  "start": 2106.82
+ },
+ {
+  "i": 223,
+  "pl": "Tu zaciął się.",
+  "start": 2111.2
+ },
+ {
+  "i": 224,
+  "pl": "— Czwartą i piątą — pochwycił adwokat — poświęcimy rozważaniu ogólnej ekonomicznej sytuacji...",
+  "start": 2112.94
+ },
+ {
+  "i": 225,
+  "pl": "— Naszego nieszczęśliwego kraju — dokończył książę prawie ze łzami w oczach.",
+  "start": 2119.7
+ },
+ {
+  "i": 226,
+  "pl": "— Panowie!... — wrzasnął adwokat obcierając nos z akcentem rozrzewnienia. — Uczcijmy naszego gospodarza, znakomitego obywatela, najzacniejszego z ludzi...",
+  "start": 2126.42
+ },
+ {
+  "i": 227,
+  "pl": "— Dziesięć tysięcy rubli, jak Bo... — zawołał marszałek.",
+  "start": 2137.91
+ },
+ {
+  "i": 228,
+  "pl": "— Przez powstanie! — szybko dokończył adwokat.",
+  "start": 2142.09
+ },
+ {
+  "i": 229,
+  "pl": "— Brawo!... niech żyje książę!... — zawołano przy akompaniamencie łoskotu nóg i krzeseł.",
+  "start": 2145.31
+ },
+ {
+  "i": 230,
+  "pl": "Grupa szlachty gardzącej arystokracją krzyczała najgłośniej. Książę zaczął ściskać swoich gości nie panując już nad wzruszeniem; pomagał mu adwokat, wszystkich całował, a sam bez ceremonii płakał. Kilka osób skupiło się przy Wokulskim.",
+  "start": 2151.4
+ },
+ {
+  "i": 231,
+  "pl": "— Przystępuję na początek z pięćdziesięcioma tysiącami rubli — mówił zgarbiony hrabia. — Na rok przyszły zaś... zobaczymy...",
+  "start": 2168.45
+ },
+ {
+  "i": 232,
+  "pl": "— Trzydzieści, panie... trzydzieści tysięcy rubli, panie... Bardzo, panie... bardzo! — dodał baron z fizjognomią Mefistofelesa.",
+  "start": 2177.03
+ },
+ {
+  "i": 233,
+  "pl": "— I ja trzydzieści tysięcy... tek!... — dorzucił hrabia–Anglik kiwając głową.",
+  "start": 2186.58
+ },
+ {
+  "i": 234,
+  "pl": "— A ja dam dwa... trzy razy tyle, co... kochany książę. Jak Boga kocham!... — rzekł marszałek.",
+  "start": 2191.52
+ },
+ {
+  "i": 235,
+  "pl": "Paru oponentów z grupy kupieckiej również zbliżyło się do Wokulskiego. Milczeli, lecz tkliwe ich spojrzenia stokroć więcej miały wymowy aniżeli najczulsze słowa.",
+  "start": 2199.46
+ },
+ {
+  "i": 236,
+  "pl": "Z kolei zbliżył się do Wokulskiego człowiek młody, mizerny, z rzadkim zarostem na twarzy, ale z niewątpliwymi śladami przedwczesnego zniszczenia w całej postaci. Wokulski spotykał go na rozmaitych widowiskach, wreszcie i na ulicy, jeżdżącego najszybszymi dorożkami.",
+  "start": 2210.92
+ },
+ {
+  "i": 237,
+  "pl": "— Jestem Maruszewicz — rzekł zniszczony młody człowiek z miłym uśmiechem. — Wybaczy pan, że prezentuję się tak obcesowo i w dodatku przy pierwszej znajomości będę miał prośbę...",
+  "start": 2228.56
+ },
+ {
+  "i": 238,
+  "pl": "— Słucham pana.",
+  "start": 2239.98
+ },
+ {
+  "i": 239,
+  "pl": "Młodzieniec wziął Wokulskiego pod ramię i zaprowadziwszy go do okna mówił:",
+  "start": 2241.53
+ },
+ {
+  "i": 240,
+  "pl": "— Kładę od razu karty na stół; z takimi ludźmi jak pan nie można inaczej. Jestem niemajętny, mam dobre instynkta i chciałbym znaleźć zajęcie. Pan tworzy spółkę, czy nie mógłbym pracować pod pańskim kierunkiem?...",
+  "start": 2246.27
+ },
+ {
+  "i": 241,
+  "pl": "Wokulski przypatrywał mu się z uwagą. Propozycja, którą słyszał, jakoś nie pasowała do wyniszczonej figury i niepewnych spojrzeń młodzieńca. Wokulski uczuł niesmak, mimo to spytał:",
+  "start": 2260.21
+ },
+ {
+  "i": 242,
+  "pl": "— Cóż pan umie? jaki pański fach?",
+  "start": 2272.47
+ },
+ {
+  "i": 243,
+  "pl": "— Fachu, uważa pan, jeszcze nie wybrałem, ale mam wielkie zdolności i mogę podjąć się każdego zajęcia.",
+  "start": 2275.73
+ },
+ {
+  "i": 244,
+  "pl": "— A na jaką pan liczy pensję?",
+  "start": 2282.29
+ },
+ {
+  "i": 245,
+  "pl": "— Tysiąc... dwa tysiące rubli... — odparł zakłopotany młodzieniec.",
+  "start": 2284.96
+ },
+ {
+  "i": 246,
+  "pl": "Wokulski mimo woli potrząsnął głową.",
+  "start": 2290.88
+ },
+ {
+  "i": 247,
+  "pl": "— Wątpię — odparł — czy będziemy mieli posady odpowiadające pańskim wymaganiom. Niech pan jednak wstąpi kiedy do mnie...",
+  "start": 2293.82
+ },
+ {
+  "i": 248,
+  "pl": "Na środku gabinetu przygarbiony hrabia zabrał głos.",
+  "start": 2300.86
+ },
+ {
+  "i": 249,
+  "pl": "— A zatem — mówił — szanowni panowie, w zasadzie przystępujemy do spółki proponowanej przez pana Wokulskiego. Interes wydaje się bardzo dobrym, a obecnie chodzi tylko o bliższe szczegóły i spisanie aktu. Zapraszam więc panów, chcących zostać uczestnikami, do mnie na jutro, o dziewiątej wieczór...",
+  "start": 2304.12
+ },
+ {
+  "i": 250,
+  "pl": "— Będę u ciebie, kochany hrabio, jak Boga kocham — odezwał się otyły marszałek — i może jeszcze przyprowadzę ci z paru Litwinów<sup>369<\/sup>; no, ale powiedz, dlaczegóż to my mamy zawiązywać spółki kupieckie?... Niechby już sami kupcy...",
+  "start": 2325.08
+ },
+ {
+  "i": 251,
+  "pl": "— Choćby dlatego — odparł hrabia gorąco — ażeby nie mówiono, że nic nie robimy, tylko obcinamy kupony<sup>370<\/sup>...",
+  "start": 2340.22
+ },
+ {
+  "i": 252,
+  "pl": "Książę poprosił o głos.",
+  "start": 2347.4
+ },
+ {
+  "i": 253,
+  "pl": "— Zresztą — rzekł — mamy na widoku jeszcze dwie spółki: do handlu zbożem i — okowitą. Kto nie zechce należeć do jednej, może należeć do drugiej... Nadto zaprosimy szanownego pana Wokulskiego, ażeby w innych naszych naradach chciał przyjąć udział...",
+  "start": 2349.97
+ },
+ {
+  "i": 254,
+  "pl": "— Tek!... — wtrącił hrabia–Anglik.",
+  "start": 2365.37
+ },
+ {
+  "i": 255,
+  "pl": "— I z właściwym mu talentem raczył oświetlać kwestie — dokończył adwokat.",
+  "start": 2368.21
+ },
+ {
+  "i": 256,
+  "pl": "— Wątpię, czy przydam się panom na co — odparł Wokulski. — Miałem wprawdzie do czynienia ze zbożem i okowitą, ale w wyjątkowych warunkach. Chodziło o duże ilości i pośpiech, nie o ceny... Nie znam zresztą tutejszego handlu zbożem...",
+  "start": 2374.02
+ },
+ {
+  "i": 257,
+  "pl": "— Będą specjaliści, szanowny panie Wokulski — przerwał mu adwokat. — Oni nam dostarczą szczegółów, które pan raczysz tylko uporządkować i rozjaśnić z właściwą mu genialnością...",
+  "start": 2388.5
+ },
+ {
+  "i": 258,
+  "pl": "— Prosimy... bardzo prosimy!... — wołali hrabiowie, a za nimi jeszcze głośniej szlachta nienawidząca magnatów.",
+  "start": 2399.94
+ },
+ {
+  "i": 259,
+  "pl": "Była blisko piąta po południu i zgromadzeni poczęli się rozchodzić. W tej chwili Wokulski spostrzegł, że z dalszych pokojów zbliża się do niego pan Łęcki w towarzystwie młodzieńca, którego już widział obok panny Izabeli podczas kwesty i na święconym u hrabiny. Obaj panowie zatrzymali się przy nim.",
+  "start": 2407.34
+ },
+ {
+  "i": 260,
+  "pl": "— Pozwolisz, panie Wokulski — odezwał się Łęcki — że przedstawię ci pana Juliana Ochockiego<sup>371<\/sup>. Nasz kuzyn... trochę oryginał, ale...",
+  "start": 2425.68
+ },
+ {
+  "i": 261,
+  "pl": "— Dawno już chciałem poznać się z panem i porozmawiać — rzekł Ochocki ściskając go za rękę.",
+  "start": 2434.66
+ },
+ {
+  "i": 262,
+  "pl": "Wokulski w milczeniu przypatrywał się. Młody człowiek nie dosięgnął jeszcze lat trzydziestu i rzeczywiście odznaczał się niezwykłą fizjognomią. Zdawało się, że ma rysy Napoleona Pierwszego, przysłonięte jakimś obłokiem marzycielstwa.",
+  "start": 2441.05
+ },
+ {
+  "i": 263,
+  "pl": "— W którą stronę pan idzie? — spytał młody człowiek Wokulskiego. — Mogę pana podprowadzić.",
+  "start": 2456.33
+ },
+ {
+  "i": 264,
+  "pl": "— Będzie się pan fatygował...",
+  "start": 2461.43
+ },
+ {
+  "i": 265,
+  "pl": "— O, ja mam dosyć czasu — odpowiedział młody człowiek.",
+  "start": 2463.21
+ },
+ {
+  "i": 266,
+  "pl": "„Czego on chce ode mnie?” — pomyślał Wokulski, a głośno rzekł: — Możemy pójść w stronę Łazienek...",
+  "start": 2467.35
+ },
+ {
+  "i": 267,
+  "pl": "— Owszem — odparł Ochocki. — Wpadnę jeszcze na chwilę pożegnać się z księżną i dogonię pana.",
+  "start": 2474.45
+ },
+ {
+  "i": 268,
+  "pl": "Ledwie odszedł, pochwycił Wokulskiego adwokat.",
+  "start": 2480.65
+ },
+ {
+  "i": 269,
+  "pl": "— Winszuję panu zupełnego triumfu — rzekł półgłosem. — Książę formalnie zakochany w panu, obaj hrabiowie i baron toż samo... Oryginały to są, jak pan widział, ale ludzie dobrych chęci... Chcieliby coś robić, mają nawet rozum i ukształcenie, ale... energii brak!...",
+  "start": 2484.35
+ },
+ {
+  "i": 270,
+  "pl": "Choroba woli, panie: cała klasa jest nią dotknięta... Wszystko mają: pieniądze, tytuły, poważanie, nawet powodzenie u kobiet, więc niczego nie pragną. Bez tej zaś sprężyny, panie Wokulski, muszą być narzędziem w ręku ludzi nowych i ambitnych...",
+  "start": 2501.83
+ },
+ {
+  "i": 271,
+  "pl": "My, panie, my jeszcze wielu rzeczy pragniemy — dodał ciszej. — Ich szczęście, że trafili na nas...",
+  "start": 2519.07
+ },
+ {
+  "i": 272,
+  "pl": "Ponieważ Wokulski nie odpowiedział nic, więc adwokat począł uważać go za bardzo przebiegłego dyplomatę i żałował w duszy, że sam był zanadto szczery.",
+  "start": 2525.77
+ },
+ {
+  "i": 273,
+  "pl": "„Zresztą — myślał adwokat patrząc na Wokulskiego spod oka — choćby powtórzył księciu naszą rozmowę, cóż mi zrobi?... Powiem, że chciałem go wybadać...”",
+  "start": 2535.17
+ },
+ {
+  "i": 274,
+  "pl": "„O jakie on mnie ambicje posądza?...” — zapytywał się w duchu Wokulski.",
+  "start": 2545.55
+ },
+ {
+  "i": 275,
+  "pl": "Pożegnał księcia, obiecał przychodzić odtąd na wszystkie sesje i wyszedłszy na ulicę odesłał powóz do domu.",
+  "start": 2553.8
+ },
+ {
+  "i": 276,
+  "pl": "„Czego chce ode mnie ten pan Ochocki? — myślał podejrzliwie. — Naturalnie, że idzie mu o pannę Izabelę... Może ma zamiar odstraszyć mnie od niej?... Głupi... Jeżeli ona go kocha, nie potrzebuje tracić nawet słów; sam się usunę... Ale jeżeli go nie kocha, niech się strzeże usuwać mnie od niej...",
+  "start": 2562.2
+ },
+ {
+  "i": 277,
+  "pl": "Zdaje się, że zrobię w życiu jedno kapitalne głupstwo, zapewne dla panny Izabeli. Bodajby nie padło na niego, szkoda chłopaka...”",
+  "start": 2581.28
+ },
+ {
+  "i": 278,
+  "pl": "W bramie rozległo się pośpieszne stąpanie; Wokulski odwrócił się i zobaczył Ochockiego.",
+  "start": 2589.1
+ },
+ {
+  "i": 279,
+  "pl": "— Pan czekał?... przepraszam!... — zawołał młody człowiek.",
+  "start": 2595.66
+ },
+ {
+  "i": 280,
+  "pl": "— Idziemy ku Łazienkom? — spytał Wokulski.",
+  "start": 2599.02
+ },
+ {
+  "i": 281,
+  "pl": "— Owszem.",
+  "start": 2601.8
+ },
+ {
+  "i": 282,
+  "pl": "Jakiś czas szli milcząc. Młody człowiek był zamyślony. Wokulski zirytowany.",
+  "start": 2603.06
+ },
+ {
+  "i": 283,
+  "pl": "Postanowił od razu chwycić byka za rogi.",
+  "start": 2609.14
+ },
+ {
+  "i": 284,
+  "pl": "— Pan jest bliskim kuzynem państwa Łęckich? — zapytał.",
+  "start": 2612.64
+ },
+ {
+  "i": 285,
+  "pl": "— Trochę — odpowiedział młody człowiek. — Matka moja była aż Łęcka — rzekł z ironią — ale ojciec tylko Ochocki. To bardzo osłabia związki rodzinne... Pana Tomasza, który jest dla mnie jakimś ciotecznym stryjem, nie znałbym do dziś dnia, gdyby nie stracił majątku.",
+  "start": 2616.42
+ },
+ {
+  "i": 286,
+  "pl": "— Panna Łęcka jest bardzo dystyngowaną osobą — rzekł Wokulski patrząc przed siebie.",
+  "start": 2637.07
+ },
+ {
+  "i": 287,
+  "pl": "— Dystyngowana?... — powtórzył Ochocki. — Powiedz pan: bogini!... Kiedy rozmawiam z nią, zdaje mi się, że potrafiłaby mi zapełnić całe życie. Przy niej jednej czuję spokój i zapominam o trapiącej mnie tęsknocie. Ale cóż!...",
+  "start": 2643.67
+ },
+ {
+  "i": 288,
+  "pl": "Ja nie umiałbym siedzieć z nią cały dzień w salonie ani ona ze mną w laboratorium...",
+  "start": 2659.59
+ },
+ {
+  "i": 289,
+  "pl": "Wokulski stanął na ulicy.",
+  "start": 2666.19
+ },
+ {
+  "i": 290,
+  "pl": "— Pan zajmuje się fizyką czy chemią?... — spytał zdziwiony.",
+  "start": 2668.13
+ },
+ {
+  "i": 291,
+  "pl": "— Ach, czym ja się nie zajmuję!... — odparł Ochocki. — Fizyką, chemią i technologią... Przecież skończyłem wydział przyrodniczy w uniwersytecie<sup>372<\/sup> i mechaniczny w politechnice<sup>373<\/sup>... Zajmuję się wszystkim; czytam i pracuję od rana do nocy, ale — nie robię nic.",
+  "start": 2672.37
+ },
+ {
+  "i": 292,
+  "pl": "Udało mi się trochę ulepszyć mikroskop, zbudować jakiś nowy stos elektryczny<sup>374<\/sup>, jakąś tam lampę...",
+  "start": 2689.55
+ },
+ {
+  "i": 293,
+  "pl": "Wokulski zdumiewał się coraz więcej.",
+  "start": 2696.21
+ },
+ {
+  "i": 294,
+  "pl": "— Więc to pan jest tym Ochockim, wynalazcą?...",
+  "start": 2698.79
+ },
+ {
+  "i": 295,
+  "pl": "— Ja — odparł młody człowiek. — No, ale i cóż to znaczy?... Razem nic. Kiedy pomyślę, że w dwudziestym ósmym roku tylko tyle zrobiłem, ogarnia mnie desperacja. Mam ochotę albo porozbijać swoje laboratorium i utonąć w życiu salonowym, do którego mnie ciągną, albo — trzasnąć sobie w łeb...",
+  "start": 2702.79
+ },
+ {
+  "i": 296,
+  "pl": "Ogniwo Ochockiego albo — lampa elektryczna Ochockiego... jakież to głupie!... Rwać się gdzieś od dzieciństwa i utknąć na lampie — to okropne... Dobiegać środka życia i nie znaleźć nawet śladu drogi, po której by się iść chciało — cóż to za rozpacz!...",
+  "start": 2722.71
+ },
+ {
+  "i": 297,
+  "pl": "Młody człowiek umilkł, a że byli w Ogrodzie Botanicznym<sup>375<\/sup>, więc zdjął kapelusz. Wokulski przypatrywał mu się z uwagą i zrobił nowe odkrycie. Młody człowiek, aczkolwiek wyglądał elegancko, nie był wcale elegantem; nawet nie zdawał się troszczyć o swoją powierzchowność.",
+  "start": 2741.25
+ },
+ {
+  "i": 298,
+  "pl": "Miał rozrzucone włosy, nieco zsunięty krawat, u kamizelki guzik nie zapięty.",
+  "start": 2759.29
+ },
+ {
+  "i": 299,
+  "pl": "Można było domyślać się, że ktoś bardzo starannie czuwa nad jego bielizną i garderobą, z którą jednak on sam postępuje niedbale, i właśnie to niedbalstwo, przejawiające się w dziwnie szlachetnych formach, nadawało mu oryginalny wdzięk. Każdy jego ruch był mimowolny, rozrzucony, lecz piękny.",
+  "start": 2765.37
+ },
+ {
+  "i": 300,
+  "pl": "Równie piękny był sposób patrzenia, słuchania, a raczej niesłuchania, nawet — gubienia kapelusza.",
+  "start": 2786.65
+ },
+ {
+  "i": 301,
+  "pl": "Weszli na wzgórze, skąd widać studnię zwaną Okrąglakiem<sup>376<\/sup>. Ze wszystkich stron otaczali ich spacerujący, ale Ochocki nie krępował się ich obecnością i wskazawszy kapeluszem jedną z ławek, mówił:",
+  "start": 2794.06
+ },
+ {
+  "i": 302,
+  "pl": "— Dużo czytałem, że szczęśliwy jest człowiek, który ma wielkie aspiracje. To kłamstwo. Ja przecież mam niepowszednie pragnienia, które jednak robią mnie śmiesznym i zrażają do mnie najbliższych. Spojrzyj pan na tę ławkę...",
+  "start": 2806.86
+ },
+ {
+  "i": 303,
+  "pl": "Tu, w początkach czerwca, koło dziesiątej wieczorem, siedzieliśmy z kuzynką i z panną Florentyną. Świecił jakiś księżyc i nawet jeszcze śpiewały słowiki. Byłem rozmarzony.",
+  "start": 2823.62
+ },
+ {
+  "i": 304,
+  "pl": "Nagle kuzynka odzywa się: „Znasz, kuzynie, astronomię?” — „Trochę.” — „Więc powiedz mi, jaka to gwiazda?” — „Nie wiem — odpowiedziałem — ale to jest pewne, że nigdy nie dostaniemy się na nią.",
+  "start": 2833.9
+ },
+ {
+  "i": 305,
+  "pl": "Człowiek jest przykuty do ziemi jak ostryga do skały...” W tej chwili — ciągnął dalej Ochocki — zbudziła się we mnie moja idea czy mój obłęd... Zapomniałem o pięknej kuzynce, a zacząłem myśleć o machinach latających.",
+  "start": 2845.9
+ },
+ {
+  "i": 306,
+  "pl": "A ponieważ myśląc muszę chodzić, więc wstałem z ławki i bez pożegnania opuściłem kuzynkę!... Na drugi dzień panna Flora nazwała mnie impertynentem, pan Łęcki oryginałem, a kuzynka przez tydzień nie chciała ze mną rozmawiać...",
+  "start": 2860.28
+ },
+ {
+  "i": 307,
+  "pl": "I żebym jeszcze co wymyślił; ale nic, literalnie nic, choć byłbym przysiągł, że nim z tego pagórka zejdę do studni, urodzi mi się w głowie przynajmniej ogólny szkic machiny latającej... Prawda, jakie to głupie?...",
+  "start": 2874.36
+ },
+ {
+  "i": 308,
+  "pl": "„Więc oni tu przepędzają wieczory przy księżycu i śpiewie słowika?... — pomyślał Wokulski i poczuł straszny ból w sercu. — Panna Izabela już kocha się w Ochockim, a jeżeli się nie kocha, to tylko z winy jego dziwactw... No i ma słuszność... piękny człowiek i niezwykły...”",
+  "start": 2889.66
+ },
+ {
+  "i": 309,
+  "pl": "— Naturalnie — prawił dalej Ochocki — ani słówka nie wspomniałem o tym mojej ciotce, która, ile razy bodaj wpina mi jakąś szpilkę w odzienie, ma zwyczaj powtarzać: „Kochany Julku, staraj się podobać Izabeli, bo to żona akurat dla ciebie...",
+  "start": 2906.86
+ },
+ {
+  "i": 310,
+  "pl": "Mądra i piękna; ona jedna wyleczyłaby cię z twoich przywidzeń...” A ja myślę: co to za żona dla mnie?... Gdyby chociaż mogła być moim pomocnikiem, jeszcze pół biedy... Ale gdzieżby ona dla laboratorium mogła opuścić salon!...",
+  "start": 2922.96
+ },
+ {
+  "i": 311,
+  "pl": "Ma rację, to jej właściwe otoczenie; ptak potrzebuje powietrza, ryba wody... Ach, jaki piękny wieczór!... — dodał po chwili. — Jestem dziś podniecony jak rzadko. Ale... co panu jest, panie Wokulski?...",
+  "start": 2938.02
+ },
+ {
+  "i": 312,
+  "pl": "— Trochę zmęczyłem się — odparł głucho Wokulski. — Może byśmy siedli, choćby o! tu...",
+  "start": 2952.06
+ },
+ {
+  "i": 313,
+  "pl": "Usiedli na stoku wzgórza, na granicy Łazienek. Ochocki oparł brodę na kolanach i wpadł w zadumę, Wokulski przypatrywał mu się z uczuciem, w którym podziw mieszał się z nienawiścią.",
+  "start": 2960.16
+ },
+ {
+  "i": 314,
+  "pl": "„Głupi czy przebiegły?... Po co on mi to wszystko opowiada?” — myślał Wokulski.",
+  "start": 2973.16
+ },
+ {
+  "i": 315,
+  "pl": "Musiał jednak przyznać, że gadulstwo Ochockiego miało te same cechy szczerości i rozrzucenia, jak jego ruchy i cała wreszcie osoba. Spotkali się pierwszy raz i już Ochocki tak z nim rozmawiał, jak gdyby znali się od dzieci.",
+  "start": 2978.65
+ },
+ {
+  "i": 316,
+  "pl": "„Skończę z nim” — rzekł do siebie Wokulski i głęboko odetchnąwszy spytał głośno:",
+  "start": 2992.91
+ },
+ {
+  "i": 317,
+  "pl": "— Zatem żeni się pan, panie Ochocki?...",
+  "start": 2998.79
+ },
+ {
+  "i": 318,
+  "pl": "— Chybabym zwariował — mruknął młody człowiek wzruszając ramionami.",
+  "start": 3001.67
+ },
+ {
+  "i": 319,
+  "pl": "— Jak to?... Przecież kuzynka pańska podoba się panu?",
+  "start": 3006.49
+ },
+ {
+  "i": 320,
+  "pl": "— I nawet bardzo, ale to jeszcze nie wszystko. Ożeniłbym się z nią, gdybym miał pewność, że już nic w nauce nie zrobię...",
+  "start": 3009.95
+ },
+ {
+  "i": 321,
+  "pl": "W sercu Wokulskiego obok nienawiści i podziwu błysnęła radość. W tej chwili Ochocki przetarł czoło jak zbudzony ze snu i patrząc na Wokulskiego nagle rzekł:",
+  "start": 3017.21
+ },
+ {
+  "i": 322,
+  "pl": "— Ale, ale... Nawet zapomniałem, że mam ważny interes do pana...",
+  "start": 3028.32
+ },
+ {
+  "i": 323,
+  "pl": "„Czego on chce?...” — pomyślał Wokulski podziwiając w duszy mądre spojrzenie swego rywala i nagłą zmianę tonu. Zdawało się, że przez jego usta przemówił inny człowiek.",
+  "start": 3032.8
+ },
+ {
+  "i": 324,
+  "pl": "— Chcę zadać panu pytanie... nie... dwa pytania, bardzo poufne, a może nawet drażliwe — mówił Ochocki. — Czy nie obrazi się pan?...",
+  "start": 3044.13
+ },
+ {
+  "i": 325,
+  "pl": "— Słucham — odparł Wokulski.",
+  "start": 3053.11
+ },
+ {
+  "i": 326,
+  "pl": "Gdyby stał na szafocie, nie doznałby tak strasznych wrażeń jak w tej chwili. Był pewny, że chodzi o pannę Izabelę i że w tym samym miejscu zdecydują się jego losy.",
+  "start": 3056.66
+ },
+ {
+  "i": 327,
+  "pl": "— Pan był przyrodnikiem? — spytał Ochocki.",
+  "start": 3067.95
+ },
+ {
+  "i": 328,
+  "pl": "— Tak.",
+  "start": 3071.69
+ },
+ {
+  "i": 329,
+  "pl": "— I w dodatku przyrodnikiem entuzjastą. Wiem, co pan przeszedł, od dawna szanuję pana z tego powodu... To za mało; powiem więcej... Od roku wspomnienie o trudnościach, z jakimi szamotał się pan, dodawało mi otuchy...",
+  "start": 3072.75
+ },
+ {
+  "i": 330,
+  "pl": "Mówiłem sobie: zrobię przynajmniej to, co ten człowiek, a ponieważ nie mam takich przeszkód, więc — zajdę dalej od niego...",
+  "start": 3086.85
+ },
+ {
+  "i": 331,
+  "pl": "Wokulski słuchając myślał, że marzy albo że rozmawia z wariatem.",
+  "start": 3094.4
+ },
+ {
+  "i": 332,
+  "pl": "— Skąd pan to wie?... — spytał Ochockiego.",
+  "start": 3098.66
+ },
+ {
+  "i": 333,
+  "pl": "— Od doktora Szumana.",
+  "start": 3101.74
+ },
+ {
+  "i": 334,
+  "pl": "— Ach, od Szumana. Ale do czego to wszystko prowadzi?...",
+  "start": 3103.6
+ },
+ {
+  "i": 335,
+  "pl": "— Zaraz powiem — odparł Ochocki. — Byłeś pan przyrodnikiem entuzjastą i... w rezultacie rzuciłeś pan nauki przyrodnicze. Otóż, w którym roku życia osłabnął pański zapał w tym kierunku?...",
+  "start": 3107.94
+ },
+ {
+  "i": 336,
+  "pl": "Wokulski poczuł jakby uderzenie toporem w głowę. Pytanie było tak przykre i niespodziewane, że przez chwilę nie tylko nie umiał odpowiedzieć, ale nawet zebrać myśli.",
+  "start": 3120.46
+ },
+ {
+  "i": 337,
+  "pl": "Ochocki powtórzył, bystro przypatrując się swemu towarzyszowi.",
+  "start": 3131.74
+ },
+ {
+  "i": 338,
+  "pl": "— W którym roku?... — rzekł Wokulski. — W zeszłym roku... Dziś mam czterdziesty szósty rok...",
+  "start": 3136.34
+ },
+ {
+  "i": 339,
+  "pl": "— A zatem ja do kompletnego ochłodzenia się mam jeszcze przeszło piętnaście lat. To mi trochę dodaje odwagi... — rzekł jakby do siebie Ochocki.",
+  "start": 3144.28
+ },
+ {
+  "i": 340,
+  "pl": "I znowu po chwili dodał:",
+  "start": 3153.62
+ },
+ {
+  "i": 341,
+  "pl": "— To jedno pytanie, a teraz drugie, ale — nie obraź się pan. W którym roku życia zaczynają mężczyźnie obojętnieć kobiety?...",
+  "start": 3155.66
+ },
+ {
+  "i": 342,
+  "pl": "Drugi cios. Był moment, że Wokulski chciał schwycić młodzieńca za gardło i udusić. Opamiętał się jednak i odparł ze słabym uśmiechem:",
+  "start": 3164.61
+ },
+ {
+  "i": 343,
+  "pl": "— Myślę, że one nigdy nie obojętnieją... Owszem, coraz wydają się droższymi...",
+  "start": 3175.19
+ },
+ {
+  "i": 344,
+  "pl": "— Źle! — szepnął Ochocki. — Ha, zobaczymy, kto mocniejszy.",
+  "start": 3182.13
+ },
+ {
+  "i": 345,
+  "pl": "— Kobiety, panie Ochocki.",
+  "start": 3188.28
+ },
+ {
+  "i": 346,
+  "pl": "— Jak dla kogo, panie — odpowiedział młody człowiek wpadając znowu w zamyślenie.",
+  "start": 3190.52
+ },
+ {
+  "i": 347,
+  "pl": "I zaczął mówić jakby do siebie.",
+  "start": 3195.56
+ },
+ {
+  "i": 348,
+  "pl": "— Kobiety, ważna rzecz. Kochałem się już, zaraz, ileż to?... Cztery... sześć... ze siedem, tak, siedem razy... Zabiera to dużo czasu i napędza desperackie myśli... Głupia rzecz, miłość... Poznajesz, kochasz, cierpisz... Potem jesteś znudzony albo zdradzony...",
+  "start": 3198.54
+ },
+ {
+  "i": 349,
+  "pl": "Tak, dwa razy byłem znudzony, a pięć razy zdradzony... Potem znajdujesz nową kobietę, doskonalszą od innych — a potem ona robi to samo, co mniej doskonałe... Ach, jakiż podły gatunek zwierząt te baby!... Bawią się nami, choć ograniczony ich mózg nawet nie jest w stanie nas pojąć...",
+  "start": 3216.69
+ },
+ {
+  "i": 350,
+  "pl": "No, prawda, że i tygrys może bawić się człowiekiem... Podłe, ale miłe... Mniejsza o nie! A tymczasem gdy raz opanuje człowieka idea, już go nie opuszcza i nie zdradza nigdy...",
+  "start": 3235.67
+ },
+ {
+  "i": 351,
+  "pl": "Położył rękę na ramieniu Wokulskiego i patrząc mu w oczy jakimś rozstrzelonym i rozmarzonym wzrokiem spytał:",
+  "start": 3250.55
+ },
+ {
+  "i": 352,
+  "pl": "— Wszakże pan myślał kiedyś o machinach latających?... Nie o kierowaniu balonami, które są lżejsze od powietrza, bo to błazeństwo, ale — o locie machiny ciężkiej, napełnionej i obwarowanej jak pancernik?... Czy pan rozumie, jaki nastąpiłby przewrót w świecie po podobnym wynalazku?...",
+  "start": 3258.13
+ },
+ {
+  "i": 353,
+  "pl": "Nie ma fortec, armii, granic... Znikają narody, lecz za to w nadziemskich budowlach przychodzą na świat istoty podobne do aniołów lub starożytnych bogów... Już ujarzmiliśmy wiatr, ciepło, światło, piorun... Czy więc nie sądzisz pan, że nadeszła pora nam samym wyzwolić się z oków ciężkości?...",
+  "start": 3277.99
+ },
+ {
+  "i": 354,
+  "pl": "To idea leżąca dziś w duchu czasu... Inni już pracują nad nią; mnie ona dopiero nasyca, ale od stóp do głów... Co mnie ciotka z jej radami i prawidłami dobrego tonu!... Co mnie żeniaczka, kobiety, a nawet mikroskopy, stosy i lampy elektryczne?... Oszaleję albo... przypnę ludzkości skrzydła...",
+  "start": 3300.97
+ },
+ {
+  "i": 355,
+  "pl": "— A gdybyś pan je nawet przypiął, to co?... — spytał Wokulski.",
+  "start": 3324.54
+ },
+ {
+  "i": 356,
+  "pl": "— Sława, jakiej nie dosięgnął jeszcze żaden człowiek — odparł Ochocki. — To moja żona, to moja kobieta... Bądź pan zdrów, muszę iść...",
+  "start": 3329.31
+ },
+ {
+  "i": 357,
+  "pl": "Uścisnął Wokulskiemu rękę, zbiegł ze wzgórza i zniknął między drzewami.",
+  "start": 3340.58
+ },
+ {
+  "i": 358,
+  "pl": "Na Ogród Botaniczny i na Łazienki zapadał już mrok.",
+  "start": 3344.84
+ },
+ {
+  "i": 359,
+  "pl": "„Wariat czy geniusz?... — szepnął Wokulski czując, że sam jest w najwyższym stopniu rozstrojony. — A jeżeli geniusz?...”",
+  "start": 3349.03
+ },
+ {
+  "i": 360,
+  "pl": "Wstał i poszedł w głąb ogrodu, między spacerujących ludzi. Zdawało mu się, że nad pagórkiem, z którego uciekł, unosi się jakaś święta groza.",
+  "start": 3359.85
+ },
+ {
+  "i": 361,
+  "pl": "W Ogrodzie Botanicznym było prawie ciasno; na każdej ulicy tłoczyły się kolumny, gromady, a przynajmniej szeregi spacerujących; każda ławka uginała się pod ciżbą osób. Zastępowano Wokulskiemu drogę, deptano po piętach, potrącano łokciami; rozmawiano i śmiano się ze wszystkich stron.",
+  "start": 3370.45
+ },
+ {
+  "i": 362,
+  "pl": "Wzdłuż Alei Ujazdowskiej, pod murem Belwederskiego ogrodu, pod sztachetami od strony szpitala, na ulicach najmniej uczęszczanych, nawet na zagrodzonych ścieżkach, wszędzie było pełno i wesoło. Im więcej ciemniało w naturze, tym gęściej i hałaśliwiej robiło się między ludźmi.",
+  "start": 3391.09
+ },
+ {
+  "i": 363,
+  "pl": "„Zaczyna mi już braknąć miejsca na świecie!...” — szepnął.",
+  "start": 3409.89
+ },
+ {
+  "i": 364,
+  "pl": "Przeszedł do Łazienek i tu znalazł spokojniejsze ustronie. Na niebie zaiskrzyło się kilka gwiazd, przez powietrze, od Alei, ciągnął szmer przechodniów, a od stawu wilgoć.",
+  "start": 3413.79
+ },
+ {
+  "i": 365,
+  "pl": "Czasem nad głową przeleciał mu huczny chrabąszcz albo cicho przemknął nietoperz; w głębi parku kwilił żałośnie jakiś ptak, na próżno wzywający towarzysza; na stawie rozlegał się daleki plusk wioseł i śmiechy młodych kobiet.",
+  "start": 3426.25
+ },
+ {
+  "i": 366,
+  "pl": "Naprzeciw zobaczył parę ludzi pochylonych ku sobie i szepczących. Ustąpili mu z drogi i ukryli się w cieniu drzew. Opanował go żal i szyderstwo.",
+  "start": 3442.79
+ },
+ {
+  "i": 367,
+  "pl": "„Oto są szczęśliwi zakochani! — pomyślał. — Szepczą i uciekają jak złodzieje... Pięknie urządzony świat, co?... Ciekawym, o ile byłoby lepiej, gdyby władał nim Lucyper?... A gdyby mi zastąpił drogę jaki bandyta i zabił w tym kącie?...”",
+  "start": 3452.67
+ },
+ {
+  "i": 368,
+  "pl": "I wyobrażał sobie, jaki to przyjemny musi być chłód noża wbitego w rozgorączkowane serce.",
+  "start": 3471.02
+ },
+ {
+  "i": 369,
+  "pl": "„Na nieszczęście — westchnął — dziś nie wolno zabijać innych, tylko siebie można; byle od razu i dobrze. No!...”",
+  "start": 3478.61
+ },
+ {
+  "i": 370,
+  "pl": "Wspomnienie o tak niezawodnym środku ucieczki uspokoiło go. Stopniowo pogrążał się w jakimś uroczystym nastroju; zdawało mu się, że nadchodzi moment, w którym powinien zrobić rachunek sumienia czy też ogólny bilans życia.",
+  "start": 3487.81
+ },
+ {
+  "i": 371,
+  "pl": "„Gdybym był najwyższym sędzią — myślał — i gdyby spytano mnie, kto jest wart panny Izabeli: Ochocki czy Wokulski, musiałbym przyznać, że — Ochocki... O osiemnaście lat młodszy ode mnie (osiemnaście lat!...) i taki piękny...",
+  "start": 3504.77
+ },
+ {
+  "i": 372,
+  "pl": "W dwudziestym ósmym roku życia skończył dwa fakultety (ja w tym wieku ledwie zaczynałem się uczyć...) i już zrobił trzy wynalazki (ja żadnego!) A nad to wszystko jest naczyniem, w którym wylęga się wielka idea...",
+  "start": 3522.49
+ },
+ {
+  "i": 373,
+  "pl": "Dziwaczna to rzecz: machina latająca, ale faktem jest, że on znalazł dla niej genialny i jedynie możliwy punkt wyjścia.",
+  "start": 3539.69
+ },
+ {
+  "i": 374,
+  "pl": "Machina latająca musi być cięższa, nie zaś jak balon lżejsza od powietrza; boć wszystko, co prawidłowo lata, począwszy od muchy, skończywszy na olbrzymim sępie, jest od powietrza cięższe.",
+  "start": 3548.13
+ },
+ {
+  "i": 375,
+  "pl": "Ma prawdziwy punkt wyjścia, ma twórczy umysł, czego dowiódł bodajby swoim mikroskopem i lampą; któż wie, zatem, czy nie uda mu się zbudować machiny latającej? A w takim razie będzie większym dla ludzkości od Newtona i Napoleona razem wziętych... I ja mam z nim współzawodniczyć?...",
+  "start": 3562.37
+ },
+ {
+  "i": 376,
+  "pl": "A jeżeli stanie kiedy kwestia: który z nas dwu powinien się usunąć, czyliż będę się wahał?... Cóż to za piekło powiedzieć sobie, że muszę moją nicość złożyć na ofiarę człowiekowi ostatecznie takiemu jak ja, śmiertelnemu, ulegającemu chorobom i omyłkom, a nade wszystko — tak naiwnemu...",
+  "start": 3583.12
+ },
+ {
+  "i": 377,
+  "pl": "Boć to jeszcze dzieciak, co on mi nie wygadywał?...”",
+  "start": 3606.22
+ },
+ {
+  "i": 378,
+  "pl": "Dziwny traf. Gdy Wokulski był subiektem w sklepie kolonialnym, marzył o perpetuum mobile<sup>377<\/sup>, machinie, która by się sama poruszała.",
+  "start": 3611.99
+ },
+ {
+  "i": 379,
+  "pl": "Gdy zaś wstąpiwszy do Szkoły Przygotowawczej poznał, że taka machina jest niedorzecznością, wówczas najtajniejszym i najulubieńszym jego pragnieniem było — wynaleźć sposób kierowania balonami.",
+  "start": 3621.81
+ },
+ {
+  "i": 380,
+  "pl": "To, co dla Wokulskiego było tylko fantastycznym cieniem, błąkającym się po fałszywych drogach, w Ochockim przybrało już formę praktycznego zagadnienia.",
+  "start": 3635.29
+ },
+ {
+  "i": 381,
+  "pl": "„Cóż to za okrucieństwo losów! — myślał z goryczą. — Dwom ludziom dano prawie te same aspiracje, tylko jeden urodził się o osiemnaście lat wcześniej, drugi później; jeden w nędzy, drugi w dostatku; jeden nie mógł wdrapać się na pierwsze piętro wiedzy, drugi lekkim krokiem przeszedł dwa piętra...",
+  "start": 3646.34
+ },
+ {
+  "i": 382,
+  "pl": "Jego nie zepchną z drogi burze polityczne, tak jak mnie; jemu nie przeszkodzi miłość, którą traktuje jak zabawkę; podczas gdy dla mnie, który sześć lat spędziłem na pustyni, uczucie to jest niebem i zbawieniem... Więcej nawet!...",
+  "start": 3667.02
+ },
+ {
+  "i": 383,
+  "pl": "No i on triumfuje nade mną na każdym polu, choć przecież ja mam te same uczucia, tę samą świadomość położenia, a pracę z pewnością większą...”",
+  "start": 3682.54
+ },
+ {
+  "i": 384,
+  "pl": "Wokulski dobrze znał ludzi i często porównywał się z nimi. Lecz gdziekolwiek był, wszędzie widział się trochę lepszym od innych.",
+  "start": 3693.73
+ },
+ {
+  "i": 385,
+  "pl": "Czy jako subiekt, który spędzał noce nad książką, czy jako student, który przez nędzę szedł do wiedzy, czy jako żołnierz pod deszczem kul, czy jako wygnaniec, który w śniegiem zasypanej lepiance pracował nad nauką — zawsze miał w duszy ideę sięgającą poza kilka lat naprzód.",
+  "start": 3702.71
+ },
+ {
+  "i": 386,
+  "pl": "Inni żyli z dnia na dzień, dla swego żołądka albo kieszeni.",
+  "start": 3723.61
+ },
+ {
+  "i": 387,
+  "pl": "I dopiero dziś spotkał człowieka wyższego od siebie, wariata, który chce budować machiny latające!...",
+  "start": 3728.15
+ },
+ {
+  "i": 388,
+  "pl": "„A ja czy dzisiaj nie mam idei, dla której pracuję przeszło rok, zdobyłem majątek, pomagam ludziom i zmuszam ich do szacunku?...”",
+  "start": 3735.08
+ },
+ {
+  "i": 389,
+  "pl": "„Tak, ale miłość to uczucie osobiste; wszystkie zasługi towarzyszące jej są jak ryby zaplątane w odmęt morskiego cyklonu. Gdyby na świecie zniknęła jedna kobieta, a w tobie pamięć o niej, czymże byś został?... Zwyczajnym kapitalistą, który z nudów grywa w karty w resursie.",
+  "start": 3744.35
+ },
+ {
+  "i": 390,
+  "pl": "A tymczasem Ochocki ma ideę, która będzie rwała go zawsze naprzód, chyba że umysł mu zagaśnie...”",
+  "start": 3766.25
+ },
+ {
+  "i": 391,
+  "pl": "„Dobrze, a jeżeli on nic nie zrobi i zamiast zbudować machinę latającą pójdzie do szpitala wariatów?... Ja tymczasem faktycznie coś zrobię, a mikroskop, stos czy nawet lampa elektryczna z pewnością nie znaczą więcej od setek ludzi, którym ja daję byt.",
+  "start": 3774.45
+ },
+ {
+  "i": 392,
+  "pl": "Skądże więc we mnie ta ultrachrześcijańska pokora?... Co kto zrobi, jeszcze nie wiadomo. Ja tymczasem jestem dziś człowiek czynu, a on marzyciel... Zaczekajmy z rok...”",
+  "start": 3793.99
+ },
+ {
+  "i": 393,
+  "pl": "Rok! Wokulski wstrząsnął się. Zdawało mu się, że w końcu drogi nazwanej rokiem widzi tylko niezmierną otchłań, która pochłania wszystko, ale nie mieści w sobie nic...",
+  "start": 3807.22
+ },
+ {
+  "i": 394,
+  "pl": "„Więc nic... nic!...”",
+  "start": 3819.97
+ },
+ {
+  "i": 395,
+  "pl": "Instynktownie rozejrzał się. Był w głębi łazienkowskiego parku, na jakiejś ulicy, do której żaden szmer nie dolatywał. Nawet gęstwina ogromnych drzew stała cicho.",
+  "start": 3824.81
+ },
+ {
+  "i": 396,
+  "pl": "— Która godzina? — zapytał go nagle jakiś głos zachrypnięty.",
+  "start": 3836.77
+ },
+ {
+  "i": 397,
+  "pl": "— Godzina?...",
+  "start": 3841.48
+ },
+ {
+  "i": 398,
+  "pl": "Wokulski przetarł oczy. Przed nim, z mroku, wynurzył się obdarty człowiek.",
+  "start": 3843.02
+ },
+ {
+  "i": 399,
+  "pl": "— Kiedy grzecznie pytają, to grzecznie trzeba odpowiadać — rzekł człowiek i podszedł bliżej.",
+  "start": 3848.29
+ },
+ {
+  "i": 400,
+  "pl": "— Zabij mnie, to sam zobaczysz — odparł Wokulski.",
+  "start": 3855.22
+ },
+ {
+  "i": 401,
+  "pl": "Obdarty człowiek cofnął się. Na lewo od drogi widać było parę ludzkich cieni.",
+  "start": 3859.36
+ },
+ {
+  "i": 402,
+  "pl": "— Głupcy! — zawołał Wokulski idąc naprzód — mam złoty zegarek i kilkaset rubli gotówką... Bronić się nie będę, no!...",
+  "start": 3864.92
+ },
+ {
+  "i": 403,
+  "pl": "Cienie usunęły się między drzewa i któryś rzekł zniżonym głosem:",
+  "start": 3873.25
+ },
+ {
+  "i": 404,
+  "pl": "— Taki to, psiakrew, zejdzie<sup>378<\/sup>, gdzie go nie posieją...",
+  "start": 3878.05
+ },
+ {
+  "i": 405,
+  "pl": "— Bydlęta!... tchórze!... — krzyczał Wokulski prawie nieprzytomny.",
+  "start": 3882.01
+ },
+ {
+  "i": 406,
+  "pl": "Odpowiedział mu tętent uciekających.",
+  "start": 3886.05
+ },
+ {
+  "i": 407,
+  "pl": "Wokulski zebrał myśli.",
+  "start": 3889.13
+ },
+ {
+  "i": 408,
+  "pl": "„Gdzie ja jestem?... Jużci, w Łazienkach, ale w którym miejscu?... Trzeba iść w drugą stronę...”",
+  "start": 3891.99
+ },
+ {
+  "i": 409,
+  "pl": "Obrócił się parę razy i już nie wiedział, dokąd idzie. Serce zaczęło mu bić gwałtownie, zimny pot wystąpił na czoło, pierwszy raz w życiu uczuł obawę nocy i zbłąkania...",
+  "start": 3898.69
+ },
+ {
+  "i": 410,
+  "pl": "Przez parę minut biegł bez celu, prawie bez tchu; dzikie myśli wirowały mu w głowie. Wreszcie na lewo zobaczył mur, a dalej budynek.",
+  "start": 3910.92
+ },
+ {
+  "i": 411,
+  "pl": "„Aha, Pomarańczarnia<sup>379<\/sup>...”",
+  "start": 3919.62
+ },
+ {
+  "i": 412,
+  "pl": "Potem doszedł do jakiegoś mostka, odpoczął i oparłszy się na barierze myślał:",
+  "start": 3921.58
+ },
+ {
+  "i": 413,
+  "pl": "„Więc do tego doszedłem?... Niebezpieczny rywal... rozbite nerwy... Zdaje mi się, że już dziś mógłbym napisać ostatni akt tej komedii!...”",
+  "start": 3927.52
+ },
+ {
+  "i": 414,
+  "pl": "Prosta droga doprowadziła go do stawu, później do łazienkowskiego pałacu. We dwadzieścia minut był w Alejach Ujazdowskich i siadł w przejeżdżającą dorożkę; w kwadrans później znalazł się we własnym mieszkaniu.",
+  "start": 3938.05
+ },
+ {
+  "i": 415,
+  "pl": "Na widok świateł i ulicznego ruchu odzyskał wesołość; nawet uśmiechał się i szeptał:",
+  "start": 3951.96
+ },
+ {
+  "i": 416,
+  "pl": "„Cóż znowu za przywidzenia?... Jakiś Ochocki... samobójstwo!... Ach, głupota... Dostałem się przecież między arystokrację, a co będzie dalej — zobaczymy...”",
+  "start": 3958.44
+ },
+ {
+  "i": 417,
+  "pl": "Gdy wszedł do gabinetu, służący oddał mu list pisany na jego własnym papierze przez panią Meliton.",
+  "start": 3971.0
+ },
+ {
+  "i": 418,
+  "pl": "— Ta pani była tu dziś dwa raży<sup>380<\/sup> — rzekł wierny sługa. — Raż o piąty, drugi raż o ószmy...",
+  "start": 3979.0
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>
