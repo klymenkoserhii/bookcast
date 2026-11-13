@@ -1,0 +1,2423 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-02.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-02.md audio/chapter-02.webm
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-02.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-02.md
+     It reads chapter-02.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path audio/chapter-02.webm, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Złoty żuk · Część II</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative; cursor: help; color: var(--accent);
+    text-decoration: underline dotted; text-underline-offset: 2px; outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none; position: fixed; z-index: 20; left: 12px; top: 12px;
+    width: min(360px, calc(100vw - 36px)); max-height: calc(100vh - 24px);
+    overflow: auto; box-sizing: border-box; padding: 11px 13px;
+    border: 1px solid var(--line-strong); border-radius: 9px;
+    background: var(--bg); color: var(--ink); box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans); text-align: left; white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-pl { display: block; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* Ukrainian reveal block */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Złoty żuk · Część II</h1>
+      <p class="chapter-name">Część II</p>
+      <p>Edgar Allan Poe · bilingual study edition: PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>audio/chapter-02.webm</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (PL → UA, in reading order)  */
+/*    Generated from chapter-02.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "pl": "Byliśmy doszczętnie wyczerpani, lecz przemożne podniecenie nie pozwoliło nam na dłuższy spoczynek. Po niespokojnej kilkugodzinnej drzemce pozrywaliśmy się jak umówieni i przystąpiliśmy do obejrzenia naszych skarbów.",
+  "ua": "Ми були цілковито виснажені, але нестримне збудження не давало нам довше відпочивати. Після кількагодинної неспокійної дрімоти ми, наче за домовленістю, підхопилися й заходилися оглядати наші скарби.",
+  "para": 0,
+  "start": 0.0
+ },
+ {
+  "pl": "Skrzynia była napełniona po brzegi; potrzeba było całego dnia i znacznej części następnej nocy, by rozejrzeć się w jej zawartości. Nie było w niej ładu ni składu. Widać wrzucono do niej wszystko, nie dbając o porządek.",
+  "ua": "Скриня була повна по вінця; щоб розглянути її вміст, знадобився цілий день і значна частина наступної ночі. У ній не було ні ладу ні складу. Видно, туди покидали все підряд, не дбаючи про порядок.",
+  "para": 1,
+  "start": 18.1
+ },
+ {
+  "pl": "Podzieliliśmy zatem różne przedmioty wedle ich jakości i przekonaliśmy się, że weszliśmy w posiadanie znacznie większego skarbu, niż nam się początkowo zdawało.",
+  "ua": "Ми розподілили речі за їхнім видом і зрозуміли, що здобули значно більший скарб, ніж спершу гадали.",
+  "para": 1,
+  "start": 37.35
+ },
+ {
+  "pl": "Same monety przedstawiały wartość przeszło czterystu pięć dziesięciu tysięcy dolarów — a oceniliśmy je możliwie dokładnie wedle bieżących kursów giełdowych. Nie było wśród nich ani odrobiny srebra.",
+  "ua": "Самі монети коштували понад чотириста п’ятдесят тисяч доларів — ми оцінили їх якомога точніше за поточними біржовими курсами. Серед них не було ані крихти срібла.",
+  "para": 1,
+  "start": 48.27
+ },
+ {
+  "pl": "Wyłącznie złoto bardzo starożytne i nader rozmaite: pieniądze francuskie, hiszpańskie i niemieckie, trochę gwinei angielskich, jako też kilka liczmanów, jakich dotychczas nikt z nas nie widział.",
+  "ua": "То було саме лише дуже давнє й надзвичайно різноманітне золото: французькі, іспанські й німецькі монети, трохи англійських гіней, а також кілька жетонів, яких ніхто з нас досі не бачив.",
+  "para": 1,
+  "start": 62.62
+ },
+ {
+  "pl": "Znaleźliśmy także kilka monet bardzo wielkich i ciężkich, lecz tak już uszkodzonych, że nie mogliśmy odczytać napisów. Pieniędzy amerykańskich nie było wcale. Trudniej przyszło nam oznaczyć wartość drogich kamieni.",
+  "ua": "Ми знайшли також кілька дуже великих і важких монет, але вони були такі пошкоджені, що написів не можна було прочитати. Американських грошей не було зовсім. Важче виявилося визначити вартість коштовного каміння.",
+  "para": 1,
+  "start": 75.81
+ },
+ {
+  "pl": "Naliczyliśmy sto dziesięć diamentów, wśród nich kilka nadzwyczaj wielkich i pięknych, zaś ani jednego małego; osiemdziesiąt wspaniałych rubinów; trzysta dziesięć cudownych szmaragdów; dwadzieścia jeden szafirów i wreszcie jeden opal.",
+  "ua": "Ми нарахували сто десять діамантів, серед них кілька надзвичайно великих і гарних, але жодного дрібного; вісімдесят чудових рубінів; триста десять прекрасних смарагдів; двадцять один сапфір і, нарешті, один опал.",
+  "para": 1,
+  "start": 90.92
+ },
+ {
+  "pl": "Wszystkie te kamienie wyłamano z opraw i wrzucono bezładnie do skrzyni. Oprawy znaleźliśmy oddzielnie wśród innych złotych przedmiotów, lecz pogruchotane młotem, jakby z rozmysłem, by nikt ich nie rozpoznał. Ponadto było tam niesłychane mnóstwo szczerozłotych klejnotów;",
+  "ua": "Усі ці камені повиймали з оправ і безладно покидали в скриню. Оправи ми знайшли окремо серед інших золотих речей, але їх розтрощили молотом, наче навмисне, щоб ніхто не зміг їх упізнати. Крім того, там була неймовірна сила суцільнозолотих коштовностей;",
+  "para": 1,
+  "start": 109.78
+ },
+ {
+  "pl": "blisko dwieście kosztownych pierścieni i kolczyków, trzydzieści — jak mi się zdaje — wspaniałych łańcuchów; osiemdziesiąt trzy nadzwyczaj wielkie i ciężkie krucyfiksy; pięć złotych kadzielnic nadzwyczajnej wartości; ogromna, złota waza ponczowa,",
+  "ua": "майже двісті дорогоцінних перснів і сережок, тридцять, як мені здається, чудових ланцюжків; вісімдесят три надзвичайно великі й важкі розп’яття; п’ять золотих кадильниць надзвичайної вартості; величезна золота чаша для пуншу,",
+  "para": 1,
+  "start": 131.41
+ },
+ {
+  "pl": "szczodrze ozdobiona misternie cyzelowanymi liśćmi winnymi i korowodem bachantek<sup>23<\/sup>; dwie przedziwnie rzeźbione rękojeści mieczów tudzież bardzo wiele innych, drobniejszych przedmiotów, których już nie pamiętam.",
+  "ua": "щедро оздоблена майстерно викарбуваним виноградним листям і процесією вакханок<sup>23<\/sup>; дві химерно різьблені руків’я мечів і безліч інших, дрібніших речей, яких я вже не пам’ятаю.",
+  "para": 1,
+  "start": 149.01
+ },
+ {
+  "pl": "Waga tych kosztowności wynosiła przeszło trzysta pięćdziesiąt funtów<sup>24<\/sup>, nie wliczając do nich trzystu dziewięćdziesięciu siedmiu drogocennych złotych zegarków, z których trzy były warte co najmniej po pięćset dolarów.",
+  "ua": "Вага цих коштовностей перевищувала триста п’ятдесят фунтів<sup>24<\/sup>, не рахуючи трьохсот дев’яноста семи дорогоцінних золотих годинників, три з яких коштували щонайменше по п’ятсот доларів.",
+  "para": 1,
+  "start": 163.57
+ },
+ {
+  "pl": "Niektóre z nich były nader starożytne i jako czasomierze nie nadawały się już do użytku, gdyż mechanizmy ich ucierpiały wielce od rdzy — ale wszystkie były szczodrze ozdobione drogimi kamieniami i mieściły się w ogromnie cennych kopertach.",
+  "ua": "Деякі з них були дуже давні й уже не годилися для вимірювання часу, бо механізми сильно постраждали від іржі; проте всі вони були щедро оздоблені коштовним камінням і містилися в надзвичайно цінних корпусах.",
+  "para": 1,
+  "start": 177.79
+ },
+ {
+  "pl": "Całą zawartość skrzyni oceniliśmy tej nocy na półtora miliona dolarów; wszelako później, gdyśmy jeszcze raz przejrzeli wszystkie kosztowności i klejnoty, przekonaliśmy się, o ile nie doceniliśmy wartości naszego skarbu, aczkolwiek niektóre przedmioty przeznaczyliśmy oddzielnie do własnego użytku.",
+  "ua": "Тієї ночі ми оцінили весь вміст скрині в півтора мільйона доларів; однак згодом, ще раз переглянувши всі коштовності й прикраси, зрозуміли, наскільки недооцінили наш скарб, хоча деякі речі відклали собі для власного вжитку.",
+  "para": 1,
+  "start": 195.45
+ },
+ {
+  "pl": "Przyszedł wreszcie czas, że ukończyliśmy obliczenia i że niezmierne nasze podniecenie nieco się ukoiło. Legrand widział, że umieram z niecierpliwości, szukając rozwiązania tej zdumiewającej zagadki, i wyjaśnił mi ją szczegółowo wraz ze wszystkimi okolicznościami.",
+  "ua": "Нарешті ми завершили підрахунки, і наше величезне збудження трохи вляглося. Леґран бачив, що я не тямлюся від нетерпіння, прагнучи розгадати цю дивовижну таємницю, тож докладно пояснив мені все, що сталося.",
+  "para": 2,
+  "start": 215.95
+ },
+ {
+  "pl": "— Pamiętasz — mówił — ów wieczór, kiedy podałem ci pobieżnie nakreślony szkic, który miał przedstawiać żuka. I przypominasz sobie zapewne, iż po prostu uraził mnie opór, z jakim utrzymywałeś, że mój rysunek przypomina trupią głowę.",
+  "ua": "— Пам’ятаєш, — казав він, — той вечір, коли я подав тобі нашвидкуруч накреслений ескіз жука. І, мабуть, пригадуєш, як мене просто образило твоє заперечення, що мій малюнок схожий на мертву голову.",
+  "para": 3,
+  "start": 236.38
+ },
+ {
+  "pl": "Gdyś to powiedział po raz pierwszy, sądziłem, że żartujesz; lecz potem przyszły mi na myśl osobliwe cętki na odwłoku chrząszcza i wydało mi się, że twoje spostrzeżenie jest poniekąd uzasadnione.",
+  "ua": "Коли ти сказав це вперше, я подумав, що ти жартуєш; але потім згадав дивні цятки на черевці жука, і твоє спостереження видалося мені певною мірою слушним.",
+  "para": 3,
+  "start": 258.94
+ },
+ {
+  "pl": "Mimo to twe kpiny z mych zdolności graficznych rozdrażniły mnie — gdyż uchodzę za dobrego rysownika — i dlatego, gdyś mi podał ów pergaminowy świstek, chciałem ze złości zmiąć go i rzucić w ogień.",
+  "ua": "Та твої насмішки з моїх здібностей до малювання мене роздратували — адже я вважаюся добрим рисувальником, — тому, коли ти подав мені той шматок пергаменту, я зі злості хотів зім’яти його й кинути у вогонь.",
+  "para": 3,
+  "start": 275.65
+ },
+ {
+  "pl": "— Ale to chodziło o papierowy świstek — odezwałem się.",
+  "ua": "— Але ж то був паперовий клаптик, — озвався я.",
+  "para": 4,
+  "start": 293.35
+ },
+ {
+  "pl": "— Nie; miał on wygląd papieru i zrazu uważałem go za papier, ale kiedy zacząłem na nim rysować, przekonałem się, że mam do czynienia z kawałkiem bardzo cienkiego pergaminu. Jak wiesz, był on bardzo brudny.",
+  "ua": "— Ні; він мав вигляд паперу, і спочатку я вважав його папером, але, коли почав на ньому малювати, зрозумів, що це шматок дуже тонкого пергаменту. Як знаєш, він був страшенно брудний.",
+  "para": 5,
+  "start": 297.85
+ },
+ {
+  "pl": "Otóż kiedy miałem już go zmiąć, spojrzałem na szkic, który oglądałeś przede mną, i wyobraź sobie moje zdumienie, gdy zobaczyłem istotnie rysunek trupiej głowy na tym samym miejscu, gdzie — jak mi się zdawało — naszkicowałem owada. Przez chwilę nie mogłem się opamiętać i skupić myśli.",
+  "ua": "Отож, коли я вже зібрався його зім’яти, то поглянув на ескіз, який ти перед тим розглядав, і уяви моє здивування, коли я справді побачив малюнок мертвої голови саме там, де, як мені здавалося, накидав комаху. Я на мить утратив самовладання й не міг зосередитися.",
+  "para": 5,
+  "start": 315.46
+ },
+ {
+  "pl": "Wiedziałem, iż mój rysunek różnił się wielce w szczegółach od tego, na który patrzyłem, aczkolwiek było niejakie podobieństwo w najogólniejszych zarysach. Wziąłem tedy świecę i usiadłszy w najdalszym kącie izby, zabrałem się do ściślejszego zbadania pergaminu.",
+  "ua": "Я знав, що мій малюнок у багатьох деталях відрізнявся від того, на який я дивився, хоча в загальних обрисах була певна схожість. Тоді я взяв свічку й, сівши в найдальшому кутку кімнати, заходився уважніше досліджувати пергамент.",
+  "para": 5,
+  "start": 337.91
+ },
+ {
+  "pl": "Odwróciwszy go, ujrzałem swój szkic na przeciwnej stronie, na pewno ten sam. Pierwsze moje wrażenie streszczało się wyłącznie w zdumieniu nad istotnie zastanawiającym podobieństwem konturów, jako też nad szczególnym zbiegiem okoliczności,",
+  "ua": "Перевернувши його, я побачив на звороті свій ескіз — безперечно, той самий. Перше враження було суцільним подивом: контури справді дивовижно нагадували один одного, а збіг обставин був вельми незвичайний,",
+  "para": 5,
+  "start": 358.79
+ },
+ {
+  "pl": "że po drugiej stronie pergaminu mogła widnieć nieznana mi czaszka, tuż pod moją podobizną żuka, i że ta czaszka nie tylko konturem, ale także rozmiarem mogła tak bardzo upodobnić się do mojego rysunku. Jak już powiedziałem, ten osobliwy zbieg okoliczności wprawił mnie na jakiś czas w osłupienie.",
+  "ua": "адже на другому боці пергаменту могла проступити невідома мені черепна голова просто під моїм зображенням жука, і ця голова не лише обрисами, а й розміром могла так сильно скидатися на мій малюнок. Як я вже сказав, цей дивний збіг на певний час приголомшив мене.",
+  "para": 5,
+  "start": 376.69
+ },
+ {
+  "pl": "Jest to zwykłe w takich razach zjawisko. Umysł sili się, by wykazać związek, mianowicie łączność przyczyny i skutku, i nie mogąc temu podołać, ulega jakby chwilowemu obezwładnieniu.",
+  "ua": "У таких випадках це звичайне явище. Розум намагається встановити зв’язок, зокрема причинно-наслідкову залежність, а коли не може цього зробити, наче на мить цілковито ціпеніє.",
+  "para": 5,
+  "start": 400.28
+ },
+ {
+  "pl": "Otrząsnąwszy się jednak z tego bezwładu, jąłem stopniowo nabierać przeświadczenia, które przeniknęło mnie nierównie silniej niż ów zbieg okoliczności.",
+  "ua": "Однак, оговтавшись від цього заціпеніння, я почав поступово доходити певного переконання, яке пройняло мене значно сильніше, ніж той збіг обставин.",
+  "para": 5,
+  "start": 419.94
+ },
+ {
+  "pl": "Uprzytomniłem sobie bowiem dokładnie i szczegółowo, że na pergaminie nie było ani śladu jakiegokolwiek rysunku, gdy przystępowałem do szkicowania żuka.",
+  "ua": "Я ж бо чітко й докладно пригадав, що на пергаменті не було й сліду якогось малюнка, коли я почав креслити жука.",
+  "para": 5,
+  "start": 431.9
+ },
+ {
+  "pl": "Nabierałem pewności, że tak było istotnie, gdyż przypomniałem sobie, że spojrzałem najpierw na jedną stronę, a potem na drugą, szukając możliwie najczystszego miejsca. Gdyby podówczas widniała tam czaszka, byłbym na pewno ją zauważył. Była w tym doprawdy jakaś zagadka, ale czułem,",
+  "ua": "Я дедалі більше в цьому переконувався, бо згадав, як спершу оглянув один бік, а потім другий, шукаючи якомога чистішого місця. Якби там тоді була черепна голова, я напевно її помітив би. Це й справді була загадка, але я відчував,",
+  "para": 5,
+  "start": 441.64
+ },
+ {
+  "pl": "że nie podołam jej rozwiązaniu; wszelako już wówczas, w tej wczesnej chwili, w najodleglejszych i najtajniejszych skrytkach mojego umysłu zamigotało nikle, na podobieństwo robaczka świętojańskiego, poczucie tej prawdy, która w przygodach ubiegłej nocy znalazła takie świetne potwierdzenie.",
+  "ua": "що не зможу її розгадати; проте вже тоді, в ту ранню мить, у найвіддаленіших і найпотаємніших закутках мого розуму ледь-ледь замерехтіло, наче світлячок, відчуття істини, яка так яскраво підтвердилася подіями минулої ночі.",
+  "para": 5,
+  "start": 463.11
+ },
+ {
+  "pl": "Zerwałem się nagle z miejsca i chowając starannie pergamin, odłożyłem dalsze rozmyślania do czasu zupełnej samotności.",
+  "ua": "Я раптом схопився й, обережно сховавши пергамент, відклав подальші роздуми до часу, коли залишуся цілком сам.",
+  "para": 5,
+  "start": 484.33
+ },
+ {
+  "pl": "Po twym odejściu, kiedy Jupiter usnął jak zabity, zabrałem się do metodycznego rozpatrzenia tej sprawy. Przede wszystkim zdałem sobie sprawę, w jaki sposób wszedłem w posiadanie owego pergaminu.",
+  "ua": "Коли ти пішов, а Юпітер заснув як убитий, я взявся методично розбирати цю справу. Передусім з’ясував, як саме пергамент опинився в моїх руках.",
+  "para": 6,
+  "start": 492.19
+ },
+ {
+  "pl": "Miejsce, gdzie dostrzegliśmy żuka, znajdowało się na wybrzeżu stałego lądu, o jakąś milę na zachód od wyspy i bardzo blisko od granicy najwyższego przypływu morza. Kiedy sięgnąłem po niego, ugryzł mnie mocno i musiałem wypuścić go z ręki.",
+  "ua": "Місце, де ми побачили жука, було на узбережжі материка, приблизно за милю на захід від острова й зовсім недалеко від межі найвищого припливу. Коли я потягнувся до нього, він сильно мене вкусив, і я мусив випустити його з рук.",
+  "para": 6,
+  "start": 508.12
+ },
+ {
+  "pl": "Jupiter ze swą zwykłą ostrożnością, zanim przystąpił do schwytania uciekającego przed nami owada, obejrzał się za liściem lub czymś podobnym, przez co byłoby można go ująć. Otóż w tej chwili ujrzeliśmy obaj równocześnie ów skrawek pergaminu, który zresztą wydał mi się papierem.",
+  "ua": "Юпітер, зі своєю звичайною обережністю, перш ніж ловити комаху, що втекла від нас, озирнувся, чи немає листка або чогось подібного, за допомогою чого її можна було б схопити. І саме тоді ми обоє водночас помітили той клаптик пергаменту, який, до речі, здався мені папером.",
+  "para": 6,
+  "start": 529.17
+ },
+ {
+  "pl": "Był on na pół zagrzebany w piasku i wystawał z niego tylko jednym rożkiem. Opodal od miejsca, gdzie go znaleźliśmy, zauważyłem szczątki kadłuba, który kiedyś był zapewne częścią wielkiej okrętowej łodzi.",
+  "ua": "Він був наполовину засипаний піском, і назовні стирчав лише один кутик. Неподалік від місця, де ми його знайшли, я помітив рештки корпусу, який колись, мабуть, був частиною великого корабельного човна.",
+  "para": 6,
+  "start": 554.05
+ },
+ {
+  "pl": "Ten gruchot, jak mi się zdawało, musiał tam leżeć już od dawna, gdyż niełatwo dawało się w nim dostrzec podobieństwo do wiązania łodzi.",
+  "ua": "Ця руїна, як мені здавалося, лежала там уже давно, бо в ній було нелегко розгледіти обриси човнового каркаса.",
+  "para": 6,
+  "start": 570.01
+ },
+ {
+  "pl": "Jupiter podniósł tedy pergamin, owinął weń chrząszcza i podał mi go. Wnet potem szliśmy z powrotem do domu i spotkaliśmy po drodze porucznika G. Pokazałem mu owada, on zaś poprosił mnie, żebym mu pozwolił wziąć go ze sobą do fortu.",
+  "ua": "Юпітер підняв пергамент, загорнув у нього жука й подав мені. Невдовзі ми рушили додому й дорогою зустріли поручника Г. Я показав йому комаху, а він попросив дозволу взяти її з собою до форту.",
+  "para": 7,
+  "start": 580.97
+ },
+ {
+  "pl": "Kiedy się zgodziłem, włożył go natychmiast do kieszonki swej kamizelki bez pergaminu, w który zawinąłem żuka i którego przez cały czas naszej rozmowy nie wypuszczałem z ręki.",
+  "ua": "Коли я погодився, він відразу поклав жука до кишеньки жилета, але без пергаменту, в який я його загорнув і який увесь час нашої розмови не випускав із рук.",
+  "para": 7,
+  "start": 600.31
+ },
+ {
+  "pl": "Być może, iż obawiał się, bym nie zmienił zdania i sądził, że najlepiej będzie wejść od razu w posiadanie zdobyczy — wiesz przecie, jak on się zapala do wszystkiego, co pozostaje w związku z wiedzą przyrodniczą. Równocześnie widocznie musiałem bezwiednie włożyć pergamin do kieszeni.",
+  "ua": "Можливо, він боявся, що я передумаю, і вирішив, що найкраще відразу заволодіти здобиччю — ти ж знаєш, як він захоплюється всім, що стосується природознавства. Водночас я, очевидно, несвідомо поклав пергамент до кишені.",
+  "para": 7,
+  "start": 614.14
+ },
+ {
+  "pl": "Może pamiętasz jeszcze, że kiedy usiadłem przy stole, by narysować żuka, nie znalazłem papieru na zwykłym miejscu. Zajrzałem do szuflady, ale i tam go nie było. Przeszukiwałem kieszenie, by znaleźć jakiś bezużyteczny list, i wtedy nawinął mi się pod rękę pergamin.",
+  "ua": "Можливо, пам’ятаєш, що, сівши за стіл малювати жука, я не знайшов паперу на звичному місці. Зазирнув у шухляду — і там його не було. Я перебирав кишені, шукаючи якийсь непотрібний лист, і тоді мені під руку потрапив пергамент.",
+  "para": 8,
+  "start": 633.35
+ },
+ {
+  "pl": "Rozwodzę się tak szczegółowo nad sposobem, w jaki wszedłem w jego posiadanie, gdyż te okoliczności wywarły na mnie nadzwyczaj silne wrażenie.",
+  "ua": "Я так докладно розповідаю, як він до мене потрапив, бо ці обставини справили на мене надзвичайно сильне враження.",
+  "para": 8,
+  "start": 652.03
+ },
+ {
+  "pl": "Pomyślisz sobie zapewne, żem narwaniec, lecz zdążyłem już dopatrzyć się pewnego związku. Spoiłem dwa ogniwa wielkiego łańcucha. Na brzegu morskim leżała łódź, a opodal od niej ten pergamin — nie papier! — z rysunkiem przedstawiającym czaszkę. Oczywiście spytasz: gdzież jest ten związek?",
+  "ua": "Ти, мабуть, подумаєш, що я навіжений, але мені вже вдалося помітити певний зв’язок. Я з’єднав дві ланки великого ланцюга. На морському березі лежав човен, а неподалік від нього — цей пергамент, не папір! — із зображенням черепа. Звісно, ти запитаєш: який тут зв’язок?",
+  "para": 9,
+  "start": 661.61
+ },
+ {
+  "pl": "Odpowiem na to, że czaszka, czyli trupia głowa, jest powszechnie znanym godłem korsarzy. Podczas swych wypraw wywieszali oni zawsze flagę z trupią głową.",
+  "ua": "Відповім: череп, тобто мертва голова, — загальновідомий знак піратів. Під час своїх походів вони завжди підіймали прапор із черепом.",
+  "para": 9,
+  "start": 691.79
+ },
+ {
+  "pl": "Wspomniałem już, że ów świstek był z pergaminu, nie z papieru. Pergamin jest bardzo trwały — niemal niezniszczalny. Rzeczy mniejszej wagi rzadko powierzano pergaminowi, ile że do zwykłego pisania czy rysowania nadaje się on o wiele mniej od papieru.",
+  "ua": "Я вже казав, що клаптик був із пергаменту, а не з паперу. Пергамент дуже міцний — майже незнищенний. Речі меншої ваги рідко доручали пергаменту, адже для звичайного письма чи малювання він значно гірше надається, ніж папір.",
+  "para": 10,
+  "start": 706.09
+ },
+ {
+  "pl": "Ta refleksja poddała mi myśl, że trupia głowa nie może być bez znaczenia. Zwróciłem również uwagę na kształt pergaminu. Wprawdzie jeden z jego rogów uległ, skutkiem jakiegoś wypadku, zniszczeniu, mimo to widziało się od razu, że jego pierwotny format musiał być podłużny.",
+  "ua": "Ця думка наштовхнула мене на те, що череп не міг бути без значення. Я також звернув увагу на форму пергаменту. Хоча один його кут був пошкоджений якоюсь пригодою, одразу було видно, що спочатку він мав видовжену форму.",
+  "para": 10,
+  "start": 729.13
+ },
+ {
+  "pl": "Był to zatem kształt karty, jakiej używano ongi do dokumentów — do upamiętnienia czegoś, co jest bardzo ważne i winno być troskliwie przechowywane.",
+  "ua": "Отже, це була форма грамоти, якою колись засвідчували щось дуже важливе й таке, що належало дбайливо зберігати.",
+  "para": 10,
+  "start": 753.44
+ },
+ {
+  "pl": "— Ależ — przerwałem — powiedziałeś, że czaszki nie było na pergaminie, kiedy zaczynałeś rysować żuka.",
+  "ua": "— Але ж, — перебив я, — ти сказав, що черепа на пергаменті не було, коли ти починав малювати жука.",
+  "para": 11,
+  "start": 766.24
+ },
+ {
+  "pl": "Jakże mogłeś dopatrywać się związku między czaszką i łodzią, skoro, jak sam twierdzisz, pojawiła się ona (Bóg tylko wie, w jaki sposób i za czyją sprawą!) dopiero w jakiś czas potem, gdy twój szkic był już ukończony?",
+  "ua": "Як же ти міг побачити зв’язок між черепом і човном, якщо, за твоїми словами, череп з’явився (Бог один знає, як і завдяки кому!) лише згодом, коли твій ескіз уже був готовий?",
+  "para": 11,
+  "start": 772.04
+ },
+ {
+  "pl": "— Ach, to właśnie jest osią całej tajemnicy, aczkolwiek ten zagadkowy szczegół nie nastręczał mi przy rozwiązaniu większych trudności. Mój pochód był pewny i zmierzał wprost do celu. Rozumowałem mniej więcej w ten sposób: Kiedy rysowałem żuka, czaszki na pergaminie nie było.",
+  "ua": "— А ось це і є ключ до всієї таємниці, хоча ця загадкова деталь не дуже ускладнила її розв’язання. Я рухався впевнено й просто до мети. Міркував я приблизно так: коли я малював жука, черепа на пергаменті не було.",
+  "para": 12,
+  "start": 786.38
+ },
+ {
+  "pl": "Ukończywszy rysunek, podałem ci go i nie spuszczałem cię z oka do chwili, gdy mi go zwróciłeś. Zatem ty nie narysowałeś czaszki i nie było tam nikogo innego, kto by mógł ją narysować. Nie powstała więc za ludzką przyczyną. A jednak, mimo wszystko, istniała.",
+  "ua": "Закінчивши малюнок, я подав його тобі й не спускав із тебе очей, доки ти мені його не повернув. Отже, ти не намалював черепа, і нікого іншого поруч не було, хто міг би його намалювати. Тож він не міг з’явитися з вини людини. І все ж він був.",
+  "para": 12,
+  "start": 809.39
+ },
+ {
+  "pl": "Dotarłszy w mych rozumowaniach do tego punktu, starałem sobie przypomnieć i z całą dokładnością przypomniałem sobie istotnie wszystko, co zaszło w tym czasie. Było chłodno (co za niezwykły i szczęśliwy wypadek!) i na kominku płonął ogień. Byłem zgrzany po wycieczce i usiadłem przy stole.",
+  "ua": "Дійшовши в міркуваннях до цього місця, я спробував пригадати, а тоді з цілковитою точністю відновив у пам’яті все, що сталося. Було холодно (який незвичайний і щасливий збіг!) і в каміні горів вогонь. Я повернувся з прогулянки розігрітий і сів за стіл.",
+  "para": 13,
+  "start": 834.7
+ },
+ {
+  "pl": "Ty natomiast przysunąłeś sobie krzesło aż do samego ogniska. Kiedy podałem ci pergamin i kiedy jąłeś go oglądać, wpadł do pokoju mój nowofundlandczyk, Wilk, i wsparł ci się łapami na ramionach.",
+  "ua": "Ти ж, навпаки, присунув свій стілець просто до вогнища. Коли я подав тобі пергамент і ти почав його розглядати, до кімнати влетів мій ньюфаундленд Вовк і поклав лапи тобі на плечі.",
+  "para": 13,
+  "start": 859.53
+ },
+ {
+  "pl": "Lewą ręką głaskałeś i odpychałeś go równocześnie, natomiast prawą rękę, w której trzymałeś pergamin, opuściłeś niedbale na kolana, bezpośrednio w pobliżu ognia.",
+  "ua": "Лівою рукою ти водночас гладив його й відштовхував, а праву, в якій тримав пергамент, недбало опустив собі на коліна — просто біля вогню.",
+  "para": 13,
+  "start": 877.54
+ },
+ {
+  "pl": "Była chwila, kiedy mi się zdawało, że pergamin zajmie się od płomienia, i chciałem cię przestrzec, lecz zanim zdążyłem się odezwać, już cofnąłeś rękę i zabrałeś się do oglądania rysunku.",
+  "ua": "На мить мені здалося, що пергамент займеться від полум’я, і я хотів тебе попередити; але перш ніж я встиг озватися, ти вже відсмикнув руку й заходився розглядати малюнок.",
+  "para": 13,
+  "start": 889.25
+ },
+ {
+  "pl": "Rozważywszy wszystkie te okoliczności, doszedłem natychmiast do przekonania, że gorąco było tym czynnikiem, który wywołał na pergaminie ową czaszkę.",
+  "ua": "Зваживши всі ці обставини, я відразу дійшов висновку, що саме жар проявив на пергаменті той череп.",
+  "para": 13,
+  "start": 904.73
+ },
+ {
+  "pl": "Wiesz dobrze, iż istnieją obecnie i że zawsze istniały odczynniki chemiczne, za pomocą których można pisać na papierze lub welinie w ten sposób, iż nakreślone litery występują na jaw dopiero pod działaniem silniejszego ciepła.",
+  "ua": "Ти добре знаєш, що й нині існують, і здавна існували хімічні реактиви, якими можна писати на папері чи пергаменті так, що накреслені літери проступають лише під дією сильнішого тепла.",
+  "para": 13,
+  "start": 913.27
+ },
+ {
+  "pl": "Używano w tym celu niekiedy szafranu, rozczynionego w aqua regia<sup>25<\/sup> i rozpuszczonego następnie w cztery razy większej ilości wody; otrzymywano tym sposobem atrament zielony. Sól kobaltowa, rozpuszczona w spirytusie saletrowym, daje atrament czerwony.",
+  "ua": "Для цього іноді вживали шафран, розчинений у царській горілці<sup>25<\/sup>, а потім розведений учетверо більшою кількістю води; так отримували зелене чорнило. Кобальтова сіль, розчинена в азотному спирті, дає червоне чорнило.",
+  "para": 13,
+  "start": 930.08
+ },
+ {
+  "pl": "Barwy te zanikają po pewnym czasie, gdy materiał, na którym nimi pisano, ulegnie oziębieniu, i ukazują się znowu po ponownym zastosowaniu ciepła.",
+  "ua": "З часом ці барви зникають, коли матеріал, на якому ними писали, охолоджується, а під дією тепла з’являються знову.",
+  "para": 13,
+  "start": 948.45
+ },
+ {
+  "pl": "Poddałem z kolei trupią głowę drobiazgowemu badaniu. Zewnętrzne jej zarysy — to znaczy zarysy bliższe krańców welinu — były znaczne wyraźniejsze niż inne kreski. Z tego wywnioskowałem, że działanie ciepła było albo niezupełne, albo też niejednostajne.",
+  "ua": "Потім я докладно розглянув череп. Його зовнішні контури — тобто ті, що ближче до країв пергаменту, — були значно чіткіші за решту ліній. Звідси я виснував, що тепло подіяло або не повністю, або нерівномірно.",
+  "para": 14,
+  "start": 959.93
+ },
+ {
+  "pl": "Zapaliłem niezwłocznie ogień i ogrzałem mocno całą powierzchnię pergaminu.",
+  "ua": "Я негайно розпалив вогонь і добре прогрів усю поверхню пергаменту.",
+  "para": 14,
+  "start": 980.52
+ },
+ {
+  "pl": "Jedynym na razie następstwem było wzmocnienie się nikłych linii czaszki; powtarzając jednak tę próbę, dostrzegłem wreszcie w kącie owego świstka, wprost naprzeciw miejsca, gdzie widniała trupia głowa, coś, co w pierwszej chwili wydało mi się rysunkiem kozy.",
+  "ua": "Спочатку тонкі лінії черепа лише стали виразнішими; та, повторивши дослід, я нарешті побачив у кутку клаптика, просто навпроти черепа, щось, що спершу здалося мені зображенням кози.",
+  "para": 14,
+  "start": 986.02
+ },
+ {
+  "pl": "Po dokładniejszym jednakże obejrzeniu przekonałem się, że miało to przedstawiać koźlę.",
+  "ua": "Придивившись уважніше, я зрозумів, що там мало бути козеня.",
+  "para": 14,
+  "start": 1006.59
+ },
+ {
+  "pl": "— Ha, ha! — odezwałem się. — Nie mam doprawdy prawa natrząsać się z ciebie — półtora miliona dolarów to nie kpiny! Ale coś mi się zdaje, że nie uda ci się włączyć trzeciego ogniwa do twego łańcucha; bo czyż zdołasz wykazać, że istnieje jakiś szczególniejszy związek między twymi korsarzami a kozą?",
+  "ua": "— Ха-ха! — озвався я. — Не маю права з тебе глузувати: півтора мільйона доларів — не жарти! Але, здається, тобі не вдасться додати до свого ланцюга третю ланку. Чи зможеш довести, що між піратами й козою є якийсь особливий зв’язок?",
+  "para": 15,
+  "start": 1013.59
+ },
+ {
+  "pl": "Korsarze, jak wiesz, nie mają nic wspólnego z kozami, które należą do dziedziny gospodarstwa wiejskiego.",
+  "ua": "Пірати, як знаєш, не мають нічого спільного з козами, які належать до світу сільського господарства.",
+  "para": 15,
+  "start": 1037.14
+ },
+ {
+  "pl": "— Ależ powiedziałem ci, że ów rysunek nie przedstawiał kozy!",
+  "ua": "— Але ж я сказав тобі, що на малюнку була не коза!",
+  "para": 16,
+  "start": 1044.58
+ },
+ {
+  "pl": "— Zatem koźlę — to na jedno wychodzi.",
+  "ua": "— То козеня — однаково.",
+  "para": 17,
+  "start": 1049.76
+ },
+ {
+  "pl": "— Owszem, wychodzi, ale nie zawsze — odparł Legrand. — Może obiło ci się o uszy nazwisko niejakiego kapitana Kidda<sup>26<\/sup>? Otóż rysunek tego zwierzęcia wydał mi się od razu rodzajem logogryficznego lub hieroglificznego podpisu.",
+  "ua": "— І так, і ні, — відповів Леґран. — Чи доводилося тобі чути ім’я якогось капітана Кідда<sup>26<\/sup>? Малюнок цієї тварини відразу здався мені чимось на кшталт ребуса чи ієрогліфічного підпису.",
+  "para": 18,
+  "start": 1053.96
+ },
+ {
+  "pl": "Powiadam: podpisu, bowiem znajdował się na welinie w takim miejscu, że nasunęła mi się ta myśl. Trupia czaszka umieszczona w przeciwległym rogu z tego samego względu wywoływała wrażenie pieczęci czy godła.",
+  "ua": "Кажу — підпису, бо він стояв на пергаменті в такому місці, що саме це й спало мені на думку. Череп у протилежному кутку з тієї самої причини скидався на печатку чи герб.",
+  "para": 18,
+  "start": 1073.32
+ },
+ {
+  "pl": "Ale było mi markotno, że nie mogłem znaleźć reszty — mianowicie treści dokumentu, który sobie wyobraziłem — tekstu, zgodnego z moją myślą.",
+  "ua": "Та мене засмучувало, що я не міг знайти решту — тобто зміст уявленого мною документа, текст, який відповідав би моїм здогадам.",
+  "para": 18,
+  "start": 1092.86
+ },
+ {
+  "pl": "— Przypuszczam, iż spodziewałeś się jakiegoś pisma między godłem a podpisem.",
+  "ua": "— Гадаю, ти сподівався знайти якийсь напис між гербом і підписом.",
+  "para": 19,
+  "start": 1104.35
+ },
+ {
+  "pl": "— Czegoś podobnego. To pewne, iż nieodparcie przenikało mnie przeczucie jakiegoś zbliżającego się, niezmiernego szczęścia. Nie umiem ci powiedzieć, dlaczego.",
+  "ua": "— Щось таке. Безсумнівно, мене охопило невідступне передчуття якогось близького, неймовірного щастя. Не можу пояснити чому.",
+  "para": 20,
+  "start": 1111.22
+ },
+ {
+  "pl": "Być może zresztą, iż było to raczej pragnienie niż istotna wiara; lecz czybyś uwierzył, że niedorzeczna gadanina Jupitera, jakoby ów żuk był szczerozłoty, oddziałała silnie na moją wyobraźnię? A potem to całe mnóstwo przypadków i zgodnych okoliczności, czyż nie było naprawdę nadzwyczajne?",
+  "ua": "Можливо, це було радше бажання, ніж справжня віра; але чи повірив би ти, що безглузді балачки Юпітера про те, ніби жук зроблений із щирого золота, сильно вплинули на мою уяву? А всі ті численні випадки й дивовижні збіги — хіба вони не були незвичайними?",
+  "para": 20,
+  "start": 1122.2
+ },
+ {
+  "pl": "Czyż nie zdajesz sobie sprawy, jak dalece było to przypadkiem, że wszystko to przydarzyło się właśnie w tym jednym dniu całego roku, kiedy było lub mogło być dość chłodno, by trzeba było zapalić na kominku, i że bez ognia tudzież bez udziału psa właśnie w tej chwili, kiedy wpadł do izby,",
+  "ua": "Хіба ти не бачиш, наскільки випадково все це сталося саме того єдиного дня в році, коли було або могло бути достатньо холодно, щоб розпалити камін, і що без вогню, а також без участі собаки, який саме тієї миті влетів до кімнати,",
+  "para": 20,
+  "start": 1142.77
+ },
+ {
+  "pl": "nigdy nie byłbym dostrzegł trupiej czaszki i co za tym idzie, nigdy nie byłbym posiadł owych skarbów?",
+  "ua": "я ніколи не побачив би черепа й, відповідно, ніколи не заволодів би цими скарбами?",
+  "para": 20,
+  "start": 1164.65
+ },
+ {
+  "pl": "— Mówże dalej! Czekam niecierpliwie.",
+  "ua": "— Кажи далі! Я весь увага.",
+  "para": 21,
+  "start": 1173.15
+ },
+ {
+  "pl": "— No dobrze. Oczywiście musiało obić ci się o uszy mnóstwo rozpowszechnionych pogłosek — tysiące niejasnych wieści krążących o skarbach zakopanych gdzieś na wybrzeżu atlantyckim przez Kidda i jego towarzyszy. Te pogłoski musiały doprawdy opierać się na rzeczywistości.",
+  "ua": "— Гаразд. Ти, звісно, чув безліч поширених чуток — тисячі невиразних оповідок про скарби, які Кідд і його товариші закопали десь на узбережжі Атлантики. Ці чутки, безперечно, мали під собою підстави.",
+  "para": 22,
+  "start": 1177.19
+ },
+ {
+  "pl": "Istniały one od tak dawna i powtarzały się tak uporczywie, iż nie mogłem tłumaczyć sobie tego inaczej, jak tylko tą okolicznością, że zakopane skarby wciąż jeszcze spoczywały w ziemi.",
+  "ua": "Вони існували так давно й повторювалися так уперто, що я міг пояснити це лише тим, що закопані скарби й досі лежали в землі.",
+  "para": 22,
+  "start": 1197.29
+ },
+ {
+  "pl": "Gdyby Kidd był ukrył swe łupy tylko na jakiś czas i później je wydobył, pogłoski te nie docierałyby do nas w bieżącej, niezmienionej formie. Może zdarzyło ci się zauważyć, że tego rodzaju opowieści mówią zawsze o ludziach, którzy szukają skarbów, nigdy zaś o tych, którzy je znajdują.",
+  "ua": "Якби Кідд сховав здобич лише на якийсь час, а згодом викопав її, чутки не дійшли б до нас у такому незмінному вигляді. Можливо, ти помічав: у подібних оповідках завжди йдеться про тих, хто шукає скарби, але ніколи — про тих, хто їх знаходить.",
+  "para": 22,
+  "start": 1208.37
+ },
+ {
+  "pl": "Gdyby korsarz był odzyskał swe mienie, sprawa ta byłaby przycichła. Mnie się zdaje, że jakiś wypadek — powiedzmy, utrata dokumentu, który wskazywał miejsce, gdzie je ukryto — uniemożliwiła mu wydobycie skarbu. Sądzę również, że o tym wypadku doszły słuchy do jego towarzyszy,",
+  "ua": "Якби пірат повернув своє майно, про цю справу давно забули б. Мені здається, якась пригода — скажімо, втрата документа, що вказував місце схованки, — завадила йому дістати скарб. Гадаю також, що про цей випадок довідалися його товариші,",
+  "para": 22,
+  "start": 1230.33
+ },
+ {
+  "pl": "którzy w przeciwnym razie nic w ogóle nie wiedzieliby o zakopanych kosztownościach, i że to oni po nadaremnych, bo pozbawionych wskazówek poszukiwaniach, najpierw skrycie, a potem zupełnie jawnie jęli rozpowszechniać wieści, znajdujące się obecnie w obiegu.",
+  "ua": "які інакше взагалі нічого не знали б про закопані коштовності. Після марних пошуків без жодних підказок саме вони спершу потай, а згодом уже відкрито почали поширювати чутки, які й досі ходять.",
+  "para": 22,
+  "start": 1250.39
+ },
+ {
+  "pl": "Czy słyszałeś już kiedyś o jakimś wielkim skarbie wykopanym na wybrzeżu?",
+  "ua": "Чи чув ти коли-небудь про великий скарб, викопаний на узбережжі?",
+  "para": 22,
+  "start": 1266.79
+ },
+ {
+  "pl": "— Nie, nigdy.",
+  "ua": "— Ні, ніколи.",
+  "para": 23,
+  "start": 1272.53
+ },
+ {
+  "pl": "— Otóż wiadomo powszechnie, że bogactwa Kidda były ogromne.",
+  "ua": "— А загальновідомо, що багатства Кідда були величезні.",
+  "para": 24,
+  "start": 1275.18
+ },
+ {
+  "pl": "Dlatego wydawało mi się rzeczą pewną, iż spoczywają jeszcze w ziemi; i nie zdziwisz się zapewne, gdy ci powiem, że żywiłem nadzieję, spotęgowaną niemal do zupełnego przeświadczeni, iż ów w tak osobliwy sposób znaleziony pergamin zawiera zaginione wskazówki o miejscu, gdzie te bogactwa ukryto.",
+  "ua": "Тому я був майже певен, що вони й досі лежать у землі; тож не здивуєшся, коли я скажу, що майже цілковито повірив: пергамент, який так дивно потрапив мені до рук, містить утрачені вказівки на місце, де сховали ті багатства.",
+  "para": 24,
+  "start": 1280.52
+ },
+ {
+  "pl": "— Cóż więc zrobiłeś dalej?",
+  "ua": "— То що ти зробив далі?",
+  "para": 25,
+  "start": 1304.82
+ },
+ {
+  "pl": "— Ogrzewałem welin coraz silniej nad ogniem, ale nic się nie ukazało.",
+  "ua": "— Я дедалі сильніше нагрівав пергамент над вогнем, але нічого не проступало.",
+  "para": 26,
+  "start": 1310.03
+ },
+ {
+  "pl": "Pomyślałem sobie zatem, iż kto wie, czy przyczyną tego niepowodzenia nie jest powłoka brudu; opłukałem więc pergamin starannie, polewając go ciepłą wodą, a potem włożyłem do cynowego rondla, czaszką na dół, i postawiłem rondel na piecu, w którym napaliłem węglem drzewnym.",
+  "ua": "Тоді я подумав, що, може, заважає шар бруду; тож обережно промив пергамент теплою водою, поклав його в олов’яний казанок черепом донизу й поставив на піч, де розпалив деревне вугілля.",
+  "para": 26,
+  "start": 1316.41
+ },
+ {
+  "pl": "Po kilku minutach, kiedy rondel dobrze się rozgrzał, wyjąłem ów świstek i przekonałem się ku nieopisanej swej radości, że w kilku miejscach wystąpiły na nim plamki, które wydawały mi się znakami, połączonymi w rządki. Włożyłem go znów do rondla na parę minut.",
+  "ua": "За кілька хвилин, коли казанок добре нагрівся, я дістав клаптик і з невимовною радістю побачив, що в кількох місцях проступили цятки, які скидалися на знаки, складені в рядки. Я знову поклав його в казанок ще на кілька хвилин.",
+  "para": 26,
+  "start": 1336.27
+ },
+ {
+  "pl": "Po wyjęciu zobaczyłem już wszystko i zaraz ci to pokażę.",
+  "ua": "Коли дістав його, то вже побачив усе й зараз тобі покажу.",
+  "para": 26,
+  "start": 1356.94
+ },
+ {
+  "pl": "Po tych słowach Legrand ogrzał na nowo pergamin i podał mi go do obejrzenia. Między trupią czaszką a koźlęciem ujrzałem następujące znaki, nakreślone nieudolnie czerwonym atramentem:",
+  "ua": "Сказавши це, Леґран знову нагрів пергамент і подав мені. Між черепом і козеням я побачив такі знаки, недбало накреслені червоним чорнилом:",
+  "para": 27,
+  "start": 1362.94
+ },
+ {
+  "pl": "53‡‡†305))6*;4826)4‡.)4‡);806*;48†8¶60))85;1‡(;:‡*8†83(88)5*† ;46(;88*96*?;8)*‡(;485);5*†2:*‡(;4956*2(5*-4)8¶8*;4069285);) 6†8)4‡‡;1(‡9;48081;8:8‡1;48†85;4)485†528806*81(‡9;48;(88;4(‡?34;48)4‡;161;:188;‡?;",
+  "ua": "53‡‡†305))6*;4826)4‡.)4‡);806*;48†8¶60))85;1‡(;:‡*8†83(88)5*† ;46(;88*96*?;8)*‡(;485);5*†2:*‡(;4956*2(5*-4)8¶8*;4069285);) 6†8)4‡‡;1(‡9;48081;8:8‡1;48†85;4)485†528806*81(‡9;48;(88;4(‡?34;48)4‡;161;:188;‡?;",
+  "para": 28,
+  "start": null
+ },
+ {
+  "pl": "— Mój drogi — rzekłem, oddając mu świstek — wciąż jeszcze jestem jak tabaka w rogu. Gdybym w zamian za rozwiązanie tej zagadki miał posiąść wszystkie skarby Goldkondy<sup>27<\/sup>, nie zdołałbym na pewno dokazać tego.",
+  "ua": "— Друже мій, — сказав я, повертаючи йому клаптик, — я й досі нічого не тямлю. Навіть якби за розгадку цієї таємниці мені дісталися всі скарби Ґолконди<sup>27<\/sup>, я однаково не зміг би її розв’язати.",
+  "para": 29,
+  "start": 1381.07
+ },
+ {
+  "pl": "— A jednak — odpowiedział Legrand — rozwiązanie to bynajmniej nie jest tak trudne, jak mogłoby się wydawać po pierwszym, pobieżnym obejrzeniu tych znaków.",
+  "ua": "— А проте, — відповів Леґран, — розгадати її зовсім не так важко, як може здатися після першого побіжного погляду на ці знаки.",
+  "para": 30,
+  "start": 1400.79
+ },
+ {
+  "pl": "Te znaki, jak łatwo się domyślić, są szyfrem, to jest, mają pewne znaczenie; wszelako z tego, co wiem o Kiddzie, nie sądzę, żeby był zdolny do obmyślenia zawilszych kryptogramów.",
+  "ua": "Ці знаки, як легко здогадатися, є шифром, тобто мають певне значення; однак, судячи з того, що я знаю про Кідда, не думаю, що він був здатен вигадати надто складний криптограм.",
+  "para": 30,
+  "start": 1414.59
+ },
+ {
+  "pl": "Od razu przyszło mi na myśl, że muszą być nader proste — oczywiście, w tej mierze, iż nieokrzesany umysł marynarza bez pomocy klucza przenigdy nie zdoła ich rozwiązać.",
+  "ua": "Мені відразу спало на думку, що шифр має бути дуже простим — настільки, щоб грубий розум моряка без ключа нізащо не зміг його розгадати.",
+  "para": 30,
+  "start": 1429.27
+ },
+ {
+  "pl": "— A czy ty je istotnie odczytałeś?",
+  "ua": "— То ти справді його прочитав?",
+  "para": 31,
+  "start": 1442.16
+ },
+ {
+  "pl": "— Z łatwością; odczytywałem już inne, tysiąc razy zawilsze.",
+  "ua": "— Легко; мені доводилося розшифровувати й у тисячу разів складніші.",
+  "para": 32,
+  "start": 1445.97
+ },
+ {
+  "pl": "Okoliczności, a także pewna skłonność umysłu sprawiły, iż zajmowałem się podobnymi łamigłówkami, i wątpię bardzo, czy bystrość ludzka może obmyślić taką zagadkę, której przenikliwość innego człowieka przy pomocy odpowiednich sposobów rozwiązać by nie mogła.",
+  "ua": "Обставини й певна схильність розуму спонукали мене займатися такими загадками, і я дуже сумніваюся, що людська винахідливість здатна придумати шифр, якого інша людина не змогла б розгадати проникливістю та відповідними методами.",
+  "para": 32,
+  "start": 1453.07
+ },
+ {
+  "pl": "Skoro więc powiodło mi się wykryć czytelne i połączone ze sobą znaki, nie myślałem już wcale o trudnościach, jakie nastręczały się przy ich odczytaniu.",
+  "ua": "Коли ж мені вдалося знайти зрозумілі й пов’язані між собою знаки, я вже не думав про труднощі їхнього прочитання.",
+  "para": 32,
+  "start": 1469.59
+ },
+ {
+  "pl": "W danym wypadku — podobnie zresztą jak wszędzie, gdzie chodzi o pismo tajemne — pierwszym zagadnieniem jest język szyfru, ponieważ zasady rozwiązania, zwłaszcza gdy ma się do czynienia z mniej zawiłymi szyframi, pozostają w związku i mogą ulegać zmianom zależnie od ducha tego języka.",
+  "ua": "У цьому випадку, як і в кожному випадку з таємним письмом, перше питання — якою мовою написано шифр, адже принципи розгадування, особливо простіших шифрів, залежать від особливостей цієї мови й можуть змінюватися.",
+  "para": 33,
+  "start": 1482.86
+ },
+ {
+  "pl": "Na ogół nie ma innego sposobu, jak kierując się możliwościami, próbować po kolei wszystkich znanych języków, aż znajdzie się ten, o który chodzi. W szyfrze, który mamy przed sobą, podpis usuwa wszelkie trudności. Łamigłówka ze słowa „Kidd” jest możliwa tylko w języku angielskim.",
+  "ua": "Зазвичай доводиться, зважаючи на обставини, по черзі випробовувати всі відомі мови, аж поки не знайдеш потрібну. У нашому шифрі підпис знімає всі сумніви. Гра зі словом «Кідд» можлива лише англійською.",
+  "para": 33,
+  "start": 1504.93
+ },
+ {
+  "pl": "Gdyby nie ta okoliczność, byłbym rozpoczął poszukiwania od hiszpańskiego i francuskiego, gdyż korsarz rozbijający na wodach hiszpańskich napisałby oczywiście swą tajemnicę w jednym z tych dwu języków. Wyszedłem jednak z założenia, że kryptogram ten jest angielski.",
+  "ua": "Якби не ця обставина, я почав би шукати іспанською та французькою, адже пірат, що промишляв в іспанських водах, звісно, написав би свою таємницю однією з цих мов. Та я виходив із того, що криптограма англійська.",
+  "para": 33,
+  "start": 1533.28
+ },
+ {
+  "pl": "Jak widzisz, nie ma w nim odstępów między słowami. Gdyby one były, zadanie byłoby bez porównania łatwiejsze.",
+  "ua": "Як бачиш, між словами немає пробілів. Якби вони були, завдання було б незрівнянно легшим.",
+  "para": 34,
+  "start": 1555.8
+ },
+ {
+  "pl": "Byłbym zaczął w takim razie od zestawienia i rozbioru krótszych słów, a napotkawszy słowo o jednej tylko literze, na przykład „a” lub „I”<sup>28<\/sup>, byłbym uważał rozwiązanie za rzecz pewną.",
+  "ua": "Тоді я почав би зі списку й аналізу коротких слів, а знайшовши слово з однієї літери, наприклад «a» чи «I»<sup>28<\/sup>, вважав би розгадку певною.",
+  "para": 34,
+  "start": 1566.79
+ },
+ {
+  "pl": "Ponieważ odstępów nie ma, zacząłem od oznaczenia głosek, zarówno tych, które powtarzają się najczęściej, jak też tych, które najrzadziej. Zliczywszy wszystkie, zestawiłem następującą tablicę:",
+  "ua": "Оскільки пробілів немає, я почав визначати звуки — і ті, що повторювалися найчастіше, і ті, що траплялися найрідше. Порахувавши їх усі, склав таку таблицю:",
+  "para": 34,
+  "start": 1582.45
+ },
+ {
+  "pl": "Otóż w języku angielskim spotyka się najczęściej głoskę „e”. Po niej następują z kolei: „a o i d h n r s t u y c f g l m w b k p q x z”. „E” ma taką przewagę, iż trudno jest znaleźć jakiś dłuższy zwrot, gdzie by go nie było.",
+  "ua": "В англійській мові найчастіше трапляється звук «e». Далі йдуть, у такому порядку: «a o i d h n r s t u y c f g l m w b k p q x z». «E» настільки переважає, що важко знайти довгий вислів, у якому його немає.",
+  "para": 35,
+  "start": 1618.13
+ },
+ {
+  "pl": "Od samego więc początku mamy zasadę, która nadaje się do czegoś więcej niźli tylko do płonnych przypuszczeń. Powszechny użytek, jaki można mieć z tej tablicy, jest widoczny, wszelako w szczególności przy tym szyfrze będzie nam ona niezbyt pomocna.",
+  "ua": "Отже, вже від самого початку маємо принцип, який дає щось більше, ніж безпідставні здогади. Загальна користь цієї таблиці очевидна, але саме в цьому шифрі вона не надто допоможе.",
+  "para": 36,
+  "start": 1644.86
+ },
+ {
+  "pl": "Ponieważ przeważa wśród nich 8, przeto zaczniemy od przypuszczenia, że jest to „e” naturalnego abecadła.",
+  "ua": "Оскільки серед знаків найчастіше трапляється 8, почнімо з припущення, що це англійська літера «e».",
+  "para": 36,
+  "start": 1663.53
+ },
+ {
+  "pl": "By sprawdzić to przypuszczenie, zobaczmy, jak często znak 8 spotyka się parami — gdyż „e” nader często podwaja się w języku angielskim, w takich słowach, jak na przykład: meet, feet, speed, seen, been, agree itd. W danym wypadku podwaja się ono aż pięć razy, aczkolwiek cały kryptogram jest krótki.",
+  "ua": "Щоб перевірити здогад, погляньмо, як часто знак 8 повторюється двічі поспіль: літера «e» в англійській часто подвоюється в словах meet, feet, speed, seen, been, agree тощо. У цьому випадку вона повторюється аж п’ять разів, хоча весь криптограм короткий.",
+  "para": 36,
+  "start": 1675.05
+ },
+ {
+  "pl": "Przyjmijmy zatem, że 8 oznacza „e”. Ze wszystkich słów w języku angielskim najczęściej używa się „the”; zobaczmy przeto, czy nie uda nam się znaleźć kilkakrotnie powtórzonego zestawienia trzech znaków, z których 8 będzie na końcu.",
+  "ua": "Припустімо, отже, що 8 означає «e». Найчастіше в англійській мові вживають слово «the»; перевірмо, чи знайдеться кілька повторів трьох знаків, останнім з яких буде 8.",
+  "para": 37,
+  "start": 1699.67
+ },
+ {
+  "pl": "Jeśli spotkamy kilkakrotnie takie zestawienie znaków, to nader prawdopodobnie będzie to oznaczało słowo „the”. Przeglądając kryptogram znajdujemy aż siedem takich zestawień, złożonych ze znaków 48.",
+  "ua": "Якщо знайдемо кілька однакових сполучень знаків, то дуже ймовірно, що вони означають «the». Переглядаючи криптограму, бачимо аж сім таких сполучень зі знаків 48.",
+  "para": 37,
+  "start": 1720.7
+ },
+ {
+  "pl": "Możemy więc przypuścić, że ; oznacza „t”, 4 oznacza „h”, a 8 oznacza „e” — przy czym ostatnie znaczenie potwierdza się już stanowczo. Zrobiliśmy przeto krok naprzód.",
+  "ua": "Отже, можна припустити, що ; означає «t», 4 — «h», а 8 — «e»; останнє значення вже остаточно підтвердилося. Ми зробили крок уперед.",
+  "para": 37,
+  "start": 1736.65
+ },
+ {
+  "pl": "Oznaczywszy w ten sposób jedno słowo, będziemy mogli z kolei oznaczyć rzecz nader ważną, mianowicie kilka początków i zakończeń innych słów. Weźmy bodaj jeden taki przykład, w którym spotyka się zestawienie ;48 niedaleko od końca szyfru.",
+  "ua": "Визначивши таким чином одне слово, зможемо встановити дуже важливу річ — початки й закінчення інших слів. Візьмімо хоча б один приклад, де неподалік від кінця шифру трапляється сполучення ;48.",
+  "para": 38,
+  "start": 1756.06
+ },
+ {
+  "pl": "Wiemy, że znak ;, który następuje bezpośrednio potem, jest początkiem słowa i że z sześciu znaków, które następują po owym „the”, pięć jest już nam znanych. Zastąpmy teraz te znaki literami, których mają znaczenie, pozostawiając dla nieznanych wolne miejsce:",
+  "ua": "Ми знаємо, що знак ;, який іде відразу після нього, є початком слова, а з шести знаків після «the» п’ять нам уже відомі. Підставмо тепер замість них літери, які вони означають, а для невідомого залишмо порожнє місце:",
+  "para": 38,
+  "start": 1773.81
+ },
+ {
+  "pl": "t eeth",
+  "ua": "t eeth",
+  "para": 39,
+  "start": null
+ },
+ {
+  "pl": "Od razu możemy odrzucić „th”, jako nie wchodzące w skład słowa, zaczynającego się od pierwszego „t”, gdyż przeglądając cały alfabet w poszukiwaniu litery, którą można by wstawić w owo wolne miejsce, przekonujemy się, iż niepodobna jest utworzyć takiego słowa,",
+  "ua": "Можемо відразу відкинути «th» як частину слова, що починається з першої «t»: перебравши весь алфавіт у пошуках літери для порожнього місця, переконуємося, що такого слова утворити неможливо,",
+  "para": 40,
+  "start": 1796.41
+ },
+ {
+  "pl": "w którym to „th” mogłoby stanowić część składową. Ograniczmy się zatem tylko do:",
+  "ua": "де «th» могло б бути його частиною. Тож обмежмося лише таким варіантом:",
+  "para": 40,
+  "start": 1813.37
+ },
+ {
+  "pl": "t ee",
+  "ua": "t ee",
+  "para": 41,
+  "start": 1821.07
+ },
+ {
+  "pl": "i przeszukując znów, w razie potrzeby, cały alfabet, dojdziemy do słowa „tree” (drzewo) jako jedynego możliwego rozwiązania. Uzyskujemy przy tym inną literę, a mianowicie „r”, oznaczone znakiem (, oraz zestawione razem słowa „the tree”.",
+  "ua": "І, знову перебравши за потреби весь алфавіт, дійдемо до слова «tree» («дерево») як єдиного можливого розв’язання. Так ми отримуємо ще одну літеру — «r», позначену знаком (, — і словосполучення «the tree».",
+  "para": 42,
+  "start": 1822.73
+ },
+ {
+  "pl": "Nieco dalej spotykamy znów zestawienie ;48 i posługujemy się nim jako zakończeniem tego, co je bezpośrednio poprzedza. Otrzymamy w ten sposób kombinację następującą:",
+  "ua": "Трохи далі знову трапляється ;48, і ми використовуємо його як закінчення попереднього фрагмента. Так отримуємо таку комбінацію:",
+  "para": 43,
+  "start": 1858.17
+ },
+ {
+  "pl": "the tree ;4(‡?34 the,",
+  "ua": "the tree ;4(‡?34 the,",
+  "para": 44,
+  "start": 1874.69
+ },
+ {
+  "pl": "i podstawiwszy w miejsce wiadomych znaków odpowiednie litery, odczytujemy:",
+  "ua": "підставивши замість відомих знаків відповідні літери, читаємо:",
+  "para": 45,
+  "start": 1878.99
+ },
+ {
+  "pl": "the tree thr‡?3h the",
+  "ua": "the tree thr‡?3h the",
+  "para": 46,
+  "start": 1887.99
+ },
+ {
+  "pl": "Jeżeli teraz zamiast znaków nieznanych pozostawimy wolne miejsca lub wstawimy zamiast nich kropki, to otrzymamy:",
+  "ua": "Якщо тепер замість невідомих знаків залишити пропуски або поставити крапки, отримаємо:",
+  "para": 47,
+  "start": 1895.22
+ },
+ {
+  "pl": "the tree thr...h the",
+  "ua": "the tree thr...h the",
+  "para": 48,
+  "start": null
+ },
+ {
+  "pl": "przy czym natychmiast przychodzi na myśl słowo „through” (przez).",
+  "ua": "і відразу спадає на думку слово «through» («крізь»).",
+  "para": 49,
+  "start": 1910.19
+ },
+ {
+  "pl": "Odkrycie to zapoznaje nas ponadto z nowymi trzema literami „o”, „u”, „g”, oznaczonymi przez ‡, ? oraz 3.",
+  "ua": "Це відкриття дає нам також три нові літери — «o», «u», «g», позначені знаками ‡, ? і 3.",
+  "para": 50,
+  "start": 1916.47
+ },
+ {
+  "pl": "Szukając dalej w szyfrze zestawień wiadomych znaków, spotykamy niedaleko od początku kombinację taką:",
+  "ua": "Шукаючи далі знайомі комбінації в шифрі, неподалік від початку бачимо таку:",
+  "para": 51,
+  "start": 1925.43
+ },
+ {
+  "pl": "83(88",
+  "ua": "83(88",
+  "para": 52,
+  "start": 1930.99
+ },
+ {
+  "pl": "czyli „egree”, co oczywiście jest zakończeniem słowa „degree” (stopień) i poddaje nam znowu jedną literę, mianowicie „d” oznaczone znakiem †.",
+  "ua": "тобто «egree» — очевидне закінчення слова «degree» («градус»); отже, маємо ще одну літеру — «d», позначену знаком †.",
+  "para": 53,
+  "start": 1933.83
+ },
+ {
+  "pl": "O cztery litery dalej za słowem „degree” znajdujemy zestawienie:",
+  "ua": "За чотири літери після слова «degree» знаходимо таку комбінацію:",
+  "para": 54,
+  "start": 1950.84
+ },
+ {
+  "pl": ";46(;88",
+  "ua": ";46(;88",
+  "para": 55,
+  "start": 1956.96
+ },
+ {
+  "pl": "Przekładając znane znaki i zastępując, jak poprzednio, kropkami znaki nieznane, otrzymamy:",
+  "ua": "Підставивши відомі знаки й, як раніше, замінивши невідомі крапками, отримаємо:",
+  "para": 56,
+  "start": 1962.91
+ },
+ {
+  "pl": "th.rtee.",
+  "ua": "th.rtee.",
+  "para": 57,
+  "start": 1971.78
+ },
+ {
+  "pl": "Jest to kombinacja, która natychmiast podsuwa domyślności naszej słowo „thirteen” (trzynaście) i dorzuca nam dwie nowe głoski „i”, „n”, oznaczone 6 i *.",
+  "ua": "Ця комбінація відразу підказує слово «thirteen» («тринадцять») і дає нам ще дві літери — «i» та «n», позначені знаками 6 і *.",
+  "para": 58,
+  "start": 1974.36
+ },
+ {
+  "pl": "Wracając następnie do początku kryptogramu, widzimy zestawienie:",
+  "ua": "Повернувшись до початку криптограми, бачимо таке сполучення:",
+  "para": 59,
+  "start": 1988.85
+ },
+ {
+  "pl": "53‡‡†",
+  "ua": "53‡‡†",
+  "para": 60,
+  "start": 1992.71
+ },
+ {
+  "pl": "Przełożywszy je, jak to czyniliśmy poprzednio, dostajemy:",
+  "ua": "Підставивши значення знаків, як ми робили раніше, отримуємо:",
+  "para": 61,
+  "start": 1995.61
+ },
+ {
+  "pl": "good",
+  "ua": "good",
+  "para": 62,
+  "start": 2000.09
+ },
+ {
+  "pl": "co zarazem upewnia nas, że pierwszą literą jest „A” i że dwa pierwsze słowa brzmią: „A good” (dobry).",
+  "ua": "Це підтверджує, що перша літера — «A», а перші два слова — «A good» («добрий»).",
+  "para": 63,
+  "start": 2002.25
+ },
+ {
+  "pl": "By uniknąć zamieszania, należałoby teraz zestawić w jedną tablicę nasz klucz, o ile jest już nam znany. Będzie przedstawiała się ona tak:",
+  "ua": "Щоб не заплутатися, тепер варто звести вже відомий ключ в одну таблицю. Вона матиме такий вигляд:",
+  "para": 64,
+  "start": 2013.6
+ },
+ {
+  "pl": "Mamy już zatem aż dziesięć najważniejszych liter i nie potrzebujemy dalej gromadzić szczegółów, by dotrzeć do rozwiązania. Wykazałem ci dostatecznie, że szyfry tego rodzaju są łatwe do odczytania i zapoznałem cię po trosze z rozumową metodą ich odgadywania.",
+  "ua": "Отже, ми вже знаємо десять найважливіших літер і можемо більше не збирати подробиць, а перейти до розгадки. Я достатньо показав тобі, що такі шифри легко читати, і трохи ознайомив із розумовим методом їхнього розв’язання.",
+  "para": 65,
+  "start": 2047.21
+ },
+ {
+  "pl": "Wiedz jednak, iż okaz, który mamy przed sobą, należy do najłatwiejszego rodzaju kryptogramów. Pozostaje mi tylko dać ci zupełny przekład znaków, widniejących na pergaminie, jakby były już rozwiązane. Brzmi on, jak następuje:",
+  "ua": "Але знай: цей примірник належить до найлегших різновидів криптограм. Мені лишилося лише подати повний переклад знаків із пергаменту, наче їх уже розшифровано. Ось він:",
+  "para": 65,
+  "start": 2065.87
+ },
+ {
+  "pl": "A good glass in the bishop’s hostel in the devil’s seat forty-one degrees and thirteen minutes northeast and by north main branch seventh limb east side shoot from the left eye of the death’s-head a bee line from the tree through the shot fifty feet out.",
+  "ua": "A good glass in the bishop’s hostel in the devil’s seat forty-one degrees and thirteen minutes northeast and by north main branch seventh limb east side shoot from the left eye of the death’s-head a bee line from the tree through the shot fifty feet out.",
+  "para": 66,
+  "start": null
+ },
+ {
+  "pl": "(Dobre szkła w hotelu biskupa na siedzeniu diabła czterdzieści jeden stopni i trzynaście minut północno-zachód i na północ główny pień siódmy konar od zachodu spuścić z lewego oka trupiej czaszki linię prostą od drzewa przez kulę piętnaście stóp dalej).",
+  "ua": "(Добра підзорна труба в єпископському готелі на диявольському сидінні — сорок один градус і тринадцять хвилин — на північний схід і трохи на північ — головна гілка, сьомий сук зі східного боку — стріляти з лівого ока черепа — провести пряму від дерева крізь кулю й відміряти п’ятдесят футів далі.)",
+  "para": 67,
+  "start": 2082.82
+ },
+ {
+  "pl": "— Ależ — rzekłem — ta łamigłówka jest mi jeszcze tak samo niejasna jak poprzednio. Bo czyż można dorozumieć się czegoś tego galimatiasu, z tych „diablich siedzeń”, „trupich głów” i „biskupich hotelów”?",
+  "ua": "— Але ж, — сказав я, — ця загадка не стала мені зрозумілішою. Як узагалі можна щось збагнути з цієї плутанини — «диявольських сидінь», «черепів» і «єпископських готелів»?",
+  "para": 68,
+  "start": 2109.91
+ },
+ {
+  "pl": "— Przyznaję — odrzekł Legrand — że na pierwszy rzut oka wygląda to wszystko jeszcze dość zawile. Toteż pierwszym mym staraniem było dokonać naturalnego rozdziału zdań, zgodnie z zamierzeniami tego, kto je układał.",
+  "ua": "— Згоден, — відповів Леґран, — на перший погляд усе це ще досить заплутано. Тож спершу я спробував природно розставити речення відповідно до задуму того, хто їх склав.",
+  "para": 69,
+  "start": 2131.93
+ },
+ {
+  "pl": "— To znaczy położyć znaki pisarskie, nieprawdaż?",
+  "ua": "— Тобто розставити розділові знаки, так?",
+  "para": 70,
+  "start": 2149.24
+ },
+ {
+  "pl": "— Coś w tym rodzaju.",
+  "ua": "— Щось на кшталт того.",
+  "para": 71,
+  "start": 2155.72
+ },
+ {
+  "pl": "— W jakiż sposób można to zrobić?",
+  "ua": "— І як це зробити?",
+  "para": 72,
+  "start": 2157.58
+ },
+ {
+  "pl": "— Pomyślałem sobie, że piszący umyślnie zaniedbał podziału na zdania, by utrudnić rozwiązanie. Wszelako człowiek niewyposażony nadzwyczajną bystrością, który podejmie się takiego zadania, na pewno popadnie w przesadę.",
+  "ua": "— Я подумав, що автор навмисно не поділив текст на речення, щоб ускладнити розгадку. Але людина без неабиякої кмітливості, взявшись до такого завдання, неодмінно впаде в крайнощі.",
+  "para": 73,
+  "start": 2160.42
+ },
+ {
+  "pl": "Kiedy bowiem układając swój kryptogram, dojdzie do przerwy w zdaniach, która z natury rzeczy wymagałaby kropki lub pauzy, wówczas nie zdoła oprzeć się pokusie, by właśnie w tym miejscu nie skupić swych znaków gęściej niż zazwyczaj.",
+  "ua": "Адже, складаючи криптограму, коли вона дійде до природної межі речення, де проситься крапка чи пауза, така людина не втримається від спокуси скупчити саме в цьому місці більше знаків, ніж зазвичай.",
+  "para": 73,
+  "start": 2175.69
+ },
+ {
+  "pl": "Obejrzyj rękopis, o którym mówimy, a z łatwością znajdziesz aż pięć takich objawów niezwykłego nagromadzenia. Powodując się tą wskazówką, dokonałem podziału w następujący sposób:",
+  "ua": "Оглянь рукопис, про який ідеться, і легко знайдеш аж п’ять таких місць із незвичним скупченням знаків. Скориставшись цією підказкою, я розбив текст так:",
+  "para": 73,
+  "start": 2190.79
+ },
+ {
+  "pl": "A good glass in the bishop’s hostel in the devil’s seat — forty-one degrees and thirteen minutes — northeast and by north — main branch seventh limb east side — shoot from the left eye of the death’s-head — a bee line from the tree through the shot fifty feet cut.",
+  "ua": "A good glass in the bishop’s hostel in the devil’s seat — forty-one degrees and thirteen minutes — northeast and by north — main branch seventh limb east side — shoot from the left eye of the death’s-head — a bee line from the tree through the shot fifty feet cut.",
+  "para": 74,
+  "start": null
+ },
+ {
+  "pl": "(Dobre szkła w hotelu biskupa na siedzeniu diabła — czterdzieści jeden stopni i trzynaście minut — północno-zachód i na północ — główny pień siódmy konar od zachodu — spuścić z lewego oka trupiej czaszki — linię prostą od drzewa przez kulę piętnaście stóp dalej).",
+  "ua": "(Добра підзорна труба в єпископському готелі на диявольському сидінні — сорок один градус і тринадцять хвилин — на північний схід і трохи на північ — головна гілка, сьомий сук зі східного боку — стріляти з лівого ока черепа — пряма від дерева крізь кулю, п’ятдесят футів далі.)",
+  "para": 75,
+  "start": 2206.05
+ },
+ {
+  "pl": "— Nawet przy tym podziale — odezwałem się — wciąż jeszcze nic nie wiem.",
+  "ua": "— Навіть із таким поділом, — озвався я, — я досі нічого не розумію.",
+  "para": 76,
+  "start": 2232.96
+ },
+ {
+  "pl": "— Ja także nic nie wiedziałem — odrzekł Legrand — ale tylko przez kilka dni.",
+  "ua": "— Я теж нічого не розумів, — відповів Леґран, — але лише кілька днів.",
+  "para": 77,
+  "start": 2239.43
+ },
+ {
+  "pl": "Spędziłem je na skrzętnych poszukiwaniach w okolicy Wyspy Sullivana, wywiadując się o budynek, który by nosił nazwę Bishop’s Hotel (hotel biskupi), gdyż oczywiście nie dałem się stropić przestarzałemu słowu hostel<sup>29<\/sup>. Nie dowiedziawszy się niczego,",
+  "ua": "Я провів їх у ретельних пошуках поблизу острова Саллівана, розпитуючи про будівлю під назвою Bishop’s Hotel (Єпископський готель), бо, звісно, мене не збентежило застаріле слово hostel<sup>29<\/sup>. Нічого не знайшовши,",
+  "para": 77,
+  "start": 2247.19
+ },
+ {
+  "pl": "zamierzałem już rozszerzyć zakres moich poszukiwań i prowadzić je nadal bardzo systematycznie, gdy pewnego poranku strzeliło mi nagle do głowy, że ten Bishop’s Hostel może pozostawać w związku ze starożytną rodziną Bessopów,",
+  "ua": "я вже збирався розширити пошуки й продовжувати їх так само систематично, коли одного ранку мені раптом спало на думку, що Bishop’s Hostel може бути пов’язаний зі старовинною родиною Бессопів,",
+  "para": 77,
+  "start": 2265.65
+ },
+ {
+  "pl": "która w zamierzchłych czasach posiadała odwieczne zamczysko o cztery mile na północ od wyspy. Udałem się więc na plantację i jąłem wypytywać najstarszych z okolicznych Murzynów.",
+  "ua": "яка в давнину володіла старим замком за чотири милі на північ від острова. Тож я вирушив на плантацію й почав розпитувати найстаріших темношкірих мешканців околиці.",
+  "para": 77,
+  "start": 2280.13
+ },
+ {
+  "pl": "W końcu pewna sędziwa staruszka powiedziała mi, że słyszała o miejscu zwanym Bessop’s Castel (zamek Bessopa) i że mogłaby mnie tam zaprowadzić, lecz że nie jest to zamek ani gospoda, ale wysoka skała.",
+  "ua": "Нарешті одна літня жінка сказала, що чула про місце під назвою Bessop’s Castel (замок Бессопа) і може провести мене туди, але це не замок і не заїзд, а висока скеля.",
+  "para": 77,
+  "start": 2292.09
+ },
+ {
+  "pl": "Obiecałem, że ją hojnie wynagrodzę, więc po chwili namysłu podjęła się być moją przewodniczką. Dotarliśmy na miejsce bez trudu. Odprawiłem babinę i począłem się rozglądać.",
+  "ua": "Я пообіцяв щедро їй заплатити, і після коротких роздумів вона погодилася бути моєю провідницею. Ми без труднощів дісталися місця. Я відпустив стару й почав роздивлятися довкола.",
+  "para": 78,
+  "start": 2309.43
+ },
+ {
+  "pl": "„Zamek” składał się z bezładnego nagromadzenia wiszarów i skał, z których jedna wyróżniała się wielce zarówno swą wysokością, jak swym odosobnieniem i jak gdyby sztucznym wyglądem. Wspiąłem się na jej szczyt i byłem bardzo zakłopotany, co należy dalej czynić.",
+  "ua": "«Замок» був безладним нагромадженням урвищ і скель; одна вирізнялася висотою, відокремленістю й наче штучним виглядом. Я видерся на її вершину й розгубився, не знаючи, що робити далі.",
+  "para": 78,
+  "start": 2324.33
+ },
+ {
+  "pl": "Kiedy pogrążyłem się w myślach, oczy moje padły na wąski brzeżek u wschodniego zbocza skały, położony o jakiś jard poniżej wierzchołka, na którym stałem.",
+  "ua": "Коли я поринув у думки, мій погляд упав на вузький виступ на східному схилі скелі, приблизно на ярд нижче вершини, де я стояв.",
+  "para": 79,
+  "start": 2346.82
+ },
+ {
+  "pl": "Brzeżek ten sterczał zaledwie na osiemnaście cali i miał niespełna stopę szerokości, zaś wnęka w wiszarze, która widniała tuż ponad nim, czyniła go poniekąd podobnym do owych krzeseł z wygłębionym oparciem, którymi posługiwali się nasi przodkowie.",
+  "ua": "Виступ стирчав лише на вісімнадцять дюймів і був менший за фут завширшки; заглибина в скелі просто над ним робила його чимось схожим на старовинне крісло з увігнутою спинкою.",
+  "para": 80,
+  "start": 2359.03
+ },
+ {
+  "pl": "Nie wątpiłem ani przez chwilę, że jest to owo „siedzenie diabła”, o którym znajdowała się wzmianka w rękopisie, i utwierdziłem się w przeświadczeniu, że uda mi się w zupełności rozwiązać tę zawiłą łamigłówkę.",
+  "ua": "Я анітрохи не сумнівався, що це і є те «диявольське сидіння», про яке йшлося в рукописі, й переконався, що зможу повністю розгадати цю хитромудру загадку.",
+  "para": 80,
+  "start": 2378.19
+ },
+ {
+  "pl": "Wiedziałem, iż przez „dobre szkła” należy rozumieć tylko lunetę, gdyż marynarze rzadko kiedy używają słowa „szkła” w innym znaczeniu.",
+  "ua": "Я знав, що «добре скло» означає лише підзорну трубу, бо моряки рідко вживають слово «скло» в іншому значенні.",
+  "para": 81,
+  "start": 2392.95
+ },
+ {
+  "pl": "Zdałem sobie natychmiast sprawę, iż trzeba będzie uciec się do pomocy lunety i posłużyć się nią z pewnego ściśle określonego punktu, niedopuszczającego żadnego odchylenia.",
+  "ua": "Я відразу зрозумів, що треба скористатися підзорною трубою й подивитися крізь неї з точно визначеної точки, не відхиляючись убік.",
+  "para": 81,
+  "start": 2406.33
+ },
+ {
+  "pl": "Nie powątpiewałem również, iż zwroty: „czterdzieści jeden stopni i trzynaście minut” jako też „północno-zachód i na północ” są wskazówkami, jak należy skierować lunetę. Podniecony niezmiernie tymi odkryciami, pospieszyłem do domu, postarałem się o lunetę i powróciłem z nią na skałę.",
+  "ua": "Я також не сумнівався, що слова «сорок один градус і тринадцять хвилин» та «на північний схід і трохи на північ» указують, як спрямувати трубу. Надзвичайно збуджений цими відкриттями, я поспішив додому по підзорну трубу й повернувся з нею на скелю.",
+  "para": 81,
+  "start": 2418.85
+ },
+ {
+  "pl": "Zsunąłem się po niej na ów brzeżek i przekonałem się, że można tam usiąść tylko w pewnej określonej pozycji. Ta okoliczność potwierdziła moje poprzednie przypuszczenia. Zabrałem się z kolei do lunety.",
+  "ua": "Я спустився на той виступ і переконався, що сісти там можна лише в певній позі. Це підтвердило мої попередні припущення. Тоді я взявся до підзорної труби.",
+  "para": 82,
+  "start": 2444.56
+ },
+ {
+  "pl": "Słowa „czterdzieści jeden stopni i trzynaście minut” mogły, oczywiście, odnosić się tylko do kąta pochylenia nad widnokręgiem, natomiast kierunek poziomy wyraźnie podawała wzmianka „północno-zachód i na północ”. Oznaczyłem ten kierunek za pomocą kompasu kieszonkowego,",
+  "ua": "Слова «сорок один градус і тринадцять хвилин» могли стосуватися лише кута нахилу над горизонтом, тоді як горизонтальний напрям чітко задавали слова «на північний схід і трохи на північ». Я визначив його за допомогою кишенькового компаса,",
+  "para": 82,
+  "start": 2462.39
+ },
+ {
+  "pl": "następnie ustawiłem moją lunetę możliwie najdokładniej w nachyleniu czterdziestu jeden stopni i dopóty poruszałem nią ostrożnie w górę i w dół, aż dostrzegłem kolisty otwór, jakby okienko w listowiu wielkiego drzewa, które górowało w oddali nad wszystkimi innymi.",
+  "ua": "потім якомога точніше нахилив трубу на сорок один градус і поволі рухав нею вгору й униз, доки не побачив круглий отвір, наче віконце в листі великого дерева, яке височіло вдалині над усіма іншими.",
+  "para": 82,
+  "start": 2483.43
+ },
+ {
+  "pl": "W środku tego okienka zauważyłem białą plamę, lecz nie mogłem zrazu rozpoznać, co to było. Dopiero nastawiwszy ostrzej soczewkę, przekonałem się, że była to trupia czaszka.",
+  "ua": "Посеред цього віконця я помітив білу пляму, але спершу не міг зрозуміти, що це. Лише краще налаштувавши лінзу, я побачив, що то був череп.",
+  "para": 82,
+  "start": 2502.53
+ },
+ {
+  "pl": "Po tym odkryciu zagadka wydała mi się już rozwiązana, gdyż zwroty „główny pień, siódmy konar, od zachodu” mogły odnosić się tylko do umieszczenia czaszki na drzewie, zaś „spuścić z lewego oka trupiej czaszki” mogło mieć na względzie tylko poszukiwanie zakopanego skarbu. Dorozumiałem się,",
+  "ua": "Після цього відкриття загадка здавалася вже розв’язаною: слова «головна гілка, сьомий сук, зі східного боку» могли стосуватися лише розташування черепа на дереві, а «спустити з лівого ока черепа» — пошуку закопаного скарбу. Я зрозумів,",
+  "para": 83,
+  "start": 2518.53
+ },
+ {
+  "pl": "iż rzecz polega na tym, ażeby z lewego oka czaszki spuścić jakąś gałkę i przeprowadzić linię prostą od najbliższego punktu pnia przez „kulę” (to znaczy, przez miejsce, gdzie owa gałka upadnie), a następnie prowadzić ją dalej na odległość piętnastu stóp i w ten sposób otrzymać określony punkt, gdzie,",
+  "ua": "що треба опустити якусь кульку з лівого ока черепа й провести пряму від найближчої точки стовбура через «кулю» (тобто місце, де вона впаде), а потім продовжити її ще на п’ятнадцять футів, щоб визначити точку, де,",
+  "para": 83,
+  "start": 2545.13
+ },
+ {
+  "pl": "wedle wszelkiego prawdopodobieństwa, ukryto skarb ów w ziemi.",
+  "ua": "найімовірніше, і був закопаний скарб.",
+  "para": 83,
+  "start": 2565.95
+ },
+ {
+  "pl": "— Wszystko to — przemówiłem — jest nadzwyczaj jasne i olśniewa swą pomysłowością, zachowując przy tym prostotę i dokładność. Cóż stało się dalej, gdy powróciłeś z Bishop’s Hotel?",
+  "ua": "— Усе це, — промовив я, — надзвичайно зрозуміло й вражає винахідливістю, зберігаючи простоту й точність. Що сталося далі, коли ти повернувся з Bishop’s Hotel?",
+  "para": 84,
+  "start": 2570.84
+ },
+ {
+  "pl": "— Zanim poszedłem do domu, zapamiętałem sobie dokładnie owo drzewo. Było to potrzebne, gdyż zeszedłszy z „diabelskiego siedzenia”, straciłem zaraz owo koliste okienko z oczu i nie mogłem go już dojrzeć z żadnego innego miejsca.",
+  "ua": "— Перш ніж піти додому, я добре запам’ятав те дерево. Це було потрібно, адже, зійшовши з «диявольського сидіння», я відразу втратив із поля зору кругле віконце й уже не міг побачити його з жодного іншого місця.",
+  "para": 85,
+  "start": 2587.57
+ },
+ {
+  "pl": "Jak mi się zdaje, całe mistrzostwo tej zagadki da się sprowadzić do tej okoliczności, iż okienko to widoczne jest tylko z wąskiego brzeżka u skalnej ściany.",
+  "ua": "Як на мене, вся майстерність загадки полягає в тому, що це віконце видно лише з вузького виступу на скелі.",
+  "para": 85,
+  "start": 2602.17
+ },
+ {
+  "pl": "Na wyprawę do „hotelu biskupa” zabrałem ze sobą Jupitera, który zapewne już na kilka tygodni przedtem zauważył moje roztargnienie i dokładał wszelkich starań, żebym nie był sam.",
+  "ua": "У подорож до «Єпископського готелю» я взяв із собою Юпітера, який, мабуть, уже за кілька тижнів до того помітив мою розсіяність і старався не залишати мене самого.",
+  "para": 86,
+  "start": 2616.17
+ },
+ {
+  "pl": "Lecz zaraz następnego dnia wstałem bardzo wcześnie, wymknąłem się przed nim po kryjomu i poszedłem na wzgórza, by odszukać owo drzewo. Zmitrężyłem niemało czasu, zanim zdążyłem je znaleźć. Gdy nocą powróciłem do domu, mój służący miał chętkę mnie obić.",
+  "ua": "Але вже наступного дня я встав дуже рано, потай вислизнув від нього й подався на пагорби шукати те дерево. Минуло чимало часу, перш ніж я його знайшов. Коли ввечері повернувся додому, мій слуга мало не побив мене.",
+  "para": 86,
+  "start": 2631.26
+ },
+ {
+  "pl": "Co dalej się stało, wiesz również dobrze jak ja sam.",
+  "ua": "Що сталося далі, ти й сам добре знаєш.",
+  "para": 86,
+  "start": 2649.62
+ },
+ {
+  "pl": "— Sądzę — odezwałem się — iż twoja pomyłka przy pierwszym kopaniu wyniknęła z głupoty Jupitera, który spuścił żuka przez prawe, a nie przez lewe oko czaszki.",
+  "ua": "— Гадаю, — озвався я, — твоя перша помилка під час копання сталася через дурість Юпітера: він спустив жука крізь праве око черепа, а не крізь ліве.",
+  "para": 87,
+  "start": 2655.69
+ },
+ {
+  "pl": "— Tak też było istotnie. Błąd ów spowodował różnicę dwóch i pół cala u „kuli” — to znaczy, w miejscu, gdzie tkwił palik, wbity najbliżej od drzewa; gdyby skarb znajdował się tuż pod „kulą”, pomyłka ta nie miałaby znaczenia;",
+  "ua": "— Саме так і було. Через цю помилку «куля» змістилася на два з половиною дюйми — тобто в місці, де кілок був устромлений найближче до дерева; якби скарб лежав просто під «кулею», це не мало б значення;",
+  "para": 88,
+  "start": 2668.49
+ },
+ {
+  "pl": "jednak ta „kula” wraz z najbliższym punktem pnia były jedynie dwiema wytycznymi kierunku: przeto błąd, aczkolwiek zrazu nieznaczny, powiększał się w miarę przedłużania linii i kiedy przeprowadziliśmy ją na odległość piętnastu stóp, stał się przyczyną nader znacznego odchylenia.",
+  "ua": "але «куля» й найближча до неї точка стовбура були лише двома орієнтирами напрямку. Тому помилка, спершу незначна, зростала в міру продовження лінії, і, коли ми відміряли п’ятнадцять футів, спричинила дуже велике відхилення.",
+  "para": 88,
+  "start": 2689.65
+ },
+ {
+  "pl": "Gdyby nie moje głębokie przeświadczenie, że ten skarb musi przecież znajdować się gdzieś w pobliżu, wszystka nasza praca byłaby poszła na marne.",
+  "ua": "Якби я не був глибоко переконаний, що скарб таки десь поблизу, уся наша праця пішла б намарно.",
+  "para": 88,
+  "start": 2711.21
+ },
+ {
+  "pl": "— A ta twoja pompatyczność, te twoje igraszki z żukiem — cóż to było za dziwactwo? Byłem przekonany, że oszalałeś. I dlaczego upierałeś się tak bardzo, żeby z oka czaszki spuścić tego chrząszcza, zamiast użyć do tego jakiejś gałki?",
+  "ua": "— А ця твоя помпезність і витівки з жуком — що це було за дивацтво? Я був певен, що ти збожеволів. І чому ти так наполягав, щоб спустити з ока черепа саме жука, а не якусь кульку?",
+  "para": 89,
+  "start": 2722.29
+ },
+ {
+  "pl": "— Mój drogi, wyznam ci szczerze, iż drażniły mnie nieco twe powątpiewania o moim zdrowiu, więc postanowiłem skarcić cię moim zwyczajem spokojnie i obmyśliłem na chłodno tę maleńką mistyfikację. Dlatego wymachiwałem żukiem i kazałem spuścić go z drzewa.",
+  "ua": "— Друже мій, щиро зізнаюся: мене трохи дратували твої сумніви щодо мого здорового глузду. Тож я вирішив спокійно провчити тебе — і холоднокровно вигадав цю невеличку містифікацію. Через це я розмахував жуком і наказав спустити його з дерева.",
+  "para": 90,
+  "start": 2741.8
+ },
+ {
+  "pl": "Pomysł ten poddało mi twoje spostrzeżenie, że jest bardzo ciężki.",
+  "ua": "На цю думку мене наштовхнуло твоє зауваження, що він дуже важкий.",
+  "para": 90,
+  "start": 2770.19
+ },
+ {
+  "pl": "— Rozumiem cię. A teraz jeszcze jedna rzecz, która mnie zaciekawia! Co myślisz o szkieletach, które znaleźliśmy w jamie?",
+  "ua": "— Розумію. А тепер ще одне мене цікавить! Що ти думаєш про скелети, які ми знайшли в ямі?",
+  "para": 91,
+  "start": 2777.87
+ },
+ {
+  "pl": "— Na to pytanie nikt z nas nie zdoła odpowiedzieć. Wszelako zdaje mi się, iż dałoby się to wytłumaczyć tylko w jeden sposób — jakkolwiek moje przypuszczenie jest tak okropne, iż trudno jest w nie uwierzyć.",
+  "ua": "— На це ніхто з нас не зможе відповісти. Та, гадаю, пояснити це можна лише одним способом — хоч моє припущення таке жахливе, що в нього важко повірити.",
+  "para": 92,
+  "start": 2788.21
+ },
+ {
+  "pl": "To pewne, że Kidd — oczywiście, jeśli to Kidd zakopywał te skarby, o czym zresztą nie wątpię — otóż to pewne, że musiał mieć pomocników przy pracy. Kiedy jednak była już na ukończeniu, uznał zapewne za rzecz potrzebną pozbyć się swych towarzyszy, którzy znali jego tajemnicę.",
+  "ua": "Одне певне: Кідд — звісно, якщо саме він закопував ці скарби, а я в цьому не сумніваюся, — мусив мати помічників. Але коли робота добігала кінця, він, мабуть, вирішив позбутися товаришів, які знали його таємницю.",
+  "para": 92,
+  "start": 2806.83
+ },
+ {
+  "pl": "Być może, iż wystarczyły dwa krzepkie uderzenia motyką, gdy jego pomocnicy byli jeszcze zajęci w dole. A może tych uderzeń trzeba było znacznie więcej — kto to wie?",
+  "ua": "Можливо, йому вистачило двох міцних ударів мотикою, поки помічники ще працювали в ямі. А може, ударів було значно більше — хто знає?",
+  "para": 92,
+  "start": 2835.86
+ }
+];
+const ANNOTATIONS = {"23": {"term": "bachantka", "definition": "(mit. gr.) — nimfa z orszaku boga wina Dionizosa (Bakchosa). [przypis edytorski]", "translation": "(давньогр. міф.) — німфа зі свити бога вина Діоніса (Вакха). [редакторська примітка]"}, "24": {"term": "funt", "definition": "anglosaska jednostka wagi równa ok. 0,5 kg. [przypis edytorski]", "translation": "англосаксонська одиниця ваги, що дорівнює приблизно 0,5 кг. [редакторська примітка]"}, "25": {"term": "aqua regia", "definition": "(łac.) — woda królewska: mieszanina stężonego kwasu solnego i azotowego. [przypis edytorski]", "translation": "(лат.) — царська горілка: суміш концентрованих соляної та азотної кислот. [редакторська примітка]"}, "26": {"term": "kid", "definition": "po angielsku: koźlę. [przypis tłumacza]", "translation": "англійською: козеня. [примітка перекладача]"}, "27": {"term": "Golkonda", "definition": "twierdza w Indiach, położona w pobliżu kopalń diamentów; w XVI–XVII w. kwitnący ośrodek handlu diamentami i biżuterią; zyskała legendarną sławę królestwa niezmiernych bogactw i skarbów. [przypis edytorski]", "translation": "фортеця в Індії, розташована поблизу алмазних копалень; у XVI–XVII століттях — квітучий осередок торгівлі алмазами та коштовностями; здобула легендарну славу краю незліченних багатств і скарбів. [редакторська примітка]"}, "28": {"term": "„a” lub „I”", "definition": "– w języku angielskim: a: rodzajnik nieokreślony; I: ja. [przypis tłumacza]", "translation": "в англійській мові: a — неозначений артикль; I — «я». [примітка перекладача]"}, "29": {"term": "hostel", "definition": "(ang.) — dawna pisownia słowa hotel. [przypis tłumacza]", "translation": "(англ.) — давнє написання слова hotel («готель»). [примітка перекладача]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into audio/chapter-02.webm, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  0.00,    // [  0] conf 1.00  "Byliśmy doszczętnie wyczerpani, lecz prze…"
+  18.10,   // [  1] conf 1.00  "Skrzynia była napełniona po brzegi; potrz…"
+  37.35,   // [  2] conf 0.95  "Podzieliliśmy zatem różne przedmioty wedl…"
+  48.27,   // [  3] conf 0.89  "Same monety przedstawiały wartość przeszł…"
+  62.62,   // [  4] conf 0.96  "Wyłącznie złoto bardzo starożytne i nader…"
+  75.81,   // [  5] conf 1.00  "Znaleźliśmy także kilka monet bardzo wiel…"
+  90.92,   // [  6] conf 0.76  "Naliczyliśmy sto dziesięć diamentów, wśró…"
+  109.78,  // [  7] conf 1.00  "Wszystkie te kamienie wyłamano z opraw i…"
+  131.41,  // [  8] conf 0.86  "blisko dwieście kosztownych pierścieni i…"
+  149.01,  // [  9] conf 0.89  "szczodrze ozdobiona misternie cyzelowanym…"
+  163.57,  // [ 10] conf 0.68  "Waga tych kosztowności wynosiła przeszło…"
+  177.79,  // [ 11] conf 0.97  "Niektóre z nich były nader starożytne i j…"
+  195.45,  // [ 12] conf 1.00  "Całą zawartość skrzyni oceniliśmy tej noc…"
+  215.95,  // [ 13] conf 0.97  "Przyszedł wreszcie czas, że ukończyliśmy…"
+  236.38,  // [ 14] conf 0.94  "— Pamiętasz — mówił — ów wieczór, kiedy p…"
+  258.94,  // [ 15] conf 1.00  "Gdyś to powiedział po raz pierwszy, sądzi…"
+  275.65,  // [ 16] conf 0.94  "Mimo to twe kpiny z mych zdolności grafic…"
+  293.35,  // [ 17] conf 1.00  "— Ale to chodziło o papierowy świstek — o…"
+  297.85,  // [ 18] conf 1.00  "— Nie; miał on wygląd papieru i zrazu uwa…"
+  315.46,  // [ 19] conf 1.00  "Otóż kiedy miałem już go zmiąć, spojrzałe…"
+  337.91,  // [ 20] conf 0.97  "Wiedziałem, iż mój rysunek różnił się wie…"
+  358.79,  // [ 21] conf 1.00  "Odwróciwszy go, ujrzałem swój szkic na pr…"
+  376.69,  // [ 22] conf 1.00  "że po drugiej stronie pergaminu mogła wid…"
+  400.28,  // [ 23] conf 1.00  "Jest to zwykłe w takich razach zjawisko.…"
+  419.94,  // [ 24] conf 0.95  "Otrząsnąwszy się jednak z tego bezwładu,…"
+  431.90,  // [ 25] conf 1.00  "Uprzytomniłem sobie bowiem dokładnie i sz…"
+  441.64,  // [ 26] conf 0.98  "Nabierałem pewności, że tak było istotnie…"
+  463.11,  // [ 27] conf 1.00  "że nie podołam jej rozwiązaniu; wszelako…"
+  484.33,  // [ 28] conf 1.00  "Zerwałem się nagle z miejsca i chowając s…"
+  492.19,  // [ 29] conf 1.00  "Po twym odejściu, kiedy Jupiter usnął jak…"
+  508.12,  // [ 30] conf 0.97  "Miejsce, gdzie dostrzegliśmy żuka, znajdo…"
+  529.17,  // [ 31] conf 0.98  "Jupiter ze swą zwykłą ostrożnością, zanim…"
+  554.05,  // [ 32] conf 1.00  "Był on na pół zagrzebany w piasku i wysta…"
+  570.01,  // [ 33] conf 1.00  "Ten gruchot, jak mi się zdawało, musiał t…"
+  580.97,  // [ 34] conf 0.97  "Jupiter podniósł tedy pergamin, owinął we…"
+  600.31,  // [ 35] conf 0.96  "Kiedy się zgodziłem, włożył go natychmias…"
+  614.14,  // [ 36] conf 1.00  "Być może, iż obawiał się, bym nie zmienił…"
+  633.35,  // [ 37] conf 0.95  "Może pamiętasz jeszcze, że kiedy usiadłem…"
+  652.03,  // [ 38] conf 1.00  "Rozwodzę się tak szczegółowo nad sposobem…"
+  661.61,  // [ 39] conf 0.95  "Pomyślisz sobie zapewne, żem narwaniec, l…"
+  691.79,  // [ 40] conf 1.00  "Odpowiem na to, że czaszka, czyli trupia…"
+  706.09,  // [ 41] conf 1.00  "Wspomniałem już, że ów świstek był z perg…"
+  729.13,  // [ 42] conf 1.00  "Ta refleksja poddała mi myśl, że trupia g…"
+  753.44,  // [ 43] conf 0.95  "Był to zatem kształt karty, jakiej używan…"
+  766.24,  // [ 44] conf 1.00  "— Ależ — przerwałem — powiedziałeś, że cz…"
+  772.04,  // [ 45] conf 1.00  "Jakże mogłeś dopatrywać się związku międz…"
+  786.38,  // [ 46] conf 0.98  "— Ach, to właśnie jest osią całej tajemni…"   // start word fuzzy-corrected
+  809.39,  // [ 47] conf 1.00  "Ukończywszy rysunek, podałem ci go i nie…"
+  834.70,  // [ 48] conf 1.00  "Dotarłszy w mych rozumowaniach do tego pu…"
+  859.53,  // [ 49] conf 0.94  "Ty natomiast przysunąłeś sobie krzesło aż…"
+  877.54,  // [ 50] conf 1.00  "Lewą ręką głaskałeś i odpychałeś go równo…"
+  889.25,  // [ 51] conf 1.00  "Była chwila, kiedy mi się zdawało, że per…"
+  904.73,  // [ 52] conf 1.00  "Rozważywszy wszystkie te okoliczności, do…"
+  913.27,  // [ 53] conf 0.97  "Wiesz dobrze, iż istnieją obecnie i że za…"
+  930.08,  // [ 54] conf 0.86  "Używano w tym celu niekiedy szafranu, roz…"
+  948.45,  // [ 55] conf 0.95  "Barwy te zanikają po pewnym czasie, gdy m…"
+  959.93,  // [ 56] conf 0.97  "Poddałem z kolei trupią głowę drobiazgowe…"
+  980.52,  // [ 57] conf 1.00  "Zapaliłem niezwłocznie ogień i ogrzałem m…"
+  986.02,  // [ 58] conf 0.95  "Jedynym na razie następstwem było wzmocni…"
+  1006.59, // [ 59] conf 0.91  "Po dokładniejszym jednakże obejrzeniu prz…"
+  1013.59, // [ 60] conf 0.96  "— Ha, ha! — odezwałem się. — Nie mam dopr…"
+  1037.14, // [ 61] conf 1.00  "Korsarze, jak wiesz, nie mają nic wspólne…"
+  1044.58, // [ 62] conf 1.00  "— Ależ powiedziałem ci, że ów rysunek nie…"
+  1049.76, // [ 63] conf 0.83  "— Zatem koźlę — to na jedno wychodzi."
+  1053.96, // [ 64] conf 0.85  "— Owszem, wychodzi, ale nie zawsze — odpa…"
+  1073.32, // [ 65] conf 1.00  "Powiadam: podpisu, bowiem znajdował się n…"
+  1092.86, // [ 66] conf 1.00  "Ale było mi markotno, że nie mogłem znale…"
+  1104.35, // [ 67] conf 0.90  "— Przypuszczam, iż spodziewałeś się jakie…"   // start word fuzzy-corrected
+  1111.22, // [ 68] conf 1.00  "— Czegoś podobnego. To pewne, iż nieodpar…"
+  1122.20, // [ 69] conf 0.93  "Być może zresztą, iż było to raczej pragn…"
+  1142.77, // [ 70] conf 1.00  "Czyż nie zdajesz sobie sprawy, jak dalece…"
+  1164.65, // [ 71] conf 1.00  "nigdy nie byłbym dostrzegł trupiej czaszk…"
+  1173.15, // [ 72] conf 0.75  "— Mówże dalej! Czekam niecierpliwie."   // start word fuzzy-corrected
+  1177.19, // [ 73] conf 0.94  "— No dobrze. Oczywiście musiało obić ci s…"
+  1197.29, // [ 74] conf 1.00  "Istniały one od tak dawna i powtarzały si…"
+  1208.37, // [ 75] conf 0.98  "Gdyby Kidd był ukrył swe łupy tylko na ja…"
+  1230.33, // [ 76] conf 1.00  "Gdyby korsarz był odzyskał swe mienie, sp…"
+  1250.39, // [ 77] conf 0.97  "którzy w przeciwnym razie nic w ogóle nie…"
+  1266.79, // [ 78] conf 1.00  "Czy słyszałeś już kiedyś o jakimś wielkim…"
+  1272.53, // [ 79] conf 1.00  "— Nie, nigdy."
+  1275.18, // [ 80] conf 0.88  "— Otóż wiadomo powszechnie, że bogactwa K…"
+  1280.52, // [ 81] conf 0.95  "Dlatego wydawało mi się rzeczą pewną, iż…"
+  1304.82, // [ 82] conf 1.00  "— Cóż więc zrobiłeś dalej?"
+  1310.03, // [ 83] conf 1.00  "— Ogrzewałem welin coraz silniej nad ogni…"
+  1316.41, // [ 84] conf 1.00  "Pomyślałem sobie zatem, iż kto wie, czy p…"
+  1336.27, // [ 85] conf 0.95  "Po kilku minutach, kiedy rondel dobrze si…"
+  1356.94, // [ 86] conf 1.00  "Po wyjęciu zobaczyłem już wszystko i zara…"
+  1362.94, // [ 87] conf 0.96  "Po tych słowach Legrand ogrzał na nowo pe…"
+  null,    // [ 88] conf 0.00  "53‡‡†305))6*;4826)4‡.)4‡);806*;48†8¶60))8…"   // merged into previous section; LOW CONFIDENCE; cipher symbols are not narrated
+  1381.07, // [ 89] conf 0.85  "— Mój drogi — rzekłem, oddając mu świstek…"
+  1400.79, // [ 90] conf 1.00  "— A jednak — odpowiedział Legrand — rozwi…"
+  1414.59, // [ 91] conf 0.97  "Te znaki, jak łatwo się domyślić, są szyf…"
+  1429.27, // [ 92] conf 1.00  "Od razu przyszło mi na myśl, że muszą być…"
+  1442.16, // [ 93] conf 1.00  "— A czy ty je istotnie odczytałeś?"
+  1445.97, // [ 94] conf 0.88  "— Z łatwością; odczytywałem już inne, tys…"
+  1453.07, // [ 95] conf 1.00  "Okoliczności, a także pewna skłonność umy…"
+  1469.59, // [ 96] conf 1.00  "Skoro więc powiodło mi się wykryć czyteln…"
+  1482.86, // [ 97] conf 1.00  "W danym wypadku — podobnie zresztą jak ws…"
+  1504.93, // [ 98] conf 0.95  "Na ogół nie ma innego sposobu, jak kieruj…"
+  1533.28, // [ 99] conf 0.97  "Gdyby nie ta okoliczność, byłbym rozpoczą…"
+  1555.80, // [100] conf 1.00  "Jak widzisz, nie ma w nim odstępów między…"
+  1566.79, // [101] conf 0.91  "Byłbym zaczął w takim razie od zestawieni…"
+  1582.45, // [102] conf 1.00  "Ponieważ odstępów nie ma, zacząłem od ozn…"
+  1618.13, // [103] conf 0.96  "Otóż w języku angielskim spotyka się najc…"
+  1644.86, // [104] conf 0.95  "Od samego więc początku mamy zasadę, któr…"
+  1663.53, // [105] conf 0.93  "Ponieważ przeważa wśród nich 8, przeto za…"
+  1675.05, // [106] conf 0.90  "By sprawdzić to przypuszczenie, zobaczmy,…"
+  1699.67, // [107] conf 0.94  "Przyjmijmy zatem, że 8 oznacza „e”. Ze ws…"
+  1720.70, // [108] conf 0.88  "Jeśli spotkamy kilkakrotnie takie zestawi…"
+  1736.65, // [109] conf 0.92  "Możemy więc przypuścić, że ; oznacza „t”,…"
+  1756.06, // [110] conf 0.97  "Oznaczywszy w ten sposób jedno słowo, będ…"
+  1773.81, // [111] conf 0.92  "Wiemy, że znak ;, który następuje bezpośr…"
+  null,    // [112] conf 0.00  "t eeth"   // merged into previous section; LOW CONFIDENCE; letter pattern is not narrated
+  1796.41, // [113] conf 0.95  "Od razu możemy odrzucić „th”, jako nie wc…"
+  1813.37, // [114] conf 1.00  "w którym to „th” mogłoby stanowić część s…"
+  1821.07, // [115] conf 0.50  "t ee"   // LOW CONFIDENCE; low match ratio
+  1822.73, // [116] conf 0.97  "i przeszukując znów, w razie potrzeby, ca…"
+  1858.17, // [117] conf 0.96  "Nieco dalej spotykamy znów zestawienie ;4…"
+  1874.69, // [118] conf 0.40  "the tree ;4(‡?34 the,"   // LOW CONFIDENCE; low match ratio
+  1878.99, // [119] conf 1.00  "i podstawiwszy w miejsce wiadomych znaków…"
+  1887.99, // [120] conf 0.60  "the tree thr‡?3h the"
+  1895.22, // [121] conf 1.00  "Jeżeli teraz zamiast znaków nieznanych po…"
+  null,    // [122] conf 0.00  "the tree thr...h the"   // merged into previous section; LOW CONFIDENCE; cipher example is not narrated
+  1910.19, // [123] conf 1.00  "przy czym natychmiast przychodzi na myśl…"
+  1916.47, // [124] conf 0.94  "Odkrycie to zapoznaje nas ponadto z nowym…"
+  1925.43, // [125] conf 0.77  "Szukając dalej w szyfrze zestawień wiadom…"
+  1930.99, // [126] conf 1.00  "83(88"
+  1933.83, // [127] conf 0.95  "czyli „egree”, co oczywiście jest zakończ…"
+  1950.84, // [128] conf 1.00  "O cztery litery dalej za słowem „degree”…"
+  1956.96, // [129] conf 0.00  ";46(;88"   // LOW CONFIDENCE; no words matched; anchored on unmatched ASR words
+  1962.91, // [130] conf 1.00  "Przekładając znane znaki i zastępując, ja…"
+  1971.78, // [131] conf 0.00  "th.rtee."   // LOW CONFIDENCE; no words matched; anchored on unmatched ASR words
+  1974.36, // [132] conf 0.91  "Jest to kombinacja, która natychmiast pod…"
+  1988.85, // [133] conf 1.00  "Wracając następnie do początku kryptogram…"
+  1992.71, // [134] conf 1.00  "53‡‡†"
+  1995.61, // [135] conf 1.00  "Przełożywszy je, jak to czyniliśmy poprze…"
+  2000.09, // [136] conf 1.00  "good"
+  2002.25, // [137] conf 0.94  "co zarazem upewnia nas, że pierwszą liter…"
+  2013.60, // [138] conf 0.95  "By uniknąć zamieszania, należałoby teraz…"
+  2047.21, // [139] conf 0.97  "Mamy już zatem aż dziesięć najważniejszyc…"
+  2065.87, // [140] conf 1.00  "Wiedz jednak, iż okaz, który mamy przed s…"
+  null,    // [141] conf 0.00  "A good glass in the bishop’s hostel in th…"   // merged into previous section; LOW CONFIDENCE; English plaintext is not narrated
+  2082.82, // [142] conf 0.90  "(Dobre szkła w hotelu biskupa na siedzeni…"
+  2109.91, // [143] conf 1.00  "— Ależ — rzekłem — ta łamigłówka jest mi…"
+  2131.93, // [144] conf 0.97  "— Przyznaję — odrzekł Legrand — że na pie…"
+  2149.24, // [145] conf 1.00  "— To znaczy położyć znaki pisarskie, niep…"
+  2155.72, // [146] conf 1.00  "— Coś w tym rodzaju."
+  2157.58, // [147] conf 0.83  "— W jakiż sposób można to zrobić?"
+  2160.42, // [148] conf 1.00  "— Pomyślałem sobie, że piszący umyślnie z…"
+  2175.69, // [149] conf 1.00  "Kiedy bowiem układając swój kryptogram, d…"
+  2190.79, // [150] conf 1.00  "Obejrzyj rękopis, o którym mówimy, a z ła…"
+  null,    // [151] conf 0.00  "A good glass in the bishop’s hostel in th…"   // merged into previous section; LOW CONFIDENCE; English punctuated plaintext is not narrated
+  2206.05, // [152] conf 0.93  "(Dobre szkła w hotelu biskupa na siedzeni…"
+  2232.96, // [153] conf 1.00  "— Nawet przy tym podziale — odezwałem się…"
+  2239.43, // [154] conf 0.92  "— Ja także nic nie wiedziałem — odrzekł L…"
+  2247.19, // [155] conf 0.84  "Spędziłem je na skrzętnych poszukiwaniach…"
+  2265.65, // [156] conf 0.91  "zamierzałem już rozszerzyć zakres moich p…"
+  2280.13, // [157] conf 0.96  "która w zamierzchłych czasach posiadała o…"
+  2292.09, // [158] conf 0.88  "W końcu pewna sędziwa staruszka powiedzia…"
+  2309.43, // [159] conf 1.00  "Obiecałem, że ją hojnie wynagrodzę, więc…"
+  2324.33, // [160] conf 1.00  "„Zamek” składał się z bezładnego nagromad…"
+  2346.82, // [161] conf 1.00  "Kiedy pogrążyłem się w myślach, oczy moje…"
+  2359.03, // [162] conf 1.00  "Brzeżek ten sterczał zaledwie na osiemnaś…"
+  2378.19, // [163] conf 1.00  "Nie wątpiłem ani przez chwilę, że jest to…"
+  2392.95, // [164] conf 1.00  "Wiedziałem, iż przez „dobre szkła” należy…"
+  2406.33, // [165] conf 1.00  "Zdałem sobie natychmiast sprawę, iż trzeb…"
+  2418.85, // [166] conf 0.93  "Nie powątpiewałem również, iż zwroty: „cz…"
+  2444.56, // [167] conf 1.00  "Zsunąłem się po niej na ów brzeżek i prze…"
+  2462.39, // [168] conf 0.91  "Słowa „czterdzieści jeden stopni i trzyna…"
+  2483.43, // [169] conf 0.90  "następnie ustawiłem moją lunetę możliwie…"
+  2502.53, // [170] conf 0.96  "W środku tego okienka zauważyłem białą pl…"
+  2518.53, // [171] conf 0.98  "Po tym odkryciu zagadka wydała mi się już…"
+  2545.13, // [172] conf 1.00  "iż rzecz polega na tym, ażeby z lewego ok…"
+  2565.95, // [173] conf 1.00  "wedle wszelkiego prawdopodobieństwa, ukry…"
+  2570.84, // [174] conf 0.85  "— Wszystko to — przemówiłem — jest nadzwy…"
+  2587.57, // [175] conf 0.94  "— Zanim poszedłem do domu, zapamiętałem s…"
+  2602.17, // [176] conf 0.96  "Jak mi się zdaje, całe mistrzostwo tej za…"
+  2616.17, // [177] conf 0.89  "Na wyprawę do „hotelu biskupa” zabrałem z…"
+  2631.26, // [178] conf 0.97  "Lecz zaraz następnego dnia wstałem bardzo…"
+  2649.62, // [179] conf 0.90  "Co dalej się stało, wiesz również dobrze…"
+  2655.69, // [180] conf 0.96  "— Sądzę — odezwałem się — iż twoja pomyłk…"
+  2668.49, // [181] conf 0.97  "— Tak też było istotnie. Błąd ów spowodow…"
+  2689.65, // [182] conf 0.92  "jednak ta „kula” wraz z najbliższym punkt…"
+  2711.21, // [183] conf 0.95  "Gdyby nie moje głębokie przeświadczenie,…"
+  2722.29, // [184] conf 1.00  "— A ta twoja pompatyczność, te twoje igra…"
+  2741.80, // [185] conf 1.00  "— Mój drogi, wyznam ci szczerze, iż drażn…"
+  2770.19, // [186] conf 1.00  "Pomysł ten poddało mi twoje spostrzeżenie…"
+  2777.87, // [187] conf 1.00  "— Rozumiem cię. A teraz jeszcze jedna rze…"
+  2788.21, // [188] conf 0.97  "— Na to pytanie nikt z nas nie zdoła odpo…"
+  2806.83, // [189] conf 0.93  "To pewne, że Kidd — oczywiście, jeśli to…"
+  2835.86, // [190] conf 1.00  "Być może, iż wystarczyły dwa krzepkie ude…"
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const AUDIO_URL = "audio/chapter-02.webm";
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+let audioObjectUrl = null;
+async function loadAudio(url) {
+  // Browsers block fetch() from file:// pages; direct media loading still works there.
+  if (location.protocol === "file:") {
+    audio.src = url;
+    audio.load();
+    return;
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Audio request failed (${response.status})`);
+    const blob = await response.blob();
+    audioObjectUrl = URL.createObjectURL(blob);
+    audio.src = audioObjectUrl;
+    audio.load();
+  } catch (error) {
+    console.error("Could not load chapter audio:", error);
+    showBanner();
+  }
+}
+loadAudio(AUDIO_URL);
+window.addEventListener("pagehide", () => {
+  if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+}, { once: true });
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function appendTooltipText(parent, text) {
+  // Render table emphasis safely; never interpret annotation cells as HTML.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function setStudyText(element, text) {
+  // Preserve unsupported superscripts literally, and decorate known note numbers.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      const definition = document.createElement("span");
+      definition.className = "note-pl";
+      appendTooltipText(definition, note.definition);
+      tooltip.appendChild(definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- Ukrainian reveal chip and block --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+    toggles.append(uaChip);
+
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, uaBox, pbar);
+
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, uaChip, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: ${audio.getAttribute("src")}`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = "UA " + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(open) {
+  state.uaOpen = open;
+  els.forEach((e, i) => setUa(i, open));
+  toggleUaEl.textContent = (open ? "Hide all UA" : "Reveal all UA");
+  toggleUaEl.setAttribute("aria-pressed", String(open));
+  toggleUaEl.classList.toggle("is-on", open);
+}
+
+toggleUaEl.addEventListener("click", () => setAll(!state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll(!state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

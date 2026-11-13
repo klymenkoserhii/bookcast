@@ -1,0 +1,1693 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to ../../public/poe-zloty-zuk/audio/chapter-01.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-01.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Złoty żuk · Część I — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Złoty żuk · Część I · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="../../public/poe-zloty-zuk/audio/chapter-01.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Dawnymi laty nawiązałem zażyłą znajomość z Mr Wiliamem Legrandem. Pochodził on ze starodawnej, hugenockiej<sup>1<\/sup> rodziny i był niegdyś zamożny, lecz cały szereg niepowodzeń zubożył go doszczętnie.",
+  "start": 45.9
+ },
+ {
+  "i": 1,
+  "pl": "Chcąc uniknąć przykrości, jakie stąd dlań wynikły, porzucił Nowy Orlean, gdzie znajdowało się gniazdo rodzinne jego przodków, i osiedlił się na Wyspie Sullivana koło Charleston, w Karolinie Południowej.",
+  "start": 60.44
+ },
+ {
+  "i": 2,
+  "pl": "Wyspa ta jest nader osobliwa. Składa się wyłącznie z piasków morskich i ma około trzech mil długości. Szerokość jej nie wynosi nigdzie więcej niż ćwierć mili.",
+  "start": 74.42
+ },
+ {
+  "i": 3,
+  "pl": "Od lądu dzieli ją zaledwie dostrzegalna cieśnina, pełzająca leniwie wśród bezmiaru trzcin i namułu i stanowiąca ulubione miejsce pobytu kurek wodnych<sup>2<\/sup>. Roślinność jest skąpa i nikła. Drzew dorodniejszych nie widać wcale. U krańca zachodniego,",
+  "start": 90.88
+ },
+ {
+  "i": 4,
+  "pl": "gdzie wznosi się fort Moultrie i stoi kilka nędznych klitek drewnianych, zamieszkiwanych w lecie przez przybyszów z Charleston, którzy uchodzą stamtąd przed malarią i kurzem, spotyka się, co prawda, szczeciniastą palmę karłowatą; natomiast całą wyspę, z wyjątkiem owego zachodniego skrawka,",
+  "start": 111.38
+ },
+ {
+  "i": 5,
+  "pl": "jako też przykrej, białawej smugi wybrzeża morskiego, pokrywają gęste chaszcze wonnego mirtu, wielce cenionego przez ogrodników angielskich.",
+  "start": 131.25
+ },
+ {
+  "i": 6,
+  "pl": "Krzew ten miewa tam często piętnaście do dwudziestu stóp<sup>3<\/sup> wysokości i tworzy nieprzeniknione niemal gąszcze, które przesycają powietrze swym zapachem.",
+  "start": 139.35
+ },
+ {
+  "i": 7,
+  "pl": "W najtajemniejszym ustroniu tych zarośli, opodal od wschodniego, czyli dalszego krańca wyspy, Legrand wybudował sobie własnoręcznie niewielką chatę, którą zamieszkiwał, kiedy po raz pierwszy przypadkowo zdarzyło mi się go poznać.",
+  "start": 154.0
+ },
+ {
+  "i": 8,
+  "pl": "Znajomość ta rychło przedzierzgnęła się w przyjaźń, gdyż pustelnik ów miał niejedną zaletę, zasługującą na cześć i uznanie.",
+  "start": 173.08
+ },
+ {
+  "i": 9,
+  "pl": "Przekonałem się, że był człowiekiem dobrze wychowanym i uposażonym niezwykle potężnym umysłem, lecz zatrutym mizantropią<sup>4<\/sup> oraz podległym chorobliwym mrzonkom naprzemiennego entuzjazmu i melancholii. Miał u siebie wiele książek, ale zaglądał do nich rzadko.",
+  "start": 183.12
+ },
+ {
+  "i": 10,
+  "pl": "Głównym jego zajęciem było myślistwo i rybołówstwo, jako też włóczęgi po wybrzeżu i wśród mirtów w poszukiwaniu muszli oraz okazów entomologicznych<sup>5<\/sup>; zbiorów mógł mu pozazdrościć nawet Swammerdam<sup>6<\/sup>. Na tych wycieczkach towarzyszył mu zazwyczaj stary Murzyn, zwany Jupiterem,",
+  "start": 208.68
+ },
+ {
+  "i": 11,
+  "pl": "który odzyskał wolność jeszcze przed niepowodzeniami rodzinnymi Legrandów, lecz którego żadną groźbą ni obietnicą nie było można skłonić do wyrzeczenia się tego, co uważał za swe prawo do czuwania nad postępkami swego młodego — jak go nazywał — Massy<sup>7<\/sup> Willa.",
+  "start": 231.09
+ },
+ {
+  "i": 12,
+  "pl": "Być może, iż krewni Legranda, uważając go za człowieka o chwiejnym umyśle, postarali się utwierdzić w tym uporze Jupitera, mając nadzieję, że będzie on towarzyszem i opiekunem tułacza.",
+  "start": 251.58
+ },
+ {
+  "i": 13,
+  "pl": "Pod szerokością geograficzną Wyspy Sullivana zimy ostrzejsze należą do rzadkości i nieczęsto się zdarza, by pod koniec roku trzeba było zapalać ogień. Mimo to około połowy października 18.. nastał dzień nadzwyczaj chłodny.",
+  "start": 268.44
+ },
+ {
+  "i": 14,
+  "pl": "Na krótko przed zachodem słońca torowałem sobie drogę przez wiecznie zielone chaszcze do chaty mojego przyjaciela, którego nie widziałem już od kilku tygodni, mieszkałem bowiem podówczas w Charleston o jakieś dziewięć mil<sup>8<\/sup> od wyspy,",
+  "start": 291.26
+ },
+ {
+  "i": 15,
+  "pl": "a ułatwienia w podróży tam i z powrotem bynajmniej nie dorównywały jeszcze dzisiejszym. Stanąwszy przed chatą, zastukałem swym zwyczajem, a nie otrzymawszy odpowiedzi, poszukałem klucza w wiadomej mi skrytce, otworzyłem drzwi i wszedłem do wnętrza. Na kominie rozkosznie płonął ogień.",
+  "start": 306.68
+ },
+ {
+  "i": 16,
+  "pl": "Była to niespodzianka — i trzeba przyznać, że nader miła. Zdjąłem płaszcz, przysunąłem sobie krzesło do trzaskających głowni i czekałem cierpliwie powrotu mych gospodarzy.",
+  "start": 330.51
+ },
+ {
+  "i": 17,
+  "pl": "Pojawili się o zmierzchu i powitali mnie bardzo serdecznie. Jupiter, szczerząc zęby od ucha do ucha, zakrzątnął się około przygotowania kurek wodnych na wieczerzę. Legrand był znów w przystępie — gdyż nie wiem jak to inaczej nazwać — entuzjazmu.",
+  "start": 346.66
+ },
+ {
+  "i": 18,
+  "pl": "Znalazł nieznanego skorupiaka przedstawiającego nową odmianę, i co więcej, schwytał przy pomocy Jupitera jakiegoś żuka, który wedle niego był zupełną nowością, lecz co do którego pragnął jeszcze zasięgnąć nazajutrz mojego zdania.",
+  "start": 370.43
+ },
+ {
+  "i": 19,
+  "pl": "— Czemuż nie dzisiaj? — spytałem, zacierając ręce nad ogniem i cały gatunek żuków posyłając w duchu do diabła.",
+  "start": 392.91
+ },
+ {
+  "i": 20,
+  "pl": "— Ach, gdybym był wiedział, że przyjdziesz! — odparł Legrand. — Lecz nie widziałem cię już tak dawno; jakże mogłem przypuszczać, że mnie odwiedzisz właśnie dzisiejszego wieczora?",
+  "start": 403.4
+ },
+ {
+  "i": 21,
+  "pl": "Idąc z powrotem, spotkałem po drodze porucznika G. z fortu i zrobiłem to głupstwo, że pożyczyłem mu chrząszcza do obejrzenia; nie możesz go zatem wcześniej zobaczyć aż jutro rano. Przenocuj dziś u mnie, a o świcie Jup pójdzie po niego. To istne czarodziejstwo!",
+  "start": 417.2
+ },
+ {
+  "i": 22,
+  "pl": "— Co? Świt?",
+  "start": 442.65
+ },
+ {
+  "i": 23,
+  "pl": "— Nie pleć! Żuk. Lśni cały jak złoto, jest wielkości dużego orzecha, ma dwie ogromnie czarne plamki po jednej stronie odwłoku i trzecią, nieco większą, po drugiej. Czułki są...",
+  "start": 444.86
+ },
+ {
+  "i": 24,
+  "pl": "— On nie ma nijakich czułek, massa Will, idę o zakład — przerwał Jupiter — ten chrząszcz to złoty chrząszcz: on cały ze szczerego złota i w środku, i wszędzie oprócz skrzydeł. Jeszczem w życiu nie widział takiego ciężkiego chrząszcza.",
+  "start": 465.03
+ },
+ {
+  "i": 25,
+  "pl": "— Zgoda, przypuśćmy, że tak jest istotnie, Jup — odrzekł Legrand, jak mi się zdawało, nieco poważniej niż tego wymagały okoliczności — ale czy dlatego masz przypalić nasze kurki? Barwa — mówił dalej, zwracając się do mnie — przemawia rzeczywiście do pewnego stopnia za przypuszczeniem Jupitera.",
+  "start": 487.13
+ },
+ {
+  "i": 26,
+  "pl": "Nie zdarzy ci się chyba widzieć świetniej metalicznego połysku niźli na okrywach tego owada, lecz będziesz mógł i o tym sądzić dopiero jutro. Tymczasem chciałbym ci dać wyobrażenie o jego kształcie.",
+  "start": 509.78
+ },
+ {
+  "i": 27,
+  "pl": "— Z tymi słowy usiadł przy małym stoliku, na którym znajdował się atrament i pióro, lecz nie było papieru. Sięgnął po niego do szuflady, ale i tam nic nie znalazł.",
+  "start": 525.94
+ },
+ {
+  "i": 28,
+  "pl": "— Co tam — rzekł w końcu — to wystarczy. — Wyjął z kieszonki od kamizelki jakiś świstek, który wydał mi się nadzwyczaj brudnym kawałkiem papieru welinowego<sup>9<\/sup> i piórem naszkicował rysunek. Kiedy to się działo, nie ruszałem się z miejsca, bo wciąż jeszcze było mi chłodno.",
+  "start": 539.2
+ },
+ {
+  "i": 29,
+  "pl": "Ukończywszy rysunek, podał mi go, nie powstając z krzesła. Miałem już szkic w ręku, gdy rozległo się głośne skomlenie i coś zachrobotało za drzwiami.",
+  "start": 560.6
+ },
+ {
+  "i": 30,
+  "pl": "Jupiter otworzył je i do izby wpadł wielki nowofundlandczyk będący własnością Legranda; wsparł się łapami na mych ramionach i nie szczędził mi pieszczot, wywzajemniając się za pieczołowitość, jakiej już niejednokrotnie doznawał poprzednio ode mnie.",
+  "start": 574.87
+ },
+ {
+  "i": 31,
+  "pl": "Gdy przestał się łasić, spojrzałem na papier i prawdę mówiąc byłem nieco zakłopotany dziwolągiem mojego przyjaciela.",
+  "start": 595.2
+ },
+ {
+  "i": 32,
+  "pl": "— Hm — rzekłem po kilku minutach — trzeba przyznać, że ten żuk istotnie jest niezwykły i stanowi dla mnie nowość; nie widziałem jeszcze niczego podobnego, chyba że byłaby to czaszka lub trupia głowa, którą bodaj przypomina najwięcej z widywanych przeze mnie przedmiotów.",
+  "start": 604.34
+ },
+ {
+  "i": 33,
+  "pl": "— Co, trupia głowa? — zapytał Legrand. — Ach, tak, tak, bez wątpienia; jest niejakie podobieństwo na papierze. Dwie górne czarne plamki wyglądają jak oczy, nieprawdaż? A ta podłużna na odwłoku niby pyszczek? Przy tym kształt całości jest owalny.",
+  "start": 627.75
+ },
+ {
+  "i": 34,
+  "pl": "— Być może — odparłem — ale coś mi się zdaje, że nieszczególnym jesteś artystą, poczekam, aż zobaczę tego owada na własne oczy i sam powezmę wyobrażenie o jego wyglądzie.",
+  "start": 650.52
+ },
+ {
+  "i": 35,
+  "pl": "— Zgoda, choć nie wiem... — rzekł z lekką urazą w głosie — rysuję znośnie lub przynajmniej powinien bym, miałem niezłych nauczycieli i pochlebiam sobie, że nie jestem w ciemię bity.",
+  "start": 666.28
+ },
+ {
+  "i": 36,
+  "pl": "— Ależ, moj drogi, ty chyba żartujesz — odezwałem się — to wcale poprawna czaszka, powiedziałbym nawet, doskonale naszkicowana czaszka, jeśli zgodzimy się na poglądy obowiązujące powszechnie w osteologii<sup>10<\/sup>, a twój żuk musi być najosobliwszym żukiem na świecie, skoro jest do niej podobny.",
+  "start": 679.27
+ },
+ {
+  "i": 37,
+  "pl": "Można by na karb jego złożyć jakąś zabobonną okropność. Myślę, że nazwiesz tego chrząszcza Scarabeus caput hominis<sup>11<\/sup> lub dasz mu inną zbliżoną nazwę, zwłaszcza że podobne miana spotyka się często w naukach przyrodniczych. Ale gdzie są czułki, o których mówiłeś?",
+  "start": 704.49
+ },
+ {
+  "i": 38,
+  "pl": "— Czułki! — żachnął się Legrand, który, jak mi się zdawało, zapalił się niepomiernie do przedmiotu naszej rozmowy. — Musisz je widzieć, tego jestem pewny! Narysowałem je najdokładniej wedle oryginału i myślę, że to wystarczy.",
+  "start": 728.8
+ },
+ {
+  "i": 39,
+  "pl": "— Nie przeczę, nie przeczę — powiedziałem — być może, iż narysowałeś, ale ja ich nie widzę — i wręczyłem mu papier, nie dodając już ani słowa, by nie podniecać jego rozdrażnienia; wszelako byłem niemało zdziwiony tym obrotem rzeczy.",
+  "start": 748.96
+ },
+ {
+  "i": 40,
+  "pl": "Jego zły humor wprawił mnie w zakłopotanie — co zaś do rysunku chrząszcza, czułków na pewno nie było widać, a całość okazywała nadzwyczajne podobieństwo do zwykłych kształtów trupiej głowy.",
+  "start": 769.94
+ },
+ {
+  "i": 41,
+  "pl": "Sięgnął po papier bardzo niechętnie i już miał go zmiąć, chcąc zapewne rzucić w ogień, gdy przypadkowy rzut oka na rysunek przykuł nagle, jak mi się zdawało, całą jego uwagę. Poczerwieniał zrazu na twarzy, po czym przybladł mocno.",
+  "start": 786.27
+ },
+ {
+  "i": 42,
+  "pl": "Przez kilka minut, nie ruszając się z miejsca, badał szczegółowo rysunek. W końcu wstał, wziął świecę ze stołu i odszedłszy opodal, usiadł na skrzyni, w najdalszym kącie izby. Tu znowu jął oglądać drobiazgowo papier, obracając go na wszystkie strony.",
+  "start": 808.26
+ },
+ {
+  "i": 43,
+  "pl": "Wszelako ku mojemu wielkiemu zdziwieniu nie wyrzekł ani słowa; zdawało mi się przeto, iż będzie najrozsądniej nie robić żadnych uwag i nie powiększać wzmagającego się rozstroju jego usposobienia.",
+  "start": 832.55
+ },
+ {
+  "i": 44,
+  "pl": "Ostatecznie wyjął z kieszeni portfel, włożył do niego starannie papier i schował do biurka, które zamknął na klucz. Znać było po nim niejakie uspokojenie, ale poprzedni jego zapał znikł doszczętnie. Mimo to wydawał mi się nie tyle zasępiony, co roztargniony.",
+  "start": 850.56
+ },
+ {
+  "i": 45,
+  "pl": "Z biegiem wieczoru coraz bardziej pogrążał się w zadumie i nie dawał się z niej wyprowadzić żartami. Poprzednio miałem zamiar przenocować w chacie, jak to czyniłem już niejednokrotnie, ale widząc roztargnienie mojego gospodarza, uważałem za stosowne pożegnać się z nim.",
+  "start": 875.29
+ },
+ {
+  "i": 46,
+  "pl": "Nie nalegał wcale, bym pozostał, lecz na pożegnanie uścisnął mnie serdeczniej niż zwykle.",
+  "start": 897.2
+ },
+ {
+  "i": 47,
+  "pl": "W jakiś miesiąc później (a przez cały ten czas nie miałem zgoła wieści od Legranda) odwiedził mnie w Charleston jego służący, Jupiter.",
+  "start": 907.13
+ },
+ {
+  "i": 48,
+  "pl": "Nie widziałem przedtem nigdy poczciwego, starego Murzyna w podobnym przygnębieniu i jąłem się obawiać, czy mojego przyjaciela nie spotkało jakieś wielkie nieszczęście.",
+  "start": 919.96
+ },
+ {
+  "i": 49,
+  "pl": "— No cóż, Jup! — zagadnąłem. — Co tam słychać nowego? Co porabia twój pan?",
+  "start": 932.16
+ },
+ {
+  "i": 50,
+  "pl": "— Żeby prawdę powiedzieć, massa, nie wiedzie mu się tak dobrze, jakby powinno.",
+  "start": 942.64
+ },
+ {
+  "i": 51,
+  "pl": "— Niedobrze! Co ty mówisz? To mnie martwi. Cóż mu dolega?",
+  "start": 949.92
+ },
+ {
+  "i": 52,
+  "pl": "— Otóż to! Nie skarży się na nic, ale jest bardzo chory.",
+  "start": 954.93
+ },
+ {
+  "i": 53,
+  "pl": "— Bardzo chory, Jup! A czemużeś tego nie powiedział od razu? Czy leży w łóżku?",
+  "start": 962.46
+ },
+ {
+  "i": 54,
+  "pl": "— Ej, nie! Z nim nigdzie nie jest dobrze — i tu właśnie jest sęk — bardzo mi ciężko na duszy, bo mnie smuci massa Will.",
+  "start": 967.88
+ },
+ {
+  "i": 55,
+  "pl": "— Słuchaj no, Jup, chciałbym coś zrozumieć z tego, co mi pleciesz. Więc powiadasz, że twój pan niezdrów? Czy ci nie mówił, co go boli?",
+  "start": 981.9
+ },
+ {
+  "i": 56,
+  "pl": "— Ej, massa, nie warto łamać sobie nad tym głowy. Massa Will mówi, że mu nic nie jest, ale dlaczego łazi z kąta w kąt zamyślony, zgarbiony, ze spuszczoną głową i blady jak gęś? A potem, dlaczego robi cięgiem te kulasy?",
+  "start": 997.36
+ },
+ {
+  "i": 57,
+  "pl": "— Co robi, Jupiter?",
+  "start": 1018.64
+ },
+ {
+  "i": 58,
+  "pl": "— No, takie kulasy i figury na tabliczce — jeszczem takich figur nie widział. Aż skóra cierpnie na mnie, mówię panu. Nie mogę ani na chwilę spuścić go z oka. Onegdaj<sup>12<\/sup> wymknął mi się przed wschodem słońca i poszedł gdzieś i nie było go przez cały święty dzionek.",
+  "start": 1020.36
+ },
+ {
+  "i": 59,
+  "pl": "Jużem był sobie wyciął tęgi kij, żeby wygnać z niego te diabły, kiedy przyjdzie, alem był taki osioł, że mi nie stało<sup>13<\/sup> kurażu<sup>14<\/sup>... tak źle, biedactwo, wyglądał!",
+  "start": 1042.89
+ },
+ {
+  "i": 60,
+  "pl": "— Co ty mówisz, naprawdę? Koniec końcem mnie się zdaje, że lepiej zrobisz, jeśli nie będziesz nazbyt srogi dla tego biedaka. Nie trzeba go tykać, Jup! Być może, iż nie zniósłby tego. Ale czy nie przychodzi ci na myśl, co mogło spowodować tę chorobę, a raczej tę zmianę w usposobieniu twego pana?",
+  "start": 1057.23
+ },
+ {
+  "i": 61,
+  "pl": "Czy nie miał jakiejś przykrości od czasu, jak się z wami widziałem?",
+  "start": 1082.1
+ },
+ {
+  "i": 62,
+  "pl": "— Nie, massa, potem nic przykrego się nie zdarzyło. Ale boję się, czy przedtem... tego samego dnia, kiedy massa był u nas.",
+  "start": 1087.36
+ },
+ {
+  "i": 63,
+  "pl": "— Co takiego? Co ci się zdaje?",
+  "start": 1099.06
+ },
+ {
+  "i": 64,
+  "pl": "— No, tak, massa, myślę, że to ten chrząszcz.",
+  "start": 1103.98
+ },
+ {
+  "i": 65,
+  "pl": "— Co znowu?",
+  "start": 1108.12
+ },
+ {
+  "i": 66,
+  "pl": "— Ten chrząszcz. Jestem przekonany, że mego Willa ugryzł gdzieś w głowę ten złoty chrząszcz.",
+  "start": 1109.96
+ },
+ {
+  "i": 67,
+  "pl": "— Skądże ci przyszło do głowy takie przypuszczenie, Jup?",
+  "start": 1119.58
+ },
+ {
+  "i": 68,
+  "pl": "— Bo ma dosyć kleszczy, massa, a i pysk niezgorszy. Jeszczem w życiu nie widział takiego diabelskiego robaka — łapie i gryzie wszystko, co mu się nawinie. Massa Will pierwszy go chwycił, lecz wnet puścił, słowo daję... i to wtedy pewnikiem go ugryzł.",
+  "start": 1124.03
+ },
+ {
+  "i": 69,
+  "pl": "Mnie się jakoś od razu nie podobał ten chrząszcz i jego pysk, toteż nie sięgnąłem po niego palcami, alem znalazł kawałek papieru i takem go złapał. Owinąłem go w papier i wepchnąłem mu kawałek tego papieru do pyska — takem to zrobił!",
+  "start": 1149.06
+ },
+ {
+  "i": 70,
+  "pl": "— Więc myślisz, że twego pana naprawdę ugryzł ten owad i że od tego ukąszenia on się rozchorował?",
+  "start": 1168.88
+ },
+ {
+  "i": 71,
+  "pl": "— Ja nic nie myślę — gdzieby tam! Ino dlaczego śni mu się cięgiem o złocie, jeśli go nie ugryzł ten złoty chrząszcz? Ja jużem niejedno słyszał o tych złotych chrząszczach.",
+  "start": 1176.06
+ },
+ {
+  "i": 72,
+  "pl": "— Skądże ty wiesz, że mu się śni o złocie?",
+  "start": 1190.23
+ },
+ {
+  "i": 73,
+  "pl": "— Skąd ja wiem? Bo cięgiem przez sen o nim gada — stąd wiem.",
+  "start": 1193.7
+ },
+ {
+  "i": 74,
+  "pl": "— Hm, Jup, być może, iż masz słuszność, ale jakiejże to szczęśliwej okoliczności zawdzięczam, żeś raczył dziś mnie odwiedzić?",
+  "start": 1199.88
+ },
+ {
+  "i": 75,
+  "pl": "— He, co massa gada?",
+  "start": 1213.1
+ },
+ {
+  "i": 76,
+  "pl": "— Czy masz jakie wieści od Mr Legranda?",
+  "start": 1217.1
+ },
+ {
+  "i": 77,
+  "pl": "— Nie, massa, przyniosłem ino ten kwitek — tu Jupiter podał mi list, który brzmiał, jak następuje:",
+  "start": 1222.12
+ },
+ {
+  "i": 78,
+  "pl": "„Mój Drogi!",
+  "start": 1232.64
+ },
+ {
+  "i": 79,
+  "pl": "Dlaczego już od dawna do mnie nie zaglądasz? Myślę, że nie byłbyś zdolny obrazić się na mnie za jakąś tam przymówkę — nie, to niepodobna.",
+  "start": 1233.96
+ },
+ {
+  "i": 80,
+  "pl": "Nie zachodziłeś do mnie, a ja tu tymczasem przeżywam ciężką rozterkę. Miałbym coś do opowiedzenia, lecz doprawdy nie wiem, jak to powiedzieć i czy w ogóle powiedzieć.",
+  "start": 1246.01
+ },
+ {
+  "i": 81,
+  "pl": "Byłem w ostatnich dniach trochę niezdrów; starowina Jup nudzi mnie nieznośnie swą poczciwą troskliwością. Czy byś uwierzył? Kilka dni temu przygotował sobie spory kij, żeby mnie skarcić za to, iż dałem przed nim nura i przewałęsałem samotnie cały dzień wśród wzgórz, na lądzie.",
+  "start": 1257.84
+ },
+ {
+  "i": 82,
+  "pl": "Coś mi się zdaje, że tylko dzięki memu złemu wyglądowi zdołałem ujść cięgów.",
+  "start": 1278.7
+ },
+ {
+  "i": 83,
+  "pl": "Od naszego ostatniego spotkania nie przybyło nic do mych zbiorów.",
+  "start": 1284.61
+ },
+ {
+  "i": 84,
+  "pl": "Przybądź do mnie wraz z Jupiterem, jeśli tylko możesz i jeśli nie będzie to dla ciebie zbyt niedogodne. Przyjdźże! Chciałbym widzieć się z tobą dzisiejszego wieczora w pewnej ważnej sprawie. Zapewniam cię, że to sprawa nadzwyczaj ważna.",
+  "start": 1290.44
+ },
+ {
+  "i": 85,
+  "pl": "Szczerze ci oddany",
+  "start": 1310.17
+ },
+ {
+  "i": 86,
+  "pl": "William Legrand”",
+  "start": 1311.25
+ },
+ {
+  "i": 87,
+  "pl": "Było coś w tonie tego listu, co mnie dotknęło nader nieprzyjemnie. Cały jego styl różnił się tak bardzo od stylu Legranda. Co mu się roiło? Jaki nowy bzik zalągł się w tym niespokojnym mózgu? Do jakiej to „nadzwyczaj ważnej sprawy” miał zamiar przystąpić?",
+  "start": 1313.14
+ },
+ {
+  "i": 88,
+  "pl": "Opowiadanie Jupitera nie zapowiadało niczego dobrego. Jąłem się obawiać, czy nieustanny ucisk niedoli nie wykoleił w końcu umysłu mojego przyjaciela. Nie zwlekając przeto ani chwili, wybrałem się w drogę z nieodstępnym Murzynem.",
+  "start": 1341.9
+ },
+ {
+  "i": 89,
+  "pl": "Kiedy przybyliśmy do przystani, spostrzegłem na dnie oczekującej nas łodzi kosę i trzy łopaty, zupełnie nowe.",
+  "start": 1363.44
+ },
+ {
+  "i": 90,
+  "pl": "— Co to wszystko znaczy, Jup? — zagadnąłem.",
+  "start": 1374.5
+ },
+ {
+  "i": 91,
+  "pl": "— To kosa, massa, i łopaty.",
+  "start": 1378.3
+ },
+ {
+  "i": 92,
+  "pl": "— Wiem, ale skąd one tu się wzięły?",
+  "start": 1382.9
+ },
+ {
+  "i": 93,
+  "pl": "— Massa Will kazał kupić dla siebie w mieście tę kosę i te łopaty, i diablo dużo to kosztowało.",
+  "start": 1386.52
+ },
+ {
+  "i": 94,
+  "pl": "— Lecz, na wszystkie tajemnice, co ten twój massa Will zamierza począć z kosą i z łopatami?",
+  "start": 1397.61
+ },
+ {
+  "i": 95,
+  "pl": "— Niby to ja wiem wszystko? I niech mnie diabli wezmą, jeśli on wie więcej ode mnie. Ale to wszystko przez tego chrząszcza!",
+  "start": 1406.02
+ },
+ {
+  "i": 96,
+  "pl": "Widząc, że niczego więcej nie dowiem się od Jupitera, którego umysł kołował widocznie tylko dokoła „chrząszcza”, wszedłem do łodzi i rozpiąłem żagiel.",
+  "start": 1415.11
+ },
+ {
+  "i": 97,
+  "pl": "Sprzyjał nam rzeźwy i dość silny wietrzyk; rychło zawinęliśmy do niewielkiej zatoki na północ od fortu Moultrie, skąd pieszo podążyliśmy do chaty oddalonej o niespełna dwie mile. Była trzecia po południu, gdy stanęliśmy na miejscu. Legrand oczekiwał nas z ogromną niecierpliwością.",
+  "start": 1427.39
+ },
+ {
+  "i": 98,
+  "pl": "Podał mi dłoń nerwowym ruchem, który mnie zaniepokoił i utwierdził w powziętych już podejrzeniach. Twarz miał bladą jak upiór, a jego głęboko osadzone oczy jarzyły się niezwykłym blaskiem.",
+  "start": 1451.1
+ },
+ {
+  "i": 99,
+  "pl": "Najpierw zapytałem go o zdrowie, po czym, nie wiedząc, jak nawiązać rozmowę, zagadnąłem, czy odebrał już żuka od porucznika G.",
+  "start": 1466.32
+ },
+ {
+  "i": 100,
+  "pl": "— O, tak — odparł, mieniąc się na twarzy — otrzymałem go nazajutrz rano. Za nic w świecie nie rozstałbym się z tym żukiem! Czy wiesz, że Jupiter co do niego miał zupełną słuszność?",
+  "start": 1479.62
+ },
+ {
+  "i": 101,
+  "pl": "— Jak to? — zapytałem, pełen smutnych przeczuć.",
+  "start": 1500.44
+ },
+ {
+  "i": 102,
+  "pl": "— Bo przypuszczał, że ten chrząszcz jest szczerozłoty! — Powiedział to z głębokim przekonaniem, które sprawiło mi niewymowną przykrość.",
+  "start": 1504.49
+ },
+ {
+  "i": 103,
+  "pl": "— Ten chrząszcz przyniesie mi szczęście — mówił dalej z triumfującym uśmiechem — i odda mi z powrotem dobra rodzinne. Cóż więc dziwnego, że go cenię? Skoro fortuna uważała za stosowne dać mi go w ręce, trzeba będzie tylko odpowiednio nim się posłużyć, a znajdę złoto, którego jest zwiastunem.",
+  "start": 1519.64
+ },
+ {
+  "i": 104,
+  "pl": "Jup, przynieś mi tego żuka!",
+  "start": 1553.23
+ },
+ {
+  "i": 105,
+  "pl": "— Co, żuka, massa? Wolę ja nie mieć z nim nijakiej sprawy! Niech go massa sam weźmie.",
+  "start": 1557.71
+ },
+ {
+  "i": 106,
+  "pl": "Na te słowa Legrand podniósł się z miejsca poważnym i wyniosłym ruchem i wyjął chrząszcza ze szklanego naczynia, gdzie go trzymał w zamknięciu. Był to piękny skarabeusz, podówczas nieznany jeszcze przyrodnikom i posiadający dlatego istotną naukową wartość.",
+  "start": 1566.65
+ },
+ {
+  "i": 107,
+  "pl": "Miał dwie czarne cętki po jednej stronie odwłoku, a trzecią podłużną po drugiej. Okrywy jego były nadzwyczaj twarde i lśniące i miały wygląd polerowanego złota.",
+  "start": 1588.31
+ },
+ {
+  "i": 108,
+  "pl": "Ciężar owada był nader znaczny, biorąc przeto wszystko pod uwagę, trudno było mieć za złe Jupiterowi jego poglądy; natomiast za cenę życia żadną miarą nie zdołałbym był podówczas pojąć, jak Legrand mógł godzić się na nie.",
+  "start": 1602.6
+ },
+ {
+  "i": 109,
+  "pl": "— Posłałem po ciebie — odezwał się pompatycznym tonem, gdy ukończyłem badanie chrząszcza — posłałem po ciebie, bo mi będzie potrzebna twa rada i pomoc, kiedy pocznie się iścić zrządzenie Przeznaczenia i żuka...",
+  "start": 1619.49
+ },
+ {
+  "i": 110,
+  "pl": "— Mój drogi — przerwałem — tyś zapewne niezdrów i powinien byś mieć się nieco na baczności. Połóż się do łóżka, a ja zostanę przy tobie aż to przejdzie. Masz gorączkę i...",
+  "start": 1637.22
+ },
+ {
+  "i": 111,
+  "pl": "— Zbadajże mi tętno — odpowiedział.",
+  "start": 1652.86
+ },
+ {
+  "i": 112,
+  "pl": "Wziąłem go za rękę i prawdę mówiąc nie wyczuwałem najmniejszych oznak gorączki.",
+  "start": 1657.42
+ },
+ {
+  "i": 113,
+  "pl": "— Ale ty możesz być chory i nie mieć gorączki. Pozwól mi tym razem zająć się tobą. Po pierwsze, połóż się do łóżka. Następnie...",
+  "start": 1663.66
+ },
+ {
+  "i": 114,
+  "pl": "— Mylisz się — wtrącił. — Czuję się o wiele lepiej, niźli można by wnioskować z mojego podniecenia. Jeśli naprawdę pragniesz mojego dobra, ulżyj mi w nim!",
+  "start": 1674.44
+ },
+ {
+  "i": 115,
+  "pl": "— A jakże tego dokonać?",
+  "start": 1688.9
+ },
+ {
+  "i": 116,
+  "pl": "— Bardzo łatwo. Wybieram się wraz z Jupiterem na wyprawę wśród wzgórz, na stałym lądzie, i potrzebuję do pomocy kogoś, na kim można by polegać. Jesteś jedynym człowiekiem, któremu mogę zaufać. Podniecenie, które u mnie dostrzegasz, ustąpi bez względu na to, czy spotka mnie zawód, czy triumf.",
+  "start": 1690.99
+ },
+ {
+  "i": 117,
+  "pl": "— Dopomogę ci chętnie we wszystkim — odrzekłem — ale czy twoim zdaniem ten piekielny owad pozostaje w jakimś związku z twą wyprawą do wzgórz?",
+  "start": 1714.0
+ },
+ {
+  "i": 118,
+  "pl": "— Oczywiście.",
+  "start": 1723.34
+ },
+ {
+  "i": 119,
+  "pl": "— W takim razie nie mogę wziąć udziału w tym niedorzecznym przedsięwzięciu.",
+  "start": 1725.21
+ },
+ {
+  "i": 120,
+  "pl": "— Przykro mi, bardzo mi przykro! Zatem będziemy musieli próbować sami.",
+  "start": 1731.25
+ },
+ {
+  "i": 121,
+  "pl": "— Co... sami? Czyś ty istotnie oszalał? Zaczekaj no! Na jak długo się wybierasz?",
+  "start": 1738.43
+ },
+ {
+  "i": 122,
+  "pl": "— Prawdopodobnie na całą noc. Wyruszymy natychmiast, a o świcie będziemy z powrotem.",
+  "start": 1747.49
+ },
+ {
+  "i": 123,
+  "pl": "— A kiedy ta twoja chimera<sup>15<\/sup> minie i kiedy ta zabawa z chrząszczem (mój ty Boże!) skończy się dla ciebie pomyślnie, czy mi zaręczysz słowem honoru, że powrócisz do domu i będziesz słuchał ślepo mych rad, jak gdybym był twoim lekarzem?",
+  "start": 1754.06
+ },
+ {
+  "i": 124,
+  "pl": "— Zgoda, przyrzekam, a teraz dalej w drogę, bo nie mamy czasu do stracenia!",
+  "start": 1771.27
+ },
+ {
+  "i": 125,
+  "pl": "Z ciężkim sercem podążyłem za mym przyjacielem. Wyruszyliśmy po czwartej — Legrand, Jupiter, ja i pies.",
+  "start": 1776.08
+ },
+ {
+  "i": 126,
+  "pl": "Jupiter zabrał kosę i łopaty i uparł się, że to wszystko sam poniesie, więcej, jak mi się zdawało, z obawy, by któreś z tych narzędzi nie dostało się w ręce jego pana, niźli z nadmiernej gorliwości i pilności.",
+  "start": 1788.93
+ },
+ {
+  "i": 127,
+  "pl": "Był po prostu w psim usposobieniu i poza słowami „ten diabelski chrząszcz” nie powiedział nic przez całą drogę.",
+  "start": 1808.77
+ },
+ {
+  "i": 128,
+  "pl": "Mnie dostały się przy podziale dwie ślepe latarki<sup>16<\/sup>, natomiast Legrand zadowolił się samym tylko żukiem, którego przytwierdził na końcu sznurka i potrząsał nim, idąc z miną spiskowca.",
+  "start": 1820.08
+ },
+ {
+  "i": 129,
+  "pl": "Patrząc na ten oczywisty dowód odchylenia umysłowego u mojego przyjaciela, zaledwie zdołałem powściągnąć łzy, które cisnęły mi się do oczu.",
+  "start": 1835.44
+ },
+ {
+  "i": 130,
+  "pl": "Zdawało mi się jednakże, iż postąpię właściwiej, gdy będę pobłażał jego urojeniom, przynajmniej na razie lub do czasu, gdy będzie można zastosować energiczniejsze środki zaradcze, nie narażając się na niepowodzenie.",
+  "start": 1847.3
+ },
+ {
+  "i": 131,
+  "pl": "Tymczasem czyniłem nadaremnie usiłowania, by dowiedzieć się odeń czegoś dokładniejszego o celu tej naszej wyprawy.",
+  "start": 1864.46
+ },
+ {
+  "i": 132,
+  "pl": "Udało się mu wymóc na mnie, że będę mu towarzyszył, ale widocznie nie chciał wdawać się w rozmowę o jakichkolwiek szczegółach podrzędniejszego znaczenia i na wszystkie moje zapytania nie raczył dawać innej odpowiedzi prócz: „zobaczymy”.",
+  "start": 1874.32
+ },
+ {
+  "i": 133,
+  "pl": "Przeprawiliśmy się czółnem u przylądka wyspy na wybrzeże stałego lądu i pnąc się wciąż w górę, w kierunku północno-zachodnim, szliśmy przez okolicę nadzwyczaj dziką i pustynną, gdzie zgoła nie było śladów ludzkiej stopy.",
+  "start": 1894.04
+ },
+ {
+  "i": 134,
+  "pl": "Legrand prowadził nas nadzwyczaj pewnie, zatrzymując się tylko od czasu do czasu, by rzucić okiem na jakieś widocznie znane mu znaki, które zapewne przy innej sposobności zakarbował sobie w pamięci.",
+  "start": 1911.93
+ },
+ {
+  "i": 135,
+  "pl": "Szliśmy tak ze dwie godziny i słońce miało się już ku zachodowi, kiedy otoczyło nas pustkowie, nieskończenie posępniejsze od okolic, które pozostały za nami.",
+  "start": 1929.93
+ },
+ {
+  "i": 136,
+  "pl": "Był to jakby płaskowyż położony u szczytu niedostępnego niemal wiszaru<sup>17<\/sup>, zalesiony gęsto od dołu do samej góry i usiany ogromnymi złomami, które zdawały się leżeć luźno na ziemi i niejednokrotnie nie staczały się w dół jedynie dlatego, że stały oparte o drzewa.",
+  "start": 1942.24
+ },
+ {
+  "i": 137,
+  "pl": "Głębokie jary przebiegające w różnych kierunkach przymnażały jeszcze krajobrazowi wyrazu uroczystej głuszy.",
+  "start": 1965.0
+ },
+ {
+  "i": 138,
+  "pl": "Wyżynę, na którą wspięliśmy się w końcu, porastały tak gęsto chaszcze jeżyny, iż wnet przekonaliśmy się, że nie utorujemy sobie drogi bez kosy. Jupiter na rozkaz swego pana jął trzebić ścieżkę do stóp ogromnego tulipanowca,",
+  "start": 1976.33
+ },
+ {
+  "i": 139,
+  "pl": "który wznosił się na płaszczyźnie w otoczeniu ośmiu czy dziesięciu dębów i przewyższał je, podobnie jak wszystkie inne drzewa, które kiedykolwiek zdarzyło mi się widzieć, pięknem ulistnienia i kształtu, rozłożystością konarów oraz okazałością wyglądu.",
+  "start": 1997.68
+ },
+ {
+  "i": 140,
+  "pl": "Gdy stanęliśmy pod drzewem, Legrand zwrócił się do Jupitera i zapytał go, czy potrafi wejść na nie. Stary Murzyn zawahał się nieco na to pytanie i początkowo nic nie odpowiedział. Po chwili zbliżył się do potężnego pnia, obszedł go z wolna wokoło i obejrzał bardzo dokładnie.",
+  "start": 2012.59
+ },
+ {
+  "i": 141,
+  "pl": "Ukończywszy swe badania, rzekł krótko:",
+  "start": 2035.38
+ },
+ {
+  "i": 142,
+  "pl": "— Jużcić, massa, nie ma takiego drzewa, na które Jup nie wlezie.",
+  "start": 2038.8
+ },
+ {
+  "i": 143,
+  "pl": "— Zatem właź co rychlej, bo wnet się ściemni i nie będziesz widział, co robimy.",
+  "start": 2044.48
+ },
+ {
+  "i": 144,
+  "pl": "— Jak wysoko trzeba wleźć, massa? — zagadnął Jupiter.",
+  "start": 2050.49
+ },
+ {
+  "i": 145,
+  "pl": "— Wespnij się najpierw na pień, a potem ci powiem, którędy masz wspinać się dalej. Zaczekaj no jeszcze! Weź ze sobą tego chrząszcza!",
+  "start": 2056.54
+ },
+ {
+  "i": 146,
+  "pl": "— Chrząszcza, massa Will? Złotego chrząszcza? — zawołał Murzyn, cofając się lękliwie. — Po cóż mam zabierać tego chrząszcza na drzewo? Niech mnie piorun trzaśnie, jeśli go wezmę!",
+  "start": 2068.84
+ },
+ {
+  "i": 147,
+  "pl": "— Co, Jup, ty, taki wielki, silny Murzyn, boisz się wziąć ze sobą nieszkodliwego, martwego chrząszczyka, którego można ponadto nieść jeszcze na tym sznurku? No, jeśli ty go tak lub owak nie weźmiesz, to doprowadzisz mnie do ostateczności i rozwalę ci łeb tą łopatą!",
+  "start": 2087.41
+ },
+ {
+  "i": 148,
+  "pl": "— Co też massa gada! — odezwał się Jup, widocznie zawstydzony i skłonny do uległości. — Massa musi zawsze gderać na starego Murzyna! To był tylko żart! Ja bym bał się chrząszcza? Ja kpię z niego!",
+  "start": 2109.81
+ },
+ {
+  "i": 149,
+  "pl": "— z tymi słowy ujął ostrożnie sam koniec sznurka i trzymając owada możliwie daleko od siebie, począł wspinać się na drzewo.",
+  "start": 2124.83
+ },
+ {
+  "i": 150,
+  "pl": "Tulipanowiec, czyli Liriodendron tulipiferum, jest najwspanialszym drzewem borów amerykańskich. Za młodu pień jego bywa nadzwyczaj gładki, a boczne konary poczynają się nieraz dopiero na znacznej wysokości.",
+  "start": 2139.76
+ },
+ {
+  "i": 151,
+  "pl": "Ale z latami kora staje się sękata i chropawa, i na pniu pojawia się mnóstwo krótkich gałązek. Trudność zatem wejścia na to drzewo była raczej pozorna niż rzeczywista. Obejmując możliwie mocno ramionami i kolanami potężny trzon drzewny,",
+  "start": 2162.96
+ },
+ {
+  "i": 152,
+  "pl": "czepiając się rękami sęków i wpijając swe bose stopy w zagłębienia, Jupiter piął się w górę i narażając się kilkakrotnie na niebezpieczeństwo upadku, wśliznął się w końcu w pierwsze wielkie rozwidlenie, gdzie, jak się zdawało, uznał swe dzieło za skończone.",
+  "start": 2185.2
+ },
+ {
+  "i": 153,
+  "pl": "Jakoż wszelkie trudności istotnie były już pokonane, jakkolwiek Murzyn zawisł na wysokości sześćdziesięciu czy siedemdziesięciu stóp nad powierzchnią ziemi.",
+  "start": 2205.67
+ },
+ {
+  "i": 154,
+  "pl": "— Którędy leźć teraz, massa Will? — zapytał.",
+  "start": 2217.12
+ },
+ {
+  "i": 155,
+  "pl": "— Wspinaj się po najgrubszym konarze z tej strony pnia! — rzekł Legrand.",
+  "start": 2222.31
+ },
+ {
+  "i": 156,
+  "pl": "Murzyn usłuchał go chętnie i bez żadnego już wysiłku pełzał coraz wyżej, aż w końcu krzepka jego postać znikła zupełnie wśród gęstego listowia. Głos jego dolatywał z wysoka niby nawoływanie:",
+  "start": 2229.06
+ },
+ {
+  "i": 157,
+  "pl": "— Czy leźć jeszcze wyżej?",
+  "start": 2246.51
+ },
+ {
+  "i": 158,
+  "pl": "— A gdzież ty jesteś? — zapytał Legrand.",
+  "start": 2250.23
+ },
+ {
+  "i": 159,
+  "pl": "— Tak wysoko — odrzekł Murzyn — że widzę już niebo przez wierzchołek drzewa.",
+  "start": 2255.04
+ },
+ {
+  "i": 160,
+  "pl": "— To nie chodzi o niebo, ale o to, co ci powiem! Spójrz w dół na pień i policz konary pod sobą po tej stronie. Ile masz konarów pod sobą?",
+  "start": 2265.49
+ },
+ {
+  "i": 161,
+  "pl": "— Jeden, dwa, trzy, cztery, pięć — mam już pod sobą pięć grubych konarów, massa, po tej stronie.",
+  "start": 2277.57
+ },
+ {
+  "i": 162,
+  "pl": "— Zatem wleź jeszcze o jeden konar wyżej.",
+  "start": 2289.22
+ },
+ {
+  "i": 163,
+  "pl": "Po chwili głos zawiadomił, że Jupiter dotarł już do siódmego konara.",
+  "start": 2292.32
+ },
+ {
+  "i": 164,
+  "pl": "— No, a teraz, Jup — krzyknął Legrand z niehamowanym już uniesieniem — posuwaj się po tej gałęzi tak daleko, jak tylko możesz. A gdy zobaczysz coś niezwykłego, daj mi znać!",
+  "start": 2300.33
+ },
+ {
+  "i": 165,
+  "pl": "Jeśli miałem dotychczas jeszcze jakiekolwiek wątpliwości co do stanu umysłowego mego biednego przyjaciela, to w tej chwili pierzchły one zupełnie. Z konieczności trzeba było go uznać za obłąkanego i już naprawdę niepokoiłem się myślą, w jaki sposób odprowadzę go do domu.",
+  "start": 2315.68
+ },
+ {
+  "i": 166,
+  "pl": "Kiedy rozmyślałem, jak należy postąpić, głos Jupitera rozległ się znowu:",
+  "start": 2335.94
+ },
+ {
+  "i": 167,
+  "pl": "— Boję się leźć za daleko po tej gałęzi, prawie cała uschnięta!",
+  "start": 2342.96
+ },
+ {
+  "i": 168,
+  "pl": "— Powiadasz, że ta gałąź jest uschnięta, Jup? — zawołał Legrand drżącym głosem.",
+  "start": 2350.08
+ },
+ {
+  "i": 169,
+  "pl": "— Tak jest, massa, sucha jest jak pieprz — całkiem na pewno, nie ma w niej ani krzty życia.",
+  "start": 2357.14
+ },
+ {
+  "i": 170,
+  "pl": "— Na miłość boską, co teraz począć? — zapytał Legrand, upadając widocznie na duchu.",
+  "start": 2372.71
+ },
+ {
+  "i": 171,
+  "pl": "— Pytasz, co począć? — podchwyciłem korzystając ze sposobności, bym mógł wreszcie zabrać głos w tej sprawie. — Pójść do domu i położyć się do łóżka! Chodźże! Bądź grzeczny, mój drogi! Pora już późna, a przy tym chciej pamiętać o swej obietnicy.",
+  "start": 2382.53
+ },
+ {
+  "i": 172,
+  "pl": "— Jup! — krzyknął, nie zwracając zgoła na mnie uwagi — słyszysz mnie?",
+  "start": 2402.39
+ },
+ {
+  "i": 173,
+  "pl": "— Tak jest, massa, słyszę doskonale.",
+  "start": 2409.85
+ },
+ {
+  "i": 174,
+  "pl": "— Zatnij tę gałąź nożem i zobacz, czy drzewo już bardzo spróchniało?",
+  "start": 2414.46
+ },
+ {
+  "i": 175,
+  "pl": "— Spróchniało, massa, dość spróchniało — odparł Murzyn po chwili — ale trzyma się lepiej, niż myślałem. Mógłbym jeszcze poleźć trochę dalej po tej gałęzi, ale sam.",
+  "start": 2421.06
+ },
+ {
+  "i": 176,
+  "pl": "— Sam! Co to znaczy?",
+  "start": 2437.8
+ },
+ {
+  "i": 177,
+  "pl": "— Bo mam chrząszcza. To bardzo ciężki chrząszcz! Gdybym go cisnął na dół, to pewno ta gałąź nie ułamałaby się pod takim jak ja Murzynem.",
+  "start": 2442.54
+ },
+ {
+  "i": 178,
+  "pl": "— Ty diabli synu! — krzyknął Legrand z widoczną ulgą. — Co ty mi pleciesz? Spróbuj tylko rzucić chrząszcza, a dostaniesz ode mnie po łbie. Hej, Jup! Czy mnie słyszysz?",
+  "start": 2459.48
+ },
+ {
+  "i": 179,
+  "pl": "— Jużcić! Massa znów gdera na biednego Murzyna.",
+  "start": 2476.78
+ },
+ {
+  "i": 180,
+  "pl": "— Nie pleć i słuchaj! Posuń się po tej gałęzi, jak daleko będzie można, i nie upuść przy tym chrząszcza, a dam ci srebrnego dolara, gdy zejdziesz na dół.",
+  "start": 2483.87
+ },
+ {
+  "i": 181,
+  "pl": "— Dobrze, massa Will! Ja nie od tego — odrzekł Murzyn ochoczo — zaraz będę na końcu.",
+  "start": 2497.08
+ },
+ {
+  "i": 182,
+  "pl": "— Na końcu! — odezwał się żałośnie Legrand. — Czy jesteś już na końcu gałęzi?",
+  "start": 2511.11
+ },
+ {
+  "i": 183,
+  "pl": "— Zaraz będę, massa... Oooch! Chryste Panie, zmiłuj się nade mną! Co to takiego na tym drzewie?",
+  "start": 2522.07
+ },
+ {
+  "i": 184,
+  "pl": "— Aha! — odkrzyknął Legrand rozradowany. — Cóż tam takiego?",
+  "start": 2537.55
+ },
+ {
+  "i": 185,
+  "pl": "— Ej! Co by tam jak nie czaszka! Ktoś zostawił głowę na tym drzewie, a kruki obskubały ją z mięsa.",
+  "start": 2544.26
+ },
+ {
+  "i": 186,
+  "pl": "— Czaszka, mówisz? Doskonale! Jak jest przytwierdzona do gałęzi? Co ją przytrzymuje?",
+  "start": 2558.66
+ },
+ {
+  "i": 187,
+  "pl": "— Jużcić trzyma się dobrze. Zaraz zobaczę. A to ci dziwo, daję słowo! W czaszce tkwi wielki gwóźdź, którym jest przybita do drzewa.",
+  "start": 2574.07
+ },
+ {
+  "i": 188,
+  "pl": "— Bardzo dobrze, Jup! Zrób dokładnie, co ci każę. Słyszysz mnie?",
+  "start": 2595.54
+ },
+ {
+  "i": 189,
+  "pl": "— Tak jest massa.",
+  "start": 2604.86
+ },
+ {
+  "i": 190,
+  "pl": "— No, to uważaj! Poszukaj lewego oka u tej czaszki.",
+  "start": 2606.9
+ },
+ {
+  "i": 191,
+  "pl": "— Hm, to dobre! Ale ona nie ma lewego oka.",
+  "start": 2620.09
+ },
+ {
+  "i": 192,
+  "pl": "— Bodaj cię licho wzięło z twoją głupotą! Czy wiesz, która jest twoja prawa ręka, a która lewa?",
+  "start": 2627.97
+ },
+ {
+  "i": 193,
+  "pl": "— Jużcić, że wiem, ja wszystko wiem. Moja lewa ręka to ta, którą łupię drzewo.",
+  "start": 2640.31
+ },
+ {
+  "i": 194,
+  "pl": "— Dobrze mówisz, bo jesteś mańkut; otóż twe lewe oko jest po tej samej stronie, co twa lewa ręka. A teraz myślę, że potrafisz znaleźć lewe oko u tej czaszki albo też miejsce, gdzie ono kiedyś musiało być. Czy znalazłeś?",
+  "start": 2654.52
+ },
+ {
+  "i": 195,
+  "pl": "Nastąpiło długie milczenie. W końcu Murzyn zapytał:",
+  "start": 2686.05
+ },
+ {
+  "i": 196,
+  "pl": "— Czy lewe oko tej czaszki jest po tej samej stronie, co lewa ręka tej czaszki? Cóż, kiedy ta czaszka nie ma wcale rąk — ani jej się śni! Ale to nie szkodzi! — Mam już lewe oko, dalibóg, mam! A teraz co z nim zrobić?",
+  "start": 2692.41
+ },
+ {
+  "i": 197,
+  "pl": "— Przesuń przez nie chrząszcza i spuszczaj go na sznurku w dół aż do samego końca. Tylko pamiętaj, żebyś nie wypuścił sznurka z ręki!",
+  "start": 2731.85
+ },
+ {
+  "i": 198,
+  "pl": "— Jużem gotów, massa Will! To nie sztuka puścić chrząszcza przez dziurę — zaraz go massa zobaczy.",
+  "start": 2749.03
+ },
+ {
+  "i": 199,
+  "pl": "Jupitera podczas tej rozmowy wcale nie było widać, natomiast spuszczany przezeń w dół owad ukazał się po chwili na końcu sznurka i niby bryłka polerowanego złota zamigotał w pierzchającej jaśni zachodzącego słońca, które nikłymi promieniami rozwidniało jeszcze okoliczną wyżynę.",
+  "start": 2763.89
+ },
+ {
+  "i": 200,
+  "pl": "Żuk zawisł wolno wśród gałęzi i gdyby był miał spaść, byłby upadł tuż u naszych stóp. Legrand pochwycił kosę i wytrzebił nią kolistą przestrzeń o średnicy do czterech jardów<sup>18<\/sup>, tuż poniżej owada. Po czym, dokonawszy tej pracy, kazał Jupiterowi puścić z ręki sznurek i zejść z drzewa.",
+  "start": 2787.01
+ },
+ {
+  "i": 201,
+  "pl": "Dokładnie w tym samym miejscu, gdzie upadł chrząszcz, mój przyjaciel wbił w ziemię drewniany kołek i wyjął z kieszeni taśmę mierniczą.",
+  "start": 2818.0
+ },
+ {
+  "i": 202,
+  "pl": "Przytwierdziwszy jeden jej koniec do pnia tulipanowca w miejscu, skąd było najbliżej do kołka, jął ją rozwijać, aż dosięgnęła kołka i rozwijał dalej w kierunku wytyczonym przez pień drzewa i kołek, na odległość piętnastu stóp. Jupiter zaś tymczasem wycinał krzewy kosą.",
+  "start": 2828.97
+ },
+ {
+  "i": 203,
+  "pl": "Osiągnąwszy ten najdalszy punkt, wbił tam drugi kołek i posługując się nim jako środkiem opisał dokoła niego pobieżnie koło, którego średnica miała mniej więcej cztery stopy długości.",
+  "start": 2855.2
+ },
+ {
+  "i": 204,
+  "pl": "Następnie Legrand ujął jedną łopatę, podał drugą Jupiterowi, a trzecią mnie i prosił nas, byśmy zabrali się skrzętnie do kopania.",
+  "start": 2871.93
+ },
+ {
+  "i": 205,
+  "pl": "Wyznaję szczerze, iż nie czułem nigdy nadzwyczajnego zamiłowania do podobnych rozrywek i właśnie wtedy byłbym najchętniej wymówił się od tej pracy, gdyż zapadała noc i dolegało mi już znużenie po przebytych trudach; ale nie wiedziałem, do jakich uciec się pozorów, a przy tym obawiałem się,",
+  "start": 2884.27
+ },
+ {
+  "i": 206,
+  "pl": "by odmowa nie wytrąciła znów z równowagi mego biednego przyjaciela.",
+  "start": 2908.31
+ },
+ {
+  "i": 207,
+  "pl": "Gdybym był wiedział, że mogę liczyć na pomoc Jupitera, nie wahałbym się ani chwili i przemocą byłbym zabrał szaleńca do domu; zbyt jednak dobrze znałem charakter Murzyna i musiałem wyrzec się nadziei, by kiedykolwiek stanął po mej stronie w zatargu ze swym panem.",
+  "start": 2913.44
+ },
+ {
+  "i": 208,
+  "pl": "Nie wątpiłem, że Legrand dał się opętać zabobonnym wierzeniom, które krążą na Południu<sup>19<\/sup> o zakopanych skarbach, i że utwierdził się w tych mrzonkach, znalazłszy żuka, lub też może uległ wpływowi Jupitera, który uporczywie utrzymywał, że „ten chrząszcz jest ze szczerego złota”.",
+  "start": 2934.53
+ },
+ {
+  "i": 209,
+  "pl": "Umysł skłonny do obłędu łatwo poddaje się podobnym podszeptom, zwłaszcza jeżeli schlebiają one wprzód powziętym, ulubionym ideom. Ponadto przyszło mi na myśl, co ten nieszczęśnik powiedział o żuku, iż „wskaże mu drogę do fortuny”.",
+  "start": 2959.98
+ },
+ {
+  "i": 210,
+  "pl": "Słowem, byłem ogromnie zakłopotany i udręczony, lecz ostatecznie postanowiłem z konieczności uczynić cnotę i zabrałem się ochoczo do kopania, by tym rychlej przekonać naocznie szaleńca o płonności jego urojeń.",
+  "start": 2982.37
+ },
+ {
+  "i": 211,
+  "pl": "Zapaliliśmy latarnie i jęliśmy się pracy z gorliwością godną rozsądniejszego celu; kiedy zaś na naszych osobach i narzędziach zamigotało światło, nie mogłem oprzeć się myśli, że tworzymy nadzwyczaj malowniczą grupę i że przygodnemu wędrowcowi, który by nas przypadkiem dostrzegł,",
+  "start": 3001.35
+ },
+ {
+  "i": 212,
+  "pl": "zajęcie nasze wydałoby się zapewne nader podejrzane i dziwne.",
+  "start": 3020.87
+ },
+ {
+  "i": 213,
+  "pl": "Kopaliśmy wytrwale ze dwie godziny. Mówiliśmy niewiele, a najwięcej naprzykrzało się nam ujadanie psa, który z niesłychanym zajęciem śledził przebieg naszej pracy. Stał się w końcu do tego stopnia hałaśliwy, iż zlękliśmy się, by nie obudził czujności okolicznych włóczęgów.",
+  "start": 3027.16
+ },
+ {
+  "i": 214,
+  "pl": "Takie przynajmniej były obawy Legranda, bowiem dla mnie wszelkie zamieszanie byłoby wówczas bardzo pożądane, gdyż pozwoliłoby mi doprowadzić mego niepoczytalnego przyjaciela do domu.",
+  "start": 3049.11
+ },
+ {
+  "i": 215,
+  "pl": "Ujadanie to poskromił w końcu nader skutecznie Jupiter, który z diabelnie stanowczą miną wyskoczył z jamy, zawiązał psu pysk swą szelką i z pełnym godności uśmiechem zabrał się znowu do roboty.",
+  "start": 3062.06
+ },
+ {
+  "i": 216,
+  "pl": "Po upływie oznaczonego czasu wkopaliśmy się w ziemię do głębokości pięciu stóp, lecz skarbów nie było ani śladu. Nastąpiła dłuższa przerwa i już począłem radować się nadzieją, że cała ta krotochwila<sup>20<\/sup> ma się wreszcie ku końcowi.",
+  "start": 3078.73
+ },
+ {
+  "i": 217,
+  "pl": "Jednak Legrand, jakkolwiek widocznie przygnębiony, otarł w zamyśleniu czoło i jął się pracy na nowo. Cały okrąg o średnicy czterech stóp był już rozkopany; poszerzyliśmy go zatem z wolna i pogłębiliśmy jeszcze na dwie stopy. Nic jednak nie znaleźliśmy.",
+  "start": 3095.79
+ },
+ {
+  "i": 218,
+  "pl": "W końcu szukający skarbów marzyciel, którego było mi serdecznie żal, z wyrazem gorzkiego rozczarowania na twarzy wygramolił się z jamy i począł opieszale wdziewać na siebie zdjętą poprzednio kurtkę. Nie rzekłem na to ani słowa. Jupiter na znak swego pana rozbierał narzędzia.",
+  "start": 3118.64
+ },
+ {
+  "i": 219,
+  "pl": "Gdy to się stało, zdjęliśmy psu więzy z pyska i w głębokim milczeniu szliśmy ku domowi.",
+  "start": 3139.7
+ },
+ {
+  "i": 220,
+  "pl": "Nie odeszliśmy wszakże dalej niż na jakieś dwanaście kroków, gdy Legrand z głośnym przekleństwem rzucił się na Jupitera i porwał go za kołnierz. Osłupiały Murzyn wytrzeszczył oczy, otwarł szeroko usta, upuścił łopaty i padł na kolana.",
+  "start": 3147.16
+ },
+ {
+  "i": 221,
+  "pl": "— Ty, hultaju! — krzyczał Legrand przez zaciśnięte zęby. — Ty diabelski powsinogo! Mów, odpowiedz mi natychmiast bez wykrętów, które... które jest twe lewe oko?",
+  "start": 3162.18
+ },
+ {
+  "i": 222,
+  "pl": "— Och, mój złoty massa Will! Toć to jest na pewno moje lewe oko! — zaskrzeczał przerażony Jupiter, kładąc rękę na swym prawym narządzie wzroku i przyciskając ją z rozpaczliwą zawziętością, jak gdyby się obawiał, że jego pan wydrze mu to oko.",
+  "start": 3180.83
+ },
+ {
+  "i": 223,
+  "pl": "— Tak też sobie myślałem! To od razu przyszło mi do głowy! Hurra! — darł się Legrand, puszczając Murzyna i wykonując jakieś łamańce i skoki ku zdumieniu swego służącego, który podźwignąwszy się z ziemi, wodził kolejno oczyma od swego pana do mnie, to znów ode mnie do swego pana.",
+  "start": 3200.67
+ },
+ {
+  "i": 224,
+  "pl": "— Chodź! Wracajmy! — odezwał się tenże. — Jeszcze nie po wszystkim! — i poprowadził nas znowu w stronę tulipanowca.",
+  "start": 3222.99
+ },
+ {
+  "i": 225,
+  "pl": "— Jup! — zawołał, gdyśmy stanęli pod drzewem. — Chodź no tutaj! Czy ta czaszka jest zwrócona twarzą ku górze, czy też twarzą ku gałęzi?",
+  "start": 3232.16
+ },
+ {
+  "i": 226,
+  "pl": "— Twarz była zwrócona ku górze, massa, dlatego kruki mogły z łatwością wydziobać jej oczy.",
+  "start": 3246.63
+ },
+ {
+  "i": 227,
+  "pl": "— No, dobrze; a przez które oko przesunąłeś chrząszcza, przez to czy przez to? — pytał Legrand, dotykając na przemian oczu Murzyna.",
+  "start": 3253.04
+ },
+ {
+  "i": 228,
+  "pl": "— Przez to, massa, przez lewe oko, jak massa rozkazał — tłumaczył się służący, wskazując wciąż swe prawe oko.",
+  "start": 3266.01
+ },
+ {
+  "i": 229,
+  "pl": "— Zobaczymy! Spróbujmy jeszcze raz!",
+  "start": 3278.25
+ },
+ {
+  "i": 230,
+  "pl": "Z tymi słowy mój przyjaciel, w którego szaleństwie jąłem teraz, jak mi się przynajmniej zdawało, dostrzegać niejakie oznaki celowości, wyjął z ziemi kołek tkwiący na miejscu, gdzie upadł chrząszcz, i przesunął go o trzy cale<sup>21<\/sup> dalej ku zachodowi.",
+  "start": 3281.57
+ },
+ {
+  "i": 231,
+  "pl": "Następnie przeciągnął taśmę mierniczą od najbliższego punktu pnia do tego kołka, podobnie jak poprzednio, i poprowadził ją dalej w linii prostej na odległość piętnastu stóp; w ten sposób znalazł punkt oddalony o kilka jardów od miejsca, gdzie kopaliśmy poprzednio.",
+  "start": 3301.31
+ },
+ {
+  "i": 232,
+  "pl": "Dokoła tego nowego środka opisał koło, nieco większe od dawniejszego, i znowu zabraliśmy się do łopat. Znużony byłem niewymownie, lecz w moim umyśle, nie wiadomo dlaczego, dokonała się zmiana i nie odczuwałem już nazbyt wielkiej odrazy do tej narzuconej mi pracy.",
+  "start": 3322.73
+ },
+ {
+  "i": 233,
+  "pl": "Zaciekawiłem się nią niesłychanie, co więcej, zapaliłem się do niej. Być może, iż w chimerycznym zachowaniu się Legranda taił się jakiś zamysł czy zamierzenie, które mu poddałem się poniewolnie.",
+  "start": 3345.57
+ },
+ {
+  "i": 234,
+  "pl": "Kopałem skrzętnie i od czasu do czasu zdawałem sobie sprawę, iż z uczuciem bardzo podobnym do oczekiwania poszukuję oto urojonego skarbu, którego wizja opętała mego nieszczęsnego towarzysza.",
+  "start": 3361.44
+ },
+ {
+  "i": 235,
+  "pl": "Minęło blisko półtorej godziny i moje myśli jęły właśnie wałęsać się wśród mglistych rozmarzeń, kiedy ponownie przerwało nam pracę donośne naszczekiwanie psa. Jego niepokój, który za pierwszym razem był po prostu objawem rozhukania czy rozbawienia, stał się teraz przykrzejszy i poważniejszy.",
+  "start": 3374.26
+ },
+ {
+  "i": 236,
+  "pl": "Kiedy Jupiter chciał mu znowu nałożyć kaganiec, opierał się ze wszystkich sił i wskoczywszy do jamy, darł zapamiętale ziemię łapami.",
+  "start": 3396.84
+ },
+ {
+  "i": 237,
+  "pl": "W okamgnieniu wygrzebał mnóstwo ludzkich kości, tworzących dwa całkowite szkielety, wśród których znaleźliśmy kilka metalowych guzików oraz coś, co wydawało się nam jakby resztkami zetlonej wełny.",
+  "start": 3408.93
+ },
+ {
+  "i": 238,
+  "pl": "Za jednym zamachem łopaty wydobyliśmy brzeszczot wielkiego hiszpańskiego noża, a potem dokopaliśmy się jeszcze trzech czy czterech złotych i srebrnych monet, luźno leżących w ziemi.",
+  "start": 3425.2
+ },
+ {
+  "i": 239,
+  "pl": "Na ich widok radość Jupitera nie miała granic, ale z oblicza jego pana nie schodził wyraz gorzkiego rozczarowania.",
+  "start": 3438.83
+ },
+ {
+  "i": 240,
+  "pl": "Mimo to przynaglał nas do pracy, lecz zaledwie dokończył swych słów, kiedy potknąłem się i upadłem przed siebie, zaczepiwszy końcem buta o wielki żelazny pierścień, który tkwił jeszcze na poły w miałkim piasku.",
+  "start": 3449.37
+ },
+ {
+  "i": 241,
+  "pl": "Pracowaliśmy tedy<sup>22<\/sup> dalej ze zdwojoną gorliwością i nie zdarzyło mi się odtąd przeżyć drugich dziesięciu minut równie potężnego uniesienia.",
+  "start": 3462.68
+ },
+ {
+  "i": 242,
+  "pl": "Wnet zdążyliśmy odwalić ziemię z podłużnej, drewnianej skrzyni, której ściany były tak znakomicie zachowane i tak przedziwnie twarde, iż zapewne musiała być kiedyś impregnowana jakimś rozczynem mineralnym — prawdopodobnie dwuchlorkiem rtęci. Skrzynia ta miała trzy i pół stopy głębokości.",
+  "start": 3474.76
+ },
+ {
+  "i": 243,
+  "pl": "Umocniono ją silnymi wstęgami z kowanego żelaza, które tworzyły jakby kratę pospajaną na skrzyżowaniach nitami. Po obu jej stronach, bliżej wieka, znajdowały się po trzy żelazne pierścienie — było ich zatem sześć — przy pomocy których skrzynię mogło podźwignąć sześć osób.",
+  "start": 3496.32
+ },
+ {
+  "i": 244,
+  "pl": "Dołożywszy wszystkich sił, zdołaliśmy zaledwie poruszyć ją nieco w łożysku. Przekonaliśmy się rychło, iż żadną miarą nie sprostamy takiemu ogromnemu ciężarowi. Na szczęście, wieko przytrzymywały tylko dwa rygle. Oderwaliśmy je, drżąc i dysząc z uniesienia.",
+  "start": 3516.75
+ },
+ {
+  "i": 245,
+  "pl": "Mignął przed nami skarb nieocenionej wartości. Gdy światło latarni rozwidniło nieco jamę, olśniła nasze oczy promienista roztęcz nagromadzonego bezładnie złota i klejnotów.",
+  "start": 3540.62
+ },
+ {
+  "i": 246,
+  "pl": "Nie zdołam wysłowić wrażeń, jakich doznałem na ten widok. Oczywiście górowało nad wszystkimi osłupienie. Legrand był widocznie wyczerpany nadmiarem wzruszeń i prawie się nie odzywał. Twarz Jupitera powlokła się na chwilę taką śmiertelną bladością, jakiej nie widywałem jeszcze u Murzyna.",
+  "start": 3558.39
+ },
+ {
+  "i": 247,
+  "pl": "Skamieniał i wyglądał jak spiorunowany. Potem rzucił się w jamie na kolana i zanurzył obnażone ramiona aż po łokcie w złocie, jakby lubując się rozkoszą kąpieli. W końcu z głębokim westchnieniem zawołał, niby przemawiając do siebie:",
+  "start": 3582.7
+ },
+ {
+  "i": 248,
+  "pl": "— A wszystko to zrobił ten złoty chrząszcz, mój śliczny, złoty chrząszcz! Mój biedny, złoty chrząszczyk, którego przeklinałem i obmawiałem! Czy nie wstyd ci, Murzynie? Powiedz sam!",
+  "start": 3603.65
+ },
+ {
+  "i": 249,
+  "pl": "Ostatecznie nie było innego sposobu, jak wezwać do opamiętania pana i służącego, i zwrócić im uwagę, iż należałoby zebrać się co rychlej do uprzątnięcia skarbu. Pora była już późna i wypadało się spieszyć, jeżeli mieliśmy wszystko poznosić przed świtem do domu.",
+  "start": 3628.61
+ },
+ {
+  "i": 250,
+  "pl": "Niełatwo przyszło nam zdać sobie sprawę z tego, co należało uczynić i zmarnowaliśmy mnóstwo czasu na naradach — do tego stopnia nie mogliśmy zebrać myśli.",
+  "start": 3648.88
+ },
+ {
+  "i": 251,
+  "pl": "Wreszcie postanowiliśmy wyjąć ze skrzyni dwie trzecie zawartości, ażeby była lżejsza, i dopiero wówczas udało się nam, acz nie bez trudu, wydźwignąć ją z jamy.",
+  "start": 3661.79
+ },
+ {
+  "i": 252,
+  "pl": "Przedmioty wyjęte poprzednio ukryliśmy w krzakach i pozostawiliśmy przy nich na straży psa, któremu Jupiter nakazał surowo, by pod żadnym pozorem nie oddalał się z miejsca i nie ważył się otwierać pyska aż do naszego powrotu.",
+  "start": 3675.37
+ },
+ {
+  "i": 253,
+  "pl": "Po czym podążyliśmy pospiesznie ze skrzynią do domu; przybyliśmy do chaty bez przygód, lecz znużeni niesłychanie, o pierwszej w nocy. Zmęczenie nasze przewyższało ludzkie siły, więc niepodobna było myśleć o natychmiastowym powrocie. Pozostaliśmy przeto do drugiej i spożyliśmy wieczerzę.",
+  "start": 3690.42
+ },
+ {
+  "i": 254,
+  "pl": "Wnet potem szliśmy znowu ku wzgórzom, zaopatrzeni w trzy spore worki, które, na szczęście, znaleźliśmy w chacie. Na kilka minut przed czwartą stanęliśmy na miejscu, podzieliliśmy między siebie możliwie równo resztę łupu i nie zasypawszy jam, wyruszyliśmy z powrotem do siedziby Legranda,",
+  "start": 3717.12
+ },
+ {
+  "i": 255,
+  "pl": "gdzie złożyliśmy po raz wtóry swe drogocenne brzemiona, kiedy już pierwsze nikłe smugi brzasku jęły się jarzyć nad drzewami od wschodu.",
+  "start": 3738.85
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

@@ -1,0 +1,1368 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to ../../public/poe-zloty-zuk/audio/chapter-02.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-02.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Złoty żuk · Część II — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Złoty żuk · Część II · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="../../public/poe-zloty-zuk/audio/chapter-02.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Byliśmy doszczętnie wyczerpani, lecz przemożne podniecenie nie pozwoliło nam na dłuższy spoczynek. Po niespokojnej kilkugodzinnej drzemce pozrywaliśmy się jak umówieni i przystąpiliśmy do obejrzenia naszych skarbów.",
+  "start": 0.0
+ },
+ {
+  "i": 1,
+  "pl": "Skrzynia była napełniona po brzegi; potrzeba było całego dnia i znacznej części następnej nocy, by rozejrzeć się w jej zawartości. Nie było w niej ładu ni składu. Widać wrzucono do niej wszystko, nie dbając o porządek.",
+  "start": 18.1
+ },
+ {
+  "i": 2,
+  "pl": "Podzieliliśmy zatem różne przedmioty wedle ich jakości i przekonaliśmy się, że weszliśmy w posiadanie znacznie większego skarbu, niż nam się początkowo zdawało.",
+  "start": 37.35
+ },
+ {
+  "i": 3,
+  "pl": "Same monety przedstawiały wartość przeszło czterystu pięć dziesięciu tysięcy dolarów — a oceniliśmy je możliwie dokładnie wedle bieżących kursów giełdowych. Nie było wśród nich ani odrobiny srebra.",
+  "start": 48.27
+ },
+ {
+  "i": 4,
+  "pl": "Wyłącznie złoto bardzo starożytne i nader rozmaite: pieniądze francuskie, hiszpańskie i niemieckie, trochę gwinei angielskich, jako też kilka liczmanów, jakich dotychczas nikt z nas nie widział.",
+  "start": 62.62
+ },
+ {
+  "i": 5,
+  "pl": "Znaleźliśmy także kilka monet bardzo wielkich i ciężkich, lecz tak już uszkodzonych, że nie mogliśmy odczytać napisów. Pieniędzy amerykańskich nie było wcale. Trudniej przyszło nam oznaczyć wartość drogich kamieni.",
+  "start": 75.81
+ },
+ {
+  "i": 6,
+  "pl": "Naliczyliśmy sto dziesięć diamentów, wśród nich kilka nadzwyczaj wielkich i pięknych, zaś ani jednego małego; osiemdziesiąt wspaniałych rubinów; trzysta dziesięć cudownych szmaragdów; dwadzieścia jeden szafirów i wreszcie jeden opal.",
+  "start": 90.92
+ },
+ {
+  "i": 7,
+  "pl": "Wszystkie te kamienie wyłamano z opraw i wrzucono bezładnie do skrzyni. Oprawy znaleźliśmy oddzielnie wśród innych złotych przedmiotów, lecz pogruchotane młotem, jakby z rozmysłem, by nikt ich nie rozpoznał. Ponadto było tam niesłychane mnóstwo szczerozłotych klejnotów;",
+  "start": 109.78
+ },
+ {
+  "i": 8,
+  "pl": "blisko dwieście kosztownych pierścieni i kolczyków, trzydzieści — jak mi się zdaje — wspaniałych łańcuchów; osiemdziesiąt trzy nadzwyczaj wielkie i ciężkie krucyfiksy; pięć złotych kadzielnic nadzwyczajnej wartości; ogromna, złota waza ponczowa,",
+  "start": 131.41
+ },
+ {
+  "i": 9,
+  "pl": "szczodrze ozdobiona misternie cyzelowanymi liśćmi winnymi i korowodem bachantek<sup>23<\/sup>; dwie przedziwnie rzeźbione rękojeści mieczów tudzież bardzo wiele innych, drobniejszych przedmiotów, których już nie pamiętam.",
+  "start": 149.01
+ },
+ {
+  "i": 10,
+  "pl": "Waga tych kosztowności wynosiła przeszło trzysta pięćdziesiąt funtów<sup>24<\/sup>, nie wliczając do nich trzystu dziewięćdziesięciu siedmiu drogocennych złotych zegarków, z których trzy były warte co najmniej po pięćset dolarów.",
+  "start": 163.57
+ },
+ {
+  "i": 11,
+  "pl": "Niektóre z nich były nader starożytne i jako czasomierze nie nadawały się już do użytku, gdyż mechanizmy ich ucierpiały wielce od rdzy — ale wszystkie były szczodrze ozdobione drogimi kamieniami i mieściły się w ogromnie cennych kopertach.",
+  "start": 177.79
+ },
+ {
+  "i": 12,
+  "pl": "Całą zawartość skrzyni oceniliśmy tej nocy na półtora miliona dolarów; wszelako później, gdyśmy jeszcze raz przejrzeli wszystkie kosztowności i klejnoty, przekonaliśmy się, o ile nie doceniliśmy wartości naszego skarbu, aczkolwiek niektóre przedmioty przeznaczyliśmy oddzielnie do własnego użytku.",
+  "start": 195.45
+ },
+ {
+  "i": 13,
+  "pl": "Przyszedł wreszcie czas, że ukończyliśmy obliczenia i że niezmierne nasze podniecenie nieco się ukoiło. Legrand widział, że umieram z niecierpliwości, szukając rozwiązania tej zdumiewającej zagadki, i wyjaśnił mi ją szczegółowo wraz ze wszystkimi okolicznościami.",
+  "start": 215.95
+ },
+ {
+  "i": 14,
+  "pl": "— Pamiętasz — mówił — ów wieczór, kiedy podałem ci pobieżnie nakreślony szkic, który miał przedstawiać żuka. I przypominasz sobie zapewne, iż po prostu uraził mnie opór, z jakim utrzymywałeś, że mój rysunek przypomina trupią głowę.",
+  "start": 236.38
+ },
+ {
+  "i": 15,
+  "pl": "Gdyś to powiedział po raz pierwszy, sądziłem, że żartujesz; lecz potem przyszły mi na myśl osobliwe cętki na odwłoku chrząszcza i wydało mi się, że twoje spostrzeżenie jest poniekąd uzasadnione.",
+  "start": 258.94
+ },
+ {
+  "i": 16,
+  "pl": "Mimo to twe kpiny z mych zdolności graficznych rozdrażniły mnie — gdyż uchodzę za dobrego rysownika — i dlatego, gdyś mi podał ów pergaminowy świstek, chciałem ze złości zmiąć go i rzucić w ogień.",
+  "start": 275.65
+ },
+ {
+  "i": 17,
+  "pl": "— Ale to chodziło o papierowy świstek — odezwałem się.",
+  "start": 293.35
+ },
+ {
+  "i": 18,
+  "pl": "— Nie; miał on wygląd papieru i zrazu uważałem go za papier, ale kiedy zacząłem na nim rysować, przekonałem się, że mam do czynienia z kawałkiem bardzo cienkiego pergaminu. Jak wiesz, był on bardzo brudny.",
+  "start": 297.85
+ },
+ {
+  "i": 19,
+  "pl": "Otóż kiedy miałem już go zmiąć, spojrzałem na szkic, który oglądałeś przede mną, i wyobraź sobie moje zdumienie, gdy zobaczyłem istotnie rysunek trupiej głowy na tym samym miejscu, gdzie — jak mi się zdawało — naszkicowałem owada. Przez chwilę nie mogłem się opamiętać i skupić myśli.",
+  "start": 315.46
+ },
+ {
+  "i": 20,
+  "pl": "Wiedziałem, iż mój rysunek różnił się wielce w szczegółach od tego, na który patrzyłem, aczkolwiek było niejakie podobieństwo w najogólniejszych zarysach. Wziąłem tedy świecę i usiadłszy w najdalszym kącie izby, zabrałem się do ściślejszego zbadania pergaminu.",
+  "start": 337.91
+ },
+ {
+  "i": 21,
+  "pl": "Odwróciwszy go, ujrzałem swój szkic na przeciwnej stronie, na pewno ten sam. Pierwsze moje wrażenie streszczało się wyłącznie w zdumieniu nad istotnie zastanawiającym podobieństwem konturów, jako też nad szczególnym zbiegiem okoliczności,",
+  "start": 358.79
+ },
+ {
+  "i": 22,
+  "pl": "że po drugiej stronie pergaminu mogła widnieć nieznana mi czaszka, tuż pod moją podobizną żuka, i że ta czaszka nie tylko konturem, ale także rozmiarem mogła tak bardzo upodobnić się do mojego rysunku. Jak już powiedziałem, ten osobliwy zbieg okoliczności wprawił mnie na jakiś czas w osłupienie.",
+  "start": 376.69
+ },
+ {
+  "i": 23,
+  "pl": "Jest to zwykłe w takich razach zjawisko. Umysł sili się, by wykazać związek, mianowicie łączność przyczyny i skutku, i nie mogąc temu podołać, ulega jakby chwilowemu obezwładnieniu.",
+  "start": 400.28
+ },
+ {
+  "i": 24,
+  "pl": "Otrząsnąwszy się jednak z tego bezwładu, jąłem stopniowo nabierać przeświadczenia, które przeniknęło mnie nierównie silniej niż ów zbieg okoliczności.",
+  "start": 419.94
+ },
+ {
+  "i": 25,
+  "pl": "Uprzytomniłem sobie bowiem dokładnie i szczegółowo, że na pergaminie nie było ani śladu jakiegokolwiek rysunku, gdy przystępowałem do szkicowania żuka.",
+  "start": 431.9
+ },
+ {
+  "i": 26,
+  "pl": "Nabierałem pewności, że tak było istotnie, gdyż przypomniałem sobie, że spojrzałem najpierw na jedną stronę, a potem na drugą, szukając możliwie najczystszego miejsca. Gdyby podówczas widniała tam czaszka, byłbym na pewno ją zauważył. Była w tym doprawdy jakaś zagadka, ale czułem,",
+  "start": 441.64
+ },
+ {
+  "i": 27,
+  "pl": "że nie podołam jej rozwiązaniu; wszelako już wówczas, w tej wczesnej chwili, w najodleglejszych i najtajniejszych skrytkach mojego umysłu zamigotało nikle, na podobieństwo robaczka świętojańskiego, poczucie tej prawdy, która w przygodach ubiegłej nocy znalazła takie świetne potwierdzenie.",
+  "start": 463.11
+ },
+ {
+  "i": 28,
+  "pl": "Zerwałem się nagle z miejsca i chowając starannie pergamin, odłożyłem dalsze rozmyślania do czasu zupełnej samotności.",
+  "start": 484.33
+ },
+ {
+  "i": 29,
+  "pl": "Po twym odejściu, kiedy Jupiter usnął jak zabity, zabrałem się do metodycznego rozpatrzenia tej sprawy. Przede wszystkim zdałem sobie sprawę, w jaki sposób wszedłem w posiadanie owego pergaminu.",
+  "start": 492.19
+ },
+ {
+  "i": 30,
+  "pl": "Miejsce, gdzie dostrzegliśmy żuka, znajdowało się na wybrzeżu stałego lądu, o jakąś milę na zachód od wyspy i bardzo blisko od granicy najwyższego przypływu morza. Kiedy sięgnąłem po niego, ugryzł mnie mocno i musiałem wypuścić go z ręki.",
+  "start": 508.12
+ },
+ {
+  "i": 31,
+  "pl": "Jupiter ze swą zwykłą ostrożnością, zanim przystąpił do schwytania uciekającego przed nami owada, obejrzał się za liściem lub czymś podobnym, przez co byłoby można go ująć. Otóż w tej chwili ujrzeliśmy obaj równocześnie ów skrawek pergaminu, który zresztą wydał mi się papierem.",
+  "start": 529.17
+ },
+ {
+  "i": 32,
+  "pl": "Był on na pół zagrzebany w piasku i wystawał z niego tylko jednym rożkiem. Opodal od miejsca, gdzie go znaleźliśmy, zauważyłem szczątki kadłuba, który kiedyś był zapewne częścią wielkiej okrętowej łodzi.",
+  "start": 554.05
+ },
+ {
+  "i": 33,
+  "pl": "Ten gruchot, jak mi się zdawało, musiał tam leżeć już od dawna, gdyż niełatwo dawało się w nim dostrzec podobieństwo do wiązania łodzi.",
+  "start": 570.01
+ },
+ {
+  "i": 34,
+  "pl": "Jupiter podniósł tedy pergamin, owinął weń chrząszcza i podał mi go. Wnet potem szliśmy z powrotem do domu i spotkaliśmy po drodze porucznika G. Pokazałem mu owada, on zaś poprosił mnie, żebym mu pozwolił wziąć go ze sobą do fortu.",
+  "start": 580.97
+ },
+ {
+  "i": 35,
+  "pl": "Kiedy się zgodziłem, włożył go natychmiast do kieszonki swej kamizelki bez pergaminu, w który zawinąłem żuka i którego przez cały czas naszej rozmowy nie wypuszczałem z ręki.",
+  "start": 600.31
+ },
+ {
+  "i": 36,
+  "pl": "Być może, iż obawiał się, bym nie zmienił zdania i sądził, że najlepiej będzie wejść od razu w posiadanie zdobyczy — wiesz przecie, jak on się zapala do wszystkiego, co pozostaje w związku z wiedzą przyrodniczą. Równocześnie widocznie musiałem bezwiednie włożyć pergamin do kieszeni.",
+  "start": 614.14
+ },
+ {
+  "i": 37,
+  "pl": "Może pamiętasz jeszcze, że kiedy usiadłem przy stole, by narysować żuka, nie znalazłem papieru na zwykłym miejscu. Zajrzałem do szuflady, ale i tam go nie było. Przeszukiwałem kieszenie, by znaleźć jakiś bezużyteczny list, i wtedy nawinął mi się pod rękę pergamin.",
+  "start": 633.35
+ },
+ {
+  "i": 38,
+  "pl": "Rozwodzę się tak szczegółowo nad sposobem, w jaki wszedłem w jego posiadanie, gdyż te okoliczności wywarły na mnie nadzwyczaj silne wrażenie.",
+  "start": 652.03
+ },
+ {
+  "i": 39,
+  "pl": "Pomyślisz sobie zapewne, żem narwaniec, lecz zdążyłem już dopatrzyć się pewnego związku. Spoiłem dwa ogniwa wielkiego łańcucha. Na brzegu morskim leżała łódź, a opodal od niej ten pergamin — nie papier! — z rysunkiem przedstawiającym czaszkę. Oczywiście spytasz: gdzież jest ten związek?",
+  "start": 661.61
+ },
+ {
+  "i": 40,
+  "pl": "Odpowiem na to, że czaszka, czyli trupia głowa, jest powszechnie znanym godłem korsarzy. Podczas swych wypraw wywieszali oni zawsze flagę z trupią głową.",
+  "start": 691.79
+ },
+ {
+  "i": 41,
+  "pl": "Wspomniałem już, że ów świstek był z pergaminu, nie z papieru. Pergamin jest bardzo trwały — niemal niezniszczalny. Rzeczy mniejszej wagi rzadko powierzano pergaminowi, ile że do zwykłego pisania czy rysowania nadaje się on o wiele mniej od papieru.",
+  "start": 706.09
+ },
+ {
+  "i": 42,
+  "pl": "Ta refleksja poddała mi myśl, że trupia głowa nie może być bez znaczenia. Zwróciłem również uwagę na kształt pergaminu. Wprawdzie jeden z jego rogów uległ, skutkiem jakiegoś wypadku, zniszczeniu, mimo to widziało się od razu, że jego pierwotny format musiał być podłużny.",
+  "start": 729.13
+ },
+ {
+  "i": 43,
+  "pl": "Był to zatem kształt karty, jakiej używano ongi do dokumentów — do upamiętnienia czegoś, co jest bardzo ważne i winno być troskliwie przechowywane.",
+  "start": 753.44
+ },
+ {
+  "i": 44,
+  "pl": "— Ależ — przerwałem — powiedziałeś, że czaszki nie było na pergaminie, kiedy zaczynałeś rysować żuka.",
+  "start": 766.24
+ },
+ {
+  "i": 45,
+  "pl": "Jakże mogłeś dopatrywać się związku między czaszką i łodzią, skoro, jak sam twierdzisz, pojawiła się ona (Bóg tylko wie, w jaki sposób i za czyją sprawą!) dopiero w jakiś czas potem, gdy twój szkic był już ukończony?",
+  "start": 772.04
+ },
+ {
+  "i": 46,
+  "pl": "— Ach, to właśnie jest osią całej tajemnicy, aczkolwiek ten zagadkowy szczegół nie nastręczał mi przy rozwiązaniu większych trudności. Mój pochód był pewny i zmierzał wprost do celu. Rozumowałem mniej więcej w ten sposób: Kiedy rysowałem żuka, czaszki na pergaminie nie było.",
+  "start": 786.38
+ },
+ {
+  "i": 47,
+  "pl": "Ukończywszy rysunek, podałem ci go i nie spuszczałem cię z oka do chwili, gdy mi go zwróciłeś. Zatem ty nie narysowałeś czaszki i nie było tam nikogo innego, kto by mógł ją narysować. Nie powstała więc za ludzką przyczyną. A jednak, mimo wszystko, istniała.",
+  "start": 809.39
+ },
+ {
+  "i": 48,
+  "pl": "Dotarłszy w mych rozumowaniach do tego punktu, starałem sobie przypomnieć i z całą dokładnością przypomniałem sobie istotnie wszystko, co zaszło w tym czasie. Było chłodno (co za niezwykły i szczęśliwy wypadek!) i na kominku płonął ogień. Byłem zgrzany po wycieczce i usiadłem przy stole.",
+  "start": 834.7
+ },
+ {
+  "i": 49,
+  "pl": "Ty natomiast przysunąłeś sobie krzesło aż do samego ogniska. Kiedy podałem ci pergamin i kiedy jąłeś go oglądać, wpadł do pokoju mój nowofundlandczyk, Wilk, i wsparł ci się łapami na ramionach.",
+  "start": 859.53
+ },
+ {
+  "i": 50,
+  "pl": "Lewą ręką głaskałeś i odpychałeś go równocześnie, natomiast prawą rękę, w której trzymałeś pergamin, opuściłeś niedbale na kolana, bezpośrednio w pobliżu ognia.",
+  "start": 877.54
+ },
+ {
+  "i": 51,
+  "pl": "Była chwila, kiedy mi się zdawało, że pergamin zajmie się od płomienia, i chciałem cię przestrzec, lecz zanim zdążyłem się odezwać, już cofnąłeś rękę i zabrałeś się do oglądania rysunku.",
+  "start": 889.25
+ },
+ {
+  "i": 52,
+  "pl": "Rozważywszy wszystkie te okoliczności, doszedłem natychmiast do przekonania, że gorąco było tym czynnikiem, który wywołał na pergaminie ową czaszkę.",
+  "start": 904.73
+ },
+ {
+  "i": 53,
+  "pl": "Wiesz dobrze, iż istnieją obecnie i że zawsze istniały odczynniki chemiczne, za pomocą których można pisać na papierze lub welinie w ten sposób, iż nakreślone litery występują na jaw dopiero pod działaniem silniejszego ciepła.",
+  "start": 913.27
+ },
+ {
+  "i": 54,
+  "pl": "Używano w tym celu niekiedy szafranu, rozczynionego w aqua regia<sup>25<\/sup> i rozpuszczonego następnie w cztery razy większej ilości wody; otrzymywano tym sposobem atrament zielony. Sól kobaltowa, rozpuszczona w spirytusie saletrowym, daje atrament czerwony.",
+  "start": 930.08
+ },
+ {
+  "i": 55,
+  "pl": "Barwy te zanikają po pewnym czasie, gdy materiał, na którym nimi pisano, ulegnie oziębieniu, i ukazują się znowu po ponownym zastosowaniu ciepła.",
+  "start": 948.45
+ },
+ {
+  "i": 56,
+  "pl": "Poddałem z kolei trupią głowę drobiazgowemu badaniu. Zewnętrzne jej zarysy — to znaczy zarysy bliższe krańców welinu — były znaczne wyraźniejsze niż inne kreski. Z tego wywnioskowałem, że działanie ciepła było albo niezupełne, albo też niejednostajne.",
+  "start": 959.93
+ },
+ {
+  "i": 57,
+  "pl": "Zapaliłem niezwłocznie ogień i ogrzałem mocno całą powierzchnię pergaminu.",
+  "start": 980.52
+ },
+ {
+  "i": 58,
+  "pl": "Jedynym na razie następstwem było wzmocnienie się nikłych linii czaszki; powtarzając jednak tę próbę, dostrzegłem wreszcie w kącie owego świstka, wprost naprzeciw miejsca, gdzie widniała trupia głowa, coś, co w pierwszej chwili wydało mi się rysunkiem kozy.",
+  "start": 986.02
+ },
+ {
+  "i": 59,
+  "pl": "Po dokładniejszym jednakże obejrzeniu przekonałem się, że miało to przedstawiać koźlę.",
+  "start": 1006.59
+ },
+ {
+  "i": 60,
+  "pl": "— Ha, ha! — odezwałem się. — Nie mam doprawdy prawa natrząsać się z ciebie — półtora miliona dolarów to nie kpiny! Ale coś mi się zdaje, że nie uda ci się włączyć trzeciego ogniwa do twego łańcucha; bo czyż zdołasz wykazać, że istnieje jakiś szczególniejszy związek między twymi korsarzami a kozą?",
+  "start": 1013.59
+ },
+ {
+  "i": 61,
+  "pl": "Korsarze, jak wiesz, nie mają nic wspólnego z kozami, które należą do dziedziny gospodarstwa wiejskiego.",
+  "start": 1037.14
+ },
+ {
+  "i": 62,
+  "pl": "— Ależ powiedziałem ci, że ów rysunek nie przedstawiał kozy!",
+  "start": 1044.58
+ },
+ {
+  "i": 63,
+  "pl": "— Zatem koźlę — to na jedno wychodzi.",
+  "start": 1049.76
+ },
+ {
+  "i": 64,
+  "pl": "— Owszem, wychodzi, ale nie zawsze — odparł Legrand. — Może obiło ci się o uszy nazwisko niejakiego kapitana Kidda<sup>26<\/sup>? Otóż rysunek tego zwierzęcia wydał mi się od razu rodzajem logogryficznego lub hieroglificznego podpisu.",
+  "start": 1053.96
+ },
+ {
+  "i": 65,
+  "pl": "Powiadam: podpisu, bowiem znajdował się na welinie w takim miejscu, że nasunęła mi się ta myśl. Trupia czaszka umieszczona w przeciwległym rogu z tego samego względu wywoływała wrażenie pieczęci czy godła.",
+  "start": 1073.32
+ },
+ {
+  "i": 66,
+  "pl": "Ale było mi markotno, że nie mogłem znaleźć reszty — mianowicie treści dokumentu, który sobie wyobraziłem — tekstu, zgodnego z moją myślą.",
+  "start": 1092.86
+ },
+ {
+  "i": 67,
+  "pl": "— Przypuszczam, iż spodziewałeś się jakiegoś pisma między godłem a podpisem.",
+  "start": 1104.35
+ },
+ {
+  "i": 68,
+  "pl": "— Czegoś podobnego. To pewne, iż nieodparcie przenikało mnie przeczucie jakiegoś zbliżającego się, niezmiernego szczęścia. Nie umiem ci powiedzieć, dlaczego.",
+  "start": 1111.22
+ },
+ {
+  "i": 69,
+  "pl": "Być może zresztą, iż było to raczej pragnienie niż istotna wiara; lecz czybyś uwierzył, że niedorzeczna gadanina Jupitera, jakoby ów żuk był szczerozłoty, oddziałała silnie na moją wyobraźnię? A potem to całe mnóstwo przypadków i zgodnych okoliczności, czyż nie było naprawdę nadzwyczajne?",
+  "start": 1122.2
+ },
+ {
+  "i": 70,
+  "pl": "Czyż nie zdajesz sobie sprawy, jak dalece było to przypadkiem, że wszystko to przydarzyło się właśnie w tym jednym dniu całego roku, kiedy było lub mogło być dość chłodno, by trzeba było zapalić na kominku, i że bez ognia tudzież bez udziału psa właśnie w tej chwili, kiedy wpadł do izby,",
+  "start": 1142.77
+ },
+ {
+  "i": 71,
+  "pl": "nigdy nie byłbym dostrzegł trupiej czaszki i co za tym idzie, nigdy nie byłbym posiadł owych skarbów?",
+  "start": 1164.65
+ },
+ {
+  "i": 72,
+  "pl": "— Mówże dalej! Czekam niecierpliwie.",
+  "start": 1173.15
+ },
+ {
+  "i": 73,
+  "pl": "— No dobrze. Oczywiście musiało obić ci się o uszy mnóstwo rozpowszechnionych pogłosek — tysiące niejasnych wieści krążących o skarbach zakopanych gdzieś na wybrzeżu atlantyckim przez Kidda i jego towarzyszy. Te pogłoski musiały doprawdy opierać się na rzeczywistości.",
+  "start": 1177.19
+ },
+ {
+  "i": 74,
+  "pl": "Istniały one od tak dawna i powtarzały się tak uporczywie, iż nie mogłem tłumaczyć sobie tego inaczej, jak tylko tą okolicznością, że zakopane skarby wciąż jeszcze spoczywały w ziemi.",
+  "start": 1197.29
+ },
+ {
+  "i": 75,
+  "pl": "Gdyby Kidd był ukrył swe łupy tylko na jakiś czas i później je wydobył, pogłoski te nie docierałyby do nas w bieżącej, niezmienionej formie. Może zdarzyło ci się zauważyć, że tego rodzaju opowieści mówią zawsze o ludziach, którzy szukają skarbów, nigdy zaś o tych, którzy je znajdują.",
+  "start": 1208.37
+ },
+ {
+  "i": 76,
+  "pl": "Gdyby korsarz był odzyskał swe mienie, sprawa ta byłaby przycichła. Mnie się zdaje, że jakiś wypadek — powiedzmy, utrata dokumentu, który wskazywał miejsce, gdzie je ukryto — uniemożliwiła mu wydobycie skarbu. Sądzę również, że o tym wypadku doszły słuchy do jego towarzyszy,",
+  "start": 1230.33
+ },
+ {
+  "i": 77,
+  "pl": "którzy w przeciwnym razie nic w ogóle nie wiedzieliby o zakopanych kosztownościach, i że to oni po nadaremnych, bo pozbawionych wskazówek poszukiwaniach, najpierw skrycie, a potem zupełnie jawnie jęli rozpowszechniać wieści, znajdujące się obecnie w obiegu.",
+  "start": 1250.39
+ },
+ {
+  "i": 78,
+  "pl": "Czy słyszałeś już kiedyś o jakimś wielkim skarbie wykopanym na wybrzeżu?",
+  "start": 1266.79
+ },
+ {
+  "i": 79,
+  "pl": "— Nie, nigdy.",
+  "start": 1272.53
+ },
+ {
+  "i": 80,
+  "pl": "— Otóż wiadomo powszechnie, że bogactwa Kidda były ogromne.",
+  "start": 1275.18
+ },
+ {
+  "i": 81,
+  "pl": "Dlatego wydawało mi się rzeczą pewną, iż spoczywają jeszcze w ziemi; i nie zdziwisz się zapewne, gdy ci powiem, że żywiłem nadzieję, spotęgowaną niemal do zupełnego przeświadczeni, iż ów w tak osobliwy sposób znaleziony pergamin zawiera zaginione wskazówki o miejscu, gdzie te bogactwa ukryto.",
+  "start": 1280.52
+ },
+ {
+  "i": 82,
+  "pl": "— Cóż więc zrobiłeś dalej?",
+  "start": 1304.82
+ },
+ {
+  "i": 83,
+  "pl": "— Ogrzewałem welin coraz silniej nad ogniem, ale nic się nie ukazało.",
+  "start": 1310.03
+ },
+ {
+  "i": 84,
+  "pl": "Pomyślałem sobie zatem, iż kto wie, czy przyczyną tego niepowodzenia nie jest powłoka brudu; opłukałem więc pergamin starannie, polewając go ciepłą wodą, a potem włożyłem do cynowego rondla, czaszką na dół, i postawiłem rondel na piecu, w którym napaliłem węglem drzewnym.",
+  "start": 1316.41
+ },
+ {
+  "i": 85,
+  "pl": "Po kilku minutach, kiedy rondel dobrze się rozgrzał, wyjąłem ów świstek i przekonałem się ku nieopisanej swej radości, że w kilku miejscach wystąpiły na nim plamki, które wydawały mi się znakami, połączonymi w rządki. Włożyłem go znów do rondla na parę minut.",
+  "start": 1336.27
+ },
+ {
+  "i": 86,
+  "pl": "Po wyjęciu zobaczyłem już wszystko i zaraz ci to pokażę.",
+  "start": 1356.94
+ },
+ {
+  "i": 87,
+  "pl": "Po tych słowach Legrand ogrzał na nowo pergamin i podał mi go do obejrzenia. Między trupią czaszką a koźlęciem ujrzałem następujące znaki, nakreślone nieudolnie czerwonym atramentem:",
+  "start": 1362.94
+ },
+ {
+  "i": 88,
+  "pl": "53‡‡†305))6*;4826)4‡.)4‡);806*;48†8¶60))85;1‡(;:‡*8†83(88)5*† ;46(;88*96*?;8)*‡(;485);5*†2:*‡(;4956*2(5*-4)8¶8*;4069285);) 6†8)4‡‡;1(‡9;48081;8:8‡1;48†85;4)485†528806*81(‡9;48;(88;4(‡?34;48)4‡;161;:188;‡?;",
+  "start": null
+ },
+ {
+  "i": 89,
+  "pl": "— Mój drogi — rzekłem, oddając mu świstek — wciąż jeszcze jestem jak tabaka w rogu. Gdybym w zamian za rozwiązanie tej zagadki miał posiąść wszystkie skarby Goldkondy<sup>27<\/sup>, nie zdołałbym na pewno dokazać tego.",
+  "start": 1381.07
+ },
+ {
+  "i": 90,
+  "pl": "— A jednak — odpowiedział Legrand — rozwiązanie to bynajmniej nie jest tak trudne, jak mogłoby się wydawać po pierwszym, pobieżnym obejrzeniu tych znaków.",
+  "start": 1400.79
+ },
+ {
+  "i": 91,
+  "pl": "Te znaki, jak łatwo się domyślić, są szyfrem, to jest, mają pewne znaczenie; wszelako z tego, co wiem o Kiddzie, nie sądzę, żeby był zdolny do obmyślenia zawilszych kryptogramów.",
+  "start": 1414.59
+ },
+ {
+  "i": 92,
+  "pl": "Od razu przyszło mi na myśl, że muszą być nader proste — oczywiście, w tej mierze, iż nieokrzesany umysł marynarza bez pomocy klucza przenigdy nie zdoła ich rozwiązać.",
+  "start": 1429.27
+ },
+ {
+  "i": 93,
+  "pl": "— A czy ty je istotnie odczytałeś?",
+  "start": 1442.16
+ },
+ {
+  "i": 94,
+  "pl": "— Z łatwością; odczytywałem już inne, tysiąc razy zawilsze.",
+  "start": 1445.97
+ },
+ {
+  "i": 95,
+  "pl": "Okoliczności, a także pewna skłonność umysłu sprawiły, iż zajmowałem się podobnymi łamigłówkami, i wątpię bardzo, czy bystrość ludzka może obmyślić taką zagadkę, której przenikliwość innego człowieka przy pomocy odpowiednich sposobów rozwiązać by nie mogła.",
+  "start": 1453.07
+ },
+ {
+  "i": 96,
+  "pl": "Skoro więc powiodło mi się wykryć czytelne i połączone ze sobą znaki, nie myślałem już wcale o trudnościach, jakie nastręczały się przy ich odczytaniu.",
+  "start": 1469.59
+ },
+ {
+  "i": 97,
+  "pl": "W danym wypadku — podobnie zresztą jak wszędzie, gdzie chodzi o pismo tajemne — pierwszym zagadnieniem jest język szyfru, ponieważ zasady rozwiązania, zwłaszcza gdy ma się do czynienia z mniej zawiłymi szyframi, pozostają w związku i mogą ulegać zmianom zależnie od ducha tego języka.",
+  "start": 1482.86
+ },
+ {
+  "i": 98,
+  "pl": "Na ogół nie ma innego sposobu, jak kierując się możliwościami, próbować po kolei wszystkich znanych języków, aż znajdzie się ten, o który chodzi. W szyfrze, który mamy przed sobą, podpis usuwa wszelkie trudności. Łamigłówka ze słowa „Kidd” jest możliwa tylko w języku angielskim.",
+  "start": 1504.93
+ },
+ {
+  "i": 99,
+  "pl": "Gdyby nie ta okoliczność, byłbym rozpoczął poszukiwania od hiszpańskiego i francuskiego, gdyż korsarz rozbijający na wodach hiszpańskich napisałby oczywiście swą tajemnicę w jednym z tych dwu języków. Wyszedłem jednak z założenia, że kryptogram ten jest angielski.",
+  "start": 1533.28
+ },
+ {
+  "i": 100,
+  "pl": "Jak widzisz, nie ma w nim odstępów między słowami. Gdyby one były, zadanie byłoby bez porównania łatwiejsze.",
+  "start": 1555.8
+ },
+ {
+  "i": 101,
+  "pl": "Byłbym zaczął w takim razie od zestawienia i rozbioru krótszych słów, a napotkawszy słowo o jednej tylko literze, na przykład „a” lub „I”<sup>28<\/sup>, byłbym uważał rozwiązanie za rzecz pewną.",
+  "start": 1566.79
+ },
+ {
+  "i": 102,
+  "pl": "Ponieważ odstępów nie ma, zacząłem od oznaczenia głosek, zarówno tych, które powtarzają się najczęściej, jak też tych, które najrzadziej. Zliczywszy wszystkie, zestawiłem następującą tablicę:",
+  "start": 1582.45
+ },
+ {
+  "i": 103,
+  "pl": "Otóż w języku angielskim spotyka się najczęściej głoskę „e”. Po niej następują z kolei: „a o i d h n r s t u y c f g l m w b k p q x z”. „E” ma taką przewagę, iż trudno jest znaleźć jakiś dłuższy zwrot, gdzie by go nie było.",
+  "start": 1618.13
+ },
+ {
+  "i": 104,
+  "pl": "Od samego więc początku mamy zasadę, która nadaje się do czegoś więcej niźli tylko do płonnych przypuszczeń. Powszechny użytek, jaki można mieć z tej tablicy, jest widoczny, wszelako w szczególności przy tym szyfrze będzie nam ona niezbyt pomocna.",
+  "start": 1644.86
+ },
+ {
+  "i": 105,
+  "pl": "Ponieważ przeważa wśród nich 8, przeto zaczniemy od przypuszczenia, że jest to „e” naturalnego abecadła.",
+  "start": 1663.53
+ },
+ {
+  "i": 106,
+  "pl": "By sprawdzić to przypuszczenie, zobaczmy, jak często znak 8 spotyka się parami — gdyż „e” nader często podwaja się w języku angielskim, w takich słowach, jak na przykład: meet, feet, speed, seen, been, agree itd. W danym wypadku podwaja się ono aż pięć razy, aczkolwiek cały kryptogram jest krótki.",
+  "start": 1675.05
+ },
+ {
+  "i": 107,
+  "pl": "Przyjmijmy zatem, że 8 oznacza „e”. Ze wszystkich słów w języku angielskim najczęściej używa się „the”; zobaczmy przeto, czy nie uda nam się znaleźć kilkakrotnie powtórzonego zestawienia trzech znaków, z których 8 będzie na końcu.",
+  "start": 1699.67
+ },
+ {
+  "i": 108,
+  "pl": "Jeśli spotkamy kilkakrotnie takie zestawienie znaków, to nader prawdopodobnie będzie to oznaczało słowo „the”. Przeglądając kryptogram znajdujemy aż siedem takich zestawień, złożonych ze znaków 48.",
+  "start": 1720.7
+ },
+ {
+  "i": 109,
+  "pl": "Możemy więc przypuścić, że ; oznacza „t”, 4 oznacza „h”, a 8 oznacza „e” — przy czym ostatnie znaczenie potwierdza się już stanowczo. Zrobiliśmy przeto krok naprzód.",
+  "start": 1736.65
+ },
+ {
+  "i": 110,
+  "pl": "Oznaczywszy w ten sposób jedno słowo, będziemy mogli z kolei oznaczyć rzecz nader ważną, mianowicie kilka początków i zakończeń innych słów. Weźmy bodaj jeden taki przykład, w którym spotyka się zestawienie ;48 niedaleko od końca szyfru.",
+  "start": 1756.06
+ },
+ {
+  "i": 111,
+  "pl": "Wiemy, że znak ;, który następuje bezpośrednio potem, jest początkiem słowa i że z sześciu znaków, które następują po owym „the”, pięć jest już nam znanych. Zastąpmy teraz te znaki literami, których mają znaczenie, pozostawiając dla nieznanych wolne miejsce:",
+  "start": 1773.81
+ },
+ {
+  "i": 112,
+  "pl": "t eeth",
+  "start": null
+ },
+ {
+  "i": 113,
+  "pl": "Od razu możemy odrzucić „th”, jako nie wchodzące w skład słowa, zaczynającego się od pierwszego „t”, gdyż przeglądając cały alfabet w poszukiwaniu litery, którą można by wstawić w owo wolne miejsce, przekonujemy się, iż niepodobna jest utworzyć takiego słowa,",
+  "start": 1796.41
+ },
+ {
+  "i": 114,
+  "pl": "w którym to „th” mogłoby stanowić część składową. Ograniczmy się zatem tylko do:",
+  "start": 1813.37
+ },
+ {
+  "i": 115,
+  "pl": "t ee",
+  "start": 1821.07
+ },
+ {
+  "i": 116,
+  "pl": "i przeszukując znów, w razie potrzeby, cały alfabet, dojdziemy do słowa „tree” (drzewo) jako jedynego możliwego rozwiązania. Uzyskujemy przy tym inną literę, a mianowicie „r”, oznaczone znakiem (, oraz zestawione razem słowa „the tree”.",
+  "start": 1822.73
+ },
+ {
+  "i": 117,
+  "pl": "Nieco dalej spotykamy znów zestawienie ;48 i posługujemy się nim jako zakończeniem tego, co je bezpośrednio poprzedza. Otrzymamy w ten sposób kombinację następującą:",
+  "start": 1858.17
+ },
+ {
+  "i": 118,
+  "pl": "the tree ;4(‡?34 the,",
+  "start": 1874.69
+ },
+ {
+  "i": 119,
+  "pl": "i podstawiwszy w miejsce wiadomych znaków odpowiednie litery, odczytujemy:",
+  "start": 1878.99
+ },
+ {
+  "i": 120,
+  "pl": "the tree thr‡?3h the",
+  "start": 1887.99
+ },
+ {
+  "i": 121,
+  "pl": "Jeżeli teraz zamiast znaków nieznanych pozostawimy wolne miejsca lub wstawimy zamiast nich kropki, to otrzymamy:",
+  "start": 1895.22
+ },
+ {
+  "i": 122,
+  "pl": "the tree thr...h the",
+  "start": null
+ },
+ {
+  "i": 123,
+  "pl": "przy czym natychmiast przychodzi na myśl słowo „through” (przez).",
+  "start": 1910.19
+ },
+ {
+  "i": 124,
+  "pl": "Odkrycie to zapoznaje nas ponadto z nowymi trzema literami „o”, „u”, „g”, oznaczonymi przez ‡, ? oraz 3.",
+  "start": 1916.47
+ },
+ {
+  "i": 125,
+  "pl": "Szukając dalej w szyfrze zestawień wiadomych znaków, spotykamy niedaleko od początku kombinację taką:",
+  "start": 1925.43
+ },
+ {
+  "i": 126,
+  "pl": "83(88",
+  "start": 1930.99
+ },
+ {
+  "i": 127,
+  "pl": "czyli „egree”, co oczywiście jest zakończeniem słowa „degree” (stopień) i poddaje nam znowu jedną literę, mianowicie „d” oznaczone znakiem †.",
+  "start": 1933.83
+ },
+ {
+  "i": 128,
+  "pl": "O cztery litery dalej za słowem „degree” znajdujemy zestawienie:",
+  "start": 1950.84
+ },
+ {
+  "i": 129,
+  "pl": ";46(;88",
+  "start": 1956.96
+ },
+ {
+  "i": 130,
+  "pl": "Przekładając znane znaki i zastępując, jak poprzednio, kropkami znaki nieznane, otrzymamy:",
+  "start": 1962.91
+ },
+ {
+  "i": 131,
+  "pl": "th.rtee.",
+  "start": 1971.78
+ },
+ {
+  "i": 132,
+  "pl": "Jest to kombinacja, która natychmiast podsuwa domyślności naszej słowo „thirteen” (trzynaście) i dorzuca nam dwie nowe głoski „i”, „n”, oznaczone 6 i *.",
+  "start": 1974.36
+ },
+ {
+  "i": 133,
+  "pl": "Wracając następnie do początku kryptogramu, widzimy zestawienie:",
+  "start": 1988.85
+ },
+ {
+  "i": 134,
+  "pl": "53‡‡†",
+  "start": 1992.71
+ },
+ {
+  "i": 135,
+  "pl": "Przełożywszy je, jak to czyniliśmy poprzednio, dostajemy:",
+  "start": 1995.61
+ },
+ {
+  "i": 136,
+  "pl": "good",
+  "start": 2000.09
+ },
+ {
+  "i": 137,
+  "pl": "co zarazem upewnia nas, że pierwszą literą jest „A” i że dwa pierwsze słowa brzmią: „A good” (dobry).",
+  "start": 2002.25
+ },
+ {
+  "i": 138,
+  "pl": "By uniknąć zamieszania, należałoby teraz zestawić w jedną tablicę nasz klucz, o ile jest już nam znany. Będzie przedstawiała się ona tak:",
+  "start": 2013.6
+ },
+ {
+  "i": 139,
+  "pl": "Mamy już zatem aż dziesięć najważniejszych liter i nie potrzebujemy dalej gromadzić szczegółów, by dotrzeć do rozwiązania. Wykazałem ci dostatecznie, że szyfry tego rodzaju są łatwe do odczytania i zapoznałem cię po trosze z rozumową metodą ich odgadywania.",
+  "start": 2047.21
+ },
+ {
+  "i": 140,
+  "pl": "Wiedz jednak, iż okaz, który mamy przed sobą, należy do najłatwiejszego rodzaju kryptogramów. Pozostaje mi tylko dać ci zupełny przekład znaków, widniejących na pergaminie, jakby były już rozwiązane. Brzmi on, jak następuje:",
+  "start": 2065.87
+ },
+ {
+  "i": 141,
+  "pl": "A good glass in the bishop’s hostel in the devil’s seat forty-one degrees and thirteen minutes northeast and by north main branch seventh limb east side shoot from the left eye of the death’s-head a bee line from the tree through the shot fifty feet out.",
+  "start": null
+ },
+ {
+  "i": 142,
+  "pl": "(Dobre szkła w hotelu biskupa na siedzeniu diabła czterdzieści jeden stopni i trzynaście minut północno-zachód i na północ główny pień siódmy konar od zachodu spuścić z lewego oka trupiej czaszki linię prostą od drzewa przez kulę piętnaście stóp dalej).",
+  "start": 2082.82
+ },
+ {
+  "i": 143,
+  "pl": "— Ależ — rzekłem — ta łamigłówka jest mi jeszcze tak samo niejasna jak poprzednio. Bo czyż można dorozumieć się czegoś tego galimatiasu, z tych „diablich siedzeń”, „trupich głów” i „biskupich hotelów”?",
+  "start": 2109.91
+ },
+ {
+  "i": 144,
+  "pl": "— Przyznaję — odrzekł Legrand — że na pierwszy rzut oka wygląda to wszystko jeszcze dość zawile. Toteż pierwszym mym staraniem było dokonać naturalnego rozdziału zdań, zgodnie z zamierzeniami tego, kto je układał.",
+  "start": 2131.93
+ },
+ {
+  "i": 145,
+  "pl": "— To znaczy położyć znaki pisarskie, nieprawdaż?",
+  "start": 2149.24
+ },
+ {
+  "i": 146,
+  "pl": "— Coś w tym rodzaju.",
+  "start": 2155.72
+ },
+ {
+  "i": 147,
+  "pl": "— W jakiż sposób można to zrobić?",
+  "start": 2157.58
+ },
+ {
+  "i": 148,
+  "pl": "— Pomyślałem sobie, że piszący umyślnie zaniedbał podziału na zdania, by utrudnić rozwiązanie. Wszelako człowiek niewyposażony nadzwyczajną bystrością, który podejmie się takiego zadania, na pewno popadnie w przesadę.",
+  "start": 2160.42
+ },
+ {
+  "i": 149,
+  "pl": "Kiedy bowiem układając swój kryptogram, dojdzie do przerwy w zdaniach, która z natury rzeczy wymagałaby kropki lub pauzy, wówczas nie zdoła oprzeć się pokusie, by właśnie w tym miejscu nie skupić swych znaków gęściej niż zazwyczaj.",
+  "start": 2175.69
+ },
+ {
+  "i": 150,
+  "pl": "Obejrzyj rękopis, o którym mówimy, a z łatwością znajdziesz aż pięć takich objawów niezwykłego nagromadzenia. Powodując się tą wskazówką, dokonałem podziału w następujący sposób:",
+  "start": 2190.79
+ },
+ {
+  "i": 151,
+  "pl": "A good glass in the bishop’s hostel in the devil’s seat — forty-one degrees and thirteen minutes — northeast and by north — main branch seventh limb east side — shoot from the left eye of the death’s-head — a bee line from the tree through the shot fifty feet cut.",
+  "start": null
+ },
+ {
+  "i": 152,
+  "pl": "(Dobre szkła w hotelu biskupa na siedzeniu diabła — czterdzieści jeden stopni i trzynaście minut — północno-zachód i na północ — główny pień siódmy konar od zachodu — spuścić z lewego oka trupiej czaszki — linię prostą od drzewa przez kulę piętnaście stóp dalej).",
+  "start": 2206.05
+ },
+ {
+  "i": 153,
+  "pl": "— Nawet przy tym podziale — odezwałem się — wciąż jeszcze nic nie wiem.",
+  "start": 2232.96
+ },
+ {
+  "i": 154,
+  "pl": "— Ja także nic nie wiedziałem — odrzekł Legrand — ale tylko przez kilka dni.",
+  "start": 2239.43
+ },
+ {
+  "i": 155,
+  "pl": "Spędziłem je na skrzętnych poszukiwaniach w okolicy Wyspy Sullivana, wywiadując się o budynek, który by nosił nazwę Bishop’s Hotel (hotel biskupi), gdyż oczywiście nie dałem się stropić przestarzałemu słowu hostel<sup>29<\/sup>. Nie dowiedziawszy się niczego,",
+  "start": 2247.19
+ },
+ {
+  "i": 156,
+  "pl": "zamierzałem już rozszerzyć zakres moich poszukiwań i prowadzić je nadal bardzo systematycznie, gdy pewnego poranku strzeliło mi nagle do głowy, że ten Bishop’s Hostel może pozostawać w związku ze starożytną rodziną Bessopów,",
+  "start": 2265.65
+ },
+ {
+  "i": 157,
+  "pl": "która w zamierzchłych czasach posiadała odwieczne zamczysko o cztery mile na północ od wyspy. Udałem się więc na plantację i jąłem wypytywać najstarszych z okolicznych Murzynów.",
+  "start": 2280.13
+ },
+ {
+  "i": 158,
+  "pl": "W końcu pewna sędziwa staruszka powiedziała mi, że słyszała o miejscu zwanym Bessop’s Castel (zamek Bessopa) i że mogłaby mnie tam zaprowadzić, lecz że nie jest to zamek ani gospoda, ale wysoka skała.",
+  "start": 2292.09
+ },
+ {
+  "i": 159,
+  "pl": "Obiecałem, że ją hojnie wynagrodzę, więc po chwili namysłu podjęła się być moją przewodniczką. Dotarliśmy na miejsce bez trudu. Odprawiłem babinę i począłem się rozglądać.",
+  "start": 2309.43
+ },
+ {
+  "i": 160,
+  "pl": "„Zamek” składał się z bezładnego nagromadzenia wiszarów i skał, z których jedna wyróżniała się wielce zarówno swą wysokością, jak swym odosobnieniem i jak gdyby sztucznym wyglądem. Wspiąłem się na jej szczyt i byłem bardzo zakłopotany, co należy dalej czynić.",
+  "start": 2324.33
+ },
+ {
+  "i": 161,
+  "pl": "Kiedy pogrążyłem się w myślach, oczy moje padły na wąski brzeżek u wschodniego zbocza skały, położony o jakiś jard poniżej wierzchołka, na którym stałem.",
+  "start": 2346.82
+ },
+ {
+  "i": 162,
+  "pl": "Brzeżek ten sterczał zaledwie na osiemnaście cali i miał niespełna stopę szerokości, zaś wnęka w wiszarze, która widniała tuż ponad nim, czyniła go poniekąd podobnym do owych krzeseł z wygłębionym oparciem, którymi posługiwali się nasi przodkowie.",
+  "start": 2359.03
+ },
+ {
+  "i": 163,
+  "pl": "Nie wątpiłem ani przez chwilę, że jest to owo „siedzenie diabła”, o którym znajdowała się wzmianka w rękopisie, i utwierdziłem się w przeświadczeniu, że uda mi się w zupełności rozwiązać tę zawiłą łamigłówkę.",
+  "start": 2378.19
+ },
+ {
+  "i": 164,
+  "pl": "Wiedziałem, iż przez „dobre szkła” należy rozumieć tylko lunetę, gdyż marynarze rzadko kiedy używają słowa „szkła” w innym znaczeniu.",
+  "start": 2392.95
+ },
+ {
+  "i": 165,
+  "pl": "Zdałem sobie natychmiast sprawę, iż trzeba będzie uciec się do pomocy lunety i posłużyć się nią z pewnego ściśle określonego punktu, niedopuszczającego żadnego odchylenia.",
+  "start": 2406.33
+ },
+ {
+  "i": 166,
+  "pl": "Nie powątpiewałem również, iż zwroty: „czterdzieści jeden stopni i trzynaście minut” jako też „północno-zachód i na północ” są wskazówkami, jak należy skierować lunetę. Podniecony niezmiernie tymi odkryciami, pospieszyłem do domu, postarałem się o lunetę i powróciłem z nią na skałę.",
+  "start": 2418.85
+ },
+ {
+  "i": 167,
+  "pl": "Zsunąłem się po niej na ów brzeżek i przekonałem się, że można tam usiąść tylko w pewnej określonej pozycji. Ta okoliczność potwierdziła moje poprzednie przypuszczenia. Zabrałem się z kolei do lunety.",
+  "start": 2444.56
+ },
+ {
+  "i": 168,
+  "pl": "Słowa „czterdzieści jeden stopni i trzynaście minut” mogły, oczywiście, odnosić się tylko do kąta pochylenia nad widnokręgiem, natomiast kierunek poziomy wyraźnie podawała wzmianka „północno-zachód i na północ”. Oznaczyłem ten kierunek za pomocą kompasu kieszonkowego,",
+  "start": 2462.39
+ },
+ {
+  "i": 169,
+  "pl": "następnie ustawiłem moją lunetę możliwie najdokładniej w nachyleniu czterdziestu jeden stopni i dopóty poruszałem nią ostrożnie w górę i w dół, aż dostrzegłem kolisty otwór, jakby okienko w listowiu wielkiego drzewa, które górowało w oddali nad wszystkimi innymi.",
+  "start": 2483.43
+ },
+ {
+  "i": 170,
+  "pl": "W środku tego okienka zauważyłem białą plamę, lecz nie mogłem zrazu rozpoznać, co to było. Dopiero nastawiwszy ostrzej soczewkę, przekonałem się, że była to trupia czaszka.",
+  "start": 2502.53
+ },
+ {
+  "i": 171,
+  "pl": "Po tym odkryciu zagadka wydała mi się już rozwiązana, gdyż zwroty „główny pień, siódmy konar, od zachodu” mogły odnosić się tylko do umieszczenia czaszki na drzewie, zaś „spuścić z lewego oka trupiej czaszki” mogło mieć na względzie tylko poszukiwanie zakopanego skarbu. Dorozumiałem się,",
+  "start": 2518.53
+ },
+ {
+  "i": 172,
+  "pl": "iż rzecz polega na tym, ażeby z lewego oka czaszki spuścić jakąś gałkę i przeprowadzić linię prostą od najbliższego punktu pnia przez „kulę” (to znaczy, przez miejsce, gdzie owa gałka upadnie), a następnie prowadzić ją dalej na odległość piętnastu stóp i w ten sposób otrzymać określony punkt, gdzie,",
+  "start": 2545.13
+ },
+ {
+  "i": 173,
+  "pl": "wedle wszelkiego prawdopodobieństwa, ukryto skarb ów w ziemi.",
+  "start": 2565.95
+ },
+ {
+  "i": 174,
+  "pl": "— Wszystko to — przemówiłem — jest nadzwyczaj jasne i olśniewa swą pomysłowością, zachowując przy tym prostotę i dokładność. Cóż stało się dalej, gdy powróciłeś z Bishop’s Hotel?",
+  "start": 2570.84
+ },
+ {
+  "i": 175,
+  "pl": "— Zanim poszedłem do domu, zapamiętałem sobie dokładnie owo drzewo. Było to potrzebne, gdyż zeszedłszy z „diabelskiego siedzenia”, straciłem zaraz owo koliste okienko z oczu i nie mogłem go już dojrzeć z żadnego innego miejsca.",
+  "start": 2587.57
+ },
+ {
+  "i": 176,
+  "pl": "Jak mi się zdaje, całe mistrzostwo tej zagadki da się sprowadzić do tej okoliczności, iż okienko to widoczne jest tylko z wąskiego brzeżka u skalnej ściany.",
+  "start": 2602.17
+ },
+ {
+  "i": 177,
+  "pl": "Na wyprawę do „hotelu biskupa” zabrałem ze sobą Jupitera, który zapewne już na kilka tygodni przedtem zauważył moje roztargnienie i dokładał wszelkich starań, żebym nie był sam.",
+  "start": 2616.17
+ },
+ {
+  "i": 178,
+  "pl": "Lecz zaraz następnego dnia wstałem bardzo wcześnie, wymknąłem się przed nim po kryjomu i poszedłem na wzgórza, by odszukać owo drzewo. Zmitrężyłem niemało czasu, zanim zdążyłem je znaleźć. Gdy nocą powróciłem do domu, mój służący miał chętkę mnie obić.",
+  "start": 2631.26
+ },
+ {
+  "i": 179,
+  "pl": "Co dalej się stało, wiesz również dobrze jak ja sam.",
+  "start": 2649.62
+ },
+ {
+  "i": 180,
+  "pl": "— Sądzę — odezwałem się — iż twoja pomyłka przy pierwszym kopaniu wyniknęła z głupoty Jupitera, który spuścił żuka przez prawe, a nie przez lewe oko czaszki.",
+  "start": 2655.69
+ },
+ {
+  "i": 181,
+  "pl": "— Tak też było istotnie. Błąd ów spowodował różnicę dwóch i pół cala u „kuli” — to znaczy, w miejscu, gdzie tkwił palik, wbity najbliżej od drzewa; gdyby skarb znajdował się tuż pod „kulą”, pomyłka ta nie miałaby znaczenia;",
+  "start": 2668.49
+ },
+ {
+  "i": 182,
+  "pl": "jednak ta „kula” wraz z najbliższym punktem pnia były jedynie dwiema wytycznymi kierunku: przeto błąd, aczkolwiek zrazu nieznaczny, powiększał się w miarę przedłużania linii i kiedy przeprowadziliśmy ją na odległość piętnastu stóp, stał się przyczyną nader znacznego odchylenia.",
+  "start": 2689.65
+ },
+ {
+  "i": 183,
+  "pl": "Gdyby nie moje głębokie przeświadczenie, że ten skarb musi przecież znajdować się gdzieś w pobliżu, wszystka nasza praca byłaby poszła na marne.",
+  "start": 2711.21
+ },
+ {
+  "i": 184,
+  "pl": "— A ta twoja pompatyczność, te twoje igraszki z żukiem — cóż to było za dziwactwo? Byłem przekonany, że oszalałeś. I dlaczego upierałeś się tak bardzo, żeby z oka czaszki spuścić tego chrząszcza, zamiast użyć do tego jakiejś gałki?",
+  "start": 2722.29
+ },
+ {
+  "i": 185,
+  "pl": "— Mój drogi, wyznam ci szczerze, iż drażniły mnie nieco twe powątpiewania o moim zdrowiu, więc postanowiłem skarcić cię moim zwyczajem spokojnie i obmyśliłem na chłodno tę maleńką mistyfikację. Dlatego wymachiwałem żukiem i kazałem spuścić go z drzewa.",
+  "start": 2741.8
+ },
+ {
+  "i": 186,
+  "pl": "Pomysł ten poddało mi twoje spostrzeżenie, że jest bardzo ciężki.",
+  "start": 2770.19
+ },
+ {
+  "i": 187,
+  "pl": "— Rozumiem cię. A teraz jeszcze jedna rzecz, która mnie zaciekawia! Co myślisz o szkieletach, które znaleźliśmy w jamie?",
+  "start": 2777.87
+ },
+ {
+  "i": 188,
+  "pl": "— Na to pytanie nikt z nas nie zdoła odpowiedzieć. Wszelako zdaje mi się, iż dałoby się to wytłumaczyć tylko w jeden sposób — jakkolwiek moje przypuszczenie jest tak okropne, iż trudno jest w nie uwierzyć.",
+  "start": 2788.21
+ },
+ {
+  "i": 189,
+  "pl": "To pewne, że Kidd — oczywiście, jeśli to Kidd zakopywał te skarby, o czym zresztą nie wątpię — otóż to pewne, że musiał mieć pomocników przy pracy. Kiedy jednak była już na ukończeniu, uznał zapewne za rzecz potrzebną pozbyć się swych towarzyszy, którzy znali jego tajemnicę.",
+  "start": 2806.83
+ },
+ {
+  "i": 190,
+  "pl": "Być może, iż wystarczyły dwa krzepkie uderzenia motyką, gdy jego pomocnicy byli jeszcze zajęci w dole. A może tych uderzeń trzeba było znacznie więcej — kto to wie?",
+  "start": 2835.86
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>
