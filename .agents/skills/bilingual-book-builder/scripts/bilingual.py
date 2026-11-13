@@ -46,15 +46,49 @@ def work(root: Path, n: int) -> Path:
 
 
 def make_book_json(root: Path, cfg: dict) -> None:
+    """Update book.json from the PL source without clobbering curated data.
+
+    chapter-NN.md titles are PL only, but book.json is bilingual: `name` holds
+    the curated Ukrainian chapter title and `pl` the Polish one. Existing
+    entries (and any extra top-level fields) are therefore preserved; only the
+    PL side is refreshed from the source, and missing entries are filled in.
+    """
+    path = root / "book.json"
+    try:
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(existing, dict):
+            existing = {}
+    except FileNotFoundError:
+        existing = {}
+    except json.JSONDecodeError:
+        print(f"warning: {path} is not valid JSON; rebuilding it", file=sys.stderr)
+        existing = {}
+    old = {c.get("number"): c for c in existing.get("chapters", [])
+           if isinstance(c, dict) and c.get("number") is not None}
+
     chapters = []
     for n in range(1, int(cfg["chapters"]) + 1):
         data = extract(root, cfg, n)
-        chapters.append({"number": n, "name": data.get("title") or f"Chapter {n}"})
-    data = {"title": cfg["book"], "author": cfg.get("author", ""),
+        # normalise whitespace so rebuilding the same source is a no-op
+        pl_title = re.sub(r"[\s\u00a0]+", " ",
+                          data.get("title") or f"Chapter {n}").strip()
+        entry = dict(old.get(n, {}))
+        entry["number"] = n
+        if not str(entry.get("name") or "").strip():
+            entry["name"] = pl_title
+        entry["pl"] = pl_title
+        chapters.append(entry)
+
+    book = {"title": cfg["book"], "author": cfg.get("author", ""),
             "eyebrow": "Bilingual study edition · PL → UA",
             "reader_pattern": "chapter-{nn}.html", "vocab_pattern": "chapter-{nn}.vocab.html",
             "chapters": chapters}
-    (root / "book.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # keep curated top-level fields; cfg stays authoritative for title/author
+    for k, v in existing.items():
+        if k not in ("chapters", "title", "author"):
+            book[k] = v
+    path.write_text(json.dumps(book, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8")
 
 
 def cmd_list(root: Path, cfg: dict) -> int:
