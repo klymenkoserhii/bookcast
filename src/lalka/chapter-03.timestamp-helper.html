@@ -1,0 +1,1363 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to mp3/lalka_003_lalka-tom-pierwszy_tom-i-rozdzial-iii.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-03.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Tom I, Rozdział III — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Tom I, Rozdział III · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="mp3/lalka_003_lalka-tom-pierwszy_tom-i-rozdzial-iii.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "...Ze smutkiem od kilku lat uważam, że na świecie jest coraz mniej dobrych subiektów i rozumnych polityków, bo wszyscy stosują się do mody. Skromny subiekt co kwartał ubiera się w spodnie nowego fasonu, w coraz dziwniejszy kapelusz i coraz inaczej wykładany kołnierzyk.",
+  "start": 6.97
+ },
+ {
+  "i": 1,
+  "pl": "Podobnież dzisiejsi politycy co kwartał zmieniają wiarę: onegdaj wierzyli w Bismarcka, wczoraj w Gambettę, a dziś w Beaconsfielda<sup>60<\/sup>, który niedawno był Żydkiem.",
+  "start": 29.44
+ },
+ {
+  "i": 2,
+  "pl": "Już widać zapomniano, że w sklepie nie można stroić się w modne kołnierzyki, tylko je sprzedawać, bo w przeciwnym razie gościom zabraknie towaru, a sklepowi gości. Zaś polityki nie należy opierać na szczęśliwych osobach, tylko na wielkich dynastiach.",
+  "start": 43.73
+ },
+ {
+  "i": 3,
+  "pl": "Metternich<sup>61<\/sup> był taki sławny jak Bismarck, a Palmerston<sup>62<\/sup> sławniejszy od Beaconsfielda i — któż dziś o nich pamięta?",
+  "start": 64.06
+ },
+ {
+  "i": 4,
+  "pl": "Tymczasem ród Bonapartych trząsł Europą za Napoleona I, potem za Napoleona III, a i dzisiaj, choć niektórzy nazywają go bankrutem, wpływa na losy Francji przez wierne swoje sługi, MacMahona i Ducrota.",
+  "start": 74.6
+ },
+ {
+  "i": 5,
+  "pl": "Zobaczycie, co jeszcze zrobi Napoleonek IV<sup>63<\/sup>, który po cichu uczy się sztuki wojennej u Anglików! Ale o to mniejsza. W tej bowiem pisaninie chcę mówić nie o Bonapartym, ale o sobie, ażeby wiedziano, jakim sposobem tworzyli się dobrzy subiekci i choć nie uczeni, ale rozsądni politycy.",
+  "start": 90.72
+ },
+ {
+  "i": 6,
+  "pl": "Do takiego interesu nie trzeba akademii, lecz przykładu — w domu i w sklepie.",
+  "start": 113.99
+ },
+ {
+  "i": 7,
+  "pl": "Ojciec mój był za młodu żołnierzem, a na starość woźnym w Komisji Spraw Wewnętrznych<sup>64<\/sup>. Trzymał się prosto jak sztaba, miał nieduże faworyty<sup>65<\/sup> i wąs do góry; szyję okręcał czarną chustką i nosił srebrny kolczyk w uchu.",
+  "start": 121.07
+ },
+ {
+  "i": 8,
+  "pl": "Mieszkaliśmy na Starym Mieście z ciotką, która urzędnikom prała i łatała bieliznę. Mieliśmy na czwartym piętrze dwa pokoiki, gdzie niewiele było dostatków, ale dużo radości, przynajmniej dla mnie.",
+  "start": 136.96
+ },
+ {
+  "i": 9,
+  "pl": "W naszej izdebce najokazalszym sprzętem był stół, na którym ojciec powróciwszy z biura kleił koperty; u ciotki zaś pierwsze miejsce zajmowała balia. Pamiętam, że w pogodne dnie puszczałem na ulicy latawce, a w razie słoty wydmuchiwałem w izbie bańki mydlane.",
+  "start": 149.26
+ },
+ {
+  "i": 10,
+  "pl": "Na ścianach u ciotki wisieli sami święci; ale jakkolwiek było ich sporo, nie dorównali jednak liczbą Napoleonom, którymi ojciec przyozdabiał swój pokój.",
+  "start": 170.34
+ },
+ {
+  "i": 11,
+  "pl": "Był tam jeden Napoleon w Egipcie, drugi pod Wagram, trzeci pod Austerlitz, czwarty pod Moskwą, piąty w dniu koronacji, szósty w apoteozie<sup>66<\/sup>.",
+  "start": 183.22
+ },
+ {
+  "i": 12,
+  "pl": "Gdy zaś ciotka zgorszona tyloma świeckimi obrazami, zawiesiła na ścianie mosiężny krucyfiks, ojciec, ażeby — jak mówił — nie obrazić Napoleona, kupił sobie jego brązowe popiersie i także umieścił je nad łóżkiem.",
+  "start": 193.26
+ },
+ {
+  "i": 13,
+  "pl": "— Zobaczysz, niedowiarku — lamentowała nieraz ciotka — że za te sztuki będą cię pławić w smole.",
+  "start": 209.35
+ },
+ {
+  "i": 14,
+  "pl": "— I!... Nie da mi cesarz zrobić krzywdy — odpowiadał ojciec.",
+  "start": 216.53
+ },
+ {
+  "i": 15,
+  "pl": "Często przychodzili do nas dawni koledzy ojca: pan Domański, także woźny, ale z Komisji Skarbu<sup>67<\/sup>, i pan Raczek, który na Dunaju<sup>68<\/sup> miał stragan z zieleniną. Prości to byli ludzie (nawet pan Domański trochę lubił anyżówkę), ale roztropni politycy.",
+  "start": 221.87
+ },
+ {
+  "i": 16,
+  "pl": "Wszyscy, nie wyłączając ciotki, twierdzili jak najbardziej stanowczo, że choć Napoleon I umarł w niewoli<sup>69<\/sup>, ród Bonapartych jeszcze wypłynie. Po pierwszym Napoleonie znajdzie się jakiś drugi, a gdyby i ten źle skończył, przyjdzie następny, dopóki jeden po drugim nie uporządkują świata.",
+  "start": 240.16
+ },
+ {
+  "i": 17,
+  "pl": "— Trzeba być zawsze gotowym na pierwszy odgłos! — mówił mój ojciec.",
+  "start": 261.03
+ },
+ {
+  "i": 18,
+  "pl": "— Bo nie wiecie dnia ani godziny — dodawał pan Domański.",
+  "start": 265.85
+ },
+ {
+  "i": 19,
+  "pl": "A pan Raczek, trzymając fajkę w ustach, na znak potwierdzenia pluł aż do pokoju ciotki.",
+  "start": 269.89
+ },
+ {
+  "i": 20,
+  "pl": "— Napluj mi acan<sup>70<\/sup> w balię, to ci dam!... — wołała ciotka.",
+  "start": 276.53
+ },
+ {
+  "i": 21,
+  "pl": "— Może jejmość i dasz, ale ja nie wezmę — mruknął pan Raczek plując w stronę komina.",
+  "start": 280.93
+ },
+ {
+  "i": 22,
+  "pl": "— U... cóż to za chamy te całe grenadierzyska! — gniewała się ciotka.",
+  "start": 287.79
+ },
+ {
+  "i": 23,
+  "pl": "— Jejmości zawsze smakowali ułani. Wiem, wiem...",
+  "start": 293.12
+ },
+ {
+  "i": 24,
+  "pl": "Później pan Raczek ożenił się z moją ciotką...",
+  "start": 297.59
+ },
+ {
+  "i": 25,
+  "pl": "...Chcąc, ażebym zupełnie był gotów, gdy wybije godzina sprawiedliwości, ojciec sam pracował nad moją edukacją.",
+  "start": 301.93
+ },
+ {
+  "i": 26,
+  "pl": "Nauczył mię czytać, pisać, kleić koperty, ale nade wszystko — musztrować się. Do musztry zapędzał mnie w bardzo wczesnym dzieciństwie, kiedy mi jeszcze zza pleców wyglądała koszula.",
+  "start": 309.25
+ },
+ {
+  "i": 27,
+  "pl": "Dobrze to pamiętam, gdyż ojciec komenderując: „Pół obrotu na prawo!” albo „Lewe ramię naprzód — marsz!...”, ciągnął mnie w odpowiednim kierunku za ogon tego ubrania.",
+  "start": 321.13
+ },
+ {
+  "i": 28,
+  "pl": "Była to najdokładniej prowadzona nauka.",
+  "start": 332.26
+ },
+ {
+  "i": 29,
+  "pl": "Nieraz w nocy budził mnie ojciec krzykiem: „Do broni!...”, musztrował pomimo wymyślań i łez ciotki i kończył zdaniem:",
+  "start": 335.72
+ },
+ {
+  "i": 30,
+  "pl": "— Ignaś! zawsze bądź gotów, wisusie, bo nie wiemy dnia ani godziny... Pamiętaj, że Bonapartów Bóg zesłał, ażeby zrobili porządek na świecie, a dopóty nie będzie porządku ani sprawiedliwości, dopóki nie wypełni się testament cesarza.",
+  "start": 344.12
+ },
+ {
+  "i": 31,
+  "pl": "Nie mogę powiedzieć, ażeby niezachwianą wiarę mego ojca w Bonapartych i sprawiedliwość podzielali dwaj jego koledzy. Nieraz pan Raczek, kiedy mu dokuczył ból w nodze, klnąc i stękając mówił:",
+  "start": 362.88
+ },
+ {
+  "i": 32,
+  "pl": "— E! wiesz, stary, że już za długo czekamy na nowego Napoleona. Ja siwieć zaczynam i coraz gorzej podupadam, a jego jak nie było, tak i nie ma. Niedługo porobią się z nas dziady pod kościół, a Napoleon po to chyba przyjdzie, ażeby z nami śpiewać godzinki.",
+  "start": 375.28
+ },
+ {
+  "i": 33,
+  "pl": "— Znajdzie młodych.",
+  "start": 392.98
+ },
+ {
+  "i": 34,
+  "pl": "— Co za młodych! Lepsi z nich przed nami poszli w ziemię, a najmłodsi — diabła warci. Już są między nimi i tacy, co o Napoleonie nie słyszeli.",
+  "start": 394.44
+ },
+ {
+  "i": 35,
+  "pl": "— Mój słyszał i zapamięta — odparł ojciec mrugając okiem w moją stronę.",
+  "start": 406.42
+ },
+ {
+  "i": 36,
+  "pl": "Pan Domański jeszcze bardziej upadał na duchu.",
+  "start": 411.71
+ },
+ {
+  "i": 37,
+  "pl": "— Świat idzie do gorszego — mówił trzęsąc głową. — Wikt coraz droższy, za kwaterę zabraliby ci całą pensję, a nawet co się tyczy anyżówki, i w tym jest szachrajstwo. Dawniej rozweseliłeś się kieliszkiem, dziś po szklance jesteś taki czczy, jakbyś się napił wody.",
+  "start": 415.66
+ },
+ {
+  "i": 38,
+  "pl": "Sam Napoleon nie doczekałby się sprawiedliwości!",
+  "start": 434.94
+ },
+ {
+  "i": 39,
+  "pl": "A na to odpowiedział ojciec:",
+  "start": 438.3
+ },
+ {
+  "i": 40,
+  "pl": "— Będzie sprawiedliwość, choćby i Napoleona nie stało. Ale i Napoleon się znajdzie.",
+  "start": 441.24
+ },
+ {
+  "i": 41,
+  "pl": "— Nie wierzę — mruknął pan Raczek.",
+  "start": 446.74
+ },
+ {
+  "i": 42,
+  "pl": "— A jak się znajdzie, to co?... — spytał ojciec.",
+  "start": 449.7
+ },
+ {
+  "i": 43,
+  "pl": "— Nie doczekamy tego.",
+  "start": 453.5
+ },
+ {
+  "i": 44,
+  "pl": "— Ja doczekam — odparł ojciec — a Ignaś doczeka jeszcze lepiej.",
+  "start": 455.18
+ },
+ {
+  "i": 45,
+  "pl": "Już wówczas zdania mego ojca głęboko wyrzynały mi się w pamięci, ale dopiero późniejsze wypadki nadały im cudowny, nieomal proroczy charakter.",
+  "start": 460.61
+ },
+ {
+  "i": 46,
+  "pl": "Około roku 1840 ojciec zaczął niedomagać. Czasami po parę dni nie wychodził do biura, a wreszcie na dobre legł w łóżku.",
+  "start": 471.8
+ },
+ {
+  "i": 47,
+  "pl": "Pan Raczek odwiedzał go co dzień, a raz patrząc na jego chude ręce i wyżółkłe policzki szepnął:",
+  "start": 481.73
+ },
+ {
+  "i": 48,
+  "pl": "— Hej! stary, już my chyba nie doczekamy się Napoleona.",
+  "start": 488.43
+ },
+ {
+  "i": 49,
+  "pl": "Na co ojciec spokojnie odparł:",
+  "start": 492.96
+ },
+ {
+  "i": 50,
+  "pl": "— Ja tam nie umrę, dopóki o nim nie usłyszę.",
+  "start": 495.66
+ },
+ {
+  "i": 51,
+  "pl": "Pan Raczek pokiwał głową, a ciotka łzy otarła myśląc, że ojciec bredzi. Jak tu myśleć inaczej, jeżeli śmierć już kołatała do drzwi, a ojciec jeszcze wyglądał Napoleona...",
+  "start": 499.89
+ },
+ {
+  "i": 52,
+  "pl": "Było już z nim bardzo źle, nawet przyjął ostatnie sakramenta, kiedy w parę dni później wbiegł do nas pan Raczek dziwnie wzburzony i stojąc na środku izby zawołał:",
+  "start": 512.5
+ },
+ {
+  "i": 53,
+  "pl": "— A wiesz, stary, że znalazł się Napoleon<sup>71<\/sup>?...",
+  "start": 522.0
+ },
+ {
+  "i": 54,
+  "pl": "— Gdzie? — krzyknęła ciotka.",
+  "start": 525.48
+ },
+ {
+  "i": 55,
+  "pl": "— Jużci we Francji.",
+  "start": 527.62
+ },
+ {
+  "i": 56,
+  "pl": "Ojciec zerwał się, lecz znowu upadł na poduszki. Tylko wyciągnął do mnie rękę i patrząc wzrokiem, którego nie zapomnę, wyszeptał:",
+  "start": 529.8
+ },
+ {
+  "i": 57,
+  "pl": "— Pamiętaj!... Wszystko pamiętaj...",
+  "start": 538.72
+ },
+ {
+  "i": 58,
+  "pl": "Z tym umarł.",
+  "start": 542.63
+ },
+ {
+  "i": 59,
+  "pl": "W późniejszym życiu przekonałem się, jak proroczymi były poglądy ojca. Wszyscy widzieliśmy drugą gwiazdę napoleońską, która obudziła Włochy i Węgry<sup>72<\/sup>; a chociaż spadła pod Sedanem<sup>73<\/sup>, nie wierzę w jej ostateczne zagaśnięcie. Co mi tam Bismarck, Gambetta albo Beaconsfield!",
+  "start": 544.03
+ },
+ {
+  "i": 60,
+  "pl": "Niesprawiedliwość dopóty będzie władać światem, dopóki nowy Napoleon nie urośnie.",
+  "start": 565.79
+ },
+ {
+  "i": 61,
+  "pl": "W parę miesięcy po śmierci ojca pan Raczek i pan Domański wraz z ciotką Zuzanną zebrali się na radę: co ze mną począć? Pan Domański chciał mnie zabrać do swoich biur i powoli wypromować na urzędnika; ciotka zalecała rzemiosło, a pan Raczek zieleniarstwo.",
+  "start": 570.77
+ },
+ {
+  "i": 62,
+  "pl": "Lecz gdy zapytano mnie: do czego mam ochotę? odpowiedziałem, że do sklepu.",
+  "start": 590.68
+ },
+ {
+  "i": 63,
+  "pl": "— Kto wie, czy to nie będzie najlepsze — zauważył pan Raczek. — A do jakiegoż byś chciał kupca?",
+  "start": 596.94
+ },
+ {
+  "i": 64,
+  "pl": "— Do tego na Podwalu<sup>74<\/sup>, co ma we drzwiach pałasz, a w oknie kozaka.",
+  "start": 603.34
+ },
+ {
+  "i": 65,
+  "pl": "— Wiem — wtrąciła ciotka. — On chce do Mincla.",
+  "start": 608.87
+ },
+ {
+  "i": 66,
+  "pl": "— Można spróbować — rzekł pan Domański. — Wszyscy przecież znamy Mincla<sup>75<\/sup>.",
+  "start": 612.83
+ },
+ {
+  "i": 67,
+  "pl": "Pan Raczek na znak zgody plunął aż w komin.",
+  "start": 618.19
+ },
+ {
+  "i": 68,
+  "pl": "— Boże miłosierny — jęknęła ciotka — ten drab już chyba na mnie pluć zacznie, kiedy brata nie stało... Oj! nieszczęśliwa ja sierota!...",
+  "start": 622.71
+ },
+ {
+  "i": 69,
+  "pl": "— Wielka rzecz! — odezwał się pan Raczek. — Wyjdź jejmość za mąż, to nie będziesz sierotą.",
+  "start": 631.27
+ },
+ {
+  "i": 70,
+  "pl": "— A gdzież ja znajdę takiego głupiego, co by mnie wziął?",
+  "start": 636.99
+ },
+ {
+  "i": 71,
+  "pl": "— Phi! może i ja bym się ożenił z jejmością, bo nie ma mnie kto smarować — mruknął pan Raczek, ciężko schylając się do ziemi, ażeby wypukać popiół z fajki. Ciotka rozpłakała się, a wtedy odezwał się pan Domański:",
+  "start": 640.39
+ },
+ {
+  "i": 72,
+  "pl": "— Po co robić duże ceregiele. Jejmość nie masz opieki, on nie ma gospodyni; pobierzcie się i przygarnijcie Ignasia, a będziecie nawet mieli dziecko. Jeszcze tanie dziecko, bo Mincel da mu wikt i kwaterę, a wy tylko odzież.",
+  "start": 655.36
+ },
+ {
+  "i": 73,
+  "pl": "— Hę?... — spytał pan Raczek patrząc na ciotkę.",
+  "start": 670.4
+ },
+ {
+  "i": 74,
+  "pl": "— No, oddajcie pierwej chłopca do terminu, a potem... może się odważę — odparła ciotka. — Zawsze miałam przeczucie, że marnie skończę...",
+  "start": 674.37
+ },
+ {
+  "i": 75,
+  "pl": "— To i jazda do Mincla! — rzekł pan Raczek podnosząc się z krzesełka. — Tylko jejmość nie zrób mi zawodu! — dodał grożąc ciotce pięścią.",
+  "start": 684.8
+ },
+ {
+  "i": 76,
+  "pl": "Wyszli z panem Domańskim i może w półtorej godziny wrócili obaj mocno zarumienieni. Pan Raczek ledwie oddychał, a pan Domański z trudnością trzymał się na nogach, podobno z tego, że nasze schody były bardzo niewygodne.",
+  "start": 695.01
+ },
+ {
+  "i": 77,
+  "pl": "— Cóż?... — spytała ciotka.",
+  "start": 708.77
+ },
+ {
+  "i": 78,
+  "pl": "— Nowego Napoleona wsadzili do prochowni!<sup>76<\/sup> — odpowiedział pan Domański.",
+  "start": 711.24
+ },
+ {
+  "i": 79,
+  "pl": "— Nie do prochowni, tylko do fortecy. A–u... A–u... — dodał pan Raczek i rzucił czapkę na stół.",
+  "start": 716.34
+ },
+ {
+  "i": 80,
+  "pl": "— Ale z chłopcem co?",
+  "start": 723.88
+ },
+ {
+  "i": 81,
+  "pl": "— Jutro ma przyjść do Mincla z odzieniem i bielizną — odrzekł pan Domański. — Nie do fortecy A–u..., A–u... tylko do Ham–ham czy Cham... bo nawet nie wiem...",
+  "start": 726.26
+ },
+ {
+  "i": 82,
+  "pl": "— Zwariowaliście, pijaki! — krzyknęła ciotka chwytając pana Raczka za ramię.",
+  "start": 738.28
+ },
+ {
+  "i": 83,
+  "pl": "— Tylko bez poufałości! — oburzył się pan Raczek. — Po ślubie będzie poufałość, teraz... Ma przyjść do Mincla jutro z bielizną i odzieniem... Nieszczęsny Napoleonie!...",
+  "start": 742.78
+ },
+ {
+  "i": 84,
+  "pl": "Ciotka wypchnęła za drzwi pana Raczka, potem pana Domańskiego i wyrzuciła za nimi czapkę.",
+  "start": 756.16
+ },
+ {
+  "i": 85,
+  "pl": "— Precz mi stąd, pijaki!",
+  "start": 761.42
+ },
+ {
+  "i": 86,
+  "pl": "— Wiwat Napoleon! — zawołał pan Raczek, a pan Domański zaczął śpiewać:",
+  "start": 763.56
+ },
+ {
+  "i": 87,
+  "pl": "Głos jego stopniowo cichnął, jakby zagłębiając się w studni, potem umilkł na schodach, lecz znowu doleciał nas z ulicy. Po chwili zrobił się tam jakiś hałas, a gdy wyjrzałem oknem, zobaczyłem, że pana Raczka policjant prowadził do ratusza<sup>77<\/sup>.",
+  "start": 779.8
+ },
+ {
+  "i": 88,
+  "pl": "Takie to wypadki poprzedziły moje wejście do zawodu kupieckiego.",
+  "start": 795.57
+ },
+ {
+  "i": 89,
+  "pl": "Sklep Mincla znałem od dawna, ponieważ ojciec wysyłał mnie do niego po papier, a ciotka po mydło. Zawsze biegłem tam z radosną ciekawością, ażeby napatrzeć się wiszącym za szybami zabawkom.",
+  "start": 799.96
+ },
+ {
+  "i": 90,
+  "pl": "O ile pamiętam, był tam w oknie duży kozak, który sam przez się skakał i machał rękoma, a we drzwiach — bęben, pałasz i skórzany koń z prawdziwym ogonem.",
+  "start": 812.18
+ },
+ {
+  "i": 91,
+  "pl": "Wnętrze sklepu wyglądało jak duża piwnica, której końca nigdy nie mogłem dojrzeć z powodu ciemności. Wiem tylko, że po pieprz, kawę i liście bobkowe szło się na lewo do stołu, za którym stały ogromne szafy od sklepienia do podłogi napełnione szufladami.",
+  "start": 824.44
+ },
+ {
+  "i": 92,
+  "pl": "Papier zaś, atrament, talerze i szklanki sprzedawano przy stole na prawo, gdzie były szafy z szybami, a po mydło i krochmal szło się w głąb sklepu, gdzie było widać beczki i stosy pak drewnianych.",
+  "start": 840.48
+ },
+ {
+  "i": 93,
+  "pl": "Nawet sklepienie było zajęte. Wisiały tam długie szeregi pęcherzy naładowanych gorczycą i farbami, ogromna lampa z daszkiem, która w zimie paliła się cały dzień, sieć pełna korków do butelek, wreszcie — wypchany krokodylek, długi może na półtora łokcia<sup>78<\/sup>.",
+  "start": 855.94
+ },
+ {
+  "i": 94,
+  "pl": "Właścicielem sklepu był Jan Mincel, starzec z rumianą twarzą i kosmykiem siwych włosów pod brodą. W każdej porze dnia siedział on pod oknem na fotelu obitym skórą, ubrany w niebieski barchanowy kaftan, biały fartuch i takąż szlafmycę.",
+  "start": 874.13
+ },
+ {
+  "i": 95,
+  "pl": "Przed nim na stole leżała wielka księga, w której notował dochód, a tuż nad jego głową wisiał pęk dyscyplin<sup>79<\/sup>, przeznaczonych głównie na sprzedaż.",
+  "start": 890.87
+ },
+ {
+  "i": 96,
+  "pl": "Starzec odbierał pieniądze, zdawał gościom resztę, pisał w księdze, niekiedy drzemał, lecz pomimo tylu zajęć, z niepojętą uwagą czuwał nad biegiem handlu w całym sklepie.",
+  "start": 901.38
+ },
+ {
+  "i": 97,
+  "pl": "On także, dla uciechy przechodniów ulicznych, od czasu do czasu pociągał za sznurek skaczącego w oknie kozaka i on wreszcie, co mi się najmniej podobało, za rozmaite przestępstwa karcił nas jedną z pęka dyscyplin.",
+  "start": 912.04
+ },
+ {
+  "i": 98,
+  "pl": "Mówię: nas, bo było nas trzech kandydatów do kary cielesnej: ja tudzież dwaj synowcy starego — Franc i Jan Minclowie.",
+  "start": 926.92
+ },
+ {
+  "i": 99,
+  "pl": "Czujności pryncypała i jego biegłości w używaniu sarniej nogi<sup>80<\/sup> doświadczyłem zaraz na trzeci dzień po wejściu do sklepu.",
+  "start": 936.67
+ },
+ {
+  "i": 100,
+  "pl": "Franc odmierzył jakiejś kobiecie za dziesięć groszy rodzynków. Widząc, że jedno ziarno upadło na kontuar (stary miał w tej chwili oczy zamknięte), podniosłem je nieznacznie i zjadłem.",
+  "start": 944.94
+ },
+ {
+  "i": 101,
+  "pl": "Chciałem właśnie wyjąć pestkę, która wcisnęła mi się między zęby, gdy uczułem na plecach coś, jakby mocne dotknięcie rozpalonego żelaza.",
+  "start": 957.98
+ },
+ {
+  "i": 102,
+  "pl": "— A, szelma! — wrzasnął stary Mincel i nim zdałem sobie sprawę z sytuacji, przeciągnął po mnie jeszcze parę razy dyscyplinę, od wierzchu głowy do podłogi.",
+  "start": 965.7
+ },
+ {
+  "i": 103,
+  "pl": "Zwinąłem się w kłębek z bólu, lecz od tej pory nie śmiałem wziąć do ust niczego w sklepie. Migdały, rodzynki, nawet rożki miały dla mnie smak pieprzu.",
+  "start": 976.14
+ },
+ {
+  "i": 104,
+  "pl": "Urządziwszy się ze mną w taki sposób, stary zawiesił dyscyplinę na pęku, wpisał rodzynki i z najdobroduszniejszą miną począł ciągnąć za sznurek kozaka. Patrząc na jego półuśmiechniętą twarz i przymrużone oczy, prawie nie mogłem wierzyć, że ten jowialny staruszek posiada taki zamach w ręku.",
+  "start": 987.0
+ },
+ {
+  "i": 105,
+  "pl": "I dopiero teraz spostrzegłem, że ów kozak widziany z wnętrza sklepu wydaje się mniej zabawnym niż od ulicy.",
+  "start": 1006.48
+ },
+ {
+  "i": 106,
+  "pl": "Sklep nasz był kolonialno-galanteryjno-mydlarski. Towary kolonialne wydawał gościom Franc Mincel, młodzieniec trzydziestokilkoletni, z rudą głową i zaspaną fizjognomią<sup>81<\/sup>.",
+  "start": 1016.13
+ },
+ {
+  "i": 107,
+  "pl": "Ten najczęściej dostawał dyscypliną od stryja, gdyż palił fajkę, późno wchodził za kontuar, wymykał się z domu po nocach, a nade wszystko niedbale ważył towar.",
+  "start": 1029.34
+ },
+ {
+  "i": 108,
+  "pl": "Młodszy zaś, Jan Mincel, który zawiadywał galanterią i obok niezgrabnych ruchów odznaczał się łagodnością, był znowu bity za wykradanie kolorowego papieru i pisywanie na nim listów do panien.",
+  "start": 1040.14
+ },
+ {
+  "i": 109,
+  "pl": "Tylko August Katz, pracujący przy mydle, nie ulegał żadnym surowcowym<sup>82<\/sup> upomnieniom. Mizerny ten człeczyna odznaczał się niezwykłą punktualnością.",
+  "start": 1054.37
+ },
+ {
+  "i": 110,
+  "pl": "Najraniej przychodził do roboty, krajał mydło i ważył krochmal jak automat; jadł, co mu podano, w najciemniejszym kącie sklepu, prawie wstydząc się tego, że doświadcza ludzkich potrzeb. O dziesiątej wieczorem gdzieś znikał.",
+  "start": 1066.42
+ },
+ {
+  "i": 111,
+  "pl": "W tym otoczeniu upłynęło mi osiem lat, z których każdy dzień był podobny do wszystkich innych dni, jak kropla jesiennego deszczu do innych kropli jesiennego deszczu. Wstawałem rano o piątej, myłem się i zamiatałem sklep. O szóstej otwierałem główne drzwi tudzież okiennicę.",
+  "start": 1081.73
+ },
+ {
+  "i": 112,
+  "pl": "W tej chwili gdzieś z ulicy zjawiał się August Katz, zdejmował surdut, kładł fartuch i milcząc stawał między beczką mydła szarego a kolumną ułożoną z cegiełek mydła żółtego.",
+  "start": 1099.74
+ },
+ {
+  "i": 113,
+  "pl": "Potem drzwiami od podwórka wbiegał stary Mincel mrucząc: Morgen!<sup>83<\/sup>, poprawiał szlafmycę, dobywał z szuflady księgę, wciskał się w fotel i parę razy ciągnął za sznurek kozaka.",
+  "start": 1112.08
+ },
+ {
+  "i": 114,
+  "pl": "Dopiero po nim ukazywał się Jan Mincel i ucałowawszy stryja w rękę stawał za swoim kontuarem, na którym podczas lata łapał muchy, a w zimie kreślił palcem albo pięścią jakieś figury.",
+  "start": 1124.3
+ },
+ {
+  "i": 115,
+  "pl": "Franca zwykle sprowadzano do sklepu. Wchodził z oczyma zaspanymi, ziewający, obojętnie całował stryja w ramię i przez cały dzień skrobał się w głowę w sposób, który mógł oznaczać wielką senność lub wielkie zmartwienie.",
+  "start": 1137.61
+ },
+ {
+  "i": 116,
+  "pl": "Prawie nie było ranka, ażeby stryj patrząc na jego manewry nie wykrzywiał mu się i nie pytał:",
+  "start": 1153.28
+ },
+ {
+  "i": 117,
+  "pl": "— No... a gdzie, ty szelma, latała?",
+  "start": 1159.58
+ },
+ {
+  "i": 118,
+  "pl": "Tymczasem na ulicy budził się szmer i za szybami sklepu coraz częściej przesuwali się przechodnie. To służąca, to drwal, jejmość w kapturze, to chłopak od szewca, to jegomość w rogatywce szli w jedną i drugą stronę jak figury w ruchomej panoramie<sup>84<\/sup>.",
+  "start": 1163.9
+ },
+ {
+  "i": 119,
+  "pl": "Środkiem ulicy toczyły się wozy, beczki, bryczki — tam i na powrót... Coraz więcej ludzi, coraz więcej wozów, aż nareszcie utworzył się jeden wielki potok uliczny, z którego co chwilę ktoś wpadał do nas za sprawunkiem.",
+  "start": 1182.67
+ },
+ {
+  "i": 120,
+  "pl": "— Pieprzu za trojaka<sup>85<\/sup>...",
+  "start": 1197.86
+ },
+ {
+  "i": 121,
+  "pl": "— Proszę funt<sup>86<\/sup> kawy...",
+  "start": 1199.26
+ },
+ {
+  "i": 122,
+  "pl": "— Niech pan da ryżu...",
+  "start": 1200.98
+ },
+ {
+  "i": 123,
+  "pl": "— Pół funta mydła...",
+  "start": 1202.7
+ },
+ {
+  "i": 124,
+  "pl": "— Za grosz liści bobkowych...",
+  "start": 1204.52
+ },
+ {
+  "i": 125,
+  "pl": "Stopniowo sklep zapełniał się po największej części służącymi i ubogo odzianymi jejmościami.",
+  "start": 1206.92
+ },
+ {
+  "i": 126,
+  "pl": "Wtedy Franc Mincel krzywił się najwięcej: otwierał i zamykał szuflady, obwijał towar w tutki<sup>87<\/sup> z szarej bibuły, wbiegał na drabinkę, znowu zwijał, robiąc to wszystko z żałosną miną człowieka, któremu nie pozwalają ziewnąć.",
+  "start": 1214.2
+ },
+ {
+  "i": 127,
+  "pl": "W końcu zbierało się takie mnóstwo interesantów, że i Jan Mincel, i ja musieliśmy pomagać Francowi w sprzedaży.",
+  "start": 1229.0
+ },
+ {
+  "i": 128,
+  "pl": "Stary wciąż pisał i zdawał resztę, od czasu do czasu dotykając palcami swojej białej szlafmycy, której niebieski kutasik zwieszał mu się nad okiem. Czasem szarpnął kozaka, a niekiedy z szybkością błyskawicy zdejmował dyscyplinę i ćwiknął<sup>88<\/sup> nią którego ze swych synowców.",
+  "start": 1237.52
+ },
+ {
+  "i": 129,
+  "pl": "Nader rzadko mogłem zrozumieć: o co mu chodzi? synowcy bowiem niechętnie objaśniali mi przyczyny jego popędliwości.",
+  "start": 1255.14
+ },
+ {
+  "i": 130,
+  "pl": "Około ósmej napływ interesantów zmniejszał się. Wtedy w głębi sklepu ukazywała się gruba służąca z koszem bułek i kubkami (Franc odwracał się do niej tyłem), a za nią — matka naszego pryncypała, chuda staruszka w żółtej sukni, w ogromnym czepcu na głowie, z dzbankiem kawy w rękach.",
+  "start": 1263.5
+ },
+ {
+  "i": 131,
+  "pl": "Ustawiwszy na stole swoje naczynie, staruszka odzywała się schrypniętym głosem:",
+  "start": 1284.33
+ },
+ {
+  "i": 132,
+  "pl": "— Gut Morgen, meine Kinder! Der Kaffee ist schon fertig...<sup>89<\/sup>",
+  "start": 1289.17
+ },
+ {
+  "i": 133,
+  "pl": "I zaczynała rozlewać kawę w białe fajansowe kubki.",
+  "start": 1293.49
+ },
+ {
+  "i": 134,
+  "pl": "Wówczas zbliżał się do niej stary Mincel i całował ją w rękę mówiąc:",
+  "start": 1297.75
+ },
+ {
+  "i": 135,
+  "pl": "— Gut Morgen, meine Mutter!<sup>90<\/sup>",
+  "start": 1302.4
+ },
+ {
+  "i": 136,
+  "pl": "Za co dostawał kubek kawy z trzema bułkami.",
+  "start": 1305.3
+ },
+ {
+  "i": 137,
+  "pl": "Potem przychodził Franc Mincel, Jan Mincel, August Katz, a na końcu ja. Każdy całował staruszkę w suchą rękę, porysowaną niebieskimi żyłami, każdy mówił:",
+  "start": 1308.29
+ },
+ {
+  "i": 138,
+  "pl": "— Gut Morgen, Grossmutter!<sup>91<\/sup>",
+  "start": 1319.27
+ },
+ {
+  "i": 139,
+  "pl": "I otrzymywał należny mu kubek tudzież trzy bułki.",
+  "start": 1321.23
+ },
+ {
+  "i": 140,
+  "pl": "A gdyśmy z pośpiechem wypili naszą kawę, służąca zabierała pusty kosz i zamazane kubki, staruszka swój dzbanek i obie znikały.",
+  "start": 1325.62
+ },
+ {
+  "i": 141,
+  "pl": "Za oknem wciąż toczyły się wozy i płynął w obie strony potok ludzki, z którego co chwila odrywał się ktoś i wchodził do sklepu.",
+  "start": 1334.92
+ },
+ {
+  "i": 142,
+  "pl": "— Proszę krochmalu...",
+  "start": 1343.5
+ },
+ {
+  "i": 143,
+  "pl": "— Dać migdałów za dziesiątkę...",
+  "start": 1345.08
+ },
+ {
+  "i": 144,
+  "pl": "— Lukrecji<sup>92<\/sup> za grosz...",
+  "start": 1347.4
+ },
+ {
+  "i": 145,
+  "pl": "— Szarego mydła...",
+  "start": 1348.76
+ },
+ {
+  "i": 146,
+  "pl": "Około południa zmniejszał się ruch za kontuarem towarów kolonialnych, a za to coraz częściej zjawiali się interesanci po stronie prawej sklepu, u Jana. Tu kupowano talerze, szklanki, żelazka, młynki, lalki, a niekiedy duże parasole, szafirowe lub pąsowe.",
+  "start": 1350.36
+ },
+ {
+  "i": 147,
+  "pl": "Nabywcy, kobiety i mężczyźni, byli dobrze ubrani, rozsiadali się na krzesłach i kazali sobie pokazywać mnóstwo przedmiotów targując się i żądając coraz to nowych.",
+  "start": 1368.34
+ },
+ {
+  "i": 148,
+  "pl": "Pamiętam, że kiedy po lewej stronie sklepu męczyłem się bieganiną i zawijaniem towarów, po prawej — największe strapienie robiła mi myśl: czego ten a ten gość chce naprawdę i — czy co kupi?",
+  "start": 1378.8
+ },
+ {
+  "i": 149,
+  "pl": "W rezultacie jednak i tutaj dużo się sprzedawało; nawet dzienny dochód z galanterii był kilka razy większy aniżeli z towarów kolonialnych i mydła.",
+  "start": 1392.59
+ },
+ {
+  "i": 150,
+  "pl": "Stary Mincel i w niedzielę bywał w sklepie. Rano modlił się, a około południa kazał mi przychodzić do siebie na pewien rodzaj lekcji.",
+  "start": 1402.95
+ },
+ {
+  "i": 151,
+  "pl": "— Sag mir<sup>93<\/sup> — powiedz mi: was ist das? co to jest? Das ist Schublade — to jest szublada. Zobacz, co jest w te szublade. Es ist Zimmt — to jest cynamon. Do czego potrzebuje się cynamon? do zupe, do legumine potrzebuje się cynamon. Co to jest cynamon? Jest taki kora z jedne drzewo.",
+  "start": 1412.88
+ },
+ {
+  "i": 152,
+  "pl": "Gdzie mieszka taki drzewo cynamon? W Indii mieszka taki drzewo. Patrz na globus — tu leży Indii. Daj mnie za dziesiątkę cynamon... O, du Spitzbub!...<sup>94<\/sup> jak tobie dam dziesięć razy dyscyplin, ty będziesz wiedział, ile sprzedać za dziesięć groszy cynamon...",
+  "start": 1436.91
+ },
+ {
+  "i": 153,
+  "pl": "W ten sposób przechodziliśmy każdą szufladę w sklepie i historię każdego towaru. Gdy zaś Mincel nie był zmęczony, dyktował mi jeszcze zadania rachunkowe, kazał sumować księgi albo pisywać listy w interesach naszego sklepu.",
+  "start": 1455.49
+ },
+ {
+  "i": 154,
+  "pl": "Mincel był bardzo porządny, nie cierpiał kurzu, ścierał go z najdrobniejszych przedmiotów. Jednych tylko dyscyplin nigdy nie potrzebował okurzać dzięki swoim niedzielnym wykładom buchalterii<sup>95<\/sup>, jeografii<sup>96<\/sup> i towaroznawstwa.",
+  "start": 1470.97
+ },
+ {
+  "i": 155,
+  "pl": "Powoli, w ciągu paru lat, tak przywykliśmy do siebie, że stary Mincel nie mógł obejść się beze mnie, a ja nawet jego dyscypliny począłem uważać za coś, co należało do familijnych stosunków.",
+  "start": 1486.46
+ },
+ {
+  "i": 156,
+  "pl": "Pamiętam, że nie mogłem utulić się z żalu, gdy raz zepsułem kosztowny samowar, a stary Mincel zamiast chwytać za dyscyplinę — odezwał się:",
+  "start": 1498.34
+ },
+ {
+  "i": 157,
+  "pl": "— Co ty zrobila, Ignac?... Co ty zrobila!...",
+  "start": 1506.42
+ },
+ {
+  "i": 158,
+  "pl": "Wolałbym dostać cięgi wszystkimi dyscyplinami, aniżeli znowu kiedy usłyszeć ten drżący głos i zobaczyć wylęknione spojrzenie pryncypała.",
+  "start": 1511.6
+ },
+ {
+  "i": 159,
+  "pl": "Obiady w dzień powszedni jadaliśmy w sklepie, naprzód dwaj młodzi Minclowie i August Katz, a następnie ja z pryncypałem. W czasie święta wszyscy zbieraliśmy się na górze i zasiadaliśmy do jednego stołu.",
+  "start": 1522.63
+ },
+ {
+  "i": 160,
+  "pl": "Na każdą Wigilię Bożego Narodzenia Mincel dawał nam podarunki, a jego matka w największym sekrecie urządzała nam (i swemu synowi) choinkę. Wreszcie w pierwszym dniu miesiąca wszyscy dostawaliśmy pensję (ja brałem 10 złotych).",
+  "start": 1536.46
+ },
+ {
+  "i": 161,
+  "pl": "Przy tej okazji każdy musiał wylegitymować się z porobionych oszczędności: ja, Katz, dwaj synowcy i służba. Nierobienie oszczędności, a raczej nieodkładanie co dzień choćby kilku groszy, było w oczach Mincla takim występkiem jak kradzież.",
+  "start": 1553.61
+ },
+ {
+  "i": 162,
+  "pl": "Za mojej pamięci przewinęło się przez nasz sklep paru subiektów i kilku uczniów, których pryncypał dlatego tylko usunął, że nic sobie nie oszczędzili. Dzień, w którym się to wydało, był ostatnim ich pobytu. Nie pomogły obietnice, zaklęcia, całowania po rękach, nawet upadanie do nóg.",
+  "start": 1569.37
+ },
+ {
+  "i": 163,
+  "pl": "Stary nie ruszył się z fotelu<sup>97<\/sup>, nie patrzył na petentów<sup>98<\/sup>, tylko wskazując palcem drzwi wymawiał jeden wyraz: fort! fort!...<sup>99<\/sup> Zasada robienia oszczędności stała się już u niego chorobliwym dziwactwem.",
+  "start": 1588.92
+ },
+ {
+  "i": 164,
+  "pl": "Dobry ten człowiek miał jedną wadę, oto — nienawidził Napoleona. Sam nigdy o nim nie wspominał, lecz na dźwięk nazwiska Bonapartego dostawał jakby ataku wścieklizny; siniał na twarzy, pluł i wrzeszczał: szelma! szpitzbub! rozbójnik!...",
+  "start": 1604.9
+ },
+ {
+  "i": 165,
+  "pl": "Usłyszawszy pierwszy raz tak szkaradne wymysły nieomal straciłem przytomność. Chciałem coś hardego powiedzieć staremu i uciec do pana Raczka, który już ożenił się z moją ciotką. Nagle dostrzegłem, że Jan Mincel zasłoniwszy usta dłonią coś mruczy i robi miny do Katza.",
+  "start": 1622.46
+ },
+ {
+  "i": 166,
+  "pl": "Wytężam słuch i — oto co mówi Jan:",
+  "start": 1638.82
+ },
+ {
+  "i": 167,
+  "pl": "— Baje stary, baje! Napoleon był chwat, choćby za to samo, że wygnał hyclów Szwabów. Nieprawda, Katz?",
+  "start": 1642.16
+ },
+ {
+  "i": 168,
+  "pl": "A August Katz zmrużył oczy i dalej krajał mydło.",
+  "start": 1649.53
+ },
+ {
+  "i": 169,
+  "pl": "Osłupiałem ze zdziwienia, lecz w tej chwili bardzo polubiłem Jana Mincla i Augusta Katza.",
+  "start": 1654.52
+ },
+ {
+  "i": 170,
+  "pl": "Z czasem przekonałem się, że w naszym małym sklepie istnieją aż dwa wielkie stronnictwa, z których jedno, składające się ze starego Mincla i jego matki, bardzo lubiło Niemców, a drugie, złożone z młodych Minclów i Katza, nienawidziło ich. O ile pamiętam, ja tylko byłem neutralny.",
+  "start": 1660.62
+ },
+ {
+  "i": 171,
+  "pl": "W roku 1846 doszły nas wieści o ucieczce Ludwika Napoleona z więzienia<sup>100<\/sup>. Rok ten był dla mnie ważny, gdyż zostałem subiektem, a nasz pryncypał, stary Jan Mincel, zakończył życie z powodów dosyć dziwnych.",
+  "start": 1679.74
+ },
+ {
+  "i": 172,
+  "pl": "W roku tym handel w naszym sklepie nieco osłabnął, już to z racji ogólnych niepokojów<sup>101<\/sup>, już z tej, że i pryncypał za często i za głośno wymyślał na Ludwika Napoleona. Ludzie poczęli zniechęcać się do nas, a nawet ktoś (może Katz?...) wybił nam jednego dnia szybę w oknie.",
+  "start": 1696.58
+ },
+ {
+  "i": 173,
+  "pl": "Otóż wypadek ten, zamiast całkiem odstręczyć publiczność, zwabił ją do sklepu i przez tydzień mieliśmy tak duże obroty jak nigdy; aż zazdrościli nam sąsiedzi. Po tygodniu jednakże sztuczny ruch na nowo osłabnął i znowu były w sklepie pustki.",
+  "start": 1716.68
+ },
+ {
+  "i": 174,
+  "pl": "Pewnego wieczora w czasie nieobecności pryncypała, co już stanowiło fakt niezwykły, wpadł nam drugi kamień do sklepu. Przestraszeni Minclowie pobiegli na górę i szukali stryja, Katz poleciał na ulicę szukać sprawcy zniszczenia, a wtem ukazało się dwu policjantów ciągnących... Proszę zgadnąć kogo?...",
+  "start": 1733.12
+ },
+ {
+  "i": 175,
+  "pl": "Ani mniej, ani więcej — tylko naszego pryncypała oskarżając go, że to on wybił szybę teraz, a zapewne i poprzednio...",
+  "start": 1753.46
+ },
+ {
+  "i": 176,
+  "pl": "Na próżno staruszek wypierał się: nie tylko bowiem widziano jego zamach, ale jeszcze znaleziono przy nim kamień... Poszedł też nieborak do ratusza.",
+  "start": 1762.54
+ },
+ {
+  "i": 177,
+  "pl": "Sprawa po wielu tłomaczeniach i wyjaśnieniach naturalnie zatarła się; ale stary od tej chwili zupełnie stracił humor i począł chudnąć. Pewnego zaś dnia usiadłszy na swym fotelu pod oknem już nie podniósł się z niego.",
+  "start": 1772.88
+ },
+ {
+  "i": 178,
+  "pl": "Umarł oparty brodą na księdze handlowej, trzymając w ręce sznurek, którym poruszał kozaka.",
+  "start": 1787.45
+ },
+ {
+  "i": 179,
+  "pl": "Przez kilka lat po śmierci stryja synowcy prowadzili wspólnie sklep na Podwalu i dopiero około 1850 roku podzielili się w ten sposób, że Franc został na miejscu z towarami kolonialnymi, a Jan z galanterią i mydłem przeniósł się na Krakowskie, do lokalu, który zajmujemy obecnie.",
+  "start": 1794.62
+ },
+ {
+  "i": 180,
+  "pl": "W kilka lat później Jan ożenił się z piękną Małgorzatą Pfeifer, ona zaś (niech spoczywa w spokoju) zostawszy wdową oddała rękę swoją Stasiowi Wokulskiemu, który tym sposobem odziedziczył interes prowadzony przez dwa pokolenia Minclów.",
+  "start": 1815.13
+ },
+ {
+  "i": 181,
+  "pl": "Matka naszego pryncypała żyła jeszcze długi czas; kiedy w roku 1853 wróciłem z zagranicy, zastałem ją w najlepszym zdrowiu. Zawsze schodziła rano do sklepu i zawsze mówiła:",
+  "start": 1832.99
+ },
+ {
+  "i": 182,
+  "pl": "— Gut Morgen meine Kinder! Der Kaffee ist schon fertig...",
+  "start": 1845.53
+ },
+ {
+  "i": 183,
+  "pl": "Tylko głos jej z roku na rok przyciszał się, dopóki wreszcie nie umilknął na wieki.",
+  "start": 1850.76
+ },
+ {
+  "i": 184,
+  "pl": "Za moich czasów pryncypał był ojcem i nauczycielem praktykantów i najczujniejszym sługą sklepu; jego matka lub żona były gospodyniami, a wszyscy członkowie rodziny pracownikami.",
+  "start": 1856.16
+ },
+ {
+  "i": 185,
+  "pl": "Dziś pryncypał bierze tylko dochody z handlu, najczęściej nie zna go i najwięcej troszczy się o to, ażeby jego dzieci nie zostały kupcami.",
+  "start": 1870.24
+ },
+ {
+  "i": 186,
+  "pl": "Nie mówię tu o Stasiu Wokulskim, który ma szersze zamiary, tylko myślę w ogólności, że kupiec powinien siedzieć w sklepie i wyrabiać sobie ludzi, jeżeli chce mieć porządnych.",
+  "start": 1879.77
+ },
+ {
+  "i": 187,
+  "pl": "Słychać, że Andrassy zażądał sześćdziesięciu milionów guldenów na nieprzewidziane wydatki<sup>102<\/sup>. Więc i Austria zbroi się, a tymczasem Staś pisze mi, że — nie będzie wojny.",
+  "start": 1892.67
+ },
+ {
+  "i": 188,
+  "pl": "Ponieważ nigdy nie był fanfaronem, więc chyba być musi bardzo wtajemniczonym w politykę; a w takim razie siedzi w Bułgarii nie przez miłość do handlu.",
+  "start": 1905.59
+ },
+ {
+  "i": 189,
+  "pl": "Ciekawym, co on zrobi! Ciekawym!...",
+  "start": 1915.79
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

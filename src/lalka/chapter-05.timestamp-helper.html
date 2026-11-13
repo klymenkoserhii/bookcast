@@ -1,0 +1,1243 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to mp3/lalka_005_lalka-tom-pierwszy_tom-i-rozdzial-v.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-05.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Tom I, Rozdział V — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Tom I, Rozdział V · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="mp3/lalka_005_lalka-tom-pierwszy_tom-i-rozdzial-v.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Pan Tomasz Łęcki z jedyną córką Izabelą i kuzynką panną Florentyną nie mieszkał we własnej kamienicy, lecz wynajmował lokal, złożony z ośmiu pokojów, w stronie Alei Ujazdowskiej<sup>110<\/sup>. Miał tam salon o trzech oknach, gabinet własny, gabinet córki, sypialnię dla siebie, sypialnię dla córki,",
+  "start": 8.16
+ },
+ {
+  "i": 1,
+  "pl": "pokój stołowy, pokój dla panny Florentyny i garderobę, nie licząc kuchni i mieszkania dla służby, składającej się ze starego kamerdynera Mikołaja, jego żony, która była kucharką, i panny służącej, Anusi.",
+  "start": 28.86
+ },
+ {
+  "i": 2,
+  "pl": "Mieszkanie posiadało wielkie zalety. Było suche, ciepłe, obszerne, widne. Miało marmurowe schody, gaz, dzwonki elektryczne i wodociągi. Każdy pokój w miarę potrzeby łączył się z innymi lub tworzył zamkniętą w sobie całość.",
+  "start": 43.12
+ },
+ {
+  "i": 3,
+  "pl": "Sprzętów wreszcie miało liczbę dostateczną, ani za mało, ani za wiele, a każdy odznaczał się raczej wygodną prostotą aniżeli skaczącymi do oczu ozdobami.",
+  "start": 59.07
+ },
+ {
+  "i": 4,
+  "pl": "Kredens budził w widzu uczucie pewności, że z niego nie zginą srebra; łóżko przywodziło na myśl bezpieczny spoczynek dobrze zasłużonych; stół można było obciążyć, na krześle usiąść bez obawy załamania się, na fotelu marzyć.",
+  "start": 69.47
+ },
+ {
+  "i": 5,
+  "pl": "Kto tu wszedł, miał swobodę ruchu; nie potrzebował lękać się, że mu coś zastąpi drogę lub że on coś zepsuje. Czekając na gospodarza nie nudził się, otaczały go bowiem rzeczy, które warto było oglądać.",
+  "start": 85.64
+ },
+ {
+  "i": 6,
+  "pl": "Zarazem widok przedmiotów, wyrobionych nie wczoraj i mogących służyć kilku pokoleniom, nastrajał go na jakiś ton uroczysty.",
+  "start": 99.24
+ },
+ {
+  "i": 7,
+  "pl": "Na tym poważnym tle dobrze zarysowywali się jego mieszkańcy.",
+  "start": 108.25
+ },
+ {
+  "i": 8,
+  "pl": "Pan Tomasz Łęcki był to sześdziesięciokilkoletni człowiek, niewysoki, pełnej tuszy, krwisty. Nosił nieduże wąsy białe i do góry podczesane włosy, tej samej barwy. Miał siwe, rozumne oczy, postawę wyprostowaną, chodził ostro.",
+  "start": 113.63
+ },
+ {
+  "i": 9,
+  "pl": "Na ulicy ustępowano mu z drogi — a ludzie prości mówili: oto musi być pan z panów.",
+  "start": 130.39
+ },
+ {
+  "i": 10,
+  "pl": "Istotnie, pan Łęcki liczył w swoim rodzie całe szeregi senatorów. Ojciec jego jeszcze posiadał miliony, a on sam za młodu krocie<sup>111<\/sup>. Później jednak część majątku pochłonęły zdarzenia polityczne<sup>112<\/sup>, resztę — podróże po Europie i wysokie stosunki.",
+  "start": 138.03
+ },
+ {
+  "i": 11,
+  "pl": "Pan Tomasz bywał bowiem przed rokiem 1870 na dworze francuskim, następnie na wiedeńskim i włoskim. Wiktor Emanuel<sup>113<\/sup>, oczarowany pięknością jego córki, zaszczycał go swoją przyjaźnią i nawet chciał mu nadać tytuł hrabiego.",
+  "start": 155.43
+ },
+ {
+  "i": 12,
+  "pl": "Nie dziw, że pan Tomasz po śmierci wielkiego króla przez dwa miesiące nosił na kapeluszu krepę.",
+  "start": 171.3
+ },
+ {
+  "i": 13,
+  "pl": "Od paru lat pan Tomasz nie ruszał się z Warszawy, za mało mając już pieniędzy, ażeby błyszczeć na dworach. Za to jego mieszkanie stało się ogniskiem eleganckiego świata i było nim aż do czasu rozejścia się pogłosek, że pan Tomasz postradał nie tylko swój majątek, ale nawet posag panny Izabeli.",
+  "start": 177.65
+ },
+ {
+  "i": 14,
+  "pl": "Pierwsi cofnęli się epuzerowie<sup>114<\/sup>, za nimi damy mające brzydkie córki, z pozostałą zaś resztą zerwał sam pan Tomasz i ograniczył swoje znajomości wyłącznie do stosunków z familią.",
+  "start": 198.08
+ },
+ {
+  "i": 15,
+  "pl": "Lecz gdy i tu zauważył zniżenie się uczuciowej temperatury, zupełnie wycofał się z towarzystwa, a nawet ku zgorszeniu wielu szanownych osób, jako właściciel domu w Warszawie, wpisał się do Resursy Kupieckiej<sup>115<\/sup>. Chciano go tam zrobić prezesem, ale nie zgodził się.",
+  "start": 211.4
+ },
+ {
+  "i": 16,
+  "pl": "Tylko jego córka bywała u sędziwej hrabiny Karolowej i paru jej przyjaciółek, co znowu dało początek pogłosce, że pan Tomasz jeszcze posiada majątek i że zerwał z towarzystwem w części przez dziwactwo, w części dla poznania rzeczywistych przyjaciół i wybrania córce męża,",
+  "start": 229.87
+ },
+ {
+  "i": 17,
+  "pl": "który by ją kochał dla niej samej, nie dla posagu.",
+  "start": 248.27
+ },
+ {
+  "i": 18,
+  "pl": "Więc znowu dokoła panny Łęckiej począł zbierać się tłum wielbicieli, a na stoliku w jej salonie stosy biletów wizytowych. Gości jednak nie przyjmowano, co zresztą między nimi nie wywołało zbyt wielkiego oburzenia, ponieważ rozeszła się trzecia z kolei pogłoska, że Łęckiemu licytują kamienicę.",
+  "start": 252.08
+ },
+ {
+  "i": 19,
+  "pl": "Tym razem w towarzystwie powstał zamęt. Jedni twierdzili, że pan Tomasz jest zdeklarowanym bankrutem, drudzy gotowi byli przysiąc, że zataił majątek, aby zapewnić szczęście jedynaczce. Kandydaci do małżeństwa i ich rodziny znaleźli się w dręczącej niepewności.",
+  "start": 273.22
+ },
+ {
+  "i": 20,
+  "pl": "Ażeby więc nic nie ryzykować i nic nie stracić, składali hołdy pannie Izabeli nie angażując się zbytecznie i po cichu rzucali w jej domu swoje karty, prosząc Boga, ażeby ich czasem nie zaproszono przed wyklarowaniem się sytuacji.",
+  "start": 290.64
+ },
+ {
+  "i": 21,
+  "pl": "O rewizytach ze strony pana Tomasza nie było mowy. Usprawiedliwiano go ekscentrycznością i smutkiem po Wiktorze Emanuelu.",
+  "start": 307.17
+ },
+ {
+  "i": 22,
+  "pl": "Tymczasem pan Tomasz w dzień spacerował po Alejach, a wieczorem grywał w wista<sup>116<\/sup> w resursie. Fizjognomia jego była zawsze tak spokojna, a postawa tak dumna, że wielbiciele jego córki zupełnie potracili głowy.",
+  "start": 316.85
+ },
+ {
+  "i": 23,
+  "pl": "Rozważniejsi czekali, ale śmielsi poczęli znowu darzyć ją powłóczystymi spojrzeniami, cichym westchnieniem lub drżącym uściskiem ręki, na co panna odpowiadała lodowatą, a niekiedy pogardliwą obojętnością.",
+  "start": 333.2
+ },
+ {
+  "i": 24,
+  "pl": "Panna Izabela była niepospolicie piękną kobietą. Wszystko w niej było oryginalne i doskonałe. Wzrost więcej niż średni, bardzo kształtna figura, bujne włosy blond z odcieniem popielatym, nosek prosty, usta trochę odchylone, zęby perłowe, ręce i stopy modelowe<sup>117<\/sup>.",
+  "start": 347.84
+ },
+ {
+  "i": 25,
+  "pl": "Szczególne wrażenie robiły jej oczy, niekiedy ciemne i rozmarzone, niekiedy pełne iskier wesołości, czasem jasnoniebieskie i zimne jak lód.",
+  "start": 369.8
+ },
+ {
+  "i": 26,
+  "pl": "Uderzająca była gra jej fizjognomii. Kiedy mówiła, mówiły jej usta, brwi, nozdrza, ręce, cała postawa, a nade wszystko oczy, którymi zdawało się, że chce przelać swoją duszę w słuchacza. Kiedy słuchała, zdawało się, że chce wypić duszę z opowiadającego.",
+  "start": 379.6
+ },
+ {
+  "i": 27,
+  "pl": "Jej oczy umiały tulić, pieścić, płakać bez łez, palić i mrozić. Niekiedy można było myśleć, że rozmarzona otoczy kogoś rękami i oprze mu głowę na ramieniu; lecz gdy szczęśliwy topniał z rozkoszy, nagle wykonywała jakiś ruch, który mówił, że schwycić jej niepodobna, gdyż albo wymknie się,",
+  "start": 397.0
+ },
+ {
+  "i": 28,
+  "pl": "albo odepchnie, albo po prostu każe lokajowi wyprowadzić wielbiciela za drzwi...",
+  "start": 418.38
+ },
+ {
+  "i": 29,
+  "pl": "Ciekawym zjawiskiem była dusza panny Izabeli.",
+  "start": 424.7
+ },
+ {
+  "i": 30,
+  "pl": "Gdyby ją kto szczerze zapytał: czym jest świat, a czym ona sama? niezawodnie odpowiedziałaby, że świat jest zaczarowanym ogrodem, napełnionym czarodziejskimi zamkami, a ona — boginią czy nimfą uwięzioną w formy cielesne.",
+  "start": 428.12
+ },
+ {
+  "i": 31,
+  "pl": "Panna Izabela od kolebki żyła w świecie pięknym i nie tylko nadludzkim, ale — nadnaturalnym.",
+  "start": 444.84
+ },
+ {
+  "i": 32,
+  "pl": "Sypiała w puchach, odziewała się w jedwabie i hafty, siadała na rzeźbionych i wyściełanych hebanach<sup>118<\/sup> lub palisandrach<sup>119<\/sup>, piła z kryształów, jadała ze sreber i porcelany kosztownej jak złoto.",
+  "start": 452.5
+ },
+ {
+  "i": 33,
+  "pl": "Dla niej nie istniały pory roku, tylko wiekuista wiosna, pełna łagodnego światła, żywych kwiatów i woni. Nie istniały pory dnia, gdyż nieraz przez całe miesiące kładła się spać o ósmej rano, a jadała obiad o drugiej po północy. Nie istniały różnice położeń jeograficznych, gdyż w Paryżu, Wiedniu,",
+  "start": 464.8
+ },
+ {
+  "i": 34,
+  "pl": "Rzymie, Berlinie czy Londynie znajdowali się ci sami ludzie, te same obyczaje, te same sprzęty, a nawet te same potrawy: zupy z wodorostów Oceanu Spokojnego, ostrygi z Morza Północnego, ryby z Atlantyku albo z Morza Śródziemnego, zwierzyna ze wszystkich krajów, owoce ze wszystkich części świata.",
+  "start": 485.92
+ },
+ {
+  "i": 35,
+  "pl": "Dla niej nie istniała nawet siła ciężkości, gdyż krzesła jej podsuwano, talerze podawano, ją samą na ulicy wieziono, na schody wprowadzano, na góry wnoszono.",
+  "start": 505.96
+ },
+ {
+  "i": 36,
+  "pl": "Woalka chroniła ją od wiatru, kareta od deszczu, sobole od zimna, parasolka i rękawiczki od słońca. I tak żyła z dnia na dzień, z miesiąca na miesiąc, z roku na rok, wyższa nad ludzi, a nawet nad prawa natury. Dwa razy spotkała ją straszna burza, raz w Alpach, drugi — na Morzu Śródziemnym.",
+  "start": 518.61
+ },
+ {
+  "i": 37,
+  "pl": "Truchleli najodważniejsi, ale panna Izabela ze śmiechem przysłuchiwała się łoskotowi druzgotanych skał i trzeszczeniu okrętu, ani przypuszczając możliwości niebezpieczeństwa.",
+  "start": 539.91
+ },
+ {
+  "i": 38,
+  "pl": "Natura urządziła dla niej piękne widowisko z piorunów, kamieni i morskiego odmętu, jak w innym czasie pokazała jej księżyc nad Jeziorem Genewskim<sup>120<\/sup> albo nad wodospadem Renu<sup>121<\/sup> rozdarła chmury, które zakrywały słońce.",
+  "start": 552.64
+ },
+ {
+  "i": 39,
+  "pl": "To samo przecie robią co dzień maszyniści teatrów i nawet w zdenerwowanych damach nie wywołują obawy.",
+  "start": 567.02
+ },
+ {
+  "i": 40,
+  "pl": "Ten świat wiecznej wiosny, gdzie szeleściły jedwabie, rosły tylko rzeźbione drzewa, a glina pokrywała się artystycznymi malowidłami, ten świat miał swoją specjalną ludność.",
+  "start": 575.88
+ },
+ {
+  "i": 41,
+  "pl": "Właściwymi jego mieszkańcami były księżniczki i książęta, hrabianki i hrabiowie tudzież bardzo stara i majętna szlachta obojej płci.",
+  "start": 587.4
+ },
+ {
+  "i": 42,
+  "pl": "Znajdowały się tam jeszcze damy zamężne i panowie żonaci w charakterze gospodarzy domów, matrony strzegące wykwintnego obejścia i dobrych obyczajów i starzy panowie, którzy zasiadali na pierwszych miejscach przy stole, oświadczali młodzież, błogosławili ją i grywali w karty.",
+  "start": 596.42
+ },
+ {
+  "i": 43,
+  "pl": "Byli też biskupi, wizerunki Boga na ziemi, wysocy urzędnicy, których obecność zabezpieczała świat od nieporządków społecznych i trzęsienia ziemi, a nareszcie dzieci, małe cherubiny, zesłane z nieba po to, ażeby starsi mogli urządzać kinderbale<sup>122<\/sup>.",
+  "start": 614.46
+ },
+ {
+  "i": 44,
+  "pl": "Wśród stałej ludności zaczarowanego świata ukazywał się od czasu do czasu zwykły śmiertelnik, który na skrzydłach reputacji potrafił wzbić się aż do szczytów Olimpu<sup>123<\/sup>. Zwykle bywał nim jakiś inżynier, który łączył oceany albo wiercił czy też budował Alpy.",
+  "start": 632.23
+ },
+ {
+  "i": 45,
+  "pl": "Był jakiś kapitan, który w walce z dzikimi stracił swoją kompanię, a sam okryty ranami ocalał dzięki miłości murzyńskiej księżniczki. Był podróżnik, który podobno odkrył nową część świata, rozbił się z okrętem na bezludnej wyspie i bodaj czy nie kosztował ludzkiego mięsa.",
+  "start": 649.75
+ },
+ {
+  "i": 46,
+  "pl": "Bywali tam wreszcie sławni malarze, a nade wszystko natchnieni poeci, którzy w sztambuchach<sup>124<\/sup> hrabianek pisywali ładne wiersze, mogli kochać się bez nadziei i uwieczniać wdzięki swoich okrutnych bogiń naprzód w gazetach, a następnie w oddzielnych tomikach,",
+  "start": 667.67
+ },
+ {
+  "i": 47,
+  "pl": "drukowanych na welinowym papierze<sup>125<\/sup>.",
+  "start": 683.63
+ },
+ {
+  "i": 48,
+  "pl": "Cała ta ludność, między którą ostrożnie przesuwali się wygalonowani<sup>126<\/sup> lokaje, damy do towarzystwa, ubogie kuzynki i łaknący wyższych posad kuzyni, cała ta ludność obchodziła wieczne święto.",
+  "start": 687.16
+ },
+ {
+  "i": 49,
+  "pl": "Od południa składano sobie i oddawano wizyty i rewizyty albo zjeżdżano się w magazynach. Ku wieczorowi bawiono się przed obiadem, w czasie obiadu i po obiedzie. Potem jechano na koncert lub do teatru, ażeby tam zobaczyć inny sztuczny świat, gdzie bohaterowie rzadko kiedy jedzą i pracują,",
+  "start": 700.53
+ },
+ {
+  "i": 50,
+  "pl": "ale za to wciąż gadają sami do siebie — gdzie niewierność kobiet staje się źródłem wielkich katastrof i gdzie kochanek, zabity przez męża w piątym akcie, na drugi dzień zmartwychwstaje w pierwszym akcie, ażeby popełniać te same błędy i gadać do siebie nie będąc słyszanym przez osoby obok stojące.",
+  "start": 719.31
+ },
+ {
+  "i": 51,
+  "pl": "Po wyjściu z teatru znowu zbierano się w salonach, gdzie służba roznosiła zimne i gorące napoje, najęci artyści śpiewali, młode mężatki słuchały opowiadań porąbanego kapitana o murzyńskiej księżniczce, panny rozmawiały z poetami o powinowactwie dusz,",
+  "start": 738.03
+ },
+ {
+  "i": 52,
+  "pl": "starsi panowie wykładali inżynierom swoje poglądy na inżynierię, a damy w średnim wieku półsłówkami i spojrzeniami walczyły między sobą o podróżnika, który jadł ludzkie mięso.",
+  "start": 754.33
+ },
+ {
+  "i": 53,
+  "pl": "Potem zasiadano do kolacji, gdzie usta jadły, żołądki trawiły, a buciki rozmawiały o uczuciach lodowatych serc i marzeniach głów niezawrotnych. A potem — rozjeżdżano się, ażeby w śnie rzeczywistym nabrać sił do snu życia.",
+  "start": 766.05
+ },
+ {
+  "i": 54,
+  "pl": "Poza tym czarodziejskim był jeszcze inny świat — zwyczajny.",
+  "start": 784.93
+ },
+ {
+  "i": 55,
+  "pl": "O jego istnieniu wiedziała panna Izabela i nawet lubiła mu się przypatrywać z okna karety, wagonu albo z własnego mieszkania. W takich ramach i z takiej odległości wydawał on się jej malowniczym i nawet sympatycznym.",
+  "start": 789.49
+ },
+ {
+  "i": 56,
+  "pl": "Widywała rolników powoli orzących ziemię — duże fury ciągnione przez chudą szkapę — roznosicieli owoców i jarzyn — starca, który tłukł kamienie na szosie — posłańców idących gdzieś z pośpiechem — ładne i natrętne kwiaciarki — rodzinę złożoną z ojca, bardzo otyłej matki i czworga dzieci,",
+  "start": 803.96
+ },
+ {
+  "i": 57,
+  "pl": "parami trzymających się za ręce — eleganta niższej sfery, który jechał dorożką i rozpierał się w sposób bardzo zabawny — czasem pogrzeb. I mówiła sobie, że tamten świat, choć niższy, jest ładny; jest nawet ładniejszy od obrazów rodzajowych<sup>127<\/sup>, gdyż porusza się i zmienia co chwilę.",
+  "start": 823.56
+ },
+ {
+  "i": 58,
+  "pl": "I jeszcze wiedziała panna Izabela, że jak w oranżeriach rosną kwiaty, a w winnicach winogrona, tak w tamtym, niższym świecie, wyrastają rzeczy jej potrzebne.",
+  "start": 841.7
+ },
+ {
+  "i": 59,
+  "pl": "Stamtąd pochodzi jej wierny Mikołaj i Anusia, tam robią rzeźbione fotele, porcelany, kryształy i firanki, tam rodzą się froterzy<sup>128<\/sup>, tapicerowie, ogrodnicy i panny szyjące suknie.",
+  "start": 854.3
+ },
+ {
+  "i": 60,
+  "pl": "Będąc raz w magazynie kazała zaprowadzić się do szwalni i bardzo ciekawym wydał się jej widok kilkudziesięciu pracownic, które krajały, fastrygowały i układały na formach fałdy ubrań.",
+  "start": 867.66
+ },
+ {
+  "i": 61,
+  "pl": "Była pewna, że robi im to wielką przyjemność, ponieważ te panny, które brały jej miarę albo przymierzały suknie, były zawsze uśmiechnięte i bardzo zainteresowane tym, ażeby strój leżał na niej dobrze.",
+  "start": 879.5
+ },
+ {
+  "i": 62,
+  "pl": "I jeszcze wiedziała panna Izabela, że na tamtym, zwyczajnym świecie trafiają się ludzie nieszczęśliwi.",
+  "start": 892.96
+ },
+ {
+  "i": 63,
+  "pl": "Więc każdemu ubogiemu, o ile spotkał ją, kazała dawać po kilka złotych; raz spotkawszy mizerną matkę z bladym jak wosk dzieckiem przy piersi oddała jej bransoletę, a brudne, żebrzące dzieci obdarzała cukierkami i całowała z pobożnym uczuciem.",
+  "start": 899.53
+ },
+ {
+  "i": 64,
+  "pl": "Zdawało się jej, że w którymś z tych biedaków, a może w każdym, jest utajony Chrystus, który zastąpił jej drogę, ażeby dać okazję do spełnienia dobrego czynu.",
+  "start": 915.26
+ },
+ {
+  "i": 65,
+  "pl": "W ogóle dla ludzi z niższego świata miała serce życzliwe. Przychodziły jej na myśl słowa Pisma świętego: „W pocie czoła pracować będziesz.”<sup>129<\/sup>. Widocznie popełnili oni jakiś ciężki grzech, skoro skazano ich na pracę; ależ tacy jak ona aniołowie nie mogli nie ubolewać nad ich losem.",
+  "start": 925.44
+ },
+ {
+  "i": 66,
+  "pl": "Tacy jak ona, dla której największą pracą było dotknięcie elektrycznego dzwonka albo wydanie rozkazu.",
+  "start": 943.43
+ },
+ {
+  "i": 67,
+  "pl": "Raz tylko niższy świat zrobił na niej potężne wrażenie.",
+  "start": 949.45
+ },
+ {
+  "i": 68,
+  "pl": "Pewnego dnia, we Francji, zwiedzała fabrykę żelazną. Zjeżdżając z góry, w okolicy pełnej lasów i łąk, pod szafirowym niebem zobaczyła otchłań wypełnioną obłokami czarnych dymów i białych par i usłyszała głuchy łoskot, zgrzyt i sapanie machin. Potem widziała piece, jak wieże średniowiecznych zamków,",
+  "start": 953.53
+ },
+ {
+  "i": 69,
+  "pl": "dyszące płomieniami — potężne koła, które obracały się z szybkością błyskawic — wielkie rusztowania, które same toczyły się po szynach — strumienie rozpalonego do białości żelaza i półnagich robotników, jak spiżowe posągi, o ponurych wejrzeniach.",
+  "start": 975.37
+ },
+ {
+  "i": 70,
+  "pl": "Ponad tym wszystkim — krwawa łuna, warczenie kół, jęki miechów, grzmot młotów i niecierpliwe oddechy kotłów, a pod stopami dreszcz wylęknionej ziemi.",
+  "start": 990.83
+ },
+ {
+  "i": 71,
+  "pl": "Wtedy zdało się jej, że z wyżyn szczęśliwego Olimpu zstąpiła do beznadziejnej otchłani Wulkana<sup>130<\/sup>, gdzie cyklopowie<sup>131<\/sup> kują pioruny mogące zdruzgotać sam Olimp.",
+  "start": 1002.33
+ },
+ {
+  "i": 72,
+  "pl": "Przyszły jej na myśl legendy o zbuntowanych olbrzymach, o końcu tego pięknego świata, w którym przebywała, i pierwszy raz w życiu ją, boginię, przed którą gięli się marszałkowie i senatorzy, zdjęła trwoga.",
+  "start": 1013.61
+ },
+ {
+  "i": 73,
+  "pl": "— To są straszni ludzie, papo... — szepnęła do ojca.",
+  "start": 1027.91
+ },
+ {
+  "i": 74,
+  "pl": "Ojciec milczał, tylko mocniej przycisnął jej ramię.",
+  "start": 1032.26
+ },
+ {
+  "i": 75,
+  "pl": "— Ale kobietom oni nic złego nie zrobią?",
+  "start": 1035.74
+ },
+ {
+  "i": 76,
+  "pl": "— Tak, nawet oni — odpowiedział pan Tomasz.",
+  "start": 1039.06
+ },
+ {
+  "i": 77,
+  "pl": "W tej chwili pannę Izabelę ogarnął wstyd na myśl, że troszczyła się tylko o kobiety. Więc szybko dodała:",
+  "start": 1043.12
+ },
+ {
+  "i": 78,
+  "pl": "— A jeżeli nam, to i wam nie zrobią nic złego...",
+  "start": 1049.79
+ },
+ {
+  "i": 79,
+  "pl": "Ale pan Tomasz uśmiechnął się i potrząsnął głową. W owym czasie dużo mówiono o zbliżającym się końcu starego świata, a pan Tomasz głęboko odczuwał to, z wielkimi trudnościami wydobywając pieniądze od swoich pełnomocników.",
+  "start": 1054.5
+ },
+ {
+  "i": 80,
+  "pl": "Odwiedziny fabryki stanowiły ważną epokę w życiu panny Izabeli. Z religijną czcią czytywała ona poezje swego dalekiego kuzyna, Zygmunta<sup>132<\/sup>, i zdawało się jej, że dziś znalazła ilustrację do Nie-Boskiej komedii.",
+  "start": 1069.34
+ },
+ {
+  "i": 81,
+  "pl": "Odtąd często marzyła o zmroku, że na górze kąpiącej się w słońcu, skąd zjeżdżał jej powóz do fabryki, stoją Okopy Św. Trójcy<sup>133<\/sup>, a w tej dolinie zasnutej dymami i parą było obozowisko zbuntowanych demokratów, gotowych lada chwila ruszyć do szturmu i zburzyć jej piękny świat.",
+  "start": 1083.28
+ },
+ {
+  "i": 82,
+  "pl": "Teraz dopiero zrozumiała, jak gorąco kocha tę swoją duchową ojczyznę, gdzie kryształowe pająki zastępują słońce, dywany — ziemię, posągi i kolumny — drzewa. Tę drugą ojczyznę, która ogarnia arystokrację wszystkich narodów, wykwintność wszystkich czasów i najpiękniejsze zdobycze cywilizacji.",
+  "start": 1103.22
+ },
+ {
+  "i": 83,
+  "pl": "I to wszystko miałoby runąć, umrzeć albo rozpierzchnąć się!... Rycerska młodzież, która śpiewa z takim uczuciem, tańczy z wdziękiem, pojedynkuje się z uśmiechem albo skacze na środku jeziora w wodę za zgubionym kwiatkiem?...",
+  "start": 1124.89
+ },
+ {
+  "i": 84,
+  "pl": "Mają zginąć te ukochane przyjaciółki, które okrywały ją tyloma pieszczotami albo siedząc u jej nóg opowiadały jej tyle drobnych tajemnic, albo oddalone od niej pisywały takie długie, bardzo długie listy, w których tkliwe uczucia mieszały się z nader wątpliwą ortografią?",
+  "start": 1139.61
+ },
+ {
+  "i": 85,
+  "pl": "A ta dobra służba, która ze swymi panami postępuje tak, jakby zaprzysięgała im dozgonną miłość, wierność i posłuszeństwo? A te modystki, które zawsze witają ją z uśmiechem i tak pamiętają o najdrobniejszym szczególe jej toalety, tak dokładnie wiedzą o jej triumfach?",
+  "start": 1156.11
+ },
+ {
+  "i": 86,
+  "pl": "A te piękne konie, którym jaskółka mogłaby zazdrościć lotu, a te psy mądre i przywiązane jak ludzie, a te ogrody, gdzie ręka ludzka powznosiła pagórki, wylewała strumienie, modelowała drzewa?... I to wszystko miałoby kiedyś zniknąć?...",
+  "start": 1172.79
+ },
+ {
+  "i": 87,
+  "pl": "Od tych rozmyślań przybył pannie Izabeli na twarz nowy wyraz — łagodnego smutku, który ją robił jeszcze piękniejszą. Mówiono, że już zupełnie dojrzała.",
+  "start": 1188.95
+ },
+ {
+  "i": 88,
+  "pl": "Rozumiejąc, że wielki świat jest wyższym światem, panna Izabela dowiedziała się powoli, że do tych wyżyn wzbić się można i stale na nich przebywać tylko za pomocą dwóch skrzydeł: urodzenia i majątku.",
+  "start": 1200.81
+ },
+ {
+  "i": 89,
+  "pl": "Urodzenie zaś i majątek są przywiązane do pewnych wybranych familii, jak kwiat i owoc pomarańczy do pomarańczowego drzewa.",
+  "start": 1214.39
+ },
+ {
+  "i": 90,
+  "pl": "Bardzo też jest możliwym, że dobry Bóg widząc dwie dusze z pięknymi nazwiskami, połączone węzłem sakramentu, pomnaża ich dochody i zsyła im na wychowanie aniołka, który w dalszym ciągu podtrzymuje sławę rodów swoimi cnotami, dobrym ułożeniem i pięknością.",
+  "start": 1223.66
+ },
+ {
+  "i": 91,
+  "pl": "Stąd wynika obowiązek oględnego zawierania małżeństw, na czym najlepiej znają się stare damy i sędziwi panowie. Wszystko znaczy trafny dobór nazwisk i majątków.",
+  "start": 1240.35
+ },
+ {
+  "i": 92,
+  "pl": "Miłość bowiem, nie ta szalona, o jakiej marzą poeci, ale prawdziwie chrześcijańska, zjawia się dopiero po sakramencie i najzupełniej wystarcza, ażeby żona umiała pięknie prezentować się w domu, a mąż z powagą asystować jej w świecie.",
+  "start": 1251.62
+ },
+ {
+  "i": 93,
+  "pl": "Tak było dawniej i było dobrze, według zgodnej opinii wszystkich matron. Dziś zapomniano o tym i jest źle: mnożą się mezalianse i upadają wielkie rodziny.",
+  "start": 1266.87
+ },
+ {
+  "i": 94,
+  "pl": "„I nie ma szczęścia w małżeństwach” — dodawała po cichu panna Izabela, której młode mężatki opowiedziały niejeden sekret domowy.",
+  "start": 1279.12
+ },
+ {
+  "i": 95,
+  "pl": "Dzięki nawet tym opowiadaniom nabrała dużego wstrętu do małżeństwa i lekkiej wzgardy dla mężczyzn.",
+  "start": 1289.0
+ },
+ {
+  "i": 96,
+  "pl": "Mąż w szlafroku, który ziewa przy żonie, całuje ją mając pełne usta dymu z cygar, często odzywa się: „A dajże mi spokój”, albo po prostu: „Głupia jesteś!...” — ten mąż, który robi hałasy w domu za nowy kapelusz, a za domem wydaje pieniądze na ekwipaże dla aktorek, to wcale nieciekawe stworzenie.",
+  "start": 1296.44
+ },
+ {
+  "i": 97,
+  "pl": "Co najgorsze, że każdy z nich przed ślubem był gorącym wielbicielem, mizerniał nie widząc długo swej pani, rumienił się, kiedy ją spotkał, a nawet niejeden obiecywał zastrzelić się z miłości.",
+  "start": 1315.36
+ },
+ {
+  "i": 98,
+  "pl": "Toteż mając lat osiemnaście, panna Izabela tyranizowała mężczyzn chłodem. Kiedy Wiktor Emanuel raz pocałował ją w rękę, uprosiła ojca, że tego samego dnia wyjechali z Rzymu. W Paryżu oświadczył się jej pewien bogaty hrabia francuski; odpowiedziała mu, że jest Polką i za cudzoziemca nie wyjdzie.",
+  "start": 1329.17
+ },
+ {
+  "i": 99,
+  "pl": "Podolskiego magnata odepchnęła zdaniem, że odda swoją rękę tylko temu, kogo pokocha, a na co się jeszcze nie zanosi, a oświadczyny jakiegoś amerykańskiego milionera zbyła wybuchem śmiechu.",
+  "start": 1349.18
+ },
+ {
+  "i": 100,
+  "pl": "Takie postępowanie na kilka lat wytworzyło dokoła panny pustkę. Podziwiano ją i wielbiono, ale z daleka; nikt bowiem nie chciał narażać się na szyderczą odmowę.",
+  "start": 1362.04
+ },
+ {
+  "i": 101,
+  "pl": "Po przejściu pierwszego niesmaku panna Izabela zrozumiała, że małżeństwo trzeba przyjąć takim, jakie jest. Była już zdecydowana wyjść za mąż, pod tym wszakże warunkiem, aby przyszły towarzysz — podobał się jej, miał piękne nazwisko i odpowiedni majątek.",
+  "start": 1372.28
+ },
+ {
+  "i": 102,
+  "pl": "Rzeczywiście, trafiali się jej ludzie piękni, majętni i utytułowani; na nieszczęście jednak, żaden nie łączył w sobie wszystkich trzech warunków, więc — znowu upłynęło kilka lat.",
+  "start": 1388.7
+ },
+ {
+  "i": 103,
+  "pl": "Nagle rozeszły się wieści o złym stanie interesów pana Tomasza i — z całego legionu konkurentów — zostało pannie Izabeli tylko dwu poważnych: pewien baron i pewien marszałek<sup>134<\/sup>, bogaci, ale starzy.",
+  "start": 1400.57
+ },
+ {
+  "i": 104,
+  "pl": "Teraz spostrzegła panna Izabela, że w wielkim świecie usuwa jej się grunt pod nogami, więc zdecydowała się obniżyć skalę wymagań. Ale że baron i marszałek pomimo swoich majątków budzili w niej niepokonaną odrazę, więc odkładała stanowczą decyzję z dnia na dzień.",
+  "start": 1414.56
+ },
+ {
+  "i": 105,
+  "pl": "Tymczasem pan Tomasz zerwał z towarzystwem. Marszałek nie mogąc się doczekać odpowiedzi wyjechał na wieś, strapiony baron za granicę i — panna Izabela pozostała kompletnie samą. Wprawdzie wiedziała, że każdy z nich wróci na pierwsze zawołanie, ale — którego tu wybrać?... jak przytłumić wstręt?...",
+  "start": 1431.56
+ },
+ {
+  "i": 106,
+  "pl": "Nade wszystko zaś, czy podobna robić z siebie taką ofiarę mając niejaką pewność, że kiedyś odzyska majątek, i wiedząc, że wówczas znowu będzie mogła wybierać. Tym razem już wybierze, poznawszy, jak ciężko jej żyć poza towarzystwem salonów...",
+  "start": 1450.45
+ },
+ {
+  "i": 107,
+  "pl": "Jedna rzecz w wysokim stopniu ułatwiała jej wyjście za mąż dla stanowiska. Oto panna Izabela nigdy nie była zakochaną. Przyczyniał się do tego jej chłodny temperament, wiara, że małżeństwo obejdzie się bez poetycznych dodatków, nareszcie miłość idealna, najdziwniejsza, o jakiej słyszano.",
+  "start": 1467.71
+ },
+ {
+  "i": 108,
+  "pl": "Raz zobaczyła w pewnej galerii rzeźb posąg Apollina<sup>135<\/sup>, który na niej zrobił tak silne wrażenie, że kupiła piękną jego kopię i ustawiła w swoim gabinecie. Przypatrywała mu się całymi godzinami, myślała o nim i kto wie, ile pocałunków ogrzało ręce i nogi marmurowego bóstwa?...",
+  "start": 1487.49
+ },
+ {
+  "i": 109,
+  "pl": "I stał się cud: pieszczony przez kochającą kobietę głaz ożył. A kiedy pewnej nocy zapłakana usnęła, nieśmiertelny zstąpił ze swego piedestału i przyszedł do niej w laurowym wieńcu na głowie, jaśniejący mistycznym<sup>136<\/sup> blaskiem.",
+  "start": 1505.39
+ },
+ {
+  "i": 110,
+  "pl": "Siadł na krawędzi jej łóżka, długo patrzył na nią oczyma, z których przeglądała wieczność, a potem objął ją w potężnym uścisku i pocałunkami białych ust ocierał łzy i chłodził jej gorączkę.",
+  "start": 1521.2
+ },
+ {
+  "i": 111,
+  "pl": "Odtąd nawiedzał ją coraz częściej i omdlewającej w jego objęciach szeptał on, bóg światła, tajemnice nieba i ziemi, jakich dotychczas nie wypowiedziano w śmiertelnym języku.",
+  "start": 1534.1
+ },
+ {
+  "i": 112,
+  "pl": "A przez miłość dla niej sprawił jeszcze większy cud, gdyż w swym boskim obliczu kolejno ukazywał jej upiększone rysy tych ludzi, którzy kiedykolwiek zrobili na niej wrażenie.",
+  "start": 1545.16
+ },
+ {
+  "i": 113,
+  "pl": "Raz był podobnym do odmłodzonego jenerała-bohatera, który wygrał bitwę i z wyżyn swego siodła patrzył na śmierć kilku tysięcy walecznych. Drugi raz przypominał twarz najsławniejszego tenora, któremu kobiety rzucały kwiaty pod nogi, a mężczyźni wyprzęgali konie z powozu.",
+  "start": 1557.42
+ },
+ {
+  "i": 114,
+  "pl": "Inny raz był wesołym i pięknym księciem krwi jednego z najstarszych domów panujących; inny raz dzielnym strażakiem, który za wydobycie trzech osób z płomieni na piątym piętrze dostał legię honorową<sup>137<\/sup>; inny raz był wielkim rysownikiem, który przytłaczał świat bogactwem swojej fantazji,",
+  "start": 1576.66
+ },
+ {
+  "i": 115,
+  "pl": "a inny raz weneckim gondolierem albo cyrkowym atletą nadzwyczajnej urody i siły.",
+  "start": 1594.14
+ },
+ {
+  "i": 116,
+  "pl": "Każdy z tych ludzi przez pewien czas zaprzątał tajemne myśli panny Izabeli, każdemu poświęcała najcichsze westchnienia rozumiejąc, że dla tych czy innych powodów kochać go nie może i — każdy z nich za sprawą bóstwa ukazywał się w jego postaci, w półrzeczywistych marzeniach.",
+  "start": 1600.49
+ },
+ {
+  "i": 117,
+  "pl": "A od tych widzeń oczy panny Izabeli przybrały nowy wyraz — jakiegoś nadziemskiego zamyślenia.",
+  "start": 1617.77
+ },
+ {
+  "i": 118,
+  "pl": "Niekiedy spoglądały one gdzieś ponad ludzi i poza świat; a gdy jeszcze jej popielate włosy na czole ułożyły się tak dziwnie, jakby je rozwiał tajemniczy podmuch, patrzącym zdawało się, że widzą anioła albo świętą.",
+  "start": 1626.17
+ },
+ {
+  "i": 119,
+  "pl": "Przed rokiem w jednej z takich chwil zobaczył pannę Izabelę Wokulski. Odtąd serce jego nie zaznało spokoju.",
+  "start": 1641.2
+ },
+ {
+  "i": 120,
+  "pl": "Prawie w tym samym czasie pan Tomasz zerwał z towarzystwem i na znak swoich rewolucyjnych usposobień zapisał się do Resursy Kupieckiej.",
+  "start": 1651.36
+ },
+ {
+  "i": 121,
+  "pl": "Tam z pomiatanymi niegdyś garbarzami, szczotkarzami i dystylatorami<sup>138<\/sup> grywał w wista, głosząc na prawo i na lewo, że arystokracja nie powinna zasklepiać się w wyłączności, ale przodować oświeconemu mieszczaństwu, a przez nie narodowi.",
+  "start": 1660.55
+ },
+ {
+  "i": 122,
+  "pl": "Za co wywzajemniając się dumni dziś garbarze, szczotkarze i dystylatorzy raczyli przyznawać, że pan Tomasz jest jedynym arystokratą, który pojął swe obowiązki względem kraju i spełnia je sumiennie. Mogli byli dodać: spełnia co dzień od dziewiątej wieczór do północy.",
+  "start": 1678.27
+ },
+ {
+  "i": 123,
+  "pl": "I kiedy w ten sposób pan Tomasz dźwigał jarzmo stanowiska, panna Izabela trawiła się w samotności i ciszy swego pięknego lokalu.",
+  "start": 1698.8
+ },
+ {
+  "i": 124,
+  "pl": "Nieraz Mikołaj już twardo drzemał w fotelu, panna Florentyna, zatkawszy sobie uszy watą, na dobre spała, a do pokoju panny Izabeli sen jeszcze nie zapukał odpędzany przez wspomnienia.",
+  "start": 1708.64
+ },
+ {
+  "i": 125,
+  "pl": "Wtedy zrywała się z łóżka i odziana w lekki szlafroczek całymi godzinami chodziła po salonie, gdzie dywan głuszył jej kroki i tylko tyle było światła, ile go rzucały dwie skąpe latarnie uliczne.",
+  "start": 1722.04
+ },
+ {
+  "i": 126,
+  "pl": "Chodziła, a w ogromnym pokoju tłoczyły się jej smutne myśli i widziadła osób, które tu kiedyś bywały. Tu drzemie stara księżna; tu dwie hrabiny informują się u prałata<sup>139<\/sup>, czy można dziecko ochrzcić wodą różaną<sup>140<\/sup>?",
+  "start": 1735.52
+ },
+ {
+  "i": 127,
+  "pl": "Tu rój młodzieży zwraca ku niej tęskne spojrzenia albo udanym chłodem usiłuje podniecić w niej ciekawość; a tam girlanda panien, które pieszczą ją wzrokiem, podziwiają albo jej zazdroszczą.",
+  "start": 1753.03
+ },
+ {
+  "i": 128,
+  "pl": "Pełno świateł, szelestów, rozmów, których większa część, jak motyle około kwiatów, krążyły około jej piękności. Gdzie ona się znalazła, tam obok niej wszystko bladło; inne kobiety były jej tłem, a mężczyźni niewolnikami.",
+  "start": 1766.87
+ },
+ {
+  "i": 129,
+  "pl": "I to wszystko przeszło!... I dziś w tym salonie — chłodno, ciemno i pusto... Jest tylko ona i niewidzialny pająk smutku, który zawsze zasnuwa szarą siecią te miejsca, gdzie byliśmy szczęśliwi i skąd szczęście uciekło. Już uciekło!...",
+  "start": 1784.52
+ },
+ {
+  "i": 130,
+  "pl": "Panna Izabela wyłamywała sobie palce, ażeby pohamować się od łez, których wstyd jej było nawet w pustce i w nocy.",
+  "start": 1803.2
+ },
+ {
+  "i": 131,
+  "pl": "Wszyscy ją opuścili, z wyjątkiem — hrabiny Karolowej, która, kiedy wezbrał jej zły humor, przychodziła tu i szeroko zasiadłszy na kanapie, prawiła wśród westchnień:",
+  "start": 1812.18
+ },
+ {
+  "i": 132,
+  "pl": "— Tak, droga Belciu, musisz przyznać, że popełniłaś kilka błędów nie do darowania. Nie mówię o Wiktorze Emanuelu, bo tamto był przelotny kaprys króla trochę liberalnego<sup>141<\/sup> i zresztą bardzo zadłużonego.",
+  "start": 1825.33
+ },
+ {
+  "i": 133,
+  "pl": "Na takie stosunki trzeba mieć więcej — nie powiem: taktu, ale — doświadczenia — ciągnęła hrabina, skromnie spuszczając powieki. — Ale wypuścić czy — jeśli chcesz — odrzucić hrabiego Saint-Auguste, to już daruj!... Człowiek młody, majętny, bardzo dobrze, i jeszcze z taką karierą!...",
+  "start": 1840.26
+ },
+ {
+  "i": 134,
+  "pl": "Teraz właśnie przewodniczy jednej deputacji<sup>142<\/sup> do Ojca świętego i zapewne dostanie specjalne błogosławieństwo dla całej rodziny, no a hrabia Chambord<sup>143<\/sup> nazywa go cher cousin<sup>144<\/sup>... Ach, Boże!",
+  "start": 1861.25
+ },
+ {
+  "i": 135,
+  "pl": "— Myślę, ciociu, że martwić się tym już za późno — wtrąciła panna Izabela.",
+  "start": 1876.72
+ },
+ {
+  "i": 136,
+  "pl": "— Alboż ja chcę cię martwić, biedne dziecko! I bez tego czekają cię ciosy, które ukoić może tylko głęboka wiara. Zapewne wiesz, że ojciec stracił wszystko, nawet resztę twego posagu?",
+  "start": 1882.1
+ },
+ {
+  "i": 137,
+  "pl": "— Cóż ja na to poradzę?",
+  "start": 1894.14
+ },
+ {
+  "i": 138,
+  "pl": "— A jednak ty tylko możesz radzić i powinnaś — mówiła hrabina z naciskiem. — Marszałek nie jest wprawdzie Adonisem<sup>145<\/sup>, no — ale... Gdyby nasze obowiązki były do spełnienia łatwe, nie istniałaby zasługa.",
+  "start": 1896.35
+ },
+ {
+  "i": 139,
+  "pl": "Zresztą, mój Boże, któż nam broni mieć na dnie duszy jakiś ideał, o którym myśl osładza najcięższe chwile? Na koniec, mogę cię zapewnić, że położenie pięknej kobiety, mającej starego męża, nie należy do najgorszych.",
+  "start": 1911.93
+ },
+ {
+  "i": 140,
+  "pl": "Wszyscy interesują się nią, mówią o niej, składają hołdy jej poświęceniu, a znowu stary mąż jest mniej wymagający od męża w średnim wieku...",
+  "start": 1926.4
+ },
+ {
+  "i": 141,
+  "pl": "— Ach, ciociu...",
+  "start": 1936.36
+ },
+ {
+  "i": 142,
+  "pl": "— Tylko bez egzaltacji, Belciu! Nie masz lat szesnastu i na życie musisz patrzeć serio. Nie można przecie dla jakiejś idiosynkrazji<sup>146<\/sup> poświęcić bytu ojca, a choćby Flory i waszej służby.",
+  "start": 1937.92
+ },
+ {
+  "i": 143,
+  "pl": "Wreszcie pomyśl, ile ty przy twym szlachetnym serduszku mogłabyś zrobić dobrego rozporządzając znacznym majątkiem.",
+  "start": 1952.04
+ },
+ {
+  "i": 144,
+  "pl": "— Ależ, ciociu, marszałek jest obrzydliwy. Jemu nie żony trzeba, ale niańki, która by mu ocierała usta.",
+  "start": 1962.0
+ },
+ {
+  "i": 145,
+  "pl": "— Nie upieram się przy marszałku, więc baron...",
+  "start": 1969.86
+ },
+ {
+  "i": 146,
+  "pl": "— Baron jeszcze starszy, farbuje się, różuje i ma jakieś plamy na rękach.",
+  "start": 1973.72
+ },
+ {
+  "i": 147,
+  "pl": "Hrabina podniosła się z kanapy.",
+  "start": 1979.36
+ },
+ {
+  "i": 148,
+  "pl": "— Nie nalegam, moja droga, nie jestem swatką, to należy do pani Meliton. Zwracam tylko uwagę, że nad ojcem wisi katastrofa.",
+  "start": 1981.94
+ },
+ {
+  "i": 149,
+  "pl": "— Mamy przecie kamienicę.",
+  "start": 1992.21
+ },
+ {
+  "i": 150,
+  "pl": "— Którą sprzedają najdalej po św. Janie, tak że nawet twoja suma spadnie.",
+  "start": 1993.87
+ },
+ {
+  "i": 151,
+  "pl": "— Jak to — dom, który kosztował sto tysięcy, sprzedadzą za sześćdziesiąt?...",
+  "start": 1999.57
+ },
+ {
+  "i": 152,
+  "pl": "— Bo on nie wart więcej, bo ojciec za dużo wydał. Wiem to od budowniczego, który oglądał go z polecenia Krzeszowskiej.",
+  "start": 2004.63
+ },
+ {
+  "i": 153,
+  "pl": "— Więc w ostateczności mamy serwis... srebra... — wybuchnęła panna Izabela załamując ręce.",
+  "start": 2013.65
+ },
+ {
+  "i": 154,
+  "pl": "Hrabina ucałowała ją kilkakrotnie.",
+  "start": 2020.12
+ },
+ {
+  "i": 155,
+  "pl": "— Drogie, kochane dziecko — mówiła łkając — że też właśnie ja muszę tak ranić ci serce!... Słuchaj więc... Ojciec ma jeszcze długi wekslowe, jakieś parę tysięcy rubli. Otóż te długi... uważasz... te długi ktoś skupił... kilka dni temu, w końcu marca. Domyślamy się, że to zrobiła Krzeszowska...",
+  "start": 2023.56
+ },
+ {
+  "i": 156,
+  "pl": "— Cóż za nikczemność! — szepnęła panna Izabela. — Ale mniejsza o nią... Na pokrycie paru tysięcy rubli wystarczy mój serwis i srebra.",
+  "start": 2045.19
+ },
+ {
+  "i": 157,
+  "pl": "— Są one warte bez porównania więcej, ale — kto dziś kupi rzeczy tak kosztowne?",
+  "start": 2053.89
+ },
+ {
+  "i": 158,
+  "pl": "— W każdym razie spróbuję — mówiła rozgorączkowana panna Izabela. — Poproszę panią Meliton, ona mi to ułatwi...",
+  "start": 2060.81
+ },
+ {
+  "i": 159,
+  "pl": "— Zastanów się jednak, czy nie szkoda tak pięknych pamiątek.",
+  "start": 2067.99
+ },
+ {
+  "i": 160,
+  "pl": "Panna Izabela roześmiała się.",
+  "start": 2071.99
+ },
+ {
+  "i": 161,
+  "pl": "— Ach, ciociu... Więc mam wahać się pomiędzy sprzedaniem siebie i serwisu?... Bo na to, ażeby zabierano nam meble, nigdy nie pozwolę... Ach, ta Krzeszowska... to wykupywanie weksli... co za ohyda!",
+  "start": 2074.35
+ },
+ {
+  "i": 162,
+  "pl": "— No, może to jeszcze nie ona.",
+  "start": 2087.65
+ },
+ {
+  "i": 163,
+  "pl": "— Więc chyba znalazł się jakiś nowy nieprzyjaciel, gorszy od niej.",
+  "start": 2090.84
+ },
+ {
+  "i": 164,
+  "pl": "— Może to ciotka Honorata — uspokajała ją hrabina — czy ja wiem? Może chce dopomóc Tomaszowi, ale zawieszając nad nim groźbę. Lecz bądź zdrowa, moje kochane dziecię, adieu<sup>147<\/sup>...",
+  "start": 2095.05
+ },
+ {
+  "i": 165,
+  "pl": "Na tym skończyła się rozmowa w języku polskim, gęsto ozdobionym francuszczyzną, co robiło go podobnym do ludzkiej twarzy okrytej wysypką.",
+  "start": 2108.39
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

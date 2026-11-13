@@ -1,0 +1,2405 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-03.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-03.md mp3/lalka_003_lalka-tom-pierwszy_tom-i-rozdzial-iii.mp3
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-03.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-03.md
+     It reads chapter-03.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path mp3/lalka_003_lalka-tom-pierwszy_tom-i-rozdzial-iii.mp3, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Lalka · Tom I, Rozdział III</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative;
+    cursor: help;
+    color: var(--accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    top: 12px;
+    width: min(360px, calc(100vw - 36px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans);
+    text-align: left;
+    white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* Ukrainian reveal block */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Lalka · Tom I, Rozdział III</h1>
+      <p class="chapter-name">Pamiętnik starego subiekta</p>
+      <p>Bolesław Prus · bilingual study edition: PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>mp3/lalka_003_lalka-tom-pierwszy_tom-i-rozdzial-iii.mp3</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" src="audio/chapter-03.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (PL → UA, in reading order)  */
+/*    Generated from chapter-03.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "pl": "...Ze smutkiem od kilku lat uważam, że na świecie jest coraz mniej dobrych subiektów i rozumnych polityków, bo wszyscy stosują się do mody. Skromny subiekt co kwartał ubiera się w spodnie nowego fasonu, w coraz dziwniejszy kapelusz i coraz inaczej wykładany kołnierzyk.",
+  "ua": "...З пригніченням уже кілька років помічаю, що на світі дедалі менше добрих приказчиків і розумних політиків, бо всі коряться моді. Скромний приказчик щокварталу вдягає штани нового фасону, усе дивніший капелюх і дедалі інакше складений комір.",
+  "para": 0,
+  "start": 6.97
+ },
+ {
+  "pl": "Podobnież dzisiejsi politycy co kwartał zmieniają wiarę: onegdaj wierzyli w Bismarcka, wczoraj w Gambettę, a dziś w Beaconsfielda<sup>60<\/sup>, który niedawno był Żydkiem.",
+  "ua": "Так само сьогоднішні політики щокварталу міняють віру: недавно вірили в Бісмарка, учора — в Гамбетту, а сьогодні — в Біконсфілда<sup>60<\/sup>, який ще недавно був євреєм.",
+  "para": 0,
+  "start": 29.44
+ },
+ {
+  "pl": "Już widać zapomniano, że w sklepie nie można stroić się w modne kołnierzyki, tylko je sprzedawać, bo w przeciwnym razie gościom zabraknie towaru, a sklepowi gości. Zaś polityki nie należy opierać na szczęśliwych osobach, tylko na wielkich dynastiach.",
+  "ua": "Мабуть, уже забули, що в крамниці не можна вдягатися в модні коміри, а слід їх продавати, бо інакше гостям забракне товару, а крамниці — гостей. Політику ж слід спирати не на щасливих особах, а на великих династіях.",
+  "para": 1,
+  "start": 43.73
+ },
+ {
+  "pl": "Metternich<sup>61<\/sup> był taki sławny jak Bismarck, a Palmerston<sup>62<\/sup> sławniejszy od Beaconsfielda i — któż dziś o nich pamięta?",
+  "ua": "Меттерніх<sup>61<\/sup> був такий самий славетний, як Бісмарк, а Пальмерстон<sup>62<\/sup> — славетніший за Біконсфілда, і — хто ж нині про них пам'ятає?",
+  "para": 1,
+  "start": 64.06
+ },
+ {
+  "pl": "Tymczasem ród Bonapartych trząsł Europą za Napoleona I, potem za Napoleona III, a i dzisiaj, choć niektórzy nazywają go bankrutem, wpływa na losy Francji przez wierne swoje sługi, MacMahona i Ducrota.",
+  "ua": "Тим часом рід Бонапартів тряс Європою за Наполеона I, потім за Наполеона III, а й сьогодні, хоч деякі й звуть його банкрутом, впливає на долю Франції через вірних своїх слуг — Мак-Магона і Дюкрота.",
+  "para": 1,
+  "start": 74.6
+ },
+ {
+  "pl": "Zobaczycie, co jeszcze zrobi Napoleonek IV<sup>63<\/sup>, który po cichu uczy się sztuki wojennej u Anglików! Ale o to mniejsza. W tej bowiem pisaninie chcę mówić nie o Bonapartym, ale o sobie, ażeby wiedziano, jakim sposobem tworzyli się dobrzy subiekci i choć nie uczeni, ale rozsądni politycy.",
+  "ua": "Побачите, що ще вчинить Наполеончик IV<sup>63<\/sup>, який таємно вивчає військове мистецтво у англійців! Але це несуттєво. Бо в цьому писанні хочу говорити не про Бонапарта, а про себе, щоб було відомо, яким чином творилися добрі приказчики і, хоч не вчені, але розсудливі політики.",
+  "para": 2,
+  "start": 90.72
+ },
+ {
+  "pl": "Do takiego interesu nie trzeba akademii, lecz przykładu — w domu i w sklepie.",
+  "ua": "До такої справи не треба академії, а прикладу — у дому й у крамниці.",
+  "para": 2,
+  "start": 113.99
+ },
+ {
+  "pl": "Ojciec mój był za młodu żołnierzem, a na starość woźnym w Komisji Spraw Wewnętrznych<sup>64<\/sup>. Trzymał się prosto jak sztaba, miał nieduże faworyty<sup>65<\/sup> i wąs do góry; szyję okręcał czarną chustką i nosił srebrny kolczyk w uchu.",
+  "ua": "Мій батько в молодості був солдатом, а на старості — розсильним при Комісії внутрішніх справ<sup>64<\/sup>. Тримався прямо, як шабля, мав невеликі бакенбарди<sup>65<\/sup> і вуса догори; шию обмотував чорною хусткою й носив срібну сережку у вусі.",
+  "para": 3,
+  "start": 121.07
+ },
+ {
+  "pl": "Mieszkaliśmy na Starym Mieście z ciotką, która urzędnikom prała i łatała bieliznę. Mieliśmy na czwartym piętrze dwa pokoiki, gdzie niewiele było dostatków, ale dużo radości, przynajmniej dla mnie.",
+  "ua": "Ми жили на Старому Місті з тіткою, яка прала й латала чиновникам білизну. Ми мали на четвертому поверсі дві кімнатки, де було небагато статків, але багато радощів, принаймні для мене.",
+  "para": 4,
+  "start": 136.96
+ },
+ {
+  "pl": "W naszej izdebce najokazalszym sprzętem był stół, na którym ojciec powróciwszy z biura kleił koperty; u ciotki zaś pierwsze miejsce zajmowała balia. Pamiętam, że w pogodne dnie puszczałem na ulicy latawce, a w razie słoty wydmuchiwałem w izbie bańki mydlane.",
+  "ua": "У нашій кімнатці найпишнішою річчю був стіл, на якому батько, повернувшись із контори, клеїв конверти; у тітки ж перше місце займала купіль. Пам'ятаю, що в ясні дні я пускав на вулиці повітряних зміїв, а за дощової погоди витішав у кімнатці мильні бульбашки.",
+  "para": 4,
+  "start": 149.26
+ },
+ {
+  "pl": "Na ścianach u ciotki wisieli sami święci; ale jakkolwiek było ich sporo, nie dorównali jednak liczbą Napoleonom, którymi ojciec przyozdabiał swój pokój.",
+  "ua": "На стінах у тітки висіли самі святі; але хоч їх було чимало, вони все ж по кількості не зрівнялися з Наполеонами, якими батько прикрашав свою кімнату.",
+  "para": 5,
+  "start": 170.34
+ },
+ {
+  "pl": "Był tam jeden Napoleon w Egipcie, drugi pod Wagram, trzeci pod Austerlitz, czwarty pod Moskwą, piąty w dniu koronacji, szósty w apoteozie<sup>66<\/sup>.",
+  "ua": "Там був один Наполеон в Єгипті, другий під Ваграмом, третій під Аустерліцем, четвертий під Москвою, п'ятий у день коронації, шостий — у апофеозі<sup>66<\/sup>.",
+  "para": 5,
+  "start": 183.22
+ },
+ {
+  "pl": "Gdy zaś ciotka zgorszona tyloma świeckimi obrazami, zawiesiła na ścianie mosiężny krucyfiks, ojciec, ażeby — jak mówił — nie obrazić Napoleona, kupił sobie jego brązowe popiersie i także umieścił je nad łóżkiem.",
+  "ua": "Коли ж тітка, обурена стількоми світськими картинами, повісила на стіні мідний хрест, батько, щоб — як він казав — не образити Наполеона, купив собі його бронзовий бюст і також помістив його над ліжком.",
+  "para": 5,
+  "start": 193.26
+ },
+ {
+  "pl": "— Zobaczysz, niedowiarku — lamentowała nieraz ciotka — że za te sztuki będą cię pławić w smole.",
+  "ua": "— Побачиш, невірнику, — скаржилася не раз тітка, — що за ці витівки тебе будуть кидати в смолу.",
+  "para": 6,
+  "start": 209.35
+ },
+ {
+  "pl": "— I!... Nie da mi cesarz zrobić krzywdy — odpowiadał ojciec.",
+  "ua": "— Га!... Не дасть мені імператор зробити кривду, — відповідав батько.",
+  "para": 7,
+  "start": 216.53
+ },
+ {
+  "pl": "Często przychodzili do nas dawni koledzy ojca: pan Domański, także woźny, ale z Komisji Skarbu<sup>67<\/sup>, i pan Raczek, który na Dunaju<sup>68<\/sup> miał stragan z zieleniną. Prości to byli ludzie (nawet pan Domański trochę lubił anyżówkę), ale roztropni politycy.",
+  "ua": "Часто приходили до нас давні колеги батька: пан Доманський, також розсильний, але з Комісії скарбу<sup>67<\/sup>, і пан Рачек, який на Дунаї<sup>68<\/sup> мав крамницю з городиною. Прості це були люди (навіть пан Доманський любив анісівку), але розсудливі політики.",
+  "para": 8,
+  "start": 221.87
+ },
+ {
+  "pl": "Wszyscy, nie wyłączając ciotki, twierdzili jak najbardziej stanowczo, że choć Napoleon I umarł w niewoli<sup>69<\/sup>, ród Bonapartych jeszcze wypłynie. Po pierwszym Napoleonie znajdzie się jakiś drugi, a gdyby i ten źle skończył, przyjdzie następny, dopóki jeden po drugim nie uporządkują świata.",
+  "ua": "Усі, не виключаючи тітки, твердили найрішучіше, що хоч Наполеон I і помер у полоні<sup>69<\/sup>, рід Бонапартів ще підніметься. Після першого Наполеона знайдеться якийсь другий, а якщо й він недобре скінчить — прийде наступний, доки один за одним не наведуть ладу у світі.",
+  "para": 8,
+  "start": 240.16
+ },
+ {
+  "pl": "— Trzeba być zawsze gotowym na pierwszy odgłos! — mówił mój ojciec.",
+  "ua": "— Треба завжди бути напоготові до першої вістки! — казав мій батько.",
+  "para": 9,
+  "start": 261.03
+ },
+ {
+  "pl": "— Bo nie wiecie dnia ani godziny — dodawał pan Domański.",
+  "ua": "— Бо ви не знаєте ні дня, ні години, — додавав пан Доманський.",
+  "para": 10,
+  "start": 265.85
+ },
+ {
+  "pl": "A pan Raczek, trzymając fajkę w ustach, na znak potwierdzenia pluł aż do pokoju ciotki.",
+  "ua": "А пан Рачек, тримаючи люльку в роті, на знак згоди плював аж до кімнати тітки.",
+  "para": 11,
+  "start": 269.89
+ },
+ {
+  "pl": "— Napluj mi acan<sup>70<\/sup> w balię, to ci dam!... — wołała ciotka.",
+  "ua": "— Плюй мені, ацане<sup>70<\/sup>, в купіль, то я тобі дам!... — кричала тітка.",
+  "para": 12,
+  "start": 276.53
+ },
+ {
+  "pl": "— Może jejmość i dasz, ale ja nie wezmę — mruknął pan Raczek plując w stronę komina.",
+  "ua": "— Може, пані і дасть, але я не візьму, — буркнув пан Рачек, плюнувши в бік комина.",
+  "para": 13,
+  "start": 280.93
+ },
+ {
+  "pl": "— U... cóż to za chamy te całe grenadierzyska! — gniewała się ciotka.",
+  "ua": "— Ох... які ж це хами, оці гренадерищі! — сердилася тітка.",
+  "para": 14,
+  "start": 287.79
+ },
+ {
+  "pl": "— Jejmości zawsze smakowali ułani. Wiem, wiem...",
+  "ua": "— Пані завжди подобалися улани. Знаю, знаю...",
+  "para": 15,
+  "start": 293.12
+ },
+ {
+  "pl": "Później pan Raczek ożenił się z moją ciotką...",
+  "ua": "Згодом пан Рачек оженився з моєю тіткою...",
+  "para": 16,
+  "start": 297.59
+ },
+ {
+  "pl": "...Chcąc, ażebym zupełnie był gotów, gdy wybije godzina sprawiedliwości, ojciec sam pracował nad moją edukacją.",
+  "ua": "...Бажаючи, щоб я був цілком готовий, коли проб'є година справедливості, батько сам працював над моєю освітою.",
+  "para": 17,
+  "start": 301.93
+ },
+ {
+  "pl": "Nauczył mię czytać, pisać, kleić koperty, ale nade wszystko — musztrować się. Do musztry zapędzał mnie w bardzo wczesnym dzieciństwie, kiedy mi jeszcze zza pleców wyglądała koszula.",
+  "ua": "Навчив мене читати, писати, клеїти конверти, але найбільше — муштруватися. До муштри заганяв мене в дуже ранньому дитинстві, коли мені ще з-за спини виглядала сорочка.",
+  "para": 18,
+  "start": 309.25
+ },
+ {
+  "pl": "Dobrze to pamiętam, gdyż ojciec komenderując: „Pół obrotu na prawo!” albo „Lewe ramię naprzód — marsz!...”, ciągnął mnie w odpowiednim kierunku za ogon tego ubrania.",
+  "ua": "Добре це пам'ятаю, бо батько, командуючи: «Півоберта праворуч!» або «Ліва рука вперед — марш!...», тягнув мене у потрібному напрямку за хвіст того вбрання.",
+  "para": 18,
+  "start": 321.13
+ },
+ {
+  "pl": "Była to najdokładniej prowadzona nauka.",
+  "ua": "Це було найточніше проведене навчання.",
+  "para": 19,
+  "start": 332.26
+ },
+ {
+  "pl": "Nieraz w nocy budził mnie ojciec krzykiem: „Do broni!...”, musztrował pomimo wymyślań i łez ciotki i kończył zdaniem:",
+  "ua": "Не раз уночі будив мене батько з криком: «Зброї до рук!...», муштував попри лайки й сльози тітки і завершував словами:",
+  "para": 20,
+  "start": 335.72
+ },
+ {
+  "pl": "— Ignaś! zawsze bądź gotów, wisusie, bo nie wiemy dnia ani godziny... Pamiętaj, że Bonapartów Bóg zesłał, ażeby zrobili porządek na świecie, a dopóty nie będzie porządku ani sprawiedliwości, dopóki nie wypełni się testament cesarza.",
+  "ua": "— Ігнасе! завжди будь готовий, малий, бо ми не знаємо ні дня, ні години... Пам'ятай, що Бонапартів Бог послав, щоб навели лад на світі, а й не буде ладу й справедливості, доки не виконається заповіт імператора.",
+  "para": 21,
+  "start": 344.12
+ },
+ {
+  "pl": "Nie mogę powiedzieć, ażeby niezachwianą wiarę mego ojca w Bonapartych i sprawiedliwość podzielali dwaj jego koledzy. Nieraz pan Raczek, kiedy mu dokuczył ból w nodze, klnąc i stękając mówił:",
+  "ua": "Не скажу, щоб його двоє колег поділяли непохитну віру мого батька в Бонапартів і справедливість. Не раз пан Рачек, коли йому докучав біль у нозі, лаючись і стогнучи, казав:",
+  "para": 22,
+  "start": 362.88
+ },
+ {
+  "pl": "— E! wiesz, stary, że już za długo czekamy na nowego Napoleona. Ja siwieć zaczynam i coraz gorzej podupadam, a jego jak nie było, tak i nie ma. Niedługo porobią się z nas dziady pod kościół, a Napoleon po to chyba przyjdzie, ażeby z nami śpiewać godzinki.",
+  "ua": "— Е! Ти ж знаєш, старий, що ми вже надто довго чекаємо на нового Наполеона. Я починаю сивіти й дедалі гіршаю, а його ніколи не було — так і немає. Незабаром по нас зробляться жебраки біля церкви, і Наполеон, мабуть, прийде тільки для того, щоб співати з нами годинки.",
+  "para": 23,
+  "start": 375.28
+ },
+ {
+  "pl": "— Znajdzie młodych.",
+  "ua": "— Знайде молодих.",
+  "para": 24,
+  "start": 392.98
+ },
+ {
+  "pl": "— Co za młodych! Lepsi z nich przed nami poszli w ziemię, a najmłodsi — diabła warci. Już są między nimi i tacy, co o Napoleonie nie słyszeli.",
+  "ua": "— Яких там молодих! Найкращі з них пішли в землю ще перед нами, а наймолодші — чорт вартий. Уже є серед них і такі, що про Наполеона й не чули.",
+  "para": 25,
+  "start": 394.44
+ },
+ {
+  "pl": "— Mój słyszał i zapamięta — odparł ojciec mrugając okiem w moją stronę.",
+  "ua": "— Мій чув і запам'ятає, — відповів батько, блимнувши оком у мій бік.",
+  "para": 26,
+  "start": 406.42
+ },
+ {
+  "pl": "Pan Domański jeszcze bardziej upadał na duchu.",
+  "ua": "Пан Доманський ще більше впадав на дусі.",
+  "para": 27,
+  "start": 411.71
+ },
+ {
+  "pl": "— Świat idzie do gorszego — mówił trzęsąc głową. — Wikt coraz droższy, za kwaterę zabraliby ci całą pensję, a nawet co się tyczy anyżówki, i w tym jest szachrajstwo. Dawniej rozweseliłeś się kieliszkiem, dziś po szklance jesteś taki czczy, jakbyś się napił wody.",
+  "ua": "— Світ іде на гірше, — казав, трусячи головою. — Харчі дедалі дорожчі, за житло забрали б у тебе всю платню, а що вже казати про анісівку — і тут шахрайство. Колись веселила тебе чарка, а сьогодні після склянки такий порожній, ніби води напився.",
+  "para": 28,
+  "start": 415.66
+ },
+ {
+  "pl": "Sam Napoleon nie doczekałby się sprawiedliwości!",
+  "ua": "Сам Наполеон не дожив би до справедливості!",
+  "para": 28,
+  "start": 434.94
+ },
+ {
+  "pl": "A na to odpowiedział ojciec:",
+  "ua": "На це відповів батько:",
+  "para": 29,
+  "start": 438.3
+ },
+ {
+  "pl": "— Będzie sprawiedliwość, choćby i Napoleona nie stało. Ale i Napoleon się znajdzie.",
+  "ua": "— Буде справедливість, хоч би й Наполеона не було. А й Наполеон знайдеться.",
+  "para": 30,
+  "start": 441.24
+ },
+ {
+  "pl": "— Nie wierzę — mruknął pan Raczek.",
+  "ua": "— Не вірю, — буркнув пан Рачек.",
+  "para": 31,
+  "start": 446.74
+ },
+ {
+  "pl": "— A jak się znajdzie, to co?... — spytał ojciec.",
+  "ua": "— А як знайдеться, то що?... — спитав батько.",
+  "para": 32,
+  "start": 449.7
+ },
+ {
+  "pl": "— Nie doczekamy tego.",
+  "ua": "— Не доживемо до того.",
+  "para": 33,
+  "start": 453.5
+ },
+ {
+  "pl": "— Ja doczekam — odparł ojciec — a Ignaś doczeka jeszcze lepiej.",
+  "ua": "— Я доживу, — відповів батько, — а Ігнас доживе ще краще.",
+  "para": 34,
+  "start": 455.18
+ },
+ {
+  "pl": "Już wówczas zdania mego ojca głęboko wyrzynały mi się w pamięci, ale dopiero późniejsze wypadki nadały im cudowny, nieomal proroczy charakter.",
+  "ua": "Ще тоді думки мого батька глибоко врізалися мені в пам'ять, але аж пізніші події надали їм дивовижного, майже пророчого характеру.",
+  "para": 35,
+  "start": 460.61
+ },
+ {
+  "pl": "Około roku 1840 ojciec zaczął niedomagać. Czasami po parę dni nie wychodził do biura, a wreszcie na dobre legł w łóżku.",
+  "ua": "Близько 1840 року батько захворів. Інколи по кілька днів не виходив до контори, а врешті остаточно ліг у ліжко.",
+  "para": 36,
+  "start": 471.8
+ },
+ {
+  "pl": "Pan Raczek odwiedzał go co dzień, a raz patrząc na jego chude ręce i wyżółkłe policzki szepnął:",
+  "ua": "Пан Рачек відвідував його щодня, а одного разу, дивлячись на його худі руки й пожовклі щоки, прошепотів:",
+  "para": 37,
+  "start": 481.73
+ },
+ {
+  "pl": "— Hej! stary, już my chyba nie doczekamy się Napoleona.",
+  "ua": "— Гей! старий, ми, мабуть, уже не доживемо до Наполеона.",
+  "para": 38,
+  "start": 488.43
+ },
+ {
+  "pl": "Na co ojciec spokojnie odparł:",
+  "ua": "На що батько спокійно відповів:",
+  "para": 39,
+  "start": 492.96
+ },
+ {
+  "pl": "— Ja tam nie umrę, dopóki o nim nie usłyszę.",
+  "ua": "— Я ж не помру, доки про нього не почу.",
+  "para": 40,
+  "start": 495.66
+ },
+ {
+  "pl": "Pan Raczek pokiwał głową, a ciotka łzy otarła myśląc, że ojciec bredzi. Jak tu myśleć inaczej, jeżeli śmierć już kołatała do drzwi, a ojciec jeszcze wyglądał Napoleona...",
+  "ua": "Пан Рачек покивав головою, а тітка витерла сльози, думаючи, що батько марить. Як же інакше думати, коли смерть уже стукала в двері, а батько все чекав Наполеона...",
+  "para": 41,
+  "start": 499.89
+ },
+ {
+  "pl": "Było już z nim bardzo źle, nawet przyjął ostatnie sakramenta, kiedy w parę dni później wbiegł do nas pan Raczek dziwnie wzburzony i stojąc na środku izby zawołał:",
+  "ua": "З ним уже було дуже погано, він навіть прийняв останні таїнства, коли за кілька днів потому до нас увірвався пан Рачек, дивно схвильований, і, стоячи посеред кімнати, вигукнув:",
+  "para": 42,
+  "start": 512.5
+ },
+ {
+  "pl": "— A wiesz, stary, że znalazł się Napoleon<sup>71<\/sup>?...",
+  "ua": "— А знаєш, старий, що знайшовся Наполеон<sup>71<\/sup>?...",
+  "para": 43,
+  "start": 522.0
+ },
+ {
+  "pl": "— Gdzie? — krzyknęła ciotka.",
+  "ua": "— Де? — скрикнула тітка.",
+  "para": 44,
+  "start": 525.48
+ },
+ {
+  "pl": "— Jużci we Francji.",
+  "ua": "— Певна річ, у Франції.",
+  "para": 45,
+  "start": 527.62
+ },
+ {
+  "pl": "Ojciec zerwał się, lecz znowu upadł na poduszki. Tylko wyciągnął do mnie rękę i patrząc wzrokiem, którego nie zapomnę, wyszeptał:",
+  "ua": "Батько зірвався, але знову впав на подушки. Лише простягнув до мене руку й, дивлячись поглядом, якого я не забуду, прошепотів:",
+  "para": 46,
+  "start": 529.8
+ },
+ {
+  "pl": "— Pamiętaj!... Wszystko pamiętaj...",
+  "ua": "— Пам'ятай!... Усе пам'ятай...",
+  "para": 47,
+  "start": 538.72
+ },
+ {
+  "pl": "Z tym umarł.",
+  "ua": "З цим і помер.",
+  "para": 48,
+  "start": 542.63
+ },
+ {
+  "pl": "W późniejszym życiu przekonałem się, jak proroczymi były poglądy ojca. Wszyscy widzieliśmy drugą gwiazdę napoleońską, która obudziła Włochy i Węgry<sup>72<\/sup>; a chociaż spadła pod Sedanem<sup>73<\/sup>, nie wierzę w jej ostateczne zagaśnięcie. Co mi tam Bismarck, Gambetta albo Beaconsfield!",
+  "ua": "У пізнішому житті я пересвідчився, якими пророчими були погляди батька. Ми всі бачили другу наполеонівську зірку, що пробудила Італію й Угорщину<sup>72<\/sup>; а хоч вона впала під Седаном<sup>73<\/sup>, я не вірю в її остаточне згасання. Що мені до Бісмарка, Гамбетти чи Біконсфілда!",
+  "para": 49,
+  "start": 544.03
+ },
+ {
+  "pl": "Niesprawiedliwość dopóty będzie władać światem, dopóki nowy Napoleon nie urośnie.",
+  "ua": "Несправедливість доти керуватиме світом, доки не виросте новий Наполеон.",
+  "para": 49,
+  "start": 565.79
+ },
+ {
+  "pl": "W parę miesięcy po śmierci ojca pan Raczek i pan Domański wraz z ciotką Zuzanną zebrali się na radę: co ze mną począć? Pan Domański chciał mnie zabrać do swoich biur i powoli wypromować na urzędnika; ciotka zalecała rzemiosło, a pan Raczek zieleniarstwo.",
+  "ua": "За кілька місяців після смерті батька пан Рачек і пан Доманський разом із тіткою Зузанною зібралися на раду: що зі мною робити? Пан Доманський хотів узяти мене до своєї контори і поступово зробити з мене чиновника; тітка радила ремесло, а пан Рачек — городництво.",
+  "para": 50,
+  "start": 570.77
+ },
+ {
+  "pl": "Lecz gdy zapytano mnie: do czego mam ochotę? odpowiedziałem, że do sklepu.",
+  "ua": "Але коли мене спитали: до чого я маю охоту? — я відповів, що до крамниці.",
+  "para": 50,
+  "start": 590.68
+ },
+ {
+  "pl": "— Kto wie, czy to nie będzie najlepsze — zauważył pan Raczek. — A do jakiegoż byś chciał kupca?",
+  "ua": "— Хто зна, чи це не буде найкраще, — зауважив пан Рачек. — А до якого ж би ти хотів купця?",
+  "para": 51,
+  "start": 596.94
+ },
+ {
+  "pl": "— Do tego na Podwalu<sup>74<\/sup>, co ma we drzwiach pałasz, a w oknie kozaka.",
+  "ua": "— До того на Підвалі<sup>74<\/sup>, що має в дверях шаблю, а у вікні козака.",
+  "para": 52,
+  "start": 603.34
+ },
+ {
+  "pl": "— Wiem — wtrąciła ciotka. — On chce do Mincla.",
+  "ua": "— Знаю, — вставила тітка. — Він хоче до Мінцля.",
+  "para": 53,
+  "start": 608.87
+ },
+ {
+  "pl": "— Można spróbować — rzekł pan Domański. — Wszyscy przecież znamy Mincla<sup>75<\/sup>.",
+  "ua": "— Можна спробувати, — мовив пан Доманський. — Ми ж усі знаємо Мінцля<sup>75<\/sup>.",
+  "para": 54,
+  "start": 612.83
+ },
+ {
+  "pl": "Pan Raczek na znak zgody plunął aż w komin.",
+  "ua": "Пан Рачек на знак згоди плювнув аж у комин.",
+  "para": 55,
+  "start": 618.19
+ },
+ {
+  "pl": "— Boże miłosierny — jęknęła ciotka — ten drab już chyba na mnie pluć zacznie, kiedy brata nie stało... Oj! nieszczęśliwa ja sierota!...",
+  "ua": "— Боже милосердний, — зойкнула тітка, — отой гультяй уже, мабуть, почне на мене плювати, коли немає брата... Ой! нещасна я сирота!...",
+  "para": 56,
+  "start": 622.71
+ },
+ {
+  "pl": "— Wielka rzecz! — odezwał się pan Raczek. — Wyjdź jejmość za mąż, to nie będziesz sierotą.",
+  "ua": "— Та що там! — озвався пан Рачек. — Вийдіть, пані, заміж, то не будете сиротою.",
+  "para": 57,
+  "start": 631.27
+ },
+ {
+  "pl": "— A gdzież ja znajdę takiego głupiego, co by mnie wziął?",
+  "ua": "— А де ж я знайду такого дурня, щоб узяв мене?",
+  "para": 58,
+  "start": 636.99
+ },
+ {
+  "pl": "— Phi! może i ja bym się ożenił z jejmością, bo nie ma mnie kto smarować — mruknął pan Raczek, ciężko schylając się do ziemi, ażeby wypukać popiół z fajki. Ciotka rozpłakała się, a wtedy odezwał się pan Domański:",
+  "ua": "— Тьху! Може, й я оженився б із пані, бо ніхто мене не має чим помазати, — буркнув пан Рачек, важко нахиляючись до землі, щоб витрясти попіл із люльки. Тітка розплакалася, і тоді озвався пан Доманський:",
+  "para": 59,
+  "start": 640.39
+ },
+ {
+  "pl": "— Po co robić duże ceregiele. Jejmość nie masz opieki, on nie ma gospodyni; pobierzcie się i przygarnijcie Ignasia, a będziecie nawet mieli dziecko. Jeszcze tanie dziecko, bo Mincel da mu wikt i kwaterę, a wy tylko odzież.",
+  "ua": "— Навіщо робити великі церемонії. У пані немає опіки, у нього немає господині; одружіться й візьміть до себе Ігнаса, а матимете навіть дитину. Ще й дешеву дитину, бо Мінцль дасть їй прожиток і житло, а ви тільки одяг.",
+  "para": 60,
+  "start": 655.36
+ },
+ {
+  "pl": "— Hę?... — spytał pan Raczek patrząc na ciotkę.",
+  "ua": "— Ге?... — спитав пан Рачек, дивлячись на тітку.",
+  "para": 61,
+  "start": 670.4
+ },
+ {
+  "pl": "— No, oddajcie pierwej chłopca do terminu, a potem... może się odważę — odparła ciotka. — Zawsze miałam przeczucie, że marnie skończę...",
+  "ua": "— Ну, спершу віддайте хлопця в науку, а потім... може, наважусь, — відповіла тітка. — Я завжди мала передчуття, що скінчу недобре...",
+  "para": 62,
+  "start": 674.37
+ },
+ {
+  "pl": "— To i jazda do Mincla! — rzekł pan Raczek podnosząc się z krzesełka. — Tylko jejmość nie zrób mi zawodu! — dodał grożąc ciotce pięścią.",
+  "ua": "— То поїхали до Мінцля! — мовив пан Рачек, піднімаючись зі стільчика. — Тільки пані не зрадьте мене! — додав, погрожуючи тітці кулаком.",
+  "para": 63,
+  "start": 684.8
+ },
+ {
+  "pl": "Wyszli z panem Domańskim i może w półtorej godziny wrócili obaj mocno zarumienieni. Pan Raczek ledwie oddychał, a pan Domański z trudnością trzymał się na nogach, podobno z tego, że nasze schody były bardzo niewygodne.",
+  "ua": "Вийшли з паном Доманським і, може, за півтори години повернулися обоє сильно зачервонілі. Пан Рачек ледве дихав, а пан Доманський з трудом тримався на ногах, ніби через те, що наші сходи були дуже незручні.",
+  "para": 64,
+  "start": 695.01
+ },
+ {
+  "pl": "— Cóż?... — spytała ciotka.",
+  "ua": "— Що ж?... — спитала тітка.",
+  "para": 65,
+  "start": 708.77
+ },
+ {
+  "pl": "— Nowego Napoleona wsadzili do prochowni!<sup>76<\/sup> — odpowiedział pan Domański.",
+  "ua": "— Нового Наполеона посадили до порохівні!<sup>76<\/sup> — відповів пан Доманський.",
+  "para": 66,
+  "start": 711.24
+ },
+ {
+  "pl": "— Nie do prochowni, tylko do fortecy. A–u... A–u... — dodał pan Raczek i rzucił czapkę na stół.",
+  "ua": "— Не до порохівні, а до фортеці. А–у... А–у... — додав пан Рачек і кинув шапку на стіл.",
+  "para": 67,
+  "start": 716.34
+ },
+ {
+  "pl": "— Ale z chłopcem co?",
+  "ua": "— А що ж із хлопцем?",
+  "para": 68,
+  "start": 723.88
+ },
+ {
+  "pl": "— Jutro ma przyjść do Mincla z odzieniem i bielizną — odrzekł pan Domański. — Nie do fortecy A–u..., A–u... tylko do Ham–ham czy Cham... bo nawet nie wiem...",
+  "ua": "— Завтра він має прийти до Мінцля з одягом і білизною, — відповів пан Доманський. — Не до фортеці А–у..., А–у..., а до Гам–гам чи Хам... бо я й сам не знаю...",
+  "para": 69,
+  "start": 726.26
+ },
+ {
+  "pl": "— Zwariowaliście, pijaki! — krzyknęła ciotka chwytając pana Raczka za ramię.",
+  "ua": "— Збожеволіли ви, п'яниці! — скрикнула тітка, схопивши пана Рачека за плече.",
+  "para": 70,
+  "start": 738.28
+ },
+ {
+  "pl": "— Tylko bez poufałości! — oburzył się pan Raczek. — Po ślubie będzie poufałość, teraz... Ma przyjść do Mincla jutro z bielizną i odzieniem... Nieszczęsny Napoleonie!...",
+  "ua": "— Тільки без близькості! — обурився пан Рачек. — Після весілля буде близькість, а поки що... Він має прийти завтра до Мінцля з білизною й одягом... Невдалий Наполеоне!...",
+  "para": 71,
+  "start": 742.78
+ },
+ {
+  "pl": "Ciotka wypchnęła za drzwi pana Raczka, potem pana Domańskiego i wyrzuciła za nimi czapkę.",
+  "ua": "Тітка випхала за двері пана Рачека, потім пана Доманського і викинула за ними шапку.",
+  "para": 72,
+  "start": 756.16
+ },
+ {
+  "pl": "— Precz mi stąd, pijaki!",
+  "ua": "— Геть звідси, п'яниці!",
+  "para": 73,
+  "start": 761.42
+ },
+ {
+  "pl": "— Wiwat Napoleon! — zawołał pan Raczek, a pan Domański zaczął śpiewać:",
+  "ua": "— Хай живе Наполеон! — скрикнув пан Рачек, а пан Доманський почав співати:",
+  "para": 74,
+  "start": 763.56
+ },
+ {
+  "pl": "Głos jego stopniowo cichnął, jakby zagłębiając się w studni, potem umilkł na schodach, lecz znowu doleciał nas z ulicy. Po chwili zrobił się tam jakiś hałas, a gdy wyjrzałem oknem, zobaczyłem, że pana Raczka policjant prowadził do ratusza<sup>77<\/sup>.",
+  "ua": "Його голос поступово стихав, ніби занурюючись у криницю, потім замовк на сходах, але знову долетів до нас із вулиці. За мить там зчинився якийсь галас, а коли я виглянув у вікно, побачив, що пана Рачека вів поліцейський до ратуші<sup>77<\/sup>.",
+  "para": 75,
+  "start": 779.8
+ },
+ {
+  "pl": "Takie to wypadki poprzedziły moje wejście do zawodu kupieckiego.",
+  "ua": "Ось такі події передували моєму вступу до купецького фаху.",
+  "para": 76,
+  "start": 795.57
+ },
+ {
+  "pl": "Sklep Mincla znałem od dawna, ponieważ ojciec wysyłał mnie do niego po papier, a ciotka po mydło. Zawsze biegłem tam z radosną ciekawością, ażeby napatrzeć się wiszącym za szybami zabawkom.",
+  "ua": "Крамницю Мінцля знав здавна, бо батько посилав мене туди по папір, а тітка — по мило. Я завжди біг туди з радісною цікавістю, щоб наглядітися іграшками, що висіли за шибами.",
+  "para": 77,
+  "start": 799.96
+ },
+ {
+  "pl": "O ile pamiętam, był tam w oknie duży kozak, który sam przez się skakał i machał rękoma, a we drzwiach — bęben, pałasz i skórzany koń z prawdziwym ogonem.",
+  "ua": "Наскільки пам'ятаю, там у вікні був великий козак, що сам собою стрибав і махав руками, а в дверях — бубон, шабля і шкіряний кінь зі справжнім хвостом.",
+  "para": 77,
+  "start": 812.18
+ },
+ {
+  "pl": "Wnętrze sklepu wyglądało jak duża piwnica, której końca nigdy nie mogłem dojrzeć z powodu ciemności. Wiem tylko, że po pieprz, kawę i liście bobkowe szło się na lewo do stołu, za którym stały ogromne szafy od sklepienia do podłogi napełnione szufladami.",
+  "ua": "Усередині крамниця виглядала, як великий льох, кінця якого я ніколи не міг дістатися через темряву. Знаю лише, що по перець, каву й лаврове листя йшли ліворуч до столу, за яким стояли величезні шафи від склепіння до підлоги, наповнені шухлядами.",
+  "para": 78,
+  "start": 824.44
+ },
+ {
+  "pl": "Papier zaś, atrament, talerze i szklanki sprzedawano przy stole na prawo, gdzie były szafy z szybami, a po mydło i krochmal szło się w głąb sklepu, gdzie było widać beczki i stosy pak drewnianych.",
+  "ua": "Папір же, чорнило, тарілки й склянки продавали біля столу праворуч, де були шафи з шибами, а по мило й крохмаль йшли вглиб крамниці, де було видно бочки й штаби дерев'яних скринь.",
+  "para": 78,
+  "start": 840.48
+ },
+ {
+  "pl": "Nawet sklepienie było zajęte. Wisiały tam długie szeregi pęcherzy naładowanych gorczycą i farbami, ogromna lampa z daszkiem, która w zimie paliła się cały dzień, sieć pełna korków do butelek, wreszcie — wypchany krokodylek, długi może na półtora łokcia<sup>78<\/sup>.",
+  "ua": "Навіть склепіння було зайняте. Там висіли довгі ряди міхів, наповнених гірчицею й фарбами, величезна лампа з дашком, що взимку горіла цілий день, сітка, повна пробок для пляшок, і, нарешті — набитий крокодильчик, завдовжки, може, пів ліктя<sup>78<\/sup>.",
+  "para": 79,
+  "start": 855.94
+ },
+ {
+  "pl": "Właścicielem sklepu był Jan Mincel, starzec z rumianą twarzą i kosmykiem siwych włosów pod brodą. W każdej porze dnia siedział on pod oknem na fotelu obitym skórą, ubrany w niebieski barchanowy kaftan, biały fartuch i takąż szlafmycę.",
+  "ua": "Власником крамниці був Ян Мінцль, старий із рум'яним обличчям і пасмом сивого волосся під підборіддям. У будь-яку пору дня він сидів під вікном у кріслі, оббитому шкірою, вдягнений у синій китайковий халат, білий фартух і таку саму шапку на голові.",
+  "para": 80,
+  "start": 874.13
+ },
+ {
+  "pl": "Przed nim na stole leżała wielka księga, w której notował dochód, a tuż nad jego głową wisiał pęk dyscyplin<sup>79<\/sup>, przeznaczonych głównie na sprzedaż.",
+  "ua": "Перед ним на столі лежала велика книга, в якій він записував дохід, а щойно над його головою висів зв'язок різок<sup>79<\/sup>, призначених головним чином на продаж.",
+  "para": 80,
+  "start": 890.87
+ },
+ {
+  "pl": "Starzec odbierał pieniądze, zdawał gościom resztę, pisał w księdze, niekiedy drzemał, lecz pomimo tylu zajęć, z niepojętą uwagą czuwał nad biegiem handlu w całym sklepie.",
+  "ua": "Старий приймав гроші, давав гостям решту, писав у книзі, інколи дрімав, але попри стільки справ з незбагненною увагою пильнував за перебігом торгівлі в усій крамниці.",
+  "para": 80,
+  "start": 901.38
+ },
+ {
+  "pl": "On także, dla uciechy przechodniów ulicznych, od czasu do czasu pociągał za sznurek skaczącego w oknie kozaka i on wreszcie, co mi się najmniej podobało, za rozmaite przestępstwa karcił nas jedną z pęka dyscyplin.",
+  "ua": "Він також, для розваги вуличних перехожих, час від часу тягнув за шнурок того, що стрибав у вікні козака, і він, нарешті, що мені найменше подобалося, за різні провини карав нас однією зі зв'язку різок.",
+  "para": 80,
+  "start": 912.04
+ },
+ {
+  "pl": "Mówię: nas, bo było nas trzech kandydatów do kary cielesnej: ja tudzież dwaj synowcy starego — Franc i Jan Minclowie.",
+  "ua": "Кажу: нас, бо нас було троє кандидатів до тілесної кари: я та двоє племінників старого — Франц і Ян Мінцлі.",
+  "para": 81,
+  "start": 926.92
+ },
+ {
+  "pl": "Czujności pryncypała i jego biegłości w używaniu sarniej nogi<sup>80<\/sup> doświadczyłem zaraz na trzeci dzień po wejściu do sklepu.",
+  "ua": "Пильності хазяїна та його вправності у вживанні оленячої ноги<sup>80<\/sup> я зазнав уже на третій день після входу до крамниці.",
+  "para": 82,
+  "start": 936.67
+ },
+ {
+  "pl": "Franc odmierzył jakiejś kobiecie za dziesięć groszy rodzynków. Widząc, że jedno ziarno upadło na kontuar (stary miał w tej chwili oczy zamknięte), podniosłem je nieznacznie i zjadłem.",
+  "ua": "Франц відміряв якійсь жінці на десять грошів родзинок. Побачивши, що одна ягідка впала на конторку (старий мав у цю мить очі заплющені), я непомітно підняв її та з'їв.",
+  "para": 83,
+  "start": 944.94
+ },
+ {
+  "pl": "Chciałem właśnie wyjąć pestkę, która wcisnęła mi się między zęby, gdy uczułem na plecach coś, jakby mocne dotknięcie rozpalonego żelaza.",
+  "ua": "Я саме хотів дістати кісточку, що застрягла мені між зубами, коли відчув на спині щось, наче міцний дотик розпеченого заліза.",
+  "para": 83,
+  "start": 957.98
+ },
+ {
+  "pl": "— A, szelma! — wrzasnął stary Mincel i nim zdałem sobie sprawę z sytuacji, przeciągnął po mnie jeszcze parę razy dyscyplinę, od wierzchu głowy do podłogi.",
+  "ua": "— А, шельмо! — скрикнув старий Мінцль, і поки я встиг оговтатися, ще кілька разів провів по мені різкою — від верхівки до підлоги.",
+  "para": 84,
+  "start": 965.7
+ },
+ {
+  "pl": "Zwinąłem się w kłębek z bólu, lecz od tej pory nie śmiałem wziąć do ust niczego w sklepie. Migdały, rodzynki, nawet rożki miały dla mnie smak pieprzu.",
+  "ua": "Я згорнувся калачиком від болю, але відтоді не смів брати до рота в крамниці нічого. Мигдаль, родзинки, навіть ріжки мали для мене смак перцю.",
+  "para": 85,
+  "start": 976.14
+ },
+ {
+  "pl": "Urządziwszy się ze mną w taki sposób, stary zawiesił dyscyplinę na pęku, wpisał rodzynki i z najdobroduszniejszą miną począł ciągnąć za sznurek kozaka. Patrząc na jego półuśmiechniętą twarz i przymrużone oczy, prawie nie mogłem wierzyć, że ten jowialny staruszek posiada taki zamach w ręku.",
+  "ua": "Улаштувавши зі мною так, старий повісив різку на зв'язок, записав родзинки й з найщирішим виразом обличчя почав тягнути за шнурок козака. Дивлячись на його напівусміхнене обличчя й приплющені очі, я не міг майже повірити, що цей жвавий дідусь має такий розмах у руці.",
+  "para": 86,
+  "start": 987.0
+ },
+ {
+  "pl": "I dopiero teraz spostrzegłem, że ów kozak widziany z wnętrza sklepu wydaje się mniej zabawnym niż od ulicy.",
+  "ua": "І лише тепер я помітив, що той козак, видимий ізсередини крамниці, здається менш веселим, ніж із вулиці.",
+  "para": 86,
+  "start": 1006.48
+ },
+ {
+  "pl": "Sklep nasz był kolonialno-galanteryjno-mydlarski. Towary kolonialne wydawał gościom Franc Mincel, młodzieniec trzydziestokilkoletni, z rudą głową i zaspaną fizjognomią<sup>81<\/sup>.",
+  "ua": "Наша крамниця була колоніально-галантерейно-мильною. Колоніальні товари видавав гостям Франц Мінцль, хлопець тридцяти кількох років, із рудою головою й сонним обличчям<sup>81<\/sup>.",
+  "para": 87,
+  "start": 1016.13
+ },
+ {
+  "pl": "Ten najczęściej dostawał dyscypliną od stryja, gdyż palił fajkę, późno wchodził za kontuar, wymykał się z domu po nocach, a nade wszystko niedbale ważył towar.",
+  "ua": "Він найчастіше діставав різкою від дядька, бо курив люльку, запізнювався сідати за конторку, вислизав із дому по ночах, а найбільше — недбало зважував товар.",
+  "para": 87,
+  "start": 1029.34
+ },
+ {
+  "pl": "Młodszy zaś, Jan Mincel, który zawiadywał galanterią i obok niezgrabnych ruchów odznaczał się łagodnością, był znowu bity za wykradanie kolorowego papieru i pisywanie na nim listów do panien.",
+  "ua": "Молодший же, Ян Мінцль, що відав галантереєю і, крім незграбних рухів, відзначався лагідністю, був знову битий за крадіжку кольорового паперу й написання на ньому листів до панночок.",
+  "para": 87,
+  "start": 1040.14
+ },
+ {
+  "pl": "Tylko August Katz, pracujący przy mydle, nie ulegał żadnym surowcowym<sup>82<\/sup> upomnieniom. Mizerny ten człeczyna odznaczał się niezwykłą punktualnością.",
+  "ua": "Тільки Август Кац, що працював при милі, не підлягав жодним шкіряним<sup>82<\/sup> доганам. Мізерний цей чоловічок відзначався незвичайною пунктуальністю.",
+  "para": 88,
+  "start": 1054.37
+ },
+ {
+  "pl": "Najraniej przychodził do roboty, krajał mydło i ważył krochmal jak automat; jadł, co mu podano, w najciemniejszym kącie sklepu, prawie wstydząc się tego, że doświadcza ludzkich potrzeb. O dziesiątej wieczorem gdzieś znikał.",
+  "ua": "Найраніше приходив на роботу, різав мило й зважував крохмаль, як автомат; їв, що йому давали, в найтемнішому кутку крамниці, майже соромлячись того, що відчуває людські потреби. О десятій увечері кудись зникав.",
+  "para": 88,
+  "start": 1066.42
+ },
+ {
+  "pl": "W tym otoczeniu upłynęło mi osiem lat, z których każdy dzień był podobny do wszystkich innych dni, jak kropla jesiennego deszczu do innych kropli jesiennego deszczu. Wstawałem rano o piątej, myłem się i zamiatałem sklep. O szóstej otwierałem główne drzwi tudzież okiennicę.",
+  "ua": "В цьому оточенні минуло мені вісім років, із яких кожен день був подібний до всіх інших днів, як крапля осіннього дощу до інших крапель осіннього дощу. Я вставав уранці о п'ятій, мився й підмітав крамницю. О шостій відчиняв головні двері та віконницю.",
+  "para": 89,
+  "start": 1081.73
+ },
+ {
+  "pl": "W tej chwili gdzieś z ulicy zjawiał się August Katz, zdejmował surdut, kładł fartuch i milcząc stawał między beczką mydła szarego a kolumną ułożoną z cegiełek mydła żółtego.",
+  "ua": "У цю ж мить кудись із вулиці з'являвся Август Кац, знімав сюртук, клав фартух і, мовчки, ставав між бочкою сірого мила та колоною, складеною з брикетів жовтого мила.",
+  "para": 89,
+  "start": 1099.74
+ },
+ {
+  "pl": "Potem drzwiami od podwórka wbiegał stary Mincel mrucząc: Morgen!<sup>83<\/sup>, poprawiał szlafmycę, dobywał z szuflady księgę, wciskał się w fotel i parę razy ciągnął za sznurek kozaka.",
+  "ua": "Потім дверима з подвір'я вбігав старий Мінцль, бурмочучи: Morgen!<sup>83<\/sup>, поправляв шапку, діставав із шухляди книгу, вмощувався в крісло й кілька разів тягнув за шнурок козака.",
+  "para": 89,
+  "start": 1112.08
+ },
+ {
+  "pl": "Dopiero po nim ukazywał się Jan Mincel i ucałowawszy stryja w rękę stawał za swoim kontuarem, na którym podczas lata łapał muchy, a w zimie kreślił palcem albo pięścią jakieś figury.",
+  "ua": "Аж по ньому з'являвся Ян Мінцль і, поцілувавши дядька в руку, ставав за своєю конторкою, на якій улітку ловив мух, а взимку креслив пальцем або кулаком якісь фігури.",
+  "para": 89,
+  "start": 1124.3
+ },
+ {
+  "pl": "Franca zwykle sprowadzano do sklepu. Wchodził z oczyma zaspanymi, ziewający, obojętnie całował stryja w ramię i przez cały dzień skrobał się w głowę w sposób, który mógł oznaczać wielką senność lub wielkie zmartwienie.",
+  "ua": "Франца звичайно доправляли до крамниці. Він входив із сонними очима, позіхаючи, байдуже цілував дядька в плече й цілий день чухав голову так, що це могло означати велику сонливість або великий смуток.",
+  "para": 90,
+  "start": 1137.61
+ },
+ {
+  "pl": "Prawie nie było ranka, ażeby stryj patrząc na jego manewry nie wykrzywiał mu się i nie pytał:",
+  "ua": "Майже не було ранку, щоб дядько, дивлячись на його маневри, не кривився на нього й не питав:",
+  "para": 90,
+  "start": 1153.28
+ },
+ {
+  "pl": "— No... a gdzie, ty szelma, latała?",
+  "ua": "— Ну... де ти, шельмо, гасав?",
+  "para": 91,
+  "start": 1159.58
+ },
+ {
+  "pl": "Tymczasem na ulicy budził się szmer i za szybami sklepu coraz częściej przesuwali się przechodnie. To służąca, to drwal, jejmość w kapturze, to chłopak od szewca, to jegomość w rogatywce szli w jedną i drugą stronę jak figury w ruchomej panoramie<sup>84<\/sup>.",
+  "ua": "Тим часом на вулиці прокидався шум, і за шибами крамниці дедалі частіше проходили перехожі. То служниця, то лісоруб, пані в каптурі, то хлопець від шевця, то пан у рогатій шапці йшли в один і другий бік, як фігури в рухомій панорамі<sup>84<\/sup>.",
+  "para": 92,
+  "start": 1163.9
+ },
+ {
+  "pl": "Środkiem ulicy toczyły się wozy, beczki, bryczki — tam i na powrót... Coraz więcej ludzi, coraz więcej wozów, aż nareszcie utworzył się jeden wielki potok uliczny, z którego co chwilę ktoś wpadał do nas za sprawunkiem.",
+  "ua": "Посеред вулиці котилися вози, бочки, коляски — туди й назад... Дедалі більше людей, дедалі більше возів, аж поки нарешті утворився один великий вуличний потік, з якого щохвилини хтось уривався до нас по покупку.",
+  "para": 92,
+  "start": 1182.67
+ },
+ {
+  "pl": "— Pieprzu za trojaka<sup>85<\/sup>...",
+  "ua": "— Перцю на трійку<sup>85<\/sup>...",
+  "para": 93,
+  "start": 1197.86
+ },
+ {
+  "pl": "— Proszę funt<sup>86<\/sup> kawy...",
+  "ua": "— Прошу фунт<sup>86<\/sup> кави...",
+  "para": 94,
+  "start": 1199.26
+ },
+ {
+  "pl": "— Niech pan da ryżu...",
+  "ua": "— Дайте рису...",
+  "para": 95,
+  "start": 1200.98
+ },
+ {
+  "pl": "— Pół funta mydła...",
+  "ua": "— Півфунта мила...",
+  "para": 96,
+  "start": 1202.7
+ },
+ {
+  "pl": "— Za grosz liści bobkowych...",
+  "ua": "— На грош лаврового листя...",
+  "para": 97,
+  "start": 1204.52
+ },
+ {
+  "pl": "Stopniowo sklep zapełniał się po największej części służącymi i ubogo odzianymi jejmościami.",
+  "ua": "Поступово крамниця наповнювалася переважно служницями й бідно вдягненими панями.",
+  "para": 98,
+  "start": 1206.92
+ },
+ {
+  "pl": "Wtedy Franc Mincel krzywił się najwięcej: otwierał i zamykał szuflady, obwijał towar w tutki<sup>87<\/sup> z szarej bibuły, wbiegał na drabinkę, znowu zwijał, robiąc to wszystko z żałosną miną człowieka, któremu nie pozwalają ziewnąć.",
+  "ua": "Тоді Франц Мінцль кривився найбільше: відчиняв і зачиняв шухляди, загортав товар у згортки<sup>87<\/sup> із сірого паперу, забирався на драбину, знову складав, роблячи все це з жалюгідною міною людини, якій не дозволяють позіхати.",
+  "para": 98,
+  "start": 1214.2
+ },
+ {
+  "pl": "W końcu zbierało się takie mnóstwo interesantów, że i Jan Mincel, i ja musieliśmy pomagać Francowi w sprzedaży.",
+  "ua": "Нарешті збиралося таке безліч клієнтів, що й Ян Мінцль, і я мусили допомагати Францеві в продажу.",
+  "para": 98,
+  "start": 1229.0
+ },
+ {
+  "pl": "Stary wciąż pisał i zdawał resztę, od czasu do czasu dotykając palcami swojej białej szlafmycy, której niebieski kutasik zwieszał mu się nad okiem. Czasem szarpnął kozaka, a niekiedy z szybkością błyskawicy zdejmował dyscyplinę i ćwiknął<sup>88<\/sup> nią którego ze swych synowców.",
+  "ua": "Старий усе писав і видавав решту, час від часу торкаючись пальцями своєї білої шапки, з якої синій китиця звисала йому над оком. Інколи шарпав козака, а подеколи зі швидкістю блискавки знімав різку й ляскав<sup>88<\/sup> нею когось із своїх племінників.",
+  "para": 99,
+  "start": 1237.52
+ },
+ {
+  "pl": "Nader rzadko mogłem zrozumieć: o co mu chodzi? synowcy bowiem niechętnie objaśniali mi przyczyny jego popędliwości.",
+  "ua": "Дуже рідко міг я зрозуміти: чого він хоче? Племінники ж неохоче пояснювали мені причини його запальності.",
+  "para": 99,
+  "start": 1255.14
+ },
+ {
+  "pl": "Około ósmej napływ interesantów zmniejszał się. Wtedy w głębi sklepu ukazywała się gruba służąca z koszem bułek i kubkami (Franc odwracał się do niej tyłem), a za nią — matka naszego pryncypała, chuda staruszka w żółtej sukni, w ogromnym czepcu na głowie, z dzbankiem kawy w rękach.",
+  "ua": "Близько восьмої наплив клієнтів зменшувався. Тоді в глибині крамниці з'являлася товста служниця з кошиком булок і чашками (Франц обертався до неї спиною), а за нею — мати нашого хазяїна, худа стара в жовтій сукні, з величезним чепцем на голові, з глечиком кави в руках.",
+  "para": 100,
+  "start": 1263.5
+ },
+ {
+  "pl": "Ustawiwszy na stole swoje naczynie, staruszka odzywała się schrypniętym głosem:",
+  "ua": "Поставивши на столі свою посуду, стара зверталася осиплим голосом:",
+  "para": 100,
+  "start": 1284.33
+ },
+ {
+  "pl": "— Gut Morgen, meine Kinder! Der Kaffee ist schon fertig...<sup>89<\/sup>",
+  "ua": "— Gut Morgen, meine Kinder! Der Kaffee ist schon fertig...<sup>89<\/sup>",
+  "para": 101,
+  "start": 1289.17
+ },
+ {
+  "pl": "I zaczynała rozlewać kawę w białe fajansowe kubki.",
+  "ua": "І починала розливати каву в білі фаянсові чашки.",
+  "para": 102,
+  "start": 1293.49
+ },
+ {
+  "pl": "Wówczas zbliżał się do niej stary Mincel i całował ją w rękę mówiąc:",
+  "ua": "Тоді підходив до неї старий Мінцль і цілував їй руку, кажучи:",
+  "para": 103,
+  "start": 1297.75
+ },
+ {
+  "pl": "— Gut Morgen, meine Mutter!<sup>90<\/sup>",
+  "ua": "— Gut Morgen, meine Mutter!<sup>90<\/sup>",
+  "para": 104,
+  "start": 1302.4
+ },
+ {
+  "pl": "Za co dostawał kubek kawy z trzema bułkami.",
+  "ua": "За що діставав чашку кави з трьома булками.",
+  "para": 105,
+  "start": 1305.3
+ },
+ {
+  "pl": "Potem przychodził Franc Mincel, Jan Mincel, August Katz, a na końcu ja. Każdy całował staruszkę w suchą rękę, porysowaną niebieskimi żyłami, każdy mówił:",
+  "ua": "Потім приходили Франц Мінцль, Ян Мінцль, Август Кац, а в кінці — я. Кожен цілував стару в суху руку, всіяну синіми жилками, кожен казав:",
+  "para": 106,
+  "start": 1308.29
+ },
+ {
+  "pl": "— Gut Morgen, Grossmutter!<sup>91<\/sup>",
+  "ua": "— Gut Morgen, Grossmutter!<sup>91<\/sup>",
+  "para": 107,
+  "start": 1319.27
+ },
+ {
+  "pl": "I otrzymywał należny mu kubek tudzież trzy bułki.",
+  "ua": "І отримував належну йому чашку та три булки.",
+  "para": 108,
+  "start": 1321.23
+ },
+ {
+  "pl": "A gdyśmy z pośpiechem wypili naszą kawę, służąca zabierała pusty kosz i zamazane kubki, staruszka swój dzbanek i obie znikały.",
+  "ua": "А коли ми поспіхом випивали свою каву, служниця забирала порожній кошик і брудні чашки, стара — свій глечик, і обидві зникали.",
+  "para": 109,
+  "start": 1325.62
+ },
+ {
+  "pl": "Za oknem wciąż toczyły się wozy i płynął w obie strony potok ludzki, z którego co chwila odrywał się ktoś i wchodził do sklepu.",
+  "ua": "За вікном усе котилися вози й плив у обидва боки людський потік, з якого щомиті відділявся хтось і входив до крамниці.",
+  "para": 110,
+  "start": 1334.92
+ },
+ {
+  "pl": "— Proszę krochmalu...",
+  "ua": "— Прошу крохмалю...",
+  "para": 111,
+  "start": 1343.5
+ },
+ {
+  "pl": "— Dać migdałów za dziesiątkę...",
+  "ua": "— Дати мигдалю на десяток...",
+  "para": 112,
+  "start": 1345.08
+ },
+ {
+  "pl": "— Lukrecji<sup>92<\/sup> za grosz...",
+  "ua": "— Солодки<sup>92<\/sup> на грош...",
+  "para": 113,
+  "start": 1347.4
+ },
+ {
+  "pl": "— Szarego mydła...",
+  "ua": "— Сірого мила...",
+  "para": 114,
+  "start": 1348.76
+ },
+ {
+  "pl": "Około południa zmniejszał się ruch za kontuarem towarów kolonialnych, a za to coraz częściej zjawiali się interesanci po stronie prawej sklepu, u Jana. Tu kupowano talerze, szklanki, żelazka, młynki, lalki, a niekiedy duże parasole, szafirowe lub pąsowe.",
+  "ua": "Близько полудня рух за конторкою колоніальних товарів зменшувався, а натомість дедалі частіше з'являлися клієнти праворуч у крамниці, біля Яна. Тут купували тарілки, склянки, праски, млинчики, ляльок, а інколи великі парасольки — сапфірові або пурпурні.",
+  "para": 115,
+  "start": 1350.36
+ },
+ {
+  "pl": "Nabywcy, kobiety i mężczyźni, byli dobrze ubrani, rozsiadali się na krzesłach i kazali sobie pokazywać mnóstwo przedmiotów targując się i żądając coraz to nowych.",
+  "ua": "Покупці, жінки й чоловіки, були добре вдягнені, розсідалися на стільцях і казали показувати собі безліч речей, торгуючись і вимагаючи все нових.",
+  "para": 115,
+  "start": 1368.34
+ },
+ {
+  "pl": "Pamiętam, że kiedy po lewej stronie sklepu męczyłem się bieganiną i zawijaniem towarów, po prawej — największe strapienie robiła mi myśl: czego ten a ten gość chce naprawdę i — czy co kupi?",
+  "ua": "Пам'ятаю, що коли я з лівого боку крамниці втомлювався біганням і загортанням товару, то з правого — найбільше клопоту мені завдавала думка: чого оцей гість насправді хоче і — чи щось купить?",
+  "para": 116,
+  "start": 1378.8
+ },
+ {
+  "pl": "W rezultacie jednak i tutaj dużo się sprzedawało; nawet dzienny dochód z galanterii był kilka razy większy aniżeli z towarów kolonialnych i mydła.",
+  "ua": "У результаті ж і тут багато продавалося; навіть денний дохід із галантереї був у кілька разів більший, ніж із колоніальних товарів і мила.",
+  "para": 116,
+  "start": 1392.59
+ },
+ {
+  "pl": "Stary Mincel i w niedzielę bywał w sklepie. Rano modlił się, a około południa kazał mi przychodzić do siebie na pewien rodzaj lekcji.",
+  "ua": "Старий Мінцль і в неділю бував у крамниці. Уранці молився, а близько полудня казав мені приходити до себе на певного роду урок.",
+  "para": 117,
+  "start": 1402.95
+ },
+ {
+  "pl": "— Sag mir<sup>93<\/sup> — powiedz mi: was ist das? co to jest? Das ist Schublade — to jest szublada. Zobacz, co jest w te szublade. Es ist Zimmt — to jest cynamon. Do czego potrzebuje się cynamon? do zupe, do legumine potrzebuje się cynamon. Co to jest cynamon? Jest taki kora z jedne drzewo.",
+  "ua": "— Sag mir<sup>93<\/sup> — скажи мені: was ist das? що це є? Das ist Schublade — це шублада. Подивись, що є в цій шубладі. Es ist Zimmt — це кориця. До чого потрібна кориця? до зупи, до лягуміне потрібна кориця. Що це є кориця? Це така кора з одного дерева.",
+  "para": 118,
+  "start": 1412.88
+ },
+ {
+  "pl": "Gdzie mieszka taki drzewo cynamon? W Indii mieszka taki drzewo. Patrz na globus — tu leży Indii. Daj mnie za dziesiątkę cynamon... O, du Spitzbub!...<sup>94<\/sup> jak tobie dam dziesięć razy dyscyplin, ty będziesz wiedział, ile sprzedać za dziesięć groszy cynamon...",
+  "ua": "Де живе таке дерево кориці? В Індії живе таке дерево. Дивись на глобус — тут лежить Індія. Дай мені на десяток кориці... O, du Spitzbub!...<sup>94<\/sup> як я тобі дам десять разів різкою, то ти знатимеш, скільки продати за десять грошів кориці...",
+  "para": 118,
+  "start": 1436.91
+ },
+ {
+  "pl": "W ten sposób przechodziliśmy każdą szufladę w sklepie i historię każdego towaru. Gdy zaś Mincel nie był zmęczony, dyktował mi jeszcze zadania rachunkowe, kazał sumować księgi albo pisywać listy w interesach naszego sklepu.",
+  "ua": "Таким чином ми проходили кожну шухляду в крамниці та історію кожного товару. А коли Мінцль не був стомлений, диктував мені ще рахункові завдання, казав підсумовувати книги або писати листи в справах нашої крамниці.",
+  "para": 119,
+  "start": 1455.49
+ },
+ {
+  "pl": "Mincel był bardzo porządny, nie cierpiał kurzu, ścierał go z najdrobniejszych przedmiotów. Jednych tylko dyscyplin nigdy nie potrzebował okurzać dzięki swoim niedzielnym wykładom buchalterii<sup>95<\/sup>, jeografii<sup>96<\/sup> i towaroznawstwa.",
+  "ua": "Мінцль був дуже охайний, не терпів пилу, витирав його з найдрібніших речей. Тільки різок йому ніколи не доводилося витирати з пилу — завдяки своїм недільним лекціям бухгалтерії<sup>95<\/sup>, географії<sup>96<\/sup> і товарознавства.",
+  "para": 120,
+  "start": 1470.97
+ },
+ {
+  "pl": "Powoli, w ciągu paru lat, tak przywykliśmy do siebie, że stary Mincel nie mógł obejść się beze mnie, a ja nawet jego dyscypliny począłem uważać za coś, co należało do familijnych stosunków.",
+  "ua": "Поступово, за кілька років, ми так звикли одне до одного, що старий Мінцль не міг обійтися без мене, а я навіть його різки почав уважати за щось, що належало до родинних стосунків.",
+  "para": 121,
+  "start": 1486.46
+ },
+ {
+  "pl": "Pamiętam, że nie mogłem utulić się z żalu, gdy raz zepsułem kosztowny samowar, a stary Mincel zamiast chwytać za dyscyplinę — odezwał się:",
+  "ua": "Пам'ятаю, що я не міг утішитися з жалю, коли одного разу зіпсував дорожній самовар, а старий Мінцль замість того, щоб схопитися за різку, — озвався:",
+  "para": 121,
+  "start": 1498.34
+ },
+ {
+  "pl": "— Co ty zrobila, Ignac?... Co ty zrobila!...",
+  "ua": "— Що ти наробив, Ігнасе?... Що ти наробив!...",
+  "para": 122,
+  "start": 1506.42
+ },
+ {
+  "pl": "Wolałbym dostać cięgi wszystkimi dyscyplinami, aniżeli znowu kiedy usłyszeć ten drżący głos i zobaczyć wylęknione spojrzenie pryncypała.",
+  "ua": "Краще б я дістав стусанів усіма різками, ніж знову коли-небудь почути цей тремтливий голос і побачити переляканий погляд хазяїна.",
+  "para": 123,
+  "start": 1511.6
+ },
+ {
+  "pl": "Obiady w dzień powszedni jadaliśmy w sklepie, naprzód dwaj młodzi Minclowie i August Katz, a następnie ja z pryncypałem. W czasie święta wszyscy zbieraliśmy się na górze i zasiadaliśmy do jednego stołu.",
+  "ua": "Обіди в будні ми їли в крамниці, спершу двоє молодих Мінцлів і Август Кац, а потім я з хазяїном. На свято ми всі збиралися нагорі й сідали до одного столу.",
+  "para": 124,
+  "start": 1522.63
+ },
+ {
+  "pl": "Na każdą Wigilię Bożego Narodzenia Mincel dawał nam podarunki, a jego matka w największym sekrecie urządzała nam (i swemu synowi) choinkę. Wreszcie w pierwszym dniu miesiąca wszyscy dostawaliśmy pensję (ja brałem 10 złotych).",
+  "ua": "На кожен Святвечір Різдва Христового Мінцль давав нам подарунки, а його мати в найбільшій таємниці влаштовувала нам (і своєму синові) ялинку. Нарешті, першого числа місяця всі ми отримували платню (я брав 10 злотих).",
+  "para": 124,
+  "start": 1536.46
+ },
+ {
+  "pl": "Przy tej okazji każdy musiał wylegitymować się z porobionych oszczędności: ja, Katz, dwaj synowcy i służba. Nierobienie oszczędności, a raczej nieodkładanie co dzień choćby kilku groszy, było w oczach Mincla takim występkiem jak kradzież.",
+  "ua": "З цієї нагоди кожен мусив засвідчити свої заощадження: я, Кац, двоє племінників і челядь. Нероблення заощаджень, а радше — невідкладання щодня хоча б кількох грошів, було в очах Мінцля таким самим злочином, як крадіжка.",
+  "para": 124,
+  "start": 1553.61
+ },
+ {
+  "pl": "Za mojej pamięci przewinęło się przez nasz sklep paru subiektów i kilku uczniów, których pryncypał dlatego tylko usunął, że nic sobie nie oszczędzili. Dzień, w którym się to wydało, był ostatnim ich pobytu. Nie pomogły obietnice, zaklęcia, całowania po rękach, nawet upadanie do nóg.",
+  "ua": "За моєї пам'яті через нашу крамницю пройшло кілька приказчиків і кілька учнів, яких хазяїн усунув лише через те, що вони нічого не заощадили. День, коли це виявилося, був останнім у їхньому перебуванні. Не допомогли ні обіцянки, ні заклинання, ні цілування рук, навіть падіння до ніг.",
+  "para": 124,
+  "start": 1569.37
+ },
+ {
+  "pl": "Stary nie ruszył się z fotelu<sup>97<\/sup>, nie patrzył na petentów<sup>98<\/sup>, tylko wskazując palcem drzwi wymawiał jeden wyraz: fort! fort!...<sup>99<\/sup> Zasada robienia oszczędności stała się już u niego chorobliwym dziwactwem.",
+  "ua": "Старий не рушився з крісла<sup>97<\/sup>, не дивився на просителів<sup>98<\/sup>, тільки пальцем показував на двері й вимовляв одне слово: fort! fort!...<sup>99<\/sup> Засада заощаджень стала в нього вже хворобливим дивацтвом.",
+  "para": 124,
+  "start": 1588.92
+ },
+ {
+  "pl": "Dobry ten człowiek miał jedną wadę, oto — nienawidził Napoleona. Sam nigdy o nim nie wspominał, lecz na dźwięk nazwiska Bonapartego dostawał jakby ataku wścieklizny; siniał na twarzy, pluł i wrzeszczał: szelma! szpitzbub! rozbójnik!...",
+  "ua": "Добрий цей чоловік мав одну ваду, а саме — ненавидів Наполеона. Сам ніколи про нього не згадував, але на звук прізвища Бонапарта впадав, як у несамовитість; синів на обличчі, плював і кричав: шельмо! шпіцбуб! розбійник!...",
+  "para": 125,
+  "start": 1604.9
+ },
+ {
+  "pl": "Usłyszawszy pierwszy raz tak szkaradne wymysły nieomal straciłem przytomność. Chciałem coś hardego powiedzieć staremu i uciec do pana Raczka, który już ożenił się z moją ciotką. Nagle dostrzegłem, że Jan Mincel zasłoniwszy usta dłonią coś mruczy i robi miny do Katza.",
+  "ua": "Почувши вперше такі ганебні вигадки, я майже втратив свідомість. Я хотів сказати старому щось зухвале й утекти до пана Рачека, який уже оженився з моєю тіткою. Раптом я помітив, що Ян Мінцль, закривши уста долонею, щось бурмоче й кривляється до Каца.",
+  "para": 126,
+  "start": 1622.46
+ },
+ {
+  "pl": "Wytężam słuch i — oto co mówi Jan:",
+  "ua": "Напружую слух і — ось що говорить Ян:",
+  "para": 126,
+  "start": 1638.82
+ },
+ {
+  "pl": "— Baje stary, baje! Napoleon był chwat, choćby za to samo, że wygnał hyclów Szwabów. Nieprawda, Katz?",
+  "ua": "— Бреше старий, бреше! Наполеон був хват, хоч би вже за те саме, що вигнав тих гидких швабів. Неправда ж, Каце?",
+  "para": 127,
+  "start": 1642.16
+ },
+ {
+  "pl": "A August Katz zmrużył oczy i dalej krajał mydło.",
+  "ua": "А Август Кац прищурив очі й далі різав мило.",
+  "para": 128,
+  "start": 1649.53
+ },
+ {
+  "pl": "Osłupiałem ze zdziwienia, lecz w tej chwili bardzo polubiłem Jana Mincla i Augusta Katza.",
+  "ua": "Я остовпів від здивування, але в ту ж мить дуже полюбив Яна Мінцля й Августа Каца.",
+  "para": 129,
+  "start": 1654.52
+ },
+ {
+  "pl": "Z czasem przekonałem się, że w naszym małym sklepie istnieją aż dwa wielkie stronnictwa, z których jedno, składające się ze starego Mincla i jego matki, bardzo lubiło Niemców, a drugie, złożone z młodych Minclów i Katza, nienawidziło ich. O ile pamiętam, ja tylko byłem neutralny.",
+  "ua": "З часом я пересвідчився, що в нашій маленькій крамниці існують аж дві великі партії, з яких одна, що складалася зі старого Мінцля та його матері, дуже любила німців, а друга, складена з молодих Мінцлів і Каца, — ненавиділа їх. Наскільки пам'ятаю, тільки я був нейтральний.",
+  "para": 129,
+  "start": 1660.62
+ },
+ {
+  "pl": "W roku 1846 doszły nas wieści o ucieczce Ludwika Napoleona z więzienia<sup>100<\/sup>. Rok ten był dla mnie ważny, gdyż zostałem subiektem, a nasz pryncypał, stary Jan Mincel, zakończył życie z powodów dosyć dziwnych.",
+  "ua": "1846 року нас дійшли чутки про втечу Луї Наполеона з в'язниці<sup>100<\/sup>. Цей рік був для мене важливий, бо я став приказчиком, а наш хазяїн, старий Ян Мінцль, закінчив життя з досить дивних причин.",
+  "para": 130,
+  "start": 1679.74
+ },
+ {
+  "pl": "W roku tym handel w naszym sklepie nieco osłabnął, już to z racji ogólnych niepokojów<sup>101<\/sup>, już z tej, że i pryncypał za często i za głośno wymyślał na Ludwika Napoleona. Ludzie poczęli zniechęcać się do nas, a nawet ktoś (może Katz?...) wybił nam jednego dnia szybę w oknie.",
+  "ua": "Того року торгівля в нашій крамниці дещо ослабла, чи то через загальне занепокоєння<sup>101<\/sup>, чи то через те, що й хазяїн надто часто й надто голосно лаяв Луї Наполеона. Люди починали відвертатися від нас, і навіть хтось (може, Кац?...) одного дня вибив нам шибу у вікні.",
+  "para": 131,
+  "start": 1696.58
+ },
+ {
+  "pl": "Otóż wypadek ten, zamiast całkiem odstręczyć publiczność, zwabił ją do sklepu i przez tydzień mieliśmy tak duże obroty jak nigdy; aż zazdrościli nam sąsiedzi. Po tygodniu jednakże sztuczny ruch na nowo osłabnął i znowu były w sklepie pustki.",
+  "ua": "Отже, цей випадок замість того, щоб цілком відбити від нас публіку, привабив її до крамниці, й тиждень ми мали такий великий оборот, як ніколи; аж сусідам нам заздрили. По тижні ж штучний рух знову ослаб і в крамниці знову були пустки.",
+  "para": 132,
+  "start": 1716.68
+ },
+ {
+  "pl": "Pewnego wieczora w czasie nieobecności pryncypała, co już stanowiło fakt niezwykły, wpadł nam drugi kamień do sklepu. Przestraszeni Minclowie pobiegli na górę i szukali stryja, Katz poleciał na ulicę szukać sprawcy zniszczenia, a wtem ukazało się dwu policjantów ciągnących... Proszę zgadnąć kogo?...",
+  "ua": "Певного вечора, за відсутності хазяїна, що вже було незвичайним фактом, до крамниці влетів нам другий камінь. Налякані Мінцлі побігли нагору й шукали дядька, Кац вилетів на вулицю шукати винуватця руйнування, й раптом з'явилися двоє поліцейських, які тягли... Вгадайте кого?...",
+  "para": 133,
+  "start": 1733.12
+ },
+ {
+  "pl": "Ani mniej, ani więcej — tylko naszego pryncypała oskarżając go, że to on wybił szybę teraz, a zapewne i poprzednio...",
+  "ua": "Ані менше, ані більше — тільки нашого хазяїна, звинувачуючи його, що це він вибив шибу тепер, а певне, й передніше...",
+  "para": 133,
+  "start": 1753.46
+ },
+ {
+  "pl": "Na próżno staruszek wypierał się: nie tylko bowiem widziano jego zamach, ale jeszcze znaleziono przy nim kamień... Poszedł też nieborak do ratusza.",
+  "ua": "Даремно старечок заперечував: бо не тільки бачили його замах, а ще й знайшли при ньому камінь... Пішов і нещасний до ратуші.",
+  "para": 134,
+  "start": 1762.54
+ },
+ {
+  "pl": "Sprawa po wielu tłomaczeniach i wyjaśnieniach naturalnie zatarła się; ale stary od tej chwili zupełnie stracił humor i począł chudnąć. Pewnego zaś dnia usiadłszy na swym fotelu pod oknem już nie podniósł się z niego.",
+  "ua": "Справа після багатьох пояснень і роз'яснень, природно, залагодилася; але старий відтоді цілком втратив гумор і почав худнути. Певного ж дня, сівши у своєму кріслі під вікном, уже не піднявся з нього.",
+  "para": 135,
+  "start": 1772.88
+ },
+ {
+  "pl": "Umarł oparty brodą na księdze handlowej, trzymając w ręce sznurek, którym poruszał kozaka.",
+  "ua": "Помер, спершись підборіддям на купецькій книзі, тримаючи в руці шнурок, яким рухав козака.",
+  "para": 135,
+  "start": 1787.45
+ },
+ {
+  "pl": "Przez kilka lat po śmierci stryja synowcy prowadzili wspólnie sklep na Podwalu i dopiero około 1850 roku podzielili się w ten sposób, że Franc został na miejscu z towarami kolonialnymi, a Jan z galanterią i mydłem przeniósł się na Krakowskie, do lokalu, który zajmujemy obecnie.",
+  "ua": "Кілька років після смерті дядька племінники разом вели крамницю на Підвалі, і аж близько 1850 року поділилися так, що Франц лишився на місці з колоніальними товарами, а Ян із галантереєю й милом перебрався на Краківське, до приміщення, яке ми тепер займаємо.",
+  "para": 136,
+  "start": 1794.62
+ },
+ {
+  "pl": "W kilka lat później Jan ożenił się z piękną Małgorzatą Pfeifer, ona zaś (niech spoczywa w spokoju) zostawszy wdową oddała rękę swoją Stasiowi Wokulskiemu, który tym sposobem odziedziczył interes prowadzony przez dwa pokolenia Minclów.",
+  "ua": "За кілька років потому Ян оженився з гарною Малґожатою Пфайфер, вона ж (хай спочиває з миром), ставши вдовою, віддала свою руку Стасеві Вокульському, який таким чином успадкував справу, що велася два покоління Мінцлів.",
+  "para": 136,
+  "start": 1815.13
+ },
+ {
+  "pl": "Matka naszego pryncypała żyła jeszcze długi czas; kiedy w roku 1853 wróciłem z zagranicy, zastałem ją w najlepszym zdrowiu. Zawsze schodziła rano do sklepu i zawsze mówiła:",
+  "ua": "Мати нашого хазяїна жила ще довго; коли 1853 року я повернувся з-за кордону, застав її в найкращому здоров'ї. Вона завжди сходила вранці до крамниці й завжди казала:",
+  "para": 137,
+  "start": 1832.99
+ },
+ {
+  "pl": "— Gut Morgen meine Kinder! Der Kaffee ist schon fertig...",
+  "ua": "— Gut Morgen meine Kinder! Der Kaffee ist schon fertig...",
+  "para": 138,
+  "start": 1845.53
+ },
+ {
+  "pl": "Tylko głos jej z roku na rok przyciszał się, dopóki wreszcie nie umilknął na wieki.",
+  "ua": "Тільки її голос із року в рік затихав, аж поки нарешті не замовк назавжди.",
+  "para": 139,
+  "start": 1850.76
+ },
+ {
+  "pl": "Za moich czasów pryncypał był ojcem i nauczycielem praktykantów i najczujniejszym sługą sklepu; jego matka lub żona były gospodyniami, a wszyscy członkowie rodziny pracownikami.",
+  "ua": "За моїх часів хазяїн був батьком і вчителем практикантів та найпильнішим слугою крамниці; його мати або дружина були господинями, а всі члени родини — працівниками.",
+  "para": 140,
+  "start": 1856.16
+ },
+ {
+  "pl": "Dziś pryncypał bierze tylko dochody z handlu, najczęściej nie zna go i najwięcej troszczy się o to, ażeby jego dzieci nie zostały kupcami.",
+  "ua": "Сьогодні хазяїн бере лише доходи з торгівлі, найчастіше її не знає й найбільше переживає за те, щоб його діти не стали купцями.",
+  "para": 140,
+  "start": 1870.24
+ },
+ {
+  "pl": "Nie mówię tu o Stasiu Wokulskim, który ma szersze zamiary, tylko myślę w ogólności, że kupiec powinien siedzieć w sklepie i wyrabiać sobie ludzi, jeżeli chce mieć porządnych.",
+  "ua": "Не кажу тут про Стася Вокульського, який має ширші задуми, а думаю взагалі, що купець повинен сидіти в крамниці й виховувати собі людей, якщо хоче мати порядних.",
+  "para": 140,
+  "start": 1879.77
+ },
+ {
+  "pl": "Słychać, że Andrassy zażądał sześćdziesięciu milionów guldenów na nieprzewidziane wydatki<sup>102<\/sup>. Więc i Austria zbroi się, a tymczasem Staś pisze mi, że — nie będzie wojny.",
+  "ua": "Чути, що Андраші зажадав шістдесяти мільйонів гульденів на непередбачені витрати<sup>102<\/sup>. Отже, й Австрія озброюється, а тим часом Стась пише мені, що — війни не буде.",
+  "para": 141,
+  "start": 1892.67
+ },
+ {
+  "pl": "Ponieważ nigdy nie był fanfaronem, więc chyba być musi bardzo wtajemniczonym w politykę; a w takim razie siedzi w Bułgarii nie przez miłość do handlu.",
+  "ua": "Оскільки він ніколи не був хвастуном, то, мабуть, мусить бути дуже посвяченим у політику; а в такому разі сидить у Болгарії не через любов до торгівлі.",
+  "para": 141,
+  "start": 1905.59
+ },
+ {
+  "pl": "Ciekawym, co on zrobi! Ciekawym!...",
+  "ua": "Цікаво, що він зробить! Цікаво!...",
+  "para": 142,
+  "start": 1915.79
+ }
+];
+const ANNOTATIONS = {"60": {"term": "Beaconsfield", "definition": "właściwie Beniamin Disraeli (1804–1881), polityk angielski, przywódca konserwatystów, w tym czasie premier i kierownik polityki zagranicznej Wielkiej Brytanii. [przypis redakcyjny]", "translation": "власне Бенджамін Дізраелі (1804–1881), англійський політик, лідер консерваторів, на той час прем'єр-міністр і керівник зовнішньої політики Великої Британії. [przypis redakcyjny]"}, "61": {"term": "Klemens Metternich (1773–1859)", "definition": "dyplomata austriacki, przywódca europejskiej reakcji politycznej po roku 1815, wróg liberalizmu i ruchów narodowowyzwoleńczych. [przypis redakcyjny]", "translation": "австрійський дипломат, керівник європейської політичної реакції після 1815 року, ворог лібералізму та національно-визвольних рухів. [przypis redakcyjny]"}, "62": {"term": "Henry Palmerston (1784–1865)", "definition": "wybitny polityk angielski, przywódca liberałów. [przypis redakcyjny]", "translation": "видатний англійський політик, лідер лібералів. [przypis redakcyjny]"}, "63": {"term": "Napoleonek IV", "definition": "Eugeniusz Ludwik (1856–1879), syn Napoleona III, od roku 1870 przebywał w Anglii. Po śmierci ojca, w r. 1874 przybrał imię Napoleona IV jako pretendent do tronu cesarskiego. [przypis redakcyjny]", "translation": "Ежен Луї (1856–1879), син Наполеона III, від 1870 р. перебував в Англії. Після смерті батька 1874 р. прийняв ім'я Наполеона IV як претендент на імператорський трон. [przypis redakcyjny]"}, "64": {"term": "Komisja Spraw Wewnętrznych", "definition": "naczelny organ administracyjny w Królestwie Kongresowym, odpowiadający ministerstwu, ustanowiony konstytucją 1815 r., zniesiony w r. 1868. [przypis redakcyjny]", "translation": "вищий адміністративний орган у Конгресовому королівстві, що відповідав міністерству, установлений конституцією 1815 р., скасований 1868 р. [przypis redakcyjny]"}, "65": {"term": "faworyty", "definition": "bokobrody. [przypis redakcyjny]", "translation": "бакенбарди. [przypis redakcyjny]"}, "66": {"term": "jeden Napoleon w Egipcie...", "definition": "obrazy przedstawiały niektóre ważniejsze momenty z życia Napoleona: wyprawę do Egiptu (1798), zwycięstwo nad Austrią pod Wagram (1809), zwycięstwo nad Austrią i Rosją pod Austerlitz (1805), wyprawę na Moskwę (1812), koronację Napoleona na cesarza (1804). [przypis redakcyjny]", "translation": "картини зображали деякі важливіші моменти з життя Наполеона: похід на Єгипет (1798), перемогу над Австрією під Ваграмом (1809), перемогу над Австрією та Росією під Аустерліцем (1805), похід на Москву (1812), коронацію Наполеона на імператора (1804). [przypis redakcyjny]"}, "67": {"term": "Komisja Skarbu", "definition": "Komisja Finansów i Skarbu odpowiadała dzisiejszemu Ministerstwu Finansów; ustanowiona przez konstytucję 1815 r., zniesiona w r. 1867. [przypis redakcyjny]", "translation": "Комісія фінансів і скарбу відповідала сучасному Міністерству фінансів; установлена конституцією 1815 р., скасована 1867 р. [przypis redakcyjny]"}, "68": {"term": "Dunaj", "definition": "ulica w Warszawie na Starym Mieście (zupełnie zniszczona w czasie powstania warszawskiego). [przypis redakcyjny]", "translation": "вулиця у Варшаві в Старому місті (цілком зруйнована під час Варшавського повстання). [przypis redakcyjny]"}, "69": {"term": "Napoleon I umarł w niewoli", "definition": "angielskiej w r. 1821 na wyspie Św. Heleny (na Oceanie Atlantyckim). [przypis redakcyjny]", "translation": "англійського полону, 1821 р., на острові Святої Єлени (в Атлантичному океані). [przypis redakcyjny]"}, "70": {"term": "acan", "definition": "wyrażenie lekceważące, skrócone, zamiast „wasz-mość pan”. [przypis redakcyjny]", "translation": "зневажливий, скорочений вираз замість „ваша милість пан”. [przypis redakcyjny]"}, "71": {"term": "znalazł się Napoleon", "definition": "mowa o Ludwiku Napoleonie (tj. Napoleonie III), który jako pretendent do tronu francuskiego próbował go dwukrotnie zdobyć przez zamach stanu. Drugi zamach miał miejsce dnia 6 sierpnia 1840 r., kiedy Ludwik Napoleon powrócił z Anglii, gdzie przebywał na emigracji, i z grupą oficerów–bonapartystów wylądował w Wimereux. W Boulogne oddał się pod jego rozkazy tamtejszy garnizon wojskowy. [przypis redakcyjny]", "translation": "йдеться про Людвіка Наполеона (тобто Наполеона III), який як претендент на французький трон двічі намагався захопити його за допомогою перевороту. Другий переворот стався 6 серпня 1840 р., коли Людвік Наполеон повернувся з Англії, де перебував у вигнанні, і з групою офіцерів-бонапартистів висадився у Вімере. У Булоні місцевий військовий гарнізон підкорився йому. [przypis redakcyjny]"}, "72": {"term": "druga gwiazda napoleońska...", "definition": "Rzecki w naiwnym kulcie dla dynastii napoleońskiej i w przekonaniu, że o biegu historii decydują wielcy ludzie, uważa Wiosnę Ludów za rezultat działalności Ludwika Napoleona. [przypis redakcyjny]", "translation": "Ржецький в наївному культі наполеонівської династії та в переконанні, що перебіг історії визначають великі люди, вважає Весну народів наслідком діяльності Людвіка Наполеона. [przypis redakcyjny]"}, "73": {"term": "pod Sedanem", "definition": "w Ardenach, nad Mozą. W czasie wojny francusko-niemieckiej, 2 września 1870 wojska francuskie poniosły tam straszliwą klęskę, a Napoleon III dostał się do niewoli. [przypis redakcyjny]", "translation": "в Арденнах, над Маасом. Під час франко-німецької війни 2 вересня 1870 р. французькі війська зазнали там жахливої поразки, а Наполеон III потрапив у полон. [przypis redakcyjny]"}, "74": {"term": "Podwale", "definition": "jedna z ruchliwych ulic na Starym Mieście, wychodząca z placu Zamkowego. [przypis redakcyjny]", "translation": "одна з жвавих вулиць Старого міста, що виходить із Замкової площі. [przypis redakcyjny]"}, "75": {"term": "Mincel", "definition": "wśród mieszkańców Lublina do dziś utrzymuje się wersja, że pierwowzorem Minclów z *Lalki* byli lubelscy kupcy tegoż nazwiska. [przypis redakcyjny]", "translation": "серед мешканців Любліна дотепер живе переконання, що прототипами Мінцелів у *Ляльці* були люблінські купці того ж прізвища. [przypis redakcyjny]"}, "76": {"term": "Nowego Napoleona wsadzili do prochowni", "definition": "zamach stanu Ludwika Napoleona w r. 1840 nie powiódł się. Ludwik Napoleon został wzięty do niewoli, skazany przez Izbę Parów na dożywotnie więzienie i 7 października 1840 r. osadzony w twierdzy Ham (w północnej Francji). Prochownią nazywano więzienie w Warszawie, które mieściło się w dawnej prochowni przy ulicach Rybaki i Boleść. [przypis redakcyjny]", "translation": "переворот Людвіка Наполеона 1840 р. не вдався. Людвіка Наполеона було взято в полон, засуджено Палатою перів до довічного ув'язнення та 7 жовтня 1840 р. ув'язнено в фортеці Гам (у північній Франції). Порохівнею називали в'язницю у Варшаві, що містилася в колишній порохівні на вулицях Рибакі та Болещ. [przypis redakcyjny]"}, "77": {"term": "ratusz", "definition": "Ratusz mieścił się w przebudowanym pałacu Jabłonowskiego na placu Teatralnym (zniszczony w czasie powstania warszawskiego). W budynku ratusza znajdowały się biura policyjne. [przypis redakcyjny]", "translation": "Ратуша містилася в перебудованому палаці Яблоновського на Театральній площі (зруйнована під час Варшавського повстання). У будівлі ратуші містилися поліцейські контори. [przypis redakcyjny]"}, "78": {"term": "łokieć", "definition": "dawna miara długości, łokieć warszawski — ok. 58 cm. [przypis redakcyjny]", "translation": "давня міра довжини, варшавський лікоть — близько 58 см. [przypis redakcyjny]"}, "79": {"term": "dyscyplina", "definition": "przyrząd (kilka rzemieni umocowanych do rękojeści) służący do wymierzania kar cielesnych. [przypis edytorski]", "translation": "прилад (кілька ременів, закріплених на рукоятці) для застосування тілесних покарань. [przypis edytorski]"}, "80": {"term": "sarnia noga", "definition": "rękojeść dyscypliny z wykonana z sarniej nogi. [przypis redakcyjny]", "translation": "рукоятка дисципліни, виготовлена з оленячої ноги. [przypis redakcyjny]"}, "81": {"term": "fizjognomia (a. fizjonomia)", "definition": "twarz. [przypis edytorski]", "translation": "Обличчя. [przypis edytorski]"}, "82": {"term": "surowcowy", "definition": "surowiec: rzemień wyrżnięty ze skóry surowej. [przypis redakcyjny]", "translation": "сировина: ремінь, вирізаний з необробленої шкіри. [przypis redakcyjny]"}, "83": {"term": "Morgen", "definition": "skrócone powitanie poranne w języku niemieckim: dzień dobry. [przypis redakcyjny]", "translation": "скорочене ранкове вітання німецькою мовою: добрий день. [przypis redakcyjny]"}, "84": {"term": "panorama", "definition": "rozległy obraz wewnątrz okrągłego budynku, dający widzom złudzenie rzeczywistości. [przypis redakcyjny]", "translation": "велике зображення всередині круглої будівлі, що створює глядачам ілюзію дійсності. [przypis redakcyjny]"}, "85": {"term": "trojak", "definition": "trzy grosze (pół kopiejki), drobna polska moneta będąca jeszcze wówczas w obiegu. [przypis redakcyjny]", "translation": "три гроші (півкопійки), дрібна польська монета, що ще тоді була в обігу. [przypis redakcyjny]"}, "86": {"term": "funt", "definition": "dawna jednostka wagi, funt warszawski był równy dzisiejszym 405 gramom. [przypis redakcyjny]", "translation": "давня одиниця ваги, варшавський фунт дорівнював сучасним 405 грамам. [przypis redakcyjny]"}, "87": {"term": "tutki", "definition": "(z niem.) tu: zwinięte torebki papierowe. [przypis redakcyjny]", "translation": "(з нім.) тут: згорнуті паперові кишеньки. [przypis redakcyjny]"}, "88": {"term": "ćwiknąć (gwar.)", "definition": "uderzyć. [przypis redakcyjny]", "translation": "Вдарити. [przypis redakcyjny]"}, "89": {"term": "Gut Morgen, meine Kinder! Der Kaffee ist schon fertig... (niem.)", "definition": "dzień dobry, moje dzieci, kawa jest już gotowa. [przypis redakcyjny]", "translation": "Доброго ранку, мої діти, кава вже готова. [przypis redakcyjny]"}, "90": {"term": "Gut Morgen, meine Mutter! (niem.)", "definition": "dzień dobry, moja matko! [przypis redakcyjny]", "translation": "Доброго ранку, матусю! [przypis redakcyjny]"}, "91": {"term": "Gut Morgen, Grossmutter (niem.)", "definition": "dzień dobry, babciu! [przypis redakcyjny]", "translation": "Доброго ранку, бабусю! [przypis redakcyjny]"}, "92": {"term": "Lukrecja", "definition": "wyciąg z korzenia drzewa lukrecjowego o charakterystycznym słodko–mdłym smaku, stosowany w lecznictwie. [przypis redakcyjny]", "translation": "витяг із кореня лакрицевого дерева з характерним солодко-нудотним смаком, що застосовується в медицині. [przypis redakcyjny]"}, "93": {"term": "Sag mir (niem.)", "definition": "powiedz mi. (Tu i w dalszym ciągu rozmowy stary Mincel sam tłumaczy łamaną polszczyzną wyrażenia niemieckie.) [przypis redakcyjny]", "translation": "Скажи мені. (Тут і надалі в розмові старий Мінцель сам перекладає німецькі вислови ламаною польською мовою.) [przypis redakcyjny]"}, "94": {"term": "O, du Spitzbub!... (niem.)", "definition": "O, ty łobuzie!... [przypis redakcyjny]", "translation": "О, ти негіднику!... [przypis redakcyjny]"}, "95": {"term": "buchalteria", "definition": "księgowość, rachunkowość. [przypis edytorski]", "translation": "бухгалтерія, облікова справа. [przypis edytorski]"}, "96": {"term": "jeografia", "definition": "geografia. [przypis edytorski]", "translation": "географія. [przypis edytorski]"}, "97": {"term": "fotelu", "definition": "tej formy Prus używa konsekwentnie w całym utworze; dziś: fotela. [przypis edytorski]", "translation": "цю форму Прус послідовно вживає в усьому творі; нині: fotela. [przypis edytorski]"}, "98": {"term": "petent", "definition": "tu: proszący. [przypis redakcyjny]", "translation": "тут: той, хто просить. [przypis redakcyjny]"}, "99": {"term": "fort! fort!... (niem.)", "definition": "precz! precz!... [przypis redakcyjny]", "translation": "Геть! Геть!... [przypis redakcyjny]"}, "100": {"term": "ucieczka Ludwika Napoleona z więzienia", "definition": "25 maja 1846 r. Ludwikowi Napoleonowi udało się uciec z francuskiej twierdzy Ham do Anglii. [przypis redakcyjny]", "translation": "25 травня 1846 р. Луї-Наполеону вдалося втекти з французької фортеці Гам до Англії. [przypis redakcyjny]"}, "101": {"term": "ogólne niepokoje...", "definition": "od roku 1840 wzmogła się we wszystkich zaborach działalność spiskowa. Tajne organizacje demokratyczne przygotowywały ogólnopolskie powstanie, wyznaczając termin na 22 lutego 1846 roku. W Warszawie spisek rozgałęziony był głównie wśród inteligencji i drobnomieszczaństwa, docierał również do proletariatu. Policja pruska i rosyjska wpadły jednak na trop organizacji i przeprowadziły liczne aresztowania, co udaremniło wybuch powstania (poza Krakowskiem). W Królestwie jedyną próbą walki był nieudany napad Pantaleona Potockiego na Siedlce. W następstwie tego władze carskie ogłosiły stan oblężenia; czterech uczestników napadu skazano na śmierć, wiele osób na zesłanie i ciężkie roboty. W początkach 1847 roku działalność konspiracyjna została w Królestwie wznowiona. Na wiosnę 1848 roku policja aresztowała niektórych uczestników spisku, a w ciągu dwu następnych lat rozgromiła go zupełnie. [przypis redakcyjny]", "translation": "від 1840 р. у всіх частинах Польщі, поділених між трьома державами, посилилася конспіративна діяльність. Таємні демократичні організації готували загальнопольське повстання, призначивши термін на 22 лютого 1846 року. У Варшаві змова була розгалужена переважно серед інтелігенції та дрібного міщанства, проникала також і до пролетаріату. Однак прусська та російська поліція вийшли на слід організації та провели численні арешти, що зірвало вибух повстання (крім Краківського). У Королівстві єдиною спробою боротьби був невдалий напад Панталеона Потоцького на Седльці. Унаслідок цього царська влада оголосила облоговий стан; чотирьох учасників нападу засудили до страти, багатьох — до заслання та каторжних робіт. На початку 1847 р. конспіративну діяльність у Королівстві відновили. Навесні 1848 р. поліція заарештувала деяких учасників змови, а протягом двох наступних років зовсім її розгромила. [przypis redakcyjny]"}, "102": {"term": "Andrassy zażądał sześćdziesięciu milionów guldenów", "definition": "po zawarciu pokoju w San Stefano, w marcu 1878 r., zebrały się w Wiedniu delegacje sejmu austriackiego i parlamentu węgierskiego, od których ówczesny minister spraw zagranicznych, hr. Juliusz Andrassy (1823–1890), zażądał nadzwyczajnych kredytów w wysokości 60 milionów guldenów [przypis redakcyjny]", "translation": "після укладення Сан-Стефанського миру, в березні 1878 р., у Відні зібралися делегації австрійського сейму та угорського парламенту, від яких тодішній міністр закордонних справ, граф Юліуш Андрасі (1823–1890), вимагав надзвичайних кредитів у розмірі 60 мільйонів гульденів [przypis redakcyjny]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into mp3/lalka_003_lalka-tom-pierwszy_tom-i-rozdzial-iii.mp3, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  6.97,    // [  0] conf 1.00  "...Ze smutkiem od kilku lat uważam, że na…"
+  29.44,   // [  1] conf 0.80  "Podobnież dzisiejsi politycy co kwartał z…"
+  43.73,   // [  2] conf 1.00  "Już widać zapomniano, że w sklepie nie mo…"
+  64.06,   // [  3] conf 0.65  "Metternich<sup>61</sup> był taki sławny j…"
+  74.60,   // [  4] conf 0.94  "Tymczasem ród Bonapartych trząsł Europą z…"
+  90.72,   // [  5] conf 0.90  "Zobaczycie, co jeszcze zrobi Napoleonek I…"
+  113.99,  // [  6] conf 1.00  "Do takiego interesu nie trzeba akademii,…"
+  121.07,  // [  7] conf 0.86  "Ojciec mój był za młodu żołnierzem, a na…"
+  136.96,  // [  8] conf 1.00  "Mieszkaliśmy na Starym Mieście z ciotką,…"
+  149.26,  // [  9] conf 0.97  "W naszej izdebce najokazalszym sprzętem b…"
+  170.34,  // [ 10] conf 0.95  "Na ścianach u ciotki wisieli sami święci;…"
+  183.22,  // [ 11] conf 0.88  "Był tam jeden Napoleon w Egipcie, drugi p…"
+  193.26,  // [ 12] conf 1.00  "Gdy zaś ciotka zgorszona tyloma świeckimi…"
+  209.35,  // [ 13] conf 1.00  "— Zobaczysz, niedowiarku — lamentowała ni…"
+  216.53,  // [ 14] conf 1.00  "— I!... Nie da mi cesarz zrobić krzywdy —…"
+  221.87,  // [ 15] conf 0.82  "Często przychodzili do nas dawni koledzy…"
+  240.16,  // [ 16] conf 0.91  "Wszyscy, nie wyłączając ciotki, twierdzil…"
+  261.03,  // [ 17] conf 1.00  "— Trzeba być zawsze gotowym na pierwszy o…"
+  265.85,  // [ 18] conf 1.00  "— Bo nie wiecie dnia ani godziny — dodawa…"
+  269.89,  // [ 19] conf 1.00  "A pan Raczek, trzymając fajkę w ustach, n…"
+  276.53,  // [ 20] conf 0.69  "— Napluj mi acan<sup>70</sup> w balię, to…"
+  280.93,  // [ 21] conf 0.87  "— Może jejmość i dasz, ale ja nie wezmę —…"
+  287.79,  // [ 22] conf 0.91  "— U... cóż to za chamy te całe grenadierz…"   // start word fuzzy-corrected
+  293.12,  // [ 23] conf 0.83  "— Jejmości zawsze smakowali ułani. Wiem,…"   // start word fuzzy-corrected
+  297.59,  // [ 24] conf 1.00  "Później pan Raczek ożenił się z moją ciot…"
+  301.93,  // [ 25] conf 1.00  "...Chcąc, ażebym zupełnie był gotów, gdy…"
+  309.25,  // [ 26] conf 0.96  "Nauczył mię czytać, pisać, kleić koperty,…"
+  321.13,  // [ 27] conf 0.92  "Dobrze to pamiętam, gdyż ojciec komenderu…"
+  332.26,  // [ 28] conf 1.00  "Była to najdokładniej prowadzona nauka."
+  335.72,  // [ 29] conf 1.00  "Nieraz w nocy budził mnie ojciec krzykiem…"
+  344.12,  // [ 30] conf 1.00  "— Ignaś! zawsze bądź gotów, wisusie, bo n…"
+  362.88,  // [ 31] conf 1.00  "Nie mogę powiedzieć, ażeby niezachwianą w…"
+  375.28,  // [ 32] conf 0.96  "— E! wiesz, stary, że już za długo czekam…"   // start word fuzzy-corrected
+  392.98,  // [ 33] conf 1.00  "— Znajdzie młodych."
+  394.44,  // [ 34] conf 1.00  "— Co za młodych! Lepsi z nich przed nami…"
+  406.42,  // [ 35] conf 1.00  "— Mój słyszał i zapamięta — odparł ojciec…"
+  411.71,  // [ 36] conf 1.00  "Pan Domański jeszcze bardziej upadał na d…"
+  415.66,  // [ 37] conf 1.00  "— Świat idzie do gorszego — mówił trzęsąc…"
+  434.94,  // [ 38] conf 1.00  "Sam Napoleon nie doczekałby się sprawiedl…"
+  438.30,  // [ 39] conf 0.80  "A na to odpowiedział ojciec:"
+  441.24,  // [ 40] conf 1.00  "— Będzie sprawiedliwość, choćby i Napoleo…"
+  446.74,  // [ 41] conf 1.00  "— Nie wierzę — mruknął pan Raczek."
+  449.70,  // [ 42] conf 1.00  "— A jak się znajdzie, to co?... — spytał…"
+  453.50,  // [ 43] conf 1.00  "— Nie doczekamy tego."
+  455.18,  // [ 44] conf 1.00  "— Ja doczekam — odparł ojciec — a Ignaś d…"
+  460.61,  // [ 45] conf 1.00  "Już wówczas zdania mego ojca głęboko wyrz…"
+  471.80,  // [ 46] conf 0.95  "Około roku 1840 ojciec zaczął niedomagać.…"
+  481.73,  // [ 47] conf 1.00  "Pan Raczek odwiedzał go co dzień, a raz p…"
+  488.43,  // [ 48] conf 0.89  "— Hej! stary, już my chyba nie doczekamy…"   // start word fuzzy-corrected
+  492.96,  // [ 49] conf 1.00  "Na co ojciec spokojnie odparł:"
+  495.66,  // [ 50] conf 1.00  "— Ja tam nie umrę, dopóki o nim nie usłys…"
+  499.89,  // [ 51] conf 1.00  "Pan Raczek pokiwał głową, a ciotka łzy ot…"
+  512.50,  // [ 52] conf 1.00  "Było już z nim bardzo źle, nawet przyjął…"
+  522.00,  // [ 53] conf 0.70  "— A wiesz, stary, że znalazł się Napoleon…"
+  525.48,  // [ 54] conf 1.00  "— Gdzie? — krzyknęła ciotka."
+  527.62,  // [ 55] conf 0.67  "— Jużci we Francji."   // start word fuzzy-corrected
+  529.80,  // [ 56] conf 1.00  "Ojciec zerwał się, lecz znowu upadł na po…"
+  538.72,  // [ 57] conf 1.00  "— Pamiętaj!... Wszystko pamiętaj..."
+  542.63,  // [ 58] conf 1.00  "Z tym umarł."
+  544.03,  // [ 59] conf 0.82  "W późniejszym życiu przekonałem się, jak…"
+  565.79,  // [ 60] conf 1.00  "Niesprawiedliwość dopóty będzie władać św…"
+  570.77,  // [ 61] conf 1.00  "W parę miesięcy po śmierci ojca pan Racze…"
+  590.68,  // [ 62] conf 1.00  "Lecz gdy zapytano mnie: do czego mam ocho…"
+  596.94,  // [ 63] conf 1.00  "— Kto wie, czy to nie będzie najlepsze —…"
+  603.34,  // [ 64] conf 0.81  "— Do tego na Podwalu<sup>74</sup>, co ma…"
+  608.87,  // [ 65] conf 1.00  "— Wiem — wtrąciła ciotka. — On chce do Mi…"
+  612.83,  // [ 66] conf 0.75  "— Można spróbować — rzekł pan Domański. —…"
+  618.19,  // [ 67] conf 1.00  "Pan Raczek na znak zgody plunął aż w komi…"
+  622.71,  // [ 68] conf 0.95  "— Boże miłosierny — jęknęła ciotka — ten…"
+  631.27,  // [ 69] conf 0.93  "— Wielka rzecz! — odezwał się pan Raczek.…"
+  636.99,  // [ 70] conf 1.00  "— A gdzież ja znajdę takiego głupiego, co…"
+  640.39,  // [ 71] conf 0.89  "— Phi! może i ja bym się ożenił z jejmośc…"   // start word fuzzy-corrected
+  655.36,  // [ 72] conf 0.97  "— Po co robić duże ceregiele. Jejmość nie…"
+  670.40,  // [ 73] conf 0.86  "— Hę?... — spytał pan Raczek patrząc na c…"   // start word fuzzy-corrected
+  674.37,  // [ 74] conf 1.00  "— No, oddajcie pierwej chłopca do terminu…"
+  684.80,  // [ 75] conf 0.95  "— To i jazda do Mincla! — rzekł pan Racze…"
+  695.01,  // [ 76] conf 1.00  "Wyszli z panem Domańskim i może w półtore…"
+  708.77,  // [ 77] conf 1.00  "— Cóż?... — spytała ciotka."
+  711.24,  // [ 78] conf 0.73  "— Nowego Napoleona wsadzili do prochowni!…"
+  716.34,  // [ 79] conf 0.78  "— Nie do prochowni, tylko do fortecy. A–u…"
+  723.88,  // [ 80] conf 1.00  "— Ale z chłopcem co?"
+  726.26,  // [ 81] conf 0.83  "— Jutro ma przyjść do Mincla z odzieniem…"
+  738.28,  // [ 82] conf 1.00  "— Zwariowaliście, pijaki! — krzyknęła cio…"
+  742.78,  // [ 83] conf 0.96  "— Tylko bez poufałości! — oburzył się pan…"
+  756.16,  // [ 84] conf 1.00  "Ciotka wypchnęła za drzwi pana Raczka, po…"
+  761.42,  // [ 85] conf 0.75  "— Precz mi stąd, pijaki!"
+  763.56,  // [ 86] conf 1.00  "— Wiwat Napoleon! — zawołał pan Raczek, a…"
+  779.80,  // [ 87] conf 0.93  "Głos jego stopniowo cichnął, jakby zagłęb…"
+  795.57,  // [ 88] conf 1.00  "Takie to wypadki poprzedziły moje wejście…"
+  799.96,  // [ 89] conf 0.93  "Sklep Mincla znałem od dawna, ponieważ oj…"
+  812.18,  // [ 90] conf 0.96  "O ile pamiętam, był tam w oknie duży koza…"
+  824.44,  // [ 91] conf 1.00  "Wnętrze sklepu wyglądało jak duża piwnica…"
+  840.48,  // [ 92] conf 0.94  "Papier zaś, atrament, talerze i szklanki…"
+  855.94,  // [ 93] conf 0.90  "Nawet sklepienie było zajęte. Wisiały tam…"
+  874.13,  // [ 94] conf 0.97  "Właścicielem sklepu był Jan Mincel, starz…"
+  890.87,  // [ 95] conf 0.89  "Przed nim na stole leżała wielka księga,…"
+  901.38,  // [ 96] conf 1.00  "Starzec odbierał pieniądze, zdawał gościo…"
+  912.04,  // [ 97] conf 1.00  "On także, dla uciechy przechodniów uliczn…"
+  926.92,  // [ 98] conf 0.95  "Mówię: nas, bo było nas trzech kandydatów…"
+  936.67,  // [ 99] conf 0.81  "Czujności pryncypała i jego biegłości w u…"
+  944.94,  // [100] conf 0.96  "Franc odmierzył jakiejś kobiecie za dzies…"   // start word fuzzy-corrected
+  957.98,  // [101] conf 1.00  "Chciałem właśnie wyjąć pestkę, która wcis…"
+  965.70,  // [102] conf 1.00  "— A, szelma! — wrzasnął stary Mincel i ni…"
+  976.14,  // [103] conf 0.96  "Zwinąłem się w kłębek z bólu, lecz od tej…"
+  987.00,  // [104] conf 1.00  "Urządziwszy się ze mną w taki sposób, sta…"
+  1006.48, // [105] conf 0.94  "I dopiero teraz spostrzegłem, że ów kozak…"
+  1016.13, // [106] conf 0.83  "Sklep nasz był kolonialno-galanteryjno-my…"
+  1029.34, // [107] conf 0.96  "Ten najczęściej dostawał dyscypliną od st…"
+  1040.14, // [108] conf 1.00  "Młodszy zaś, Jan Mincel, który zawiadywał…"
+  1054.37, // [109] conf 0.76  "Tylko August Katz, pracujący przy mydle,…"
+  1066.42, // [110] conf 1.00  "Najraniej przychodził do roboty, krajał m…"
+  1081.73, // [111] conf 0.98  "W tym otoczeniu upłynęło mi osiem lat, z…"
+  1099.74, // [112] conf 0.96  "W tej chwili gdzieś z ulicy zjawiał się A…"
+  1112.08, // [113] conf 0.83  "Potem drzwiami od podwórka wbiegał stary…"
+  1124.30, // [114] conf 1.00  "Dopiero po nim ukazywał się Jan Mincel i…"
+  1137.61, // [115] conf 0.97  "Franca zwykle sprowadzano do sklepu. Wcho…"   // start word fuzzy-corrected
+  1153.28, // [116] conf 1.00  "Prawie nie było ranka, ażeby stryj patrzą…"
+  1159.58, // [117] conf 1.00  "— No... a gdzie, ty szelma, latała?"
+  1163.90, // [118] conf 0.86  "Tymczasem na ulicy budził się szmer i za…"
+  1182.67, // [119] conf 1.00  "Środkiem ulicy toczyły się wozy, beczki,…"
+  1197.86, // [120] conf 0.50  "— Pieprzu za trojaka<sup>85</sup>..."   // LOW CONFIDENCE; low match ratio
+  1199.26, // [121] conf 0.50  "— Proszę funt<sup>86</sup> kawy..."   // LOW CONFIDENCE; low match ratio
+  1200.98, // [122] conf 1.00  "— Niech pan da ryżu..."
+  1202.70, // [123] conf 1.00  "— Pół funta mydła..."
+  1204.52, // [124] conf 1.00  "— Za grosz liści bobkowych..."
+  1206.92, // [125] conf 0.92  "Stopniowo sklep zapełniał się po najwięks…"
+  1214.20, // [126] conf 0.83  "Wtedy Franc Mincel krzywił się najwięcej:…"
+  1229.00, // [127] conf 0.94  "W końcu zbierało się takie mnóstwo intere…"
+  1237.52, // [128] conf 0.93  "Stary wciąż pisał i zdawał resztę, od cza…"
+  1255.14, // [129] conf 1.00  "Nader rzadko mogłem zrozumieć: o co mu ch…"
+  1263.50, // [130] conf 0.98  "Około ósmej napływ interesantów zmniejsza…"
+  1284.33, // [131] conf 0.90  "Ustawiwszy na stole swoje naczynie, staru…"
+  1289.17, // [132] conf 0.75  "— Gut Morgen, meine Kinder! Der Kaffee is…"
+  1293.49, // [133] conf 1.00  "I zaczynała rozlewać kawę w białe fajanso…"
+  1297.75, // [134] conf 1.00  "Wówczas zbliżał się do niej stary Mincel…"
+  1302.40, // [135] conf 0.57  "— Gut Morgen, meine Mutter!<sup>90</sup>"   // LOW CONFIDENCE; manual fix: focused re-transcription located the German phrase at 1302.46-1304.68; full-pass ASR dropped it
+  1305.30, // [136] conf 1.00  "Za co dostawał kubek kawy z trzema bułkam…"   // manual fix: start from focused re-transcription (full pass mis-assigned this span)
+  1308.29, // [137] conf 0.96  "Potem przychodził Franc Mincel, Jan Mince…"
+  1319.27, // [138] conf 0.33  "— Gut Morgen, Grossmutter!<sup>91</sup>"   // LOW CONFIDENCE; low match ratio; start word fuzzy-corrected
+  1321.23, // [139] conf 0.75  "I otrzymywał należny mu kubek tudzież trz…"
+  1325.62, // [140] conf 1.00  "A gdyśmy z pośpiechem wypili naszą kawę,…"
+  1334.92, // [141] conf 1.00  "Za oknem wciąż toczyły się wozy i płynął…"
+  1343.50, // [142] conf 1.00  "— Proszę krochmalu..."
+  1345.08, // [143] conf 1.00  "— Dać migdałów za dziesiątkę..."
+  1347.40, // [144] conf 0.50  "— Lukrecji<sup>92</sup> za grosz..."   // LOW CONFIDENCE; low match ratio
+  1348.76, // [145] conf 1.00  "— Szarego mydła..."
+  1350.36, // [146] conf 1.00  "Około południa zmniejszał się ruch za kon…"
+  1368.34, // [147] conf 1.00  "Nabywcy, kobiety i mężczyźni, byli dobrze…"
+  1378.80, // [148] conf 1.00  "Pamiętam, że kiedy po lewej stronie sklep…"
+  1392.59, // [149] conf 1.00  "W rezultacie jednak i tutaj dużo się sprz…"
+  1402.95, // [150] conf 1.00  "Stary Mincel i w niedzielę bywał w sklepi…"
+  1412.88, // [151] conf 0.79  "— Sag mir<sup>93</sup> — powiedz mi: was…"   // start word fuzzy-corrected
+  1436.91, // [152] conf 0.83  "Gdzie mieszka taki drzewo cynamon? W Indi…"
+  1455.49, // [153] conf 1.00  "W ten sposób przechodziliśmy każdą szufla…"
+  1470.97, // [154] conf 0.73  "Mincel był bardzo porządny, nie cierpiał…"
+  1486.46, // [155] conf 1.00  "Powoli, w ciągu paru lat, tak przywykliśm…"
+  1498.34, // [156] conf 0.95  "Pamiętam, że nie mogłem utulić się z żalu…"
+  1506.42, // [157] conf 0.71  "— Co ty zrobila, Ignac?... Co ty zrobila!…"
+  1511.60, // [158] conf 1.00  "Wolałbym dostać cięgi wszystkimi dyscypli…"
+  1522.63, // [159] conf 0.97  "Obiady w dzień powszedni jadaliśmy w skle…"
+  1536.46, // [160] conf 0.97  "Na każdą Wigilię Bożego Narodzenia Mincel…"
+  1553.61, // [161] conf 0.88  "Przy tej okazji każdy musiał wylegitymowa…"
+  1569.37, // [162] conf 1.00  "Za mojej pamięci przewinęło się przez nas…"
+  1588.92, // [163] conf 0.71  "Stary nie ruszył się z fotelu<sup>97</sup…"
+  1604.90, // [164] conf 0.91  "Dobry ten człowiek miał jedną wadę, oto —…"
+  1622.46, // [165] conf 0.98  "Usłyszawszy pierwszy raz tak szkaradne wy…"
+  1638.82, // [166] conf 1.00  "Wytężam słuch i — oto co mówi Jan:"
+  1642.16, // [167] conf 0.88  "— Baje stary, baje! Napoleon był chwat, c…"
+  1649.53, // [168] conf 0.89  "A August Katz zmrużył oczy i dalej krajał…"
+  1654.52, // [169] conf 0.93  "Osłupiałem ze zdziwienia, lecz w tej chwi…"
+  1660.62, // [170] conf 1.00  "Z czasem przekonałem się, że w naszym mał…"
+  1679.74, // [171] conf 0.92  "W roku 1846 doszły nas wieści o ucieczce…"
+  1696.58, // [172] conf 0.92  "W roku tym handel w naszym sklepie nieco…"
+  1716.68, // [173] conf 1.00  "Otóż wypadek ten, zamiast całkiem odstręc…"
+  1733.12, // [174] conf 0.95  "Pewnego wieczora w czasie nieobecności pr…"
+  1753.46, // [175] conf 1.00  "Ani mniej, ani więcej — tylko naszego pry…"
+  1762.54, // [176] conf 1.00  "Na próżno staruszek wypierał się: nie tyl…"
+  1772.88, // [177] conf 0.94  "Sprawa po wielu tłomaczeniach i wyjaśnien…"
+  1787.45, // [178] conf 1.00  "Umarł oparty brodą na księdze handlowej,…"
+  1794.62, // [179] conf 1.00  "Przez kilka lat po śmierci stryja synowcy…"
+  1815.13, // [180] conf 0.91  "W kilka lat później Jan ożenił się z pięk…"
+  1832.99, // [181] conf 1.00  "Matka naszego pryncypała żyła jeszcze dłu…"
+  1845.53, // [182] conf 0.78  "— Gut Morgen meine Kinder! Der Kaffee ist…"   // start word fuzzy-corrected
+  1850.76, // [183] conf 1.00  "Tylko głos jej z roku na rok przyciszał s…"
+  1856.16, // [184] conf 1.00  "Za moich czasów pryncypał był ojcem i nau…"
+  1870.24, // [185] conf 1.00  "Dziś pryncypał bierze tylko dochody z han…"
+  1879.77, // [186] conf 1.00  "Nie mówię tu o Stasiu Wokulskim, który ma…"
+  1892.67, // [187] conf 0.81  "Słychać, że Andrassy zażądał sześćdziesię…"
+  1905.59, // [188] conf 1.00  "Ponieważ nigdy nie był fanfaronem, więc c…"
+  1915.79, // [189] conf 1.00  "Ciekawym, co on zrobi! Ciekawym!..."
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function setStudyText(element, text) {
+  // Render supported numeric footnotes; all annotation content is inserted as text.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      appendTooltipText(tooltip, note.definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function appendTooltipText(parent, text) {
+  // Support the source table's *italic* notation and escaped literal asterisks.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- Ukrainian reveal chip and block --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+    toggles.append(uaChip);
+
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, uaBox, pbar);
+
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, uaChip, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: audio/chapter-03.webm`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = "UA " + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(open) {
+  state.uaOpen = open;
+  els.forEach((e, i) => setUa(i, open));
+  toggleUaEl.textContent = (open ? "Hide all UA" : "Reveal all UA");
+  toggleUaEl.setAttribute("aria-pressed", String(open));
+  toggleUaEl.classList.toggle("is-on", open);
+}
+
+toggleUaEl.addEventListener("click", () => setAll(!state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+// If metadata never arrives (missing file / unsupported codec), tell the user.
+setTimeout(() => { if (audio.readyState < 1) showBanner(); }, 2500);
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll(!state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

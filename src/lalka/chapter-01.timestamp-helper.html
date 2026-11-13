@@ -1,0 +1,718 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to mp3/lalka_001_lalka-tom-pierwszy_tom-i-rozdzial-i.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-01.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Tom I, Rozdział I — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Tom I, Rozdział I · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="mp3/lalka_001_lalka-tom-pierwszy_tom-i-rozdzial-i.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "W początkach roku 1878, kiedy świat polityczny zajmował się pokojem san-stefańskim<sup>1<\/sup>, wyborem nowego papieża<sup>2<\/sup> albo szansami europejskiej wojny<sup>3<\/sup>,",
+  "start": 49.02
+ },
+ {
+  "i": 1,
+  "pl": "warszawscy kupcy tudzież inteligencja pewnej okolicy Krakowskiego Przedmieścia<sup>4<\/sup> niemniej gorąco interesowała się przyszłością galanteryjnego sklepu pod firmą J. Mincel i S. Wokulski.",
+  "start": 60.5
+ },
+ {
+  "i": 2,
+  "pl": "W renomowanej jadłodajni, gdzie na wieczorną przekąskę zbierali się właściciele składów bielizny i składów win, fabrykanci powozów i kapeluszy, poważni ojcowie rodzin, utrzymujący się z własnych funduszów, i posiadacze kamienic bez zajęcia, równie dużo mówiono o uzbrojeniach Anglii<sup>5<\/sup>,",
+  "start": 74.24
+ },
+ {
+  "i": 3,
+  "pl": "jak o firmie J. Mincel i S. Wokulski. Zatopieni w kłębach dymu cygar i pochyleni nad butelkami z ciemnego szkła obywatele tej dzielnicy, jedni zakładali się o wygranę lub przegranę Anglii, drudzy o bankructwo Wokulskiego; jedni nazywali geniuszem Bismarcka<sup>6<\/sup>,",
+  "start": 92.95
+ },
+ {
+  "i": 4,
+  "pl": "drudzy — awanturnikiem Wokulskiego; jedni krytykowali postępowanie prezydenta MacMahona<sup>7<\/sup>, inni twierdzili, że Wokulski jest zdecydowanym wariatem, jeżeli nie czymś gorszym...",
+  "start": 112.13
+ },
+ {
+  "i": 5,
+  "pl": "Pan Deklewski, fabrykant powozów, który majątek i stanowisko zawdzięczał wytrwałej pracy w jednym fachu, tudzież radca Węgrowicz, który od dwudziestu lat był członkiem-opiekunem<sup>8<\/sup> jednego i tego samego Towarzystwa Dobroczynności<sup>9<\/sup>, znali S.",
+  "start": 124.66
+ },
+ {
+  "i": 6,
+  "pl": "Wokulskiego najdawniej i najgłośniej przepowiadali mu ruinę. — Na ruinie bowiem i niewypłacalności — mówił pan Deklewski — musi skończyć człowiek, który nie pilnuje się jednego fachu i nie umie uszanować darów łaskawej fortuny.",
+  "start": 141.44
+ },
+ {
+  "i": 7,
+  "pl": "— Zaś radca Węgrowicz, po każdej również głębokiej sentencji swego przyjaciela, dodawał:",
+  "start": 157.96
+ },
+ {
+  "i": 8,
+  "pl": "— Wariat! wariat!... Awanturnik!... Józiu, przynieś no jeszcze piwa. A która to butelka?",
+  "start": 163.48
+ },
+ {
+  "i": 9,
+  "pl": "— Szósta, panie radco. Służę piorunem!... — odpowiadał Józio.",
+  "start": 169.86
+ },
+ {
+  "i": 10,
+  "pl": "— Już szósta?... Jak ten czas leci!... Wariat! wariat! — mruczał radca Węgrowicz.",
+  "start": 173.96
+ },
+ {
+  "i": 11,
+  "pl": "Dla osób posilających się w tej co radca jadłodajni, dla jej właściciela, subiektów i chłopców przyczyny klęsk mających paść na S. Wokulskiego i jego sklep galanteryjny były tak jasne, jak gazowe płomyki oświetlające zakład. Przyczyny te tkwiły w niespokojnym charakterze, w awanturniczym życiu,",
+  "start": 180.53
+ },
+ {
+  "i": 12,
+  "pl": "zresztą w najświeższym postępku człowieka, który mając w ręku pewny kawałek chleba i możność uczęszczania do tej oto tak przyzwoitej restauracji, dobrowolnie wyrzekł się restauracji, sklep zostawił na Opatrzności boskiej,",
+  "start": 201.3
+ },
+ {
+  "i": 13,
+  "pl": "a sam z całą gotówką odziedziczoną po żonie pojechał na turecką wojnę<sup>10<\/sup> robić majątek.",
+  "start": 216.68
+ },
+ {
+  "i": 14,
+  "pl": "— A może go i zrobi... Dostawy dla wojska to gruby interes — wtrącił pan Szprot, ajent handlowy<sup>11<\/sup>, który bywał tu rzadkim gościem.",
+  "start": 223.45
+ },
+ {
+  "i": 15,
+  "pl": "— Nic nie zrobi — odparł pan Deklewski — a tymczasem porządny sklep diabli wezmą. Na dostawach bogacą się tylko Żydzi i Niemcy; nasi do tego nie mają głowy.",
+  "start": 232.71
+ },
+ {
+  "i": 16,
+  "pl": "— A może Wokulski ma głowę?",
+  "start": 244.06
+ },
+ {
+  "i": 17,
+  "pl": "— Wariat! wariat!... — mruknął radca. — Podaj no, Józiu, piwa. Która to?...",
+  "start": 246.1
+ },
+ {
+  "i": 18,
+  "pl": "— Siódma buteleczka, panie radco. Służę piorunem.",
+  "start": 251.52
+ },
+ {
+  "i": 19,
+  "pl": "— Już siódma?... Jak ten czas leci, jak ten czas leci...",
+  "start": 254.6
+ },
+ {
+  "i": 20,
+  "pl": "Ajent handlowy, który z obowiązków stanowiska potrzebował mieć o kupcach wiadomości wszechstronne i wyczerpujące, przeniósł swoją butelkę i szklankę do stołu radcy i topiąc słodkie wejrzenie w jego załzawionych oczach, spytał zniżonym głosem:",
+  "start": 259.12
+ },
+ {
+  "i": 21,
+  "pl": "— Przepraszam, ale... Dlaczego pan radca nazywa Wokulskiego wariatem?... Może mogę służyć cygarkiem... Ja trochę znam Wokulskiego. Zawsze wydawał mi się człowiekiem skrytym i dumnym. W kupcu skrytość jest wielką zaletą, duma wadą.",
+  "start": 275.16
+ },
+ {
+  "i": 22,
+  "pl": "Ale żeby Wokulski zdradzał skłonności do wariacji, tegom nie spostrzegł.",
+  "start": 291.7
+ },
+ {
+  "i": 23,
+  "pl": "Radca przyjął cygaro bez szczególnych oznak wdzięczności. Jego rumiana twarz, otoczona pękami siwych włosów nad czołem, na brodzie i na policzkach, była w tej chwili podobna do krwawnika<sup>12<\/sup> oprawionego w srebro.",
+  "start": 298.3
+ },
+ {
+  "i": 24,
+  "pl": "— Nazywam go — odparł, powoli ogryzając i zapalając cygaro — nazywam go wariatem, gdyż go znam lat... Zaczekaj pan... Piętnaście... siedemnaście... osiemnaście... Było to w roku 1860... Jadaliśmy wtedy u Hopfera<sup>13<\/sup>. Znałeś pan Hopfera?...",
+  "start": 311.7
+ },
+ {
+  "i": 25,
+  "pl": "— Phi...",
+  "start": null
+ },
+ {
+  "i": 26,
+  "pl": "— Otóż Wokulski był wtedy u Hopfera subiektem i miał już ze dwadzieścia parę lat.",
+  "start": 334.84
+ },
+ {
+  "i": 27,
+  "pl": "— W handlu win i delikatesów?",
+  "start": 341.92
+ },
+ {
+  "i": 28,
+  "pl": "— Tak. I jak dziś Józio, tak on wówczas podawał mi piwo, zrazy nelsońskie<sup>14<\/sup>...",
+  "start": 344.44
+ },
+ {
+  "i": 29,
+  "pl": "— I z tej branży przerzucił się do galanterii? — wtrącił ajent.",
+  "start": 351.16
+ },
+ {
+  "i": 30,
+  "pl": "— Zaczekaj pan — przerwał radca. — Przerzucił się, ale nie do galanterii, tylko do Szkoły Przygotowawczej<sup>15<\/sup>, a potem do Szkoły Głównej<sup>16<\/sup>, rozumie pan?... Zachciało mu się być uczonym!...",
+  "start": 355.2
+ },
+ {
+  "i": 31,
+  "pl": "Ajent począł chwiać głową w sposób oznaczający zdziwienie.",
+  "start": 367.48
+ },
+ {
+  "i": 32,
+  "pl": "— Istna heca — rzekł. — I skąd mu to przyszło?",
+  "start": 371.0
+ },
+ {
+  "i": 33,
+  "pl": "— No, skąd! Zwyczajnie — stosunki z Akademią Medyczną<sup>17<\/sup>, ze Szkołą Sztuk Pięknych<sup>18<\/sup>... Wtedy wszystkim paliło się we łbach, a on nie chciał być gorszym od innych. W dzień służył gościom przy bufecie i prowadził rachunki, a w nocy uczył się...",
+  "start": 375.02
+ },
+ {
+  "i": 34,
+  "pl": "— Licha musiała to być usługa.",
+  "start": 393.14
+ },
+ {
+  "i": 35,
+  "pl": "— Taka jak innych — odparł radca, niechętnie machając ręką. — Tylko że przy posłudze był, bestia, niemiły; na najniewinniejsze słówko marszczył się jak zbój... Rozumie się, używaliśmy na nim, co wlazło, a on najgorzej gniewał się, jeżeli nazwał go kto „panem konsyliarzem<sup>19<\/sup>”.",
+  "start": 395.5
+ },
+ {
+  "i": 36,
+  "pl": "Raz tak zwymyślał gościa, że mało obaj nie porwali się za czuby.",
+  "start": 416.46
+ },
+ {
+  "i": 37,
+  "pl": "— Naturalnie, handel cierpiał na tym.",
+  "start": 421.57
+ },
+ {
+  "i": 38,
+  "pl": "— Wcale nie! Bo kiedy po Warszawie rozeszła się wieść, że subiekt Hopfera chce wstąpić do Szkoły Przygotowawczej, tłumy zaczęły tam przychodzić na śniadanie. Osobliwie roiła się studenteria.",
+  "start": 424.25
+ },
+ {
+  "i": 39,
+  "pl": "— I poszedł też do Szkoły Przygotowawczej?",
+  "start": 437.68
+ },
+ {
+  "i": 40,
+  "pl": "— Poszedł i nawet zdał egzamin do Szkoły Głównej. No, ale co pan powiesz — ciągnął radca uderzając ajenta w kolano — że zamiast wytrwać przy nauce do końca, niespełna w rok rzucił szkołę...",
+  "start": 439.98
+ },
+ {
+  "i": 41,
+  "pl": "— Cóż robił?",
+  "start": 452.94
+ },
+ {
+  "i": 42,
+  "pl": "— Otóż, co... Gotował wraz z innymi piwo, które do dziś dnia pijemy<sup>20<\/sup>, i sam w rezultacie oparł się aż gdzieś koło Irkucka<sup>21<\/sup>.",
+  "start": 454.2
+ },
+ {
+  "i": 43,
+  "pl": "— Heca, panie! — westchnął ajent handlowy.",
+  "start": 464.22
+ },
+ {
+  "i": 44,
+  "pl": "— Nie koniec na tym... W roku 1870 wrócił do Warszawy z niewielkim fundusikiem.",
+  "start": 467.86
+ },
+ {
+  "i": 45,
+  "pl": "Przez pół roku szukał zajęcia, z daleka omijając handle korzenne, których po dziś dzień nienawidzi, aż nareszcie przy protekcji swego dzisiejszego dysponenta<sup>22<\/sup>, Rzeckiego, wkręcił się do sklepu Minclowej, która akurat została wdową, i w rok potem ożenił się z babą grubo starszą od niego.",
+  "start": 474.72
+ },
+ {
+  "i": 46,
+  "pl": "— To nie było głupie — wtrącił ajent.",
+  "start": 493.18
+ },
+ {
+  "i": 47,
+  "pl": "— Zapewne. Jednym zamachem zdobył sobie byt i warsztat, na którym mógł spokojnie pracować do końca życia. Ale też miał on krzyż Pański z babą!",
+  "start": 496.32
+ },
+ {
+  "i": 48,
+  "pl": "— One to umieją...",
+  "start": 507.89
+ },
+ {
+  "i": 49,
+  "pl": "— Jeszcze jak! — prawił radca. — Patrz pan jednakże, co to znaczy szczęście. Półtora roku temu baba objadła się czegoś i umarła, a Wokulski po czteroletniej katordze został wolny jak ptaszek, z zasobnym sklepem i trzydziestu tysiącami rubli w gotowiźnie, na którą pracowały dwa pokolenia Minclów.",
+  "start": 509.67
+ },
+ {
+  "i": 50,
+  "pl": "— Ma szczęście.",
+  "start": 531.15
+ },
+ {
+  "i": 51,
+  "pl": "— Miał — poprawił radca — ale go nie uszanował. Inny na jego miejscu ożeniłby się z jaką uczciwą panienką i żyłby w dostatkach; bo co to, panie, dziś znaczy sklep z reputacją i w doskonałym punkcie!... Ten jednak, wariat, rzucił wszystko i pojechał robić interesa na wojnie.",
+  "start": 532.37
+ },
+ {
+  "i": 52,
+  "pl": "Milionów mu się zachciało czy kiego diabła.",
+  "start": 551.16
+ },
+ {
+  "i": 53,
+  "pl": "— Może je będzie miał — odezwał się ajent.",
+  "start": 554.26
+ },
+ {
+  "i": 54,
+  "pl": "— Ehe! — żachnął się radca. — Daj no, Józiu, piwa. Myślisz pan, że w Turcji znajdzie jeszcze bogatszą babę aniżeli nieboszczka Minclowa?... Józiu!...",
+  "start": 557.06
+ },
+ {
+  "i": 55,
+  "pl": "— Służę piorunem!... Jedzie ósma...",
+  "start": 568.1
+ },
+ {
+  "i": 56,
+  "pl": "— Ósma? — powtórzył radca — to być nie może. Zaraz... Przedtem była szósta, potem siódma... — mruczał zasłaniając twarz dłonią. — Może być, że ósma. Jak ten czas leci!...",
+  "start": 570.8
+ },
+ {
+  "i": 57,
+  "pl": "Mimo posępne wróżby ludzi trzeźwo patrzących na rzeczy, sklep galanteryjny pod firmą J. Mincel i S. Wokulski nie tylko nie upadł, ale nawet robił dobre interesa.",
+  "start": 585.9
+ },
+ {
+  "i": 58,
+  "pl": "Publiczność zaciekawiona pogłoskami o bankructwie coraz liczniej odwiedzała magazyn, od chwili zaś kiedy Wokulski opuścił Warszawę, zaczęli zgłaszać się po towary kupcy rosyjscy. Zamówienia mnożyły się, kredyt za granicą istniał, weksle były płacone regularnie, a sklep roił się gośćmi,",
+  "start": 598.51
+ },
+ {
+  "i": 59,
+  "pl": "którym ledwo mogli wydołać trzej subiekci: jeden mizerny blondyn, wyglądający, jakby co godzinę umierał na suchoty, drugi szatyn z brodą filozofa, a ruchami księcia i trzeci elegant, który nosił zabójcze dla płci pięknej wąsiki, pachnąc przy tym jak laboratorium chemiczne.",
+  "start": 616.91
+ },
+ {
+  "i": 60,
+  "pl": "Ani jednak ciekawość ogółu, ani fizyczne i duchowe zalety trzech subiektów, ani nawet ustalona reputacja sklepu może nie uchroniłyby go od upadku, gdyby nie zawiadował nim czterdziestoletni pracownik firmy, przyjaciel i zastępca Wokulskiego, pan Ignacy Rzecki.",
+  "start": 636.29
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

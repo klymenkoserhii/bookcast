@@ -1,0 +1,736 @@
+# «Lalka» — Chapter 7: Gołąb wychodzi na spotkanie węża
+<!-- bilingual study edition: PL → UA -->
+
+**PL:** Serwis i srebra familii Łęckich były już sprzedane i nawet jubiler odniósł panu Tomaszowi pieniądze, strąciwszy dla siebie sto kilkadziesiąt rubli składowego<sup>174</sup> i za pośrednictwo.
+
+**UA:** Посуд і срібло родини Ленцьких уже продали, і ювелір навіть приніс пану Томашеві гроші, відрахувавши собі за зберігання<sup>174</sup> та посередництво понад сто рублів.
+
+**PL:** Mimo to hrabina Karolowa nie przestała kochać panny Izabeli; owszem — jej energia i poświęcenie, okazane przy sprzedaży pamiątek, zbudziły w sercu starej damy nowe źródło uczuć rodzinnych.
+
+**UA:** Попри це, графиня Каролова не перестала любити панну Ізабелу; навпаки, її енергія й самопожертва, виявлені під час продажу родинних реліквій, пробудили в серці старої пані нове джерело родинних почуттів.
+
+**PL:** Nie tylko uprosiła pannę Izabelę o przyjęcie pięknego kostiumu, nie tylko co dzień bywała u niej albo ją wzywała do siebie, ale jeszcze (co było dowodem niesłychanej łaski) na całą Wielką Środę ofiarowała jej swój powóz.
+
+**UA:** Вона не лише впросила панну Ізабелу прийняти чудовий костюм і щодня або навідувала її, або кликала до себе, а ще й (що було доказом нечуваної ласки) віддала їй свій екіпаж на всю Велику середу.
+
+---
+
+**PL:** — Przejedź się, aniołku, po mieście — mówiła hrabina całując siostrzenicę — i pozałatwiaj drobne sprawunki. Tylko pamiętaj, żebyś mi za to w czasie kwesty wyglądała ślicznie... Tak ślicznie, jak to tylko ty potrafisz!... Proszę cię...
+
+**UA:** — Прокотися містом, янголятко, — казала графиня, цілуючи племінницю, — і владнай дрібні справи. Тільки пам'ятай: під час збору пожертв ти маєш виглядати чарівно... Так чарівно, як тільки ти вмієш!.. Прошу тебе...
+
+---
+
+**PL:** Panna Izabela nie odpowiedziała nic, ale jej spojrzenie i rumieniec kazały domyślać się, że z całą gotowością spełni wolę ciotki.
+
+**UA:** Панна Ізабела нічого не відповіла, але її погляд і рум'янець давали зрозуміти, що вона охоче виконає волю тітки.
+
+---
+
+**PL:** W Wielką Środę, punkt o jedynastej rano, panna Izabela już siedziała w otwartym powozie wraz ze swoją nieodstępną towarzyszką, panną Florentyną.
+
+**UA:** У Велику середу, рівно об одинадцятій ранку, панна Ізабела вже сиділа у відкритому екіпажі зі своєю невідступною супутницею, панною Флорентиною.
+
+**PL:** Po Alei chodziły wiosenne powiewy roznosząc tę szczególną, surową woń, która poprzedza pękanie liści na drzewach i ukazanie się pierwiosnków; szare trawniki nabrały zielonawego odcienia; słońce grzało tak mocno, że panie otworzyły parasolki.
+
+**UA:** Алеєю гуляли весняні подихи, розносячи особливий, терпкий запах, що віщує розпускання листя на деревах і появу первоцвітів; сірі газони набули зеленкуватого відтінку; сонце припікало так сильно, що пані розкрили парасольки.
+
+---
+
+**PL:** — Śliczny dzień — westchnęła panna Izabela patrząc na niebo, gdzieniegdzie poplamione białymi obłokami.
+
+**UA:** — Який чудовий день, — зітхнула панна Ізабела, дивлячись на небо, де подекуди біліли хмаринки.
+
+---
+
+**PL:** — Gdzie jaśnie panienka rozkaże jechać? — spytał lokaj zatrzasnąwszy drzwiczki powozu.
+
+**UA:** — Куди панночка накаже їхати? — спитав лакей, зачинивши дверцята екіпажа.
+
+---
+
+**PL:** — Do sklepu Wokulskiego — z nerwowym pośpiechem odpowiedziała panna Izabela.
+
+**UA:** — До крамниці Вокульського, — нервово поквапившись, відповіла панна Ізабела.
+
+---
+
+**PL:** Lokaj skoczył na kozioł i spasione gniade konie ruszyły uroczystym kłusem parskając i wyrzucając łbami.
+
+**UA:** Лакей скочив на козли, і вгодовані гніді коні рушили урочистою риссю, фиркаючи й закидаючи головами.
+
+---
+
+**PL:** — Dlaczego, Belciu, do Wokulskiego? — zapytała trochę zdziwiona panna Florentyna.
+
+**UA:** — Чому до Вокульського, Белю? — трохи здивовано запитала панна Флорентина.
+
+---
+
+**PL:** — Chcę sobie kupić paryskie rękawiczki, kilka flakonów perfum...
+
+**UA:** — Хочу купити паризькі рукавички, кілька флаконів парфумів...
+
+---
+
+**PL:** — To samo dostaniemy gdzie indziej.
+
+**UA:** — Те саме знайдемо деінде.
+
+---
+
+**PL:** — Chcę tam — odpowiedziała sucho panna Izabela.
+
+**UA:** — Я хочу саме туди, — сухо відповіла панна Ізабела.
+
+---
+
+**PL:** Od paru dni męczył ją osobliwy niepokój, jakiego już raz doznała w życiu. Będąc przed laty za granicą w ogrodzie aklimatyzacyjnym<sup>175</sup> zobaczyła w jednej z klatek ogromnego tygrysa, który spał oparty o kratę w taki sposób, że mu część głowy i jedno ucho wysunęło się na zewnątrz.
+
+**UA:** Уже кілька днів її мучив дивний неспокій, який вона колись уже відчувала. Багато років тому, перебуваючи за кордоном у зоологічному саду<sup>175</sup>, вона побачила в одній із кліток величезного тигра: той спав, прихилившись до ґрат так, що частина голови й одне вухо висунулися назовні.
+
+---
+
+**PL:** Widząc to panna Izabela uczuła nieprzepartą chęć pochwycenia tygrysa za ucho. Zapach klatki napełniał ją wstrętem, potężne łapy zwierzęcia nieopisaną trwogą, lecz mimo to czuła, że — musi tygrysa przynajmniej dotknąć w ucho.
+
+**UA:** Побачивши це, панна Ізабела відчула непереборне бажання схопити тигра за вухо. Запах клітки викликав у неї огиду, могутні лапи звіра — невимовний жах, та попри це вона відчувала: мусить принаймні торкнутися тигрового вуха.
+
+---
+
+**PL:** Dziwny ten pociąg wydał się jej samej niebezpiecznym i nawet śmiesznym. Przemogła się więc i poszła dalej; lecz po paru minutach — wróciła. Znowu cofnęła się, przejrzała inne klatki, starała się o czym innym myśleć. Na próżno.
+
+**UA:** Цей дивний потяг здався їй самій небезпечним і навіть смішним. Вона опанувала себе й пішла далі, та за кілька хвилин повернулася. Знову відступила, оглянула інші клітки, намагалася думати про щось інше. Дарма.
+
+**PL:** Wróciła się i choć tygrys już nie spał, tylko mrucząc lizał swoje straszliwe łapy, panna Izabela podbiegła do klatki, wsunęła rękę i — drżąca i blada — dotknęła tygrysiego ucha.
+
+**UA:** Вона повернулася, і хоч тигр уже не спав, а, муркочучи, лизав свої страшні лапи, панна Ізабела підбігла до клітки, просунула руку й — тремтячи та збліднувши — торкнулася тигрового вуха.
+
+---
+
+**PL:** W chwilę później wstydziła się swego szaleństwa, lecz zarazem czuła to gorzkie zadowolenie znane ludziom, którzy usłuchają w ważnej sprawie głosu instynktu.
+
+**UA:** За мить їй стало соромно за своє божевілля, але водночас вона відчула гірке задоволення, знайоме людям, які в важливій справі дослухаються до голосу інстинкту.
+
+---
+
+**PL:** Dziś zbudziło się w niej podobnego rodzaju pragnienie.
+
+**UA:** Сьогодні в ній прокинулося бажання такого самого роду.
+
+---
+
+**PL:** Gardziła Wokulskim, serce jej zamierało na samo przypuszczenie, że ten człowiek mógł zapłacić za srebra więcej, niż były warte, a mimo to czuła nieprzeparty pociąg — wejść do sklepu, spojrzeć w oczy Wokulskiemu i zapłacić mu za parę drobiazgów tymi właśnie pieniędzmi, które pochodziły od niego.
+
+**UA:** Вона зневажала Вокульського, і саме припущення, що цей чоловік міг заплатити за срібло більше, ніж воно коштувало, стискало їй серце; і все ж вона відчувала непереборний потяг — зайти до крамниці, подивитися Вокульському в очі й заплатити за кілька дрібничок саме тими грошима, що походили від нього.
+
+**PL:** Strach ją zdejmował na myśl spotkania, lecz niewytłomaczony instynkt popychał.
+
+**UA:** Її охоплював страх від думки про зустріч, але незбагненний інстинкт штовхав уперед.
+
+---
+
+**PL:** Na Krakowskim już z daleka zobaczyła szyld z napisem: J. Mincel i S. Wokulski, a o jeden dom bliżej nowy, jeszcze nie wykończony sklep<sup>176</sup> o pięciu oknach frontu, z lustrzanymi szybami.
+
+**UA:** На Краківському тракті вона здалеку побачила вивіску «Я. Мінцель і С. Вокульський», а за один будинок перед нею — нову, ще не добудовану крамницю<sup>176</sup> з п'ятьма фасадними вікнами та дзеркальними шибками.
+
+**PL:** Z kilku pracujących przy nim rzemieślników i robotników jedni od wewnątrz wycierali szyby, drudzy złocili i malowali drzwi i futryny, inni umocowywali przed oknami ogromne mosiężne bariery.
+
+**UA:** Кілька ремісників і робітників працювали там: одні зсередини протирали шибки, другі золотили й фарбували двері та рами, інші кріпили перед вікнами величезні латунні ґрати.
+
+---
+
+**PL:** — Cóż to za sklep budują? — spytała panny Florentyny.
+
+**UA:** — Що це за крамницю будують? — спитала вона панну Флорентину.
+
+---
+
+**PL:** — Chyba dla Wokulskiego, bo słyszałam, że wziął obszerniejszy lokal.
+
+**UA:** — Мабуть, для Вокульського, бо я чула, що він узяв більше приміщення.
+
+---
+
+**PL:** „Dla mnie ten sklep!” — pomyślała panna Izabela szarpiąc rękawiczki.
+
+**UA:** «Це для мене крамниця!» — подумала панна Ізабела, смикаючи рукавички.
+
+---
+
+**PL:** Powóz stanął, lokaj zeskoczył z kozła i pomógł paniom wysiąść. Lecz gdy następnie otworzył z łoskotem drzwi do sklepu Wokulskiego, panna Izabela tak osłabła, że nogi zachwiały się pod nią. Przez chwilę chciała wrócić do powozu i uciec stąd; wnet jednak opanowała się i z podniesioną głową weszła.
+
+**UA:** Екіпаж зупинився, лакей зіскочив із козел і допоміг паням вийти. Та коли він із гуркотом відчинив двері крамниці Вокульського, панна Ізабела так ослабла, що ноги під нею затремтіли. На мить їй захотілося повернутися до екіпажа й утекти звідси; проте вона швидко опанувала себе і з високо піднятою головою увійшла.
+
+---
+
+**PL:** Pan Rzecki stał już na środku sklepu i zacierając ręce, witał ją niskimi ukłonami. W głębi pan Lisiecki, podczesując piękną brodę, okrągłymi i pełnymi godności ruchami prezentował brązowe kandelabry jakiejś damie, która siedziała na krześle.
+
+**UA:** Пан Жецький уже стояв посеред крамниці й, потираючи руки, вітав її низькими поклонами. У глибині пан Лісецький, пригладжуючи розкішну бороду, округлими й поважними жестами показував бронзові канделябри якійсь дамі, що сиділа на стільці.
+
+**PL:** Mizerny Klejn wybierał laski młodzieńcowi, który na widok panny Izabeli szybko uzbroił się w binokle — a pachnący heliotropem<sup>177</sup> Mraczewski palił wzrokiem i sztyletował wąsikami dwie rumiane panienki, które towarzyszyły damie i oglądały toaletowe cacka.
+
+**UA:** Худорлявий Клейн добирав ціпки для молодого чоловіка, який, побачивши панну Ізабелу, хутко озброївся лорнетом; а пахучий геліотропом<sup>177</sup> Мрацевський палив поглядом і колов вусиками двох рум'яних панянок, що супроводжували даму й розглядали туалетні дрібнички.
+
+---
+
+**PL:** Na prawo ode drzwi, za kantorkiem, siedział Wokulski schylony nad rachunkami.
+
+**UA:** Праворуч від дверей, за конторкою, сидів Вокульський, схилившись над рахунками.
+
+---
+
+**PL:** Gdy panna Izabela weszła, młodzieniec oglądający laski poprawił kołnierzyk na szyi, dwie panienki spojrzały na siebie, pan Lisiecki urwał w połowie swój okrągły frazes o stylu kandelabrów, ale zatrzymał okrągłą pozę, a nawet dama słuchająca jego wykładu ciężko odwróciła się na krześle.
+
+**UA:** Коли панна Ізабела увійшла, молодий чоловік, що вибирав ціпок, поправив комірець; дві панянки перезирнулися; пан Лісецький урвав на півслові свій пишномовний вислів про стиль канделябрів, зберігши поважну позу; навіть дама, яка слухала його пояснення, важко повернулася на стільці.
+
+**PL:** Przez chwilę sklep zaległa cisza, którą dopiero panna Izabela przerwała odezwawszy się pięknym kontraltem:
+
+**UA:** На мить у крамниці запала тиша, яку перервала лише панна Ізабела, озвавшись своїм прекрасним контральтом:
+
+---
+
+**PL:** — Czy zastałyśmy pana Mraczewskiego?...
+
+**UA:** — Чи пан Мрацевський тут?
+
+---
+
+**PL:** — Panie Mraczewski!... — pochwycił pan Ignacy.
+
+**UA:** — Пане Мрацевський! — підхопив пан Ігнацій.
+
+---
+
+**PL:** Mraczewski już stał przy pannie Izabeli, zarumieniony jak wiśnia, pachnący jak kadzielnica, z pochyloną głową, jak kita wodnej trzciny.
+
+**UA:** Мрацевський уже стояв біля панни Ізабели — почервонілий, мов вишня, пахучий, мов кадильниця, і схилив голову, наче китиця водяної трави.
+
+---
+
+**PL:** — Przyszłyśmy prosić pana o rękawiczki.
+
+**UA:** — Ми прийшли попросити у вас рукавички.
+
+---
+
+**PL:** — Numerek pięć i pół — odparł Mraczewski i już trzymał pudełko, które mu nieco drżało w rękach pod wpływem spojrzenia panny Izabeli.
+
+**UA:** — Номер п'ять із половиною, — відповів Мрацевський і вже тримав коробку, що ледь тремтіла в його руках під поглядом панни Ізабели.
+
+---
+
+**PL:** — Otóż nie... — przerwała panna ze śmiechem. — Pięć i trzy czwarte... Już pan zapomniał!...
+
+**UA:** — Та ні... — засміявшись, перебила панна. — П'ять і три чверті... Ви вже забули!
+
+---
+
+**PL:** — Pani, są rzeczy, których się nigdy nie zapomina. Jeżeli jednak rozkazuje pani pięć i trzy czwarte, będę służył w nadziei, że niebawem znowu zaszczyci nas pani swoją obecnością.
+
+**UA:** — Пані, є речі, яких ніколи не забувають. Та якщо пані бажає п'ять і три чверті, я до ваших послуг і сподіваюся, що невдовзі ви знову ощасливите нас своєю присутністю.
+
+**PL:** Bo rękawiczki pięć i trzy czwarte — dodał z lekkim westchnieniem, podsuwając jej kilka innych pudełek — stanowczo zsuną się z rączek...
+
+**UA:** — Бо рукавички п'ять і три чверті, — додав він із легким зітханням, підсуваючи їй кілька інших коробок, — неодмінно спадатимуть з ваших ручок...
+
+---
+
+**PL:** — Geniusz! — cicho szepnął pan Ignacy mrugając na Lisieckiego, który pogardliwie ruszył ustami.
+
+**UA:** — Геній! — тихо прошепотів пан Ігнацій, підморгнувши Лісецькому, який зневажливо скривив губи.
+
+---
+
+**PL:** Dama siedząca na krześle zwróciła się do kandelabrów, dwie panny do toaletki z oliwkowego drzewa, młodzieniec w binoklach począł znowu wybierać laski i — rzeczy w sklepie przeszły do spokojnego trybu. Tylko rozgorączkowany Mraczewski zeskakiwał i wbiegał na drabinkę,
+
+**UA:** Дама на стільці знову повернулася до канделябрів, дві панянки — до туалетного столика з оливкового дерева, молодий чоловік у лорнеті знову почав вибирати ціпки, й у крамниці запанував звичайний спокій. Лише збуджений Мрацевський зіскакував із драбини й знову видирався на неї,
+
+**PL:** wysuwał szuflady i wydobywał coraz nowe pudełka tłomacząc pannie Izabeli po polsku i po francusku, że nie może nosić innych rękawiczek, tylko pięć i pół, ani używać innych perfum, tylko oryginalnych Atkinsona<sup>178</sup>, ani ozdabiać swego stolika innymi drobiazgami, jak paryskimi.
+
+**UA:** висував шухляди й діставав дедалі нові коробки, пояснюючи панні Ізабелі польською та французькою, що вона не може носити інших рукавичок, крім п'ятьох із половиною, користуватися іншими парфумами, ніж оригінальні Аткінсона<sup>178</sup>, чи прикрашати свій столик чимось, крім паризьких дрібничок.
+
+---
+
+**PL:** Wokulski pochylił się nad kantorkiem tak, że żyły nabrzmiały mu na czole, i — wciąż rachował w myśli:
+
+**UA:** Вокульський схилився над конторкою так, що на чолі в нього набрякли жили, і все рахував подумки:
+
+---
+
+**PL:** „29 a 36 — to 65, a 15 to 80, a 73 — to... to...”
+
+**UA:** «Двадцять дев'ять та тридцять шість — шістдесят п'ять, іще п'ятнадцять — вісімдесят, а сімдесят три — це... це...»
+
+---
+
+**PL:** Tu urwał i spod oka spojrzał w stronę panny Izabeli rozmawiającej z Mraczewskim. Oboje stali zwróceni do niego profilem; dostrzegł więc pałający wzrok subiekta przykuty do panny Izabeli, na co ona w sposób demonstracyjny odpowiadała uśmiechem i spojrzeniami łagodnej zachęty.
+
+**UA:** Він урвався й скоса глянув у бік панни Ізабели, яка розмовляла з Мрацевським. Вони стояли до нього в профіль, тож він побачив, як продавець палко втупився в панну Ізабелу, а вона демонстративно відповідала йому усмішкою та лагідними, заохочувальними поглядами.
+
+---
+
+**PL:** „29 a 36 — to 65, a 15...” — liczył w myśli Wokulski, lecz nagle pióro prysło mu w ręku. Nie podnosząc głowy wydobył nową stalówkę z szuflady, a jednocześnie, nie wiadomo jakim sposobem, z rachunku wypadło mu pytanie:
+
+**UA:** «Двадцять дев'ять та тридцять шість — шістдесят п'ять, іще п'ятнадцять...» — рахував подумки Вокульський, але раптом у нього в руці тріснуло перо. Не підводячи голови, він дістав із шухляди нове, а тим часом невідомо як із рахунку виринуло запитання:
+
+---
+
+**PL:** „I ja mam niby to ją kochać?... Głupstwo! Przez rok cierpiałem na jakąś chorobę mózgową, a zdawało mi się, że jestem zakochany... 29 a 36... 29 a 36... Nigdym nie przypuszczał, ażeby mogła mi być tak dalece obojętną... Jak ona patrzy na tego osła...
+
+**UA:** «І це я нібито її кохаю?.. Дурниця! Рік я хворів на якусь мозкову недугу, а мені здавалося, що я закоханий... Двадцять дев'ять та тридцять шість... Двадцять дев'ять та тридцять шість... Ніколи б не подумав, що вона може бути мені такою байдужою... Як вона дивиться на цього осла...
+
+**PL:** No, jest to widocznie osoba, która kokietuje nawet subiektów, a czy tego samego nie robi z furmanami i lokajami!... Pierwszy raz czuję spokój... o Boże... A tak go bardzo pragnąłem...”
+
+**UA:** Так, очевидно, це така особа, що кокетує навіть із продавцями; хіба вона не робить того самого з фурманами й лакеями?! Уперше я відчуваю спокій... Боже... А як же я його прагнув...»
+
+---
+
+**PL:** Do sklepu weszło jeszcze parę osób, do których niechętnie zwrócił się Mraczewski, powoli wiążąc paczki.
+
+**UA:** До крамниці зайшло ще кілька людей, і Мрацевський неохоче взявся їх обслуговувати, поволі зав'язуючи пакунки.
+
+---
+
+**PL:** Panna Izabela zbliżyła się do Wokulskiego i wskazując w jego stronę parasolką rzekła dobitnie:
+
+**UA:** Панна Ізабела підійшла до Вокульського й, указуючи на нього парасолькою, виразно сказала:
+
+---
+
+**PL:** — Floro, bądź łaskawa zapłacić temu panu. Wracamy do domu.
+
+**UA:** — Флоро, будь ласка, заплати цьому панові. Ми повертаємося додому.
+
+---
+
+**PL:** — Kasa jest tu — odezwał się Rzecki podbiegając do panny Florentyny. Wziął od niej pieniądze i oboje cofnęli się w głąb sklepu.
+
+**UA:** — Каса тут, — озвався Жецький, підбігши до панни Флорентини. Він узяв у неї гроші, і вони обоє відійшли вглиб крамниці.
+
+---
+
+**PL:** Panna Izabela z wolna podsunęła się tuż do kantorka, za którym siedział Wokulski. Była bardzo blada. Zdawało się, że widok tego człowieka wywiera na nią wpływ magnetyczny<sup>179</sup>.
+
+**UA:** Панна Ізабела поволі наблизилася до конторки, за якою сидів Вокульський. Вона була дуже бліда. Здавалося, сам вигляд цього чоловіка мав на неї магнетичний вплив<sup>179</sup>.
+
+---
+
+**PL:** — Czy mówię z panem Wokulskim?
+
+**UA:** — Чи я розмовляю з паном Вокульським?
+
+---
+
+**PL:** Wokulski powstał z krzesła i odparł obojętnie:
+
+**UA:** Вокульський підвівся зі стільця й байдуже відповів:
+
+---
+
+**PL:** — Jestem do usług.
+
+**UA:** — До ваших послуг.
+
+---
+
+**PL:** — Wszakże to pan kupił nasz serwis i srebra? — mówiła zdławionym głosem.
+
+**UA:** — Це ж ви купили наш сервіз і срібло? — промовила вона здавленим голосом.
+
+---
+
+**PL:** — Ja, pani.
+
+**UA:** — Я, пані.
+
+---
+
+**PL:** Teraz panna Izabela zawahała się. Po chwili jednak słaby rumieniec wrócił jej na twarz. Ciągnęła dalej:
+
+**UA:** Тепер панна Ізабела завагалася. Та за мить її обличчя знову ледь зарум'янилося. Вона повела далі:
+
+---
+
+**PL:** — Zapewne pan sprzeda te przedmioty?
+
+**UA:** — Ви, мабуть, продасте ці речі?
+
+---
+
+**PL:** — W tym celu je kupiłem.
+
+**UA:** — Саме для цього я їх і купив.
+
+---
+
+**PL:** Rumieniec panny Izabeli wzmocnił się.
+
+**UA:** Рум'янець панни Ізабели став виразнішим.
+
+---
+
+**PL:** — Przyszły nabywca w Warszawie mieszka? — pytała dalej.
+
+**UA:** — Майбутній покупець живе у Варшаві? — запитала вона далі.
+
+---
+
+**PL:** — Rzeczy tych nie sprzedam tutaj, lecz za granicą. Tam... dadzą mi wyższą cenę — dodał spostrzegłszy w jej oczach zapytanie.
+
+**UA:** — Цих речей я продам не тут, а за кордоном. Там... за них дадуть більше, — додав він, помітивши запитання в її очах.
+
+---
+
+**PL:** — Pan spodziewa się dużo zyskać?
+
+**UA:** — Ви сподіваєтеся багато заробити?
+
+---
+
+**PL:** — Dlatego, ażeby zyskać, kupiłem.
+
+**UA:** — Я купив їх саме для того, щоб заробити.
+
+---
+
+**PL:** — Czy i dlatego mój ojciec nie wie, że srebra te są w pańskim ręku? — rzekła ironicznie.
+
+**UA:** — То й тому мій батько не знає, що це срібло у ваших руках? — іронічно мовила вона.
+
+---
+
+**PL:** Wokulskiemu drgnęły usta.
+
+**UA:** У Вокульського здригнулися губи.
+
+---
+
+**PL:** — Serwis i srebra nabyłem od jubilera. Sekretu z tego nie robię. Osób trzecich do sprawy nie mieszam, ponieważ to nie jest w zwyczajach handlowych.
+
+**UA:** — Сервіз і срібло я придбав у ювеліра. Я цього не приховую. Третіх осіб у справу не втручаю, бо так не заведено в торгівлі.
+
+---
+
+**PL:** Pomimo tak szorstkich odpowiedzi panna Izabela odetchnęła. Nawet oczy jej nieco pociemniały i straciły połysk nienawiści.
+
+**UA:** Попри такі різкі відповіді, панна Ізабела полегшено зітхнула. Навіть очі її трохи потемнішали й утратили ненависний блиск.
+
+---
+
+**PL:** — A gdyby mój ojciec namyśliwszy się chciał odkupić te przedmioty, za jaką cenę odstąpiłby je pan teraz?
+
+**UA:** — А якби мій батько, передумавши, захотів викупити ці речі, за яку ціну ви віддали б їх тепер?
+
+---
+
+**PL:** — Za jaką kupiłem. Rozumie się z doliczeniem procentu w stosunku... sześć... do ośmiu od sta rocznie...
+
+**UA:** — За ту, за яку купив. Звісно, з нарахуванням відсотків... шість... до восьми відсотків річних...
+
+---
+
+**PL:** — I wyrzekłby się pan spodziewanego zysku?... Dlaczegóż to?... — przerwała mu z pośpiechem.
+
+**UA:** — І ви відмовилися б від очікуваного прибутку?.. Чому ж?.. — квапливо перебила вона.
+
+---
+
+**PL:** — Dlatego, proszę pani, że handel opiera się nie na zyskach spodziewanych, ale na ciągłym obrocie gotówki.
+
+**UA:** — Тому, пані, що торгівля ґрунтується не на очікуваних прибутках, а на безперервному обігу готівки.
+
+---
+
+**PL:** — Żegnam pana i... dziękuję za wyjaśnienia — rzekła panna Izabela widząc, że jej towarzyszka już kończy rachunki.
+
+**UA:** — Прощавайте і... дякую за пояснення, — сказала панна Ізабела, побачивши, що її супутниця вже закінчує розрахунки.
+
+---
+
+**PL:** Wokulski ukłonił się i znowu usiadł do swej księgi.
+
+**UA:** Вокульський уклонився й знову сів до своєї книги.
+
+---
+
+**PL:** Gdy lokaj zabrał paczki i panie zajęły miejsca w powozie, panna Florentyna odezwała się tonem wyrzutu:
+
+**UA:** Коли лакей забрав пакунки, а пані посідали в екіпаж, панна Флорентина докірливим тоном озвалася:
+
+---
+
+**PL:** — Mówiłaś z tym człowiekiem, Belu?...
+
+**UA:** — Ти розмовляла з тим чоловіком, Белю?
+
+---
+
+**PL:** — Tak i nie żałuję tego. On wszystko skłamał, ale...
+
+**UA:** — Так, і не шкодую. Він усе збрехав, але...
+
+---
+
+**PL:** — Co znaczy to: ale?... — z niepokojem zapytała panna Florentyna.
+
+**UA:** — Що означає це «але»? — стривожено запитала панна Флорентина.
+
+---
+
+**PL:** — Nie pytaj mnie... Nic do mnie nie mów, jeżeli nie chcesz, ażebym rozpłakała się na ulicy...
+
+**UA:** — Не питай мене... Нічого не кажи, якщо не хочеш, щоб я розплакалася просто на вулиці...
+
+---
+
+**PL:** A po chwili dodała po francusku:
+
+**UA:** За мить вона додала французькою:
+
+---
+
+**PL:** — Zresztą, może zrobiłam źle przyjeżdżając tutaj, ale... wszystko mi jedno!...
+
+**UA:** — Зрештою, може, я й дарма приїхала сюди, але... мені однаково!
+
+---
+
+**PL:** — Myślę, Belciu — rzekła, z powagą sznurując usta, jej towarzyszka — że należałoby pomówić o tym z ojcem albo z ciotką.
+
+**UA:** — Гадаю, Белю, — сказала її супутниця, серйозно стиснувши губи, — тобі слід було б поговорити про це з батьком або тіткою.
+
+---
+
+**PL:** — Chcesz powiedzieć — przerwała panna Izabela — że muszę pomówić z marszałkiem albo z baronem? Na to zawsze będzie czas; dziś nie mam jeszcze odwagi.
+
+**UA:** — Ти хочеш сказати, — перебила панна Ізабела, — що я маю поговорити з маршалком чи бароном? На це ще буде час; сьогодні я не маю сміливості.
+
+---
+
+**PL:** Przerwała się rozmowa. Panie milcząc wróciły do domu; panna Izabela cały dzień była rozdrażniona.
+
+**UA:** Розмова урвалася. Пані мовчки повернулися додому; весь день панна Ізабела була роздратована.
+
+---
+
+**PL:** Po wyjściu panny Izabeli ze sklepu Wokulski wziął się znowu do rachunków i bez błędu zsumował dwie duże kolumny cyfr. W połowie trzeciej zatrzymał się i dziwił się temu spokojowi, jaki zapanował w jego duszy. Po całorocznej gorączce i tęsknocie przerywanej wybuchami szału skąd naraz ta obojętność?
+
+**UA:** Після виходу панни Ізабели з крамниці Вокульський знову взявся до рахунків і без помилки підсумував два великі стовпчики цифр. На половині третього він зупинився й здивувався спокою, що запанував у його душі. Звідки раптом ця байдужість після року гарячки й туги, яку переривали напади шаленства?
+
+**PL:** Gdyby można było jakiegoś człowieka nagle przerzucić z balowej sali do lasu albo z dusznego więzienia na chłodne i obszerne pole, nie doznałby innych wrażeń ani głębszego zdumienia.
+
+**UA:** Якби людину раптом перенести з бальної зали до лісу або з задушливої в'язниці на прохолодне й просторе поле, вона не зазнала б сильнішого враження чи глибшого подиву.
+
+---
+
+**PL:** „Widocznie przez rok ulegałem częściowemu obłąkaniu” — myślał Wokulski. — „Nie było niebezpieczeństwa, nie było ofiary, której nie poniósłbym dla tej osoby, i ledwiem ją zobaczył, już nic mnie nie obchodzi...
+
+**UA:** «Очевидно, цілий рік я був частково божевільний, — думав Вокульський. — Не було небезпеки, не було жертви, на яку я не пішов би заради цієї жінки; та щойно я її побачив — і вона вже мене не обходить...
+
+---
+
+**PL:** A jak ona rozmawiała ze mną. Ile tam było pogardy dla marnego kupca... »Zapłać temu panu!...« Paradne są te wielkie damy; próżniak, szuler, nawet złodziej, byle miał nazwisko, stanowi dla nich dobre towarzystwo, choćby fizjognomią zamiast ojca przypominał lokaja swej matki.
+
+**UA:** А як вона зі мною розмовляла! Скільки зневаги до жалюгідного купця... “Заплати цьому панові!” Чудові ці великі пані: нероба, шулер, навіть злодій — аби мав гучне ім'я, той для них гідне товариство, хоч би обличчям замість батька нагадував лакея її матері.
+
+**PL:** Ale kupiec — jest pariasem<sup>180</sup>... Co mnie to wreszcie obchodzi; gnijcie sobie w spokoju!”
+
+**UA:** А купець — парія<sup>180</sup>... Та зрештою, яке мені діло; гнийте собі спокійно!»
+
+---
+
+**PL:** Znowu dodał jedną kolumnę nie uważając nawet, co się dzieje w sklepie.
+
+**UA:** Він знову підсумував стовпчик, навіть не зважаючи на те, що відбувалося в крамниці.
+
+---
+
+**PL:** „Skąd ona wie — myślał dalej — że ja kupiłem serwis i srebra?... A jak wybadywała, czym nie zapłacił więcej niż warte! Z przyjemnością ofiarowałbym im ten pamiątkowy drobiazg. Winienem jej dozgonną wdzięczność, bo gdyby nie szał dla niej, nie dorobiłbym się majątku i spleśniałbym za kantorkiem.
+
+**UA:** «Звідки вона знає, — міркував він далі, — що це я купив сервіз і срібло?.. Як вона вивідувала, чи не заплатив я більше, ніж вони варті! Я б із задоволенням подарував їм цю пам'ятну дрібничку. Я завдячую їй довічною вдячністю: якби не моє божевільне кохання до неї, я б не нажив багатства й запліснявів би за конторкою.
+
+**PL:** A teraz może mi smutno będzie bez tych żalów, rozpaczy i nadziei... Głupie życie!... Po ziemi gonimy marę, którą każdy nosi we własnym sercu, i dopiero gdy stamtąd ucieknie, poznajemy, że to był obłęd... No, nigdy bym nie przypuszczał, że mogą istnieć tak cudowne kuracje.
+
+**UA:** А тепер, може, мені бракуватиме цієї туги, розпачу й надії... Дурне життя!.. Ми ганяємося по землі за примарою, яку кожен носить у власному серці, і лише коли вона звідти тікає, розуміємо, що то було божевілля... Ну, ніколи б не подумав, що бувають такі дивовижні ліки.
+
+**PL:** Przed godziną byłem pełen trucizny, a w tej chwili jestem tak spokojny i — jakiś pusty, jakby uciekła ze mnie dusza i wnętrzności, a została tylko skóra i odzież. Co ja teraz będę robił? czym będę żył?... Chyba pojadę na wystawę do Paryża<sup>181</sup>, a potem w Alpy...”
+
+**UA:** Ще годину тому я був сповнений отрути, а тепер такий спокійний і — якийсь порожній, ніби з мене втекли душа й нутрощі, залишилися тільки шкіра та одяг. Що я тепер робитиму? Чим житиму?.. Хіба поїду на виставку до Парижа<sup>181</sup>, а потім — в Альпи...»
+
+---
+
+**PL:** W tej chwili zbliżył się do niego na palcach Rzecki i szepnął:
+
+**UA:** Тієї миті Жецький навшпиньки підійшов до нього й прошепотів:
+
+---
+
+**PL:** — Pyszny jest ten Mraczewski, co? Jak on umie rozmawiać z kobietami!
+
+**UA:** — Чудовий цей Мрацевський, правда? Як він уміє розмовляти з жінками!
+
+---
+
+**PL:** — Jak fryzjerczyk, którego uzuchwalono — odpowiedział Wokulski nie odrywając oczu od księgi.
+
+**UA:** — Мов перукарчик, якого розпустили, — відповів Вокульський, не відриваючи очей від книги.
+
+---
+
+**PL:** — Nasze klientki zrobiły go takim — odpowiedział stary subiekt, lecz widząc, że przeszkadza pryncypałowi, cofnął się. Wokulski znowu wpadł w zadumę. Nieznacznie spojrzał na Mraczewskiego i dopiero w tej chwili zauważył, że młody człowiek ma coś szczególnego w fizjognomii.
+
+**UA:** — Наші клієнтки зробили його таким, — відповів старий продавець, але, побачивши, що заважає господареві, відступив. Вокульський знову замислився. Непомітно глянув на Мрацевського й лише тепер помітив у молодика щось особливе в обличчі.
+
+---
+
+**PL:** „Tak — myślał — on jest bezczelnie głupi i zapewne dlatego podoba się kobietom.”
+
+**UA:** «Так, — думав він, — він нахабно дурний, і, мабуть, саме тому подобається жінкам».
+
+---
+
+**PL:** Śmiać mu się chciało i ze spojrzeń panny Izabeli, wysyłanych pod adresem pięknego młodzieńca, i z własnych przywidzeń, które dziś tak nagle go opuściły.
+
+**UA:** Йому хотілося сміятися і з поглядів панни Ізабели, адресованих красеню, і з власних марень, які так раптово його покинули.
+
+---
+
+**PL:** Wtem drgnął; usłyszał imię panny Izabeli i spostrzegł, że w sklepie nie ma nikogo z gości.
+
+**UA:** Раптом він здригнувся: почув ім'я панни Ізабели й помітив, що в крамниці вже не лишилося покупців.
+
+---
+
+**PL:** — No, ale dzisiaj toś się pan nie ukrywał ze swoimi amorami — mówił ze smutnym uśmiechem Klejn do Mraczewskiego.
+
+**UA:** — Ну, сьогодні ви вже й не приховували своїх амурів, — зі смутною усмішкою сказав Клейн Мрацевському.
+
+---
+
+**PL:** — Ale bo jak ona na mnie patrzyła, to ach!... — westchnął Mraczewski, jedną rękę kładąc na piersi, drugą podkręcając wąsika. — Jestem pewny — mówił — że za parę dni otrzymam wonny bilecik.
+
+**UA:** — Та як же вона на мене дивилася, ах!.. — зітхнув Мрацевський, поклавши одну руку на груди, а другою підкручуючи вусика. — Упевнений, за кілька днів отримаю запашний листочок.
+
+**PL:** Potem — pierwsza schadzka, potem: „dla pana łamię zasady, w jakich mnie wychowano”, a potem: „czy nie gardzisz mną?” Chwila wcześniej jest bardzo rozkoszną, ale w chwilę później człowiek jest tak zakłopotany...
+
+**UA:** Потім — перше побачення, потім: «Заради вас я порушую правила, за якими мене виховали», а далі: «Невже ви мною зневажаєте?» Мить перед тим — справжня насолода, а вже за мить чоловік почувається таким ніяково...
+
+---
+
+**PL:** — Co pan blagujesz! — przerwał mu Lisiecki. — Znamy przecież pańskie konkiety<sup>182</sup>: nazywają się Matyldami, którym pan imponujesz porcją pieczeni i kuflem piwa.
+
+**UA:** — Та що ви верзете! — перебив його Лісецький. — Ми ж знаємо ваші залицяння<sup>182</sup>: ваші Матильди — це ті, кого ви вражаєте шматком печені та кухлем пива.
+
+---
+
+**PL:** — Matyldy są na co dzień, damy na święta. Ale Iza będzie największym świętem. Słowo honoru daję, że nie znam kobiety, która by na mnie tak piekielne robiła wrażenie... No, ale bo też i ona lgnie do mnie!
+
+**UA:** — Матильди — на будень, пані — на свята. А Іза буде найбільшим святом. Чесне слово, я не знаю жінки, яка справляла б на мене таке шалене враження... Та й вона ж до мене горнеться!
+
+---
+
+**PL:** Trzasnęły drzwi i do sklepu wszedł jegomość szpakowaty; zażądał breloku<sup>183</sup> do zegarka, a krzyczał i stukał laską tak mocno, jakby miał zamiar kupić całą japońszczyznę.
+
+**UA:** Двері грюкнули, і до крамниці ввійшов сивуватий пан. Він попросив брелок<sup>183</sup> до годинника, а кричав і стукав палицею так, ніби збирався купити всі японські товари.
+
+---
+
+**PL:** Wokulski słuchał przechwałek Mraczewskiego bez ruchu. Doświadczał wrażenia, jakby mu na głowę i na piersi spadały ciężary.
+
+**UA:** Вокульський нерухомо слухав вихваляння Мрацевського. Йому здавалося, ніби тягарі падають йому на голову й груди.
+
+---
+
+**PL:** — W rezultacie nic mnie to nie obchodzi — szepnął.
+
+**UA:** — Зрештою, мене це не обходить, — прошепотів він.
+
+---
+
+**PL:** Po szpakowatym jegomościu weszła do sklepu dama żądająca parasola, później pan w średnim wieku chcący nabyć kapelusz, potem młody człowiek żądający cygarnicy, nareszcie trzy panny, z których jedna kazała podać sobie rękawiczki Szolca<sup>184</sup>, ale koniecznie Szolca, bo innych nie używa.
+
+**UA:** Після сивуватого пана до крамниці зайшла дама, яка просила парасольку; потім пан середніх літ, що хотів купити капелюха; далі молодик, якому потрібен був портсигар; нарешті — три панянки, одна з яких попросила подати рукавички Шольца<sup>184</sup>, неодмінно Шольца, бо інших вона не носить.
+
+---
+
+**PL:** Wokulski złożył księgę, z wolna podniósł się z fotelu i sięgnąwszy po kapelusz stojący na kantorku skierował się ku drzwiom. Czuł brak oddechu i jakby rozsadzanie czaszki.
+
+**UA:** Вокульський закрив книгу, поволі підвівся з крісла, взяв капелюха з конторки й попрямував до дверей. Йому бракувало повітря, а голова наче розпиралася.
+
+---
+
+**PL:** Pan Ignacy zabiegł mu drogę.
+
+**UA:** Пан Ігнацій заступив йому дорогу.
+
+---
+
+**PL:** — Wychodzisz?... Może zajrzysz do tamtego sklepu — rzekł.
+
+**UA:** — Виходиш?.. Може, зазирнеш до тієї крамниці? — сказав він.
+
+---
+
+**PL:** — Nigdzie nie zajrzę, jestem zmęczony — odpowiedział Wokulski nie patrząc mu w oczy.
+
+**UA:** — Нікуди не зайду, я втомився, — відповів Вокульський, не дивлячись йому в очі.
+
+---
+
+**PL:** Gdy wyszedł, Lisiecki trącił Rzeckiego w ramię.
+
+**UA:** Коли він вийшов, Лісецький штовхнув Жецького в плече.
+
+---
+
+**PL:** — Coś stary jakby zaczynał robić bokami — szepnął.
+
+**UA:** — Старий наче вже починає здавати, — прошепотів він.
+
+---
+
+**PL:** — No — odparł pan Ignacy — puszczenie w ruch takiego interesu jak moskiewski to nie chy-chy. Rozumie się.
+
+**UA:** — Авжеж, — відповів пан Ігнацій. — Запустити таку справу, як московська, — то вам не жарти. Авжеж.
+
+---
+
+**PL:** — Po cóż się w to wdaje?
+
+**UA:** — Чого ж він у це вплутується?
+
+---
+
+**PL:** — Po to, żeby miał nam z czego pensje podwyższać — surowo odpowiedział pan Ignacy.
+
+**UA:** — Щоб було з чого підвищувати нам платню, — суворо відповів пан Ігнацій.
+
+---
+
+**PL:** — A niechże sobie zakłada sto nowych interesów, nawet w Irkucku, byle tak co roku podwyższał — rzekł Lisiecki. — Ja z nim się o to spierać nie będę. Ale swoją drogą, uważam, że jest diabelnie zmieniony, osobliwie dzisiaj. Żydzi, panie, Żydzi — dodał — jak zwąchają jego projekta, dadzą mu łupnia.
+
+**UA:** — Та нехай би відкривав хоч сотню нових справ, хоч в Іркутську, аби тільки щороку підвищував платню, — сказав Лісецький. — Я сперечатися з ним через це не буду. Але все ж він страшенно змінився, особливо сьогодні. Жиди, пане, жиди, — додав він, — як пронюхають про його плани, дадуть йому прочухана.
+
+---
+
+**PL:** — Co tam Żydzi...
+
+**UA:** — Та що ті жиди...
+
+---
+
+**PL:** — Żydzi, mówię, Żydzi!... Wszystkich trzymają za łeb i nie pozwolą, ażeby im bruździł jakiś Wokulski, nie Żyd ani nawet meches<sup>185</sup>.
+
+**UA:** — Жиди, кажу, жиди!.. Вони всіх тримають у кулаці й не дозволять, щоб їм заважав якийсь Вокульський — не жид і навіть не віровідступник<sup>185</sup>.
+
+---
+
+**PL:** — Wokulski zwiąże się ze szlachtą — odpowiedział Ignacy — a i tam są kapitały.
+
+**UA:** — Вокульський об'єднається зі шляхтою, — відповів Ігнацій, — а й там є капітали.
+
+---
+
+**PL:** — Kto wie, co gorsze: Żyd czy szlachcic — wtrącił mimochodem Klejn i podniósł brwi w sposób bardzo żałosny.
+
+**UA:** — Хтозна, що гірше: жид чи шляхтич, — мимохідь кинув Клейн і дуже жалібно підняв брови.

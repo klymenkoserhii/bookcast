@@ -1,0 +1,1443 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to mp3/lalka_004_lalka-tom-pierwszy_tom-i-rozdzial-iv.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-04.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Tom I, Rozdział IV — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Tom I, Rozdział IV · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="mp3/lalka_004_lalka-tom-pierwszy_tom-i-rozdzial-iv.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Jest niedziela, szkaradny dzień marcowy; zbliża się południe, lecz ulice Warszawy są prawie puste. Ludzie nie wychodzą z domów albo kryją się w bramach, albo skuleni uciekają przed siekącym ich deszczem i śniegiem. Prawie nie słychać turkotu dorożek, gdyż dorożki stoją.",
+  "start": 6.05
+ },
+ {
+  "i": 1,
+  "pl": "Dorożkarze opuściwszy kozioł wchodzą pod budy swoich powozów, a zmoczone deszczem i zasypane śniegiem konie wyglądają tak, jakby pragnęły schować się pod dyszel i nakryć własnymi uszami.",
+  "start": 28.27
+ },
+ {
+  "i": 2,
+  "pl": "Pomimo, a może z powodu tak brzydkiego czasu pan Ignacy siedzący w swoim zakratowanym pokoju jest bardzo wesół. Interesa sklepowe idą wybornie, wystawa w oknach na przyszły tydzień już ułożona, a nade wszystko — lada dzień ma powrócić Wokulski.",
+  "start": 42.41
+ },
+ {
+  "i": 3,
+  "pl": "Nareszcie pan Ignacy zda komuś rachunki i ciężar kierowania sklepem, najdalej zaś za dwa miesiące wyjedzie sobie na wakacje. Po dwudziestu pięciu latach pracy — i jeszcze jakiej! — należy mu się ten wypoczynek.",
+  "start": 59.85
+ },
+ {
+  "i": 4,
+  "pl": "Będzie rozmyślał tylko o polityce, będzie chodził, będzie biegał i skakał po polach i lasach, będzie świstał, a nawet śpiewał jak za młodu. Gdyby nie te bóle reumatyczne, które zresztą na wsi ustąpią...",
+  "start": 75.92
+ },
+ {
+  "i": 5,
+  "pl": "Więc choć deszcz ze śniegiem bije w zakratowane okna, choć pada tak gęsto, że w pokoju jest mrok, pan Ignacy ma wiosenny humor. Wydobywa spod łóżka gitarę, dostraja ją i wziąwszy kilka akordów, zaczyna śpiewać przez nos pieśń bardzo romantyczną:",
+  "start": 90.6
+ },
+ {
+  "i": 6,
+  "pl": "Czarowne te dźwięki budzą śpiącego na kanapie pudla, który poczyna przypatrywać się jedynym okiem swemu panu. Dźwięki te robią więcej, gdyż wywołują na podwórzu jakiś ogromny cień, który staje w zakratowanym oknie i usiłuje zajrzeć do wnętrza izby, czym zwraca na siebie uwagę pana Ignacego.",
+  "start": 120.79
+ },
+ {
+  "i": 7,
+  "pl": "„Tak, to musi być Paweł” — myśli pan Ignacy.",
+  "start": 141.33
+ },
+ {
+  "i": 8,
+  "pl": "Ale Ir jest innego zdania, zeskakuje bowiem z kanapy i z niepokojem wącha drzwi, jakby czuł kogoś obcego.",
+  "start": 144.61
+ },
+ {
+  "i": 9,
+  "pl": "Słychać szmer w sieniach. Jakaś ręka poszukuje klamki, nareszcie otwierają się drzwi i na progu staje ktoś odziany w wielkie futro upstrzone śniegiem i kroplami deszczu.",
+  "start": 152.84
+ },
+ {
+  "i": 10,
+  "pl": "— Kto to? — pyta się pan Ignacy i na twarz występują mu silne rumieńce.",
+  "start": 164.92
+ },
+ {
+  "i": 11,
+  "pl": "— Jużeś o mnie zapomniał, stary?... — cicho i powoli odpowiada gość.",
+  "start": 170.97
+ },
+ {
+  "i": 12,
+  "pl": "Pan Ignacy miesza się coraz bardziej. Zasadza na nos binokle, które mu spadają, potem wydobywa spod łóżka trumienkowate pudło, śpiesznie chowa gitarę i toż samo pudełko wraz z gitarą kładzie na swoim łóżku.",
+  "start": 177.09
+ },
+ {
+  "i": 13,
+  "pl": "Tymczasem gość zdjął wielkie futro i baranią czapkę, a jednooki Ir obwąchawszy go poczyna kręcić ogonem, łasić się i z radosnym skomleniem przypadać mu do nóg.",
+  "start": 190.44
+ },
+ {
+  "i": 14,
+  "pl": "Pan Ignacy zbliża się do gościa wzruszony i zgarbiony więcej niż kiedykolwiek.",
+  "start": 201.84
+ },
+ {
+  "i": 15,
+  "pl": "— Zdaje mi się... — mówi zacierając ręce — zdaje mi się, że mam przyjemność...",
+  "start": 207.06
+ },
+ {
+  "i": 16,
+  "pl": "Potem gościa prowadzi do okna mrugając powiekami.",
+  "start": 213.56
+ },
+ {
+  "i": 17,
+  "pl": "— Staś... jak mi Bóg miły!...",
+  "start": 218.24
+ },
+ {
+  "i": 18,
+  "pl": "Klepie go po wypukłej piersi, ściska za prawą i za lewą rękę, a nareszcie oparłszy na jego ostrzyżonej głowie swoją dłoń wykonywa nią taki ruch, jakby mu chciał maść wetrzeć w okolicę ciemienia.",
+  "start": 221.44
+ },
+ {
+  "i": 19,
+  "pl": "— Cha! cha! cha! — śmieje się pan Ignacy. — Staś we własnej osobie... Staś z wojny!... Cóż to, dopiero teraz przypomniałeś sobie, że masz sklep i przyjaciół? — dodaje, mocno uderzając go w łopatkę. — Niech mię diabli wezmą, jeżeli nie jesteś podobny do żołnierza albo marynarza, ale nigdy do kupca...",
+  "start": 234.64
+ },
+ {
+  "i": 20,
+  "pl": "Przez osiem miesięcy nie był w sklepie!... Co za pierś... co za łeb...",
+  "start": 253.72
+ },
+ {
+  "i": 21,
+  "pl": "Gość także się śmiał. Objął Ignacego za szyję i po kilka razy gorąco ucałował go w oba policzki, które stary subiekt kolejno nadstawiał mu, nie oddając jednak pocałunków.",
+  "start": 258.66
+ },
+ {
+  "i": 22,
+  "pl": "— No i cóż słychać, stary, u ciebie? — odezwał się gość. — Wychudłeś, pobladłeś...",
+  "start": 271.28
+ },
+ {
+  "i": 23,
+  "pl": "— Owszem, trochę nabieram ciała.",
+  "start": 277.04
+ },
+ {
+  "i": 24,
+  "pl": "— Posiwiałeś... Jakże się masz?",
+  "start": 279.64
+ },
+ {
+  "i": 25,
+  "pl": "— Wybornie. I w sklepie jest nieźle, trochę zwiększyły się nam obroty. W styczniu i lutym mieliśmy targu za dwadzieścia pięć tysięcy rubli... Staś kochany!... Osiem miesięcy nie było go w domu... Bagatela... Może siądziesz?",
+  "start": 282.26
+ },
+ {
+  "i": 26,
+  "pl": "— Rozumie się — odpowiedział gość siadając na kanapie, na której wnet umieścił się Ir i oparł mu głowę na kolanach.",
+  "start": 296.62
+ },
+ {
+  "i": 27,
+  "pl": "Pan Ignacy przysunął sobie krzesło.",
+  "start": 303.78
+ },
+ {
+  "i": 28,
+  "pl": "— Może co zjesz? Mam szynkę i trochę kawioru.",
+  "start": 306.26
+ },
+ {
+  "i": 29,
+  "pl": "— Owszem.",
+  "start": 309.22
+ },
+ {
+  "i": 30,
+  "pl": "— Może co wypijesz? Mam butelkę niezłego węgrzyna, ale tylko jeden cały kieliszek.",
+  "start": 310.12
+ },
+ {
+  "i": 31,
+  "pl": "— Będę pił szklanką — odparł gość.",
+  "start": 315.34
+ },
+ {
+  "i": 32,
+  "pl": "Pan Ignacy zaczął dreptać po pokoju, kolejno otwierając szafę, kuferek i stolik.",
+  "start": 317.76
+ },
+ {
+  "i": 33,
+  "pl": "Wydobył wino i schował je na powrót, potem rozłożył na stole szynkę i kilka bułek. Ręce i powieki drżały mu i sporo czasu upłynęło, nim o tyle się uspokoił, że zgromadził na jeden punkt poprzednio wyliczone zapasy. Dopiero kieliszek wina przywrócił mu silnie zachwianą równowagę moralną.",
+  "start": 322.66
+ },
+ {
+  "i": 34,
+  "pl": "Wokulski tymczasem jadł.",
+  "start": 342.14
+ },
+ {
+  "i": 35,
+  "pl": "— No, cóż nowego? — rzekł spokojniejszym tonem pan Ignacy trącając gościa w kolano.",
+  "start": 344.42
+ },
+ {
+  "i": 36,
+  "pl": "— Domyślam się, że ci chodzi o politykę — odparł Wokulski. — Będzie pokój.",
+  "start": 352.11
+ },
+ {
+  "i": 37,
+  "pl": "— A po cóż zbroi się Austria?",
+  "start": 358.23
+ },
+ {
+  "i": 38,
+  "pl": "— Zbroi się za sześćdziesiąt milionów guldenów?... Chce zabrać Bośnię i Hercegowinę<sup>103<\/sup>.",
+  "start": 360.73
+ },
+ {
+  "i": 39,
+  "pl": "Ignacemu rozszerzyły się źrenice.",
+  "start": 366.79
+ },
+ {
+  "i": 40,
+  "pl": "— Austria chce zabrać?... — powtórzył. — Za co?...",
+  "start": 369.4
+ },
+ {
+  "i": 41,
+  "pl": "— Za co? — uśmiechnął się Wokulski. — Za to, że Turcja nie może jej tego zabronić.",
+  "start": 373.5
+ },
+ {
+  "i": 42,
+  "pl": "— A cóż Anglia?",
+  "start": 379.14
+ },
+ {
+  "i": 43,
+  "pl": "— Anglia także dostanie kompensatę.",
+  "start": 380.54
+ },
+ {
+  "i": 44,
+  "pl": "— Na koszt Turcji?",
+  "start": 383.02
+ },
+ {
+  "i": 45,
+  "pl": "— Rozumie się. Zawsze słabi ponoszą koszta zatargów między silnymi.",
+  "start": 384.42
+ },
+ {
+  "i": 46,
+  "pl": "— A sprawiedliwość? — zawołał Ignacy.",
+  "start": 389.36
+ },
+ {
+  "i": 47,
+  "pl": "— Sprawiedliwym jest to, że silni mnożą się i rosną, a słabi giną. Inaczej świat stałby się domem inwalidów, co dopiero byłoby niesprawiedliwością.",
+  "start": 392.82
+ },
+ {
+  "i": 48,
+  "pl": "Ignacy posunął się z krzesłem.",
+  "start": 403.32
+ },
+ {
+  "i": 49,
+  "pl": "— I ty to mówisz, Stasiu?... Na serio, bez żartów?",
+  "start": 405.9
+ },
+ {
+  "i": 50,
+  "pl": "Wokulski zwrócił na niego spokojne wejrzenie.",
+  "start": 409.12
+ },
+ {
+  "i": 51,
+  "pl": "— Ja mówię — odparł. — Cóż w tym dziwnego? Czyliż to samo prawo nie stosuje się do mnie, do ciebie, do nas wszystkich?... Za dużo płakałem nad sobą, ażebym się miał rozczulać nad Turcją.",
+  "start": 412.06
+ },
+ {
+  "i": 52,
+  "pl": "Pan Ignacy spuścił oczy i umilkł. Wokulski jadł.",
+  "start": 424.8
+ },
+ {
+  "i": 53,
+  "pl": "— No, a jakże tobie poszło? — zapytał Rzecki już zwykłym tonem.",
+  "start": 429.67
+ },
+ {
+  "i": 54,
+  "pl": "Wokulskiemu błysnęły oczy. Położył bułkę i oparł się o poręcz kanapy.",
+  "start": 435.7
+ },
+ {
+  "i": 55,
+  "pl": "— Pamiętasz — rzekł — ile wziąłem pieniędzy, gdym stąd wyjeżdżał?",
+  "start": 440.4
+ },
+ {
+  "i": 56,
+  "pl": "— Trzydzieści tysięcy rubli, całą gotówkę.",
+  "start": 445.66
+ },
+ {
+  "i": 57,
+  "pl": "— A jak ci się zdaje: ile przywiozłem?",
+  "start": 448.0
+ },
+ {
+  "i": 58,
+  "pl": "— Pięćdzie... ze czterdzieści tysięcy... Zgadłem?... — pytał Rzecki, niepewnie patrząc na niego.",
+  "start": 453.04
+ },
+ {
+  "i": 59,
+  "pl": "Wokulski nalał szklankę wina i wypił ją powoli.",
+  "start": 459.84
+ },
+ {
+  "i": 60,
+  "pl": "— Dwieście pięćdziesiąt tysięcy rubli, z tego dużą część w złocie — rzekł dobitnie. — A ponieważ kazałem zakupić banknoty, które po zawarciu pokoju sprzedam, więc będę miał przeszło trzysta tysięcy rubli...",
+  "start": 463.92
+ },
+ {
+  "i": 61,
+  "pl": "Rzecki pochylił się ku niemu i otworzył usta.",
+  "start": 478.97
+ },
+ {
+  "i": 62,
+  "pl": "— Nie bój się — ciągnął Wokulski. — Grosz ten zarobiłem uczciwie, nawet ciężko, bardzo ciężko. Cały sekret polega na tym, żem miał bogatego wspólnika i że kontentowałem się cztery i pięć razy mniejszym zyskiem niż inni. Toteż mój kapitał ciągle wzrastający był w ciągłym ruchu.",
+  "start": 482.07
+ },
+ {
+  "i": 63,
+  "pl": "— No — dodał po chwili — miałem też szalone szczęście... Jak gracz, któremu dziesięć razy z rzędu wychodzi ten sam numer w rulecie. Gruba gra?... prawie co miesiąc stawiałem cały majątek, a co dzień życie.",
+  "start": 501.55
+ },
+ {
+  "i": 64,
+  "pl": "— I tylko po to jeździłeś tam? — zapytał Ignacy.",
+  "start": 517.33
+ },
+ {
+  "i": 65,
+  "pl": "Wokulski drwiąco spojrzał na niego.",
+  "start": 521.27
+ },
+ {
+  "i": 66,
+  "pl": "— Czy chciałeś, ażebym został tureckim Wallenrodem?...<sup>104<\/sup>",
+  "start": 524.56
+ },
+ {
+  "i": 67,
+  "pl": "— Narażać się dla majątku, gdy się ma spokojny kawałek chleba!... — mruknął pan Ignacy kiwając głową i podnosząc brwi.",
+  "start": 528.63
+ },
+ {
+  "i": 68,
+  "pl": "Wokulski zadrżał z gniewu i zerwał się z kanapy.",
+  "start": 536.75
+ },
+ {
+  "i": 69,
+  "pl": "— Ten spokojny chleb — mówił zaciskając pięści — dławił mnie i dusił przez lat sześć!... Czy już nie pamiętasz, ile razy na dzień przypominano mi dwa pokolenia Minclów albo anielską dobroć mojej żony?",
+  "start": 539.93
+ },
+ {
+  "i": 70,
+  "pl": "Czy był kto z dalszych i bliższych znajomych, wyjąwszy ciebie, który by mię nie dręczył słowem, ruchem, a choćby spojrzeniem?",
+  "start": 556.1
+ },
+ {
+  "i": 71,
+  "pl": "Ileż to razy mówiono o mnie i prawie do mnie, że karmię się z fartucha żony, że wszystko zawdzięczam pracy Minclów, a nic, ale to nic — własnej energii, choć przecie ja podźwignąłem ten kramik, zdwoiłem jego dochody...",
+  "start": 565.18
+ },
+ {
+  "i": 72,
+  "pl": "Mincle i zawsze Mincle!... Dziś niech mnie porównają z Minclami. Sam jeden przez pół roku zarobiłem dziesięć razy więcej aniżeli dwa pokolenia Minclów przez pół wieku.",
+  "start": 579.18
+ },
+ {
+  "i": 73,
+  "pl": "Na zdobycie tego, com ja zdobył pomiędzy kulą, nożem i tyfusem, tysiąc Minclów musiałoby się pocić w swoich sklepikach i szlafmycach. Teraz już wiem, ilu jestem wart Minclów, i jak mi Bóg miły, dla podobnego rezultatu drugi raz powtórzyłbym moją grę!",
+  "start": 590.92
+ },
+ {
+  "i": 74,
+  "pl": "Wolę obawiać się bankructwa i śmierci aniżeli wdzięczyć się do tych, którzy kupią u mnie parasol, albo padać do nóg tym, którzy w moim sklepie raczą zaopatrywać się w waterklozety...",
+  "start": 608.43
+ },
+ {
+  "i": 75,
+  "pl": "— Zawsze ten sam! — szepnął Ignacy.",
+  "start": 621.45
+ },
+ {
+  "i": 76,
+  "pl": "Wokulski ochłonął. Oparł się na ramieniu Ignacego i zaglądając mu w oczy rzekł łagodnie:",
+  "start": 625.09
+ },
+ {
+  "i": 77,
+  "pl": "— Nie gniewasz się, stary?",
+  "start": 632.56
+ },
+ {
+  "i": 78,
+  "pl": "— Czego? Albo nie wiem, że wilk nie będzie pilnował baranów... Naturalnie...",
+  "start": 635.04
+ },
+ {
+  "i": 79,
+  "pl": "— Cóż u was słychać? — powiedz mi.",
+  "start": 642.13
+ },
+ {
+  "i": 80,
+  "pl": "— Akurat tyle, co pisałem ci w raportach. Interesa dobrze idą, towarów przybyło, a jeszcze więcej zamówień. Trzeba jednego subiekta.",
+  "start": 645.89
+ },
+ {
+  "i": 81,
+  "pl": "— Weźmiemy dwu, sklep rozszerzymy, będzie wspaniały.",
+  "start": 655.79
+ },
+ {
+  "i": 82,
+  "pl": "— Bagatela!",
+  "start": 658.99
+ },
+ {
+  "i": 83,
+  "pl": "Wokulski spojrzał na niego z boku i uśmiechnął się widząc, że stary odzyskuje dobry humor.",
+  "start": 660.68
+ },
+ {
+  "i": 84,
+  "pl": "— Ale co w mieście słychać? W sklepie, dopóki ty w nim jesteś, musi być dobrze.",
+  "start": 666.16
+ },
+ {
+  "i": 85,
+  "pl": "— W mieście...",
+  "start": 670.78
+ },
+ {
+  "i": 86,
+  "pl": "— Z dawnych kundmanów<sup>105<\/sup> nie ubył kto? — przerwał mu Wokulski, coraz szybciej chodząc po pokoju.",
+  "start": 672.54
+ },
+ {
+  "i": 87,
+  "pl": "— Nikt! Przybyli nowi.",
+  "start": 678.36
+ },
+ {
+  "i": 88,
+  "pl": "— A... a...",
+  "start": 680.44
+ },
+ {
+  "i": 89,
+  "pl": "Wokulski stanął jakby wahając się. Nalał znowu szklankę wina i wypił duszkiem.",
+  "start": 681.52
+ },
+ {
+  "i": 90,
+  "pl": "— A Łęcki kupuje u nas?...",
+  "start": 688.84
+ },
+ {
+  "i": 91,
+  "pl": "— Częściej bierze na rachunek.",
+  "start": 691.66
+ },
+ {
+  "i": 92,
+  "pl": "— Więc bierze... — Tu Wokulski odetchnął. — Jakże on stoi?",
+  "start": 693.7
+ },
+ {
+  "i": 93,
+  "pl": "— Zdaje się, że to skończony bankrut i bodajże w tym roku zlicytują mu nareszcie kamienicę.",
+  "start": 699.51
+ },
+ {
+  "i": 94,
+  "pl": "Wokulski pochylił się nad kanapą i zaczął bawić się z Irem.",
+  "start": 705.53
+ },
+ {
+  "i": 95,
+  "pl": "— Proszę cię... A panna Łęcka nie wyszła za mąż?",
+  "start": 709.23
+ },
+ {
+  "i": 96,
+  "pl": "— Nie.",
+  "start": 713.23
+ },
+ {
+  "i": 97,
+  "pl": "— A nie wychodzi?...",
+  "start": 714.9
+ },
+ {
+  "i": 98,
+  "pl": "— Bardzo wątpię. Kto dziś ożeni się z panną mającą wielkie wymagania, a żadnego posagu? Zestarzeje się, choć ładna. Naturalnie...",
+  "start": 716.54
+ },
+ {
+  "i": 99,
+  "pl": "Wokulski wyprostował się i przeciągnął. Jego surowa twarz nabrała dziwnie rzewnego wyrazu.",
+  "start": 725.74
+ },
+ {
+  "i": 100,
+  "pl": "— Mój kochany stary! — mówił biorąc Ignacego za rękę — mój poczciwy stary przyjacielu! Ty nawet nie domyślasz się, jakim ja szczęśliwy, że cię widzę, i jeszcze w tym pokoju. Pamiętasz, ilem ja tu spędził wieczorów i nocy... jak mnie karmiłeś... jak oddawałeś mi co lepsze odzienie... Pamiętasz?...",
+  "start": 731.34
+ },
+ {
+  "i": 101,
+  "pl": "Rzecki uważnie spojrzał na niego i pomyślał, że wino musi być dobre, skoro aż tak rozwiązało usta Wokulskiemu.",
+  "start": 749.92
+ },
+ {
+  "i": 102,
+  "pl": "Wokulski usiadł na kanapie i oparłszy głowę o ścianę mówił jakby do siebie:",
+  "start": 756.72
+ },
+ {
+  "i": 103,
+  "pl": "— Nie masz pojęcia, co ja wycierpiałem, oddalony od wszystkich, niepewny, czy już kogo zobaczę, tak strasznie samotny.",
+  "start": 761.72
+ },
+ {
+  "i": 104,
+  "pl": "Bo widzisz, najgorszą samotnością nie jest ta, która otacza człowieka, ale ta pustka w nim samym, kiedy z kraju nie wyniósł ani cieplejszego spojrzenia, ani serdecznego słówka, ani nawet iskry nadziei...",
+  "start": 768.58
+ },
+ {
+  "i": 105,
+  "pl": "Pan Ignacy poruszył się na krześle z zamiarem protestu.",
+  "start": 783.28
+ },
+ {
+  "i": 106,
+  "pl": "— Pozwól sobie przypomnieć — odezwał się — że z początku pisywałem listy bardzo życzliwe, owszem, może nawet za sentymentalne. Zraziły mnie dopiero twoje krótkie odpowiedzi.",
+  "start": 787.14
+ },
+ {
+  "i": 107,
+  "pl": "— Alboż ja do ciebie mam żal?...",
+  "start": 798.42
+ },
+ {
+  "i": 108,
+  "pl": "— Tym mniej możesz go mieć do innych pracowników, którzy nie znają cię tak jak ja.",
+  "start": 801.17
+ },
+ {
+  "i": 109,
+  "pl": "Wokulski ocknął się.",
+  "start": 805.94
+ },
+ {
+  "i": 110,
+  "pl": "— Ależ ja do żadnego z nich nie mam pretensji. Może — odrobinę — do ciebie, żeś tak mało pisał o... mieście... W dodatku bardzo często ginął „Kurier”<sup>106<\/sup> na poczcie, robiły się luki w wiadomościach, a wtedy męczyły mnie najgorsze przeczucia.",
+  "start": 808.1
+ },
+ {
+  "i": 111,
+  "pl": "— Z jakiej racji? Wszakże u nas nie było wojny — odparł ze zdziwieniem pan Ignacy.",
+  "start": 822.52
+ },
+ {
+  "i": 112,
+  "pl": "— Ach tak!... Nawet dobrze bawiliście się. Pamiętam, w grudniu mieliście świetne żywe obrazy<sup>107<\/sup>. Kto to w nich występował?...",
+  "start": 827.84
+ },
+ {
+  "i": 113,
+  "pl": "— No, ja na takie głupstwa nie chodzę.",
+  "start": 835.92
+ },
+ {
+  "i": 114,
+  "pl": "— To prawda. A ja tego dnia dałbym — bodaj — dziesięć tysięcy rubli, ażeby je zobaczyć. Głupstwo jeszcze większe!... Czy nie tak?...",
+  "start": 838.76
+ },
+ {
+  "i": 115,
+  "pl": "— Zapewne — chociaż dużo tu tłomaczy samotność, nudy...",
+  "start": 848.34
+ },
+ {
+  "i": 116,
+  "pl": "— A może tęsknota — przerwał Wokulski. — Zjadała mi ona każdą chwilę wolną od pracy, każdą godzinę odpoczynku. Nalej mi wina, Ignacy.",
+  "start": 853.32
+ },
+ {
+  "i": 117,
+  "pl": "Wypił, zaczął znowu chodzić po pokoju i mówić przyciszonym głosem:",
+  "start": 864.13
+ },
+ {
+  "i": 118,
+  "pl": "— Pierwszy raz spadło to na mnie w czasie przeprawy przez Dunaj trwającej od wieczora do nocy. Płynąłem sam i Cygan przewoźnik. Nie mogąc rozmawiać przypatrywałem się okolicy. Były w tym miejscu piaszczyste brzegi, jak u nas.",
+  "start": 869.78
+ },
+ {
+  "i": 119,
+  "pl": "I drzewa podobne do naszych wierzb, wzgórza porośnięte leszczyną i kępy lasów sosnowych. Przez chwilę zdawało mi się, że jestem w kraju, i że nim noc zapadnie, znowu was zobaczę. Noc zapadła, ale jednocześnie zniknęły mi z oczu brzegi.",
+  "start": 884.6
+ },
+ {
+  "i": 120,
+  "pl": "Byłem sam na ogromnej smudze wody, w której odbijały się nikłe gwiazdy.",
+  "start": 900.38
+ },
+ {
+  "i": 121,
+  "pl": "Wówczas przyszło mi na myśl, że tak daleko jestem od domu, że dziś ostatnim między mną i wami łącznikiem są tylko te gwiazdy, że w tej chwili u was może nikt nie patrzy na nie, nikt o mnie nie pamięta, nikt!...",
+  "start": 906.38
+ },
+ {
+  "i": 122,
+  "pl": "Uczułem jakby wewnętrzne rozdarcie i wtedy dopiero przekonałem się, jak głęboką mam ranę w duszy.",
+  "start": 922.5
+ },
+ {
+  "i": 123,
+  "pl": "— Prawda, że nigdy nie interesowały mnie gwiazdy — szepnął pan Ignacy.",
+  "start": 929.33
+ },
+ {
+  "i": 124,
+  "pl": "— Od tego dnia uległem dziwnej chorobie — mówił Wokulski. — Dopóki rozpisywałem listy, robiłem rachunki, odbierałem towary, rozsyłałem moich ajentów, dopókim bodaj dźwigał i wyładowywał zepsute wozy albo czuwał nad skradającym się grabieżcą, miałem względny spokój.",
+  "start": 935.48
+ },
+ {
+  "i": 125,
+  "pl": "Ale gdym oderwał się od interesów, a nawet gdym na chwilę złożył pióro, czułem ból, jakby mi — czy ty rozumiesz, Ignacy? — jakby mi ziarno piasku wpadło do serca.",
+  "start": 954.66
+ },
+ {
+  "i": 126,
+  "pl": "Bywało, chodzę, jem, rozmawiam, myślę przytomnie, rozpatruję się w pięknej okolicy, nawet śmieję się i jestem wesół, a mimo to czuję jakieś tępe ukłucie, jakiś drobny niepokój, jakąś nieskończenie małą obawę.",
+  "start": 965.62
+ },
+ {
+  "i": 127,
+  "pl": "Ten stan chroniczny, męczący nad wszelki wyraz, lada okoliczność rozdmuchiwała w burzę. Drzewo znajomej formy, jakiś obdarty pagórek, kolor obłoku, przelot ptaka, nawet powiew wiatru bez żadnego zresztą powodu budził we mnie tak szaloną rozpacz, że uciekałem od ludzi.",
+  "start": 981.63
+ },
+ {
+  "i": 128,
+  "pl": "Szukałem ustroni tak pustej, gdzie bym mógł upaść na ziemię i nie podsłuchany przez nikogo, wyć z bólu jak pies.",
+  "start": 1001.5
+ },
+ {
+  "i": 129,
+  "pl": "Czasami w tej ucieczce przed samym sobą doganiała mnie noc. Wtedy spoza krzaków, zwalonych pni i rozpadlin wychodziły naprzeciw mnie jakieś szare cienie i smutnie kiwały głowami o wyblakłych oczach.",
+  "start": 1009.41
+ },
+ {
+  "i": 130,
+  "pl": "A wszystkie szelesty liści, daleki turkot wozów, szmery wód zlewały się w jeden głos żałosny, który mnie pytał: „Przechodniu nasz, ach! co się z tobą stało?...”<sup>108<\/sup>",
+  "start": 1023.87
+ },
+ {
+  "i": 131,
+  "pl": "Ach, co się ze mną stało...",
+  "start": 1038.37
+ },
+ {
+  "i": 132,
+  "pl": "— Nic nie rozumiem — przerwał Ignacy. — Cóż to za szał?",
+  "start": 1041.14
+ },
+ {
+  "i": 133,
+  "pl": "— Co?... Tęsknota",
+  "start": 1046.69
+ },
+ {
+  "i": 134,
+  "pl": "— Za czym?",
+  "start": 1049.85
+ },
+ {
+  "i": 135,
+  "pl": "Wokulski drgnął.",
+  "start": 1051.77
+ },
+ {
+  "i": 136,
+  "pl": "— Za czym? No... za wszystkim... za krajem...",
+  "start": 1053.52
+ },
+ {
+  "i": 137,
+  "pl": "— Dlaczegożeś nie wracał?",
+  "start": 1059.65
+ },
+ {
+  "i": 138,
+  "pl": "— A cóż by mi dał powrót?... Zresztą — nie mogłem.",
+  "start": 1061.89
+ },
+ {
+  "i": 139,
+  "pl": "— Nie mogłeś? — powtórzył Ignacy.",
+  "start": 1067.05
+ },
+ {
+  "i": 140,
+  "pl": "— Nie mogłem... i basta! Nie miałem po co wracać — odparł niecierpliwie Wokulski. — Umrzeć tu czy tam, wszystko jedno... daj mi wina — zakończył nagle, wyciągając rękę.",
+  "start": 1069.75
+ },
+ {
+  "i": 141,
+  "pl": "Rzecki spojrzał w jego rozgorączkowaną twarz i odsunął butelkę.",
+  "start": 1080.53
+ },
+ {
+  "i": 142,
+  "pl": "— Daj pokój — rzekł — już i tak jesteś rozdrażniony...",
+  "start": 1084.67
+ },
+ {
+  "i": 143,
+  "pl": "— Dlatego chcę pić...",
+  "start": 1088.53
+ },
+ {
+  "i": 144,
+  "pl": "— Dlatego nie powinieneś pić — przerwał Ignacy. — Za wiele mówisz... może więcej, aniżelibyś chciał — dodał z naciskiem.",
+  "start": 1090.15
+ },
+ {
+  "i": 145,
+  "pl": "Wokulski cofnął się. Zastanowił się i odparł potrząsając głową:",
+  "start": 1098.61
+ },
+ {
+  "i": 146,
+  "pl": "— Mylisz się.",
+  "start": 1103.79
+ },
+ {
+  "i": 147,
+  "pl": "— Zaraz ci dowiodę — odpowiedział Ignacy przyciszonym głosem. — Ty nie jeździłeś tam wyłącznie dla zrobienia pieniędzy...",
+  "start": 1106.07
+ },
+ {
+  "i": 148,
+  "pl": "— Zapewne — rzekł Wokulski po namyśle.",
+  "start": 1114.37
+ },
+ {
+  "i": 149,
+  "pl": "— Bo i na co trzysta tysięcy rubli tobie, któremu wystarczało tysiąc na rok?...",
+  "start": 1117.31
+ },
+ {
+  "i": 150,
+  "pl": "— To prawda.",
+  "start": 1123.5
+ },
+ {
+  "i": 151,
+  "pl": "Rzecki zbliżył swoje usta do jego ucha.",
+  "start": 1125.22
+ },
+ {
+  "i": 152,
+  "pl": "— Jeszcze ci powiem, że pieniędzy tych nie przywiozłeś dla siebie...",
+  "start": 1127.66
+ },
+ {
+  "i": 153,
+  "pl": "— Kto wie, czyś nie zgadł.",
+  "start": 1132.02
+ },
+ {
+  "i": 154,
+  "pl": "— Zgaduję więcej, aniżeli myślisz...",
+  "start": 1134.52
+ },
+ {
+  "i": 155,
+  "pl": "Wokulski nagle roześmiał się.",
+  "start": 1137.04
+ },
+ {
+  "i": 156,
+  "pl": "— Aha, więc tak sądzisz? — zawołał. — Upewniam cię, że nic nie wiesz, stary marzycielu.",
+  "start": 1139.24
+ },
+ {
+  "i": 157,
+  "pl": "— Boję się twojej trzeźwości, pod wpływem której gadasz jak wariat. Rozumiesz mnie, Stasiu?...",
+  "start": 1145.74
+ },
+ {
+  "i": 158,
+  "pl": "Wokulski wciąż się śmiał.",
+  "start": 1152.58
+ },
+ {
+  "i": 159,
+  "pl": "— Masz rację, nie przywykłem pić i wino uderzyło mi do głowy. Ale — już zebrałem zmysły. Powiem ci tylko, że mylisz się gruntownie. A teraz, ażeby ocalić mnie od zupełnego upicia, wypij sam — za pomyślność moich zamiarów.",
+  "start": 1153.94
+ },
+ {
+  "i": 160,
+  "pl": "Ignacy nalał kieliszek i mocno ściskając rękę Wokulskiemu, rzekł:",
+  "start": 1170.18
+ },
+ {
+  "i": 161,
+  "pl": "— Za pomyślność wielkich zamiarów...",
+  "start": 1174.7
+ },
+ {
+  "i": 162,
+  "pl": "— Wielkich dla mnie, ale w rzeczywistości bardzo skromnych.",
+  "start": 1177.82
+ },
+ {
+  "i": 163,
+  "pl": "— Niech i tak będzie — mówił Ignacy. — Jestem tak stary, że mi wygodniej nic nie wiedzieć; jestem już nawet tak stary, że pragnę tylko jednej rzeczy — pięknej śmierci. Daj mi słowo, że gdy przyjdzie czas, zawiadomisz mnie...",
+  "start": 1181.16
+ },
+ {
+  "i": 164,
+  "pl": "— Tak, gdy przyjdzie czas, będziesz moim swatem.",
+  "start": 1196.08
+ },
+ {
+  "i": 165,
+  "pl": "— Już byłem i nieszczęśliwie... — rzekł Ignacy.",
+  "start": 1200.32
+ },
+ {
+  "i": 166,
+  "pl": "— Z wdową przed siedmioma laty?",
+  "start": 1203.78
+ },
+ {
+  "i": 167,
+  "pl": "— Przed piętnastoma<sup>109<\/sup>.",
+  "start": 1205.52
+ },
+ {
+  "i": 168,
+  "pl": "— Znowu swoje — roześmiał się Wokulski. — Zawsze ten sam!",
+  "start": 1207.04
+ },
+ {
+  "i": 169,
+  "pl": "— I tyś ten sam. Za pomyślność twoich zamiarów... Jakiekolwiek są, wiem jedno, że muszą być godne ciebie. A teraz — milczę...",
+  "start": 1210.92
+ },
+ {
+  "i": 170,
+  "pl": "To powiedziawszy Ignacy wypił wino, a kieliszek rzucił na ziemię. Szkło rozbiło się z brzękiem, który obudził Ira.",
+  "start": 1221.08
+ },
+ {
+  "i": 171,
+  "pl": "— Chodźmy do sklepu — rzekł Ignacy. — Bywają rozmowy, po których dobrze jest mówić o interesach.",
+  "start": 1228.82
+ },
+ {
+  "i": 172,
+  "pl": "Wydobył ze stolika klucz i wyszli. W sieni wionął na nich mokry śnieg. Rzecki otworzył drzwi sklepu i zapalił kilka lamp.",
+  "start": 1235.68
+ },
+ {
+  "i": 173,
+  "pl": "— Co za towary! — zawołał Wokulski. — Chyba wszystko nowe?",
+  "start": 1243.3
+ },
+ {
+  "i": 174,
+  "pl": "— Prawie. Chcesz zobaczyć?... Tu jest porcelana. Zwracam ci uwagę...",
+  "start": 1247.42
+ },
+ {
+  "i": 175,
+  "pl": "— Później... Daj mi księgę.",
+  "start": 1251.76
+ },
+ {
+  "i": 176,
+  "pl": "— Dochodów?...",
+  "start": 1253.56
+ },
+ {
+  "i": 177,
+  "pl": "— Nie, dłużników.",
+  "start": null
+ },
+ {
+  "i": 178,
+  "pl": "Rzecki otworzył biurko, wydobył księgę i podsunął fotel. Wokulski usiadł i rzuciwszy okiem na listę, wyszukał w niej jedno nazwisko.",
+  "start": 1256.75
+ },
+ {
+  "i": 179,
+  "pl": "— Sto czterdzieści rubli — mówił czytając. — No, to wcale niedużo...",
+  "start": 1266.83
+ },
+ {
+  "i": 180,
+  "pl": "— Któż to? — zapytał Ignacy. — A... Łęcki...",
+  "start": 1271.87
+ },
+ {
+  "i": 181,
+  "pl": "— Panna Łęcka ma także otwarty kredyt... bardzo dobrze — ciągnął Wokulski zbliżywszy twarz do księgi, jakby w niej pismo było niewyraźne. — A... a... Onegdaj wzięła portmonetkę... Trzy ruble?... to chyba za drogo...",
+  "start": 1276.11
+ },
+ {
+  "i": 182,
+  "pl": "— Wcale nie — wtrącił Ignacy. — Portmonetka doskonała, sam ją wybierałem.",
+  "start": 1291.19
+ },
+ {
+  "i": 183,
+  "pl": "— Z którychże to? — spytał niedbale Wokulski i zamknął księgę.",
+  "start": 1296.36
+ },
+ {
+  "i": 184,
+  "pl": "— Z tej gablotki. Widzisz, jakie to cacka.",
+  "start": 1300.02
+ },
+ {
+  "i": 185,
+  "pl": "— Musiała jednak dużo między nimi przerzucić... Jest podobno wymagająca...",
+  "start": 1302.92
+ },
+ {
+  "i": 186,
+  "pl": "— Wcale nie przerzucała, dlaczego miałaby przerzucać? — odparł Ignacy. — Obejrzała tę...",
+  "start": 1308.36
+ },
+ {
+  "i": 187,
+  "pl": "— Tę?...",
+  "start": 1313.14
+ },
+ {
+  "i": 188,
+  "pl": "— A chciała wziąć tę...",
+  "start": 1315.54
+ },
+ {
+  "i": 189,
+  "pl": "— Ach, tę... — szepnął Wokulski biorąc do ręki portmonetkę.",
+  "start": 1317.26
+ },
+ {
+  "i": 190,
+  "pl": "— Ale ja poradziłem jej inną, w tym guście...",
+  "start": 1321.62
+ },
+ {
+  "i": 191,
+  "pl": "— Wiesz co, że to jednak jest ładny wyrób.",
+  "start": 1324.93
+ },
+ {
+  "i": 192,
+  "pl": "— Tamta, którą ja wybrałem, była jeszcze ładniejsza.",
+  "start": 1328.88
+ },
+ {
+  "i": 193,
+  "pl": "— Ta bardzo mi się podoba. Wiesz... ja ją wezmę, bo moja już na nic...",
+  "start": 1332.02
+ },
+ {
+  "i": 194,
+  "pl": "— Czekaj, znajdę ci lepszą — zawołał Rzecki.",
+  "start": 1336.82
+ },
+ {
+  "i": 195,
+  "pl": "— Wszystko jedno. Pokaż inne towary, może jeszcze co mi się przyda.",
+  "start": 1339.34
+ },
+ {
+  "i": 196,
+  "pl": "— Spinki masz?... Krawat, kalosze, parasol...",
+  "start": 1342.98
+ },
+ {
+  "i": 197,
+  "pl": "— Daj mi parasol, no... i krawat. Sam wybierz. Będę dziś jedynym gościem i w dodatku zapłacę gotówką.",
+  "start": 1346.34
+ },
+ {
+  "i": 198,
+  "pl": "— Bardzo dobry zwyczaj — odparł uradowany Rzecki. Prędko wydobył krawat z szuflady i parasol z okna i podał je ze śmiechem Wokulskiemu. — Po strąceniu rabatu — dodał — jako handlujący, zapłacisz siedem rubli. Pyszny parasol... Bagatela...",
+  "start": 1354.66
+ },
+ {
+  "i": 199,
+  "pl": "— To już wrócimy do ciebie — rzekł Wokulski.",
+  "start": 1370.7
+ },
+ {
+  "i": 200,
+  "pl": "— Nie obejrzysz sklepu? — spytał Ignacy.",
+  "start": 1374.38
+ },
+ {
+  "i": 201,
+  "pl": "— Ach, co mnie to ob...",
+  "start": 1376.9
+ },
+ {
+  "i": 202,
+  "pl": "— Nie obchodzi cię twój własny sklep, taki piękny sklep?... — zdziwił się Ignacy.",
+  "start": 1378.82
+ },
+ {
+  "i": 203,
+  "pl": "— Gdzież znowu, czy możesz przypuszczać... Ale jestem trochę zmęczony.",
+  "start": 1385.12
+ },
+ {
+  "i": 204,
+  "pl": "— Słusznie — odparł Rzecki. — Co racja, to racja. Więc idźmy.",
+  "start": 1389.74
+ },
+ {
+  "i": 205,
+  "pl": "Pozakręcał lampy i, przepuściwszy Wokulskiego, zamknął sklep. W sieni znowu spotkał ich mokry śnieg i Paweł niosący obiad.",
+  "start": 1394.86
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

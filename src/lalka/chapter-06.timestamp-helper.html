@@ -1,0 +1,1818 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to mp3/lalka_006_lalka-tom-pierwszy_tom-i-rozdzial-vi.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-06.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Tom I, Rozdział VI — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Tom I, Rozdział VI · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="mp3/lalka_006_lalka-tom-pierwszy_tom-i-rozdzial-vi.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Początek kwietnia, jeden z tych miesięcy, które służą za przejście między zimą i wiosną. Śnieg już zniknął, ale nie ukazała się jeszcze zieloność; drzewa są czarne, trawniki szare i niebo szare: wygląda jak marmur poprzecinany srebrnymi i złotawymi nitkami.",
+  "start": 9.87
+ },
+ {
+  "i": 1,
+  "pl": "Jest około piątej po południu. Panna Izabela siedzi w swoim gabinecie i czyta najnowszą powieść Zoli<sup>148<\/sup>: Une page d’amour<sup>149<\/sup>. Czyta bez uwagi, co chwilę podnosi oczy, spogląda w okno i półświadomie formułuje sąd, że gałązki drzew są czarne, a niebo szare.",
+  "start": 30.76
+ },
+ {
+  "i": 2,
+  "pl": "Znowu czyta, spogląda po gabinecie i półświadomie myśli, że jej meble kryte błękitną materią i jej niebieski szlafroczek mają jakiś szary odcień i że festony białej firanki są podobne do wielkich sopli śniegu. Potem zapomina, o czym myślała w tej chwili, i pyta się w duchu: „O czym ja myślałam?...",
+  "start": 52.0
+ },
+ {
+  "i": 3,
+  "pl": "Ach, prawda, o kweście wielkotygodniowej...” I nagle czuje ochotę przejechania się karetą, a jednocześnie czuje żal do nieba, że jest takie szare, że złotawe żyłki na nim są tak wąskie...",
+  "start": 76.28
+ },
+ {
+  "i": 4,
+  "pl": "Dręczy ją jakiś cichy niepokój, jakieś oczekiwanie, ale nie jest pewna, na co czeka: czy na to, ażeby chmury się rozdarły, czy na to, ażeby wszedł lokaj i wręczył jej list zapraszający na wielkotygodniową kwestę? Już taki krótki czas, a jej nie proszą.",
+  "start": 91.04
+ },
+ {
+  "i": 5,
+  "pl": "Znowu czyta powieść, ten rozdział, kiedy podczas gwiaździstej nocy p. Rambaud naprawiał zepsutą lalkę małej Joasi. Helena tonęła we łzach bezprzedmiotowego żalu, a opat<sup>150<\/sup> Jouve radził, ażeby wyszła za mąż.",
+  "start": 109.18
+ },
+ {
+  "i": 6,
+  "pl": "Panna Izabela odczuwa ten żal i kto wie, czy gdyby w tej chwili ukazały się na niebie gwiazdy, zamiast chmur, czy nie rozpłakałaby się tak jak Helena. Wszak to już ledwo parę dni do kwesty, a jej jeszcze nie proszą. Że zaproszą, o tym wie, ale dlaczego zwłóczą<sup>151<\/sup>?...",
+  "start": 125.72
+ },
+ {
+  "i": 7,
+  "pl": "„Te kobiety, które zdają się tak gorąco szukać Boga, bywają niekiedy nieszczęśliwymi istotami, których serce wzburzyła namiętność. Idą do kościoła, ażeby tam wielbić mężczyznę” — mówił opat Jouve.",
+  "start": 145.19
+ },
+ {
+  "i": 8,
+  "pl": "„Poczciwy opat, jak on chciał uspokoić tę biedną Helenę!” — myśli panna Izabela i nagle odrzuca książkę. Opat Jouve przypomniał jej, że już od dwu miesięcy haftuje pas do kościelnego dzwonka i że go jeszcze nie skończyła.",
+  "start": 162.14
+ },
+ {
+  "i": 9,
+  "pl": "Podnosi się z fotelu i przysuwa do okna stolik z tamburkiem<sup>152<\/sup>, z pudełkiem różnokolorowych jedwabiów z kolorowym deseniem; rozwija pas i zaczyna gorliwie wyszywać na nim róże i krzyże. Pod wpływem pracy w sercu budzi się otucha.",
+  "start": 179.19
+ },
+ {
+  "i": 10,
+  "pl": "Kto tak, jak ona, służy Kościołowi, nie może być zapomnianym przy wielkotygodniowej kweście. Wybiera jedwabie, nawłóczy<sup>153<\/sup> igły i szyje wciąż.",
+  "start": 196.0
+ },
+ {
+  "i": 11,
+  "pl": "Oko jej przebiega od wzoru do haftu, ręka spada z góry na dół, wznosi się z dołu do góry, ale w myśli zaczyna rodzić się pytanie dotyczące kostiumu na groby i toalety na Wielkanoc. Pytanie to wkrótce zapełnia jej całą uwagę, zasłania oczy i zatrzymuje rękę.",
+  "start": 207.44
+ },
+ {
+  "i": 12,
+  "pl": "Suknia, kapelusz, okrywka i parasolka, wszystko musi być nowe, a tu tak niewiele czasu i nie tylko nic nie zamówione, ale nawet nie wybrane!...",
+  "start": 227.12
+ },
+ {
+  "i": 13,
+  "pl": "Tu przypomina sobie, że jej serwis i srebra już znajdują się u jubilera, że już trafia się jakiś nabywca i że dziś lub jutro będą sprzedane. Panna Izabela czuje ściśnięcie serca za serwisem i srebrami, lecz doznaje niejakiej ulgi na myśl o kweście i nowej toalecie.",
+  "start": 238.23
+ },
+ {
+  "i": 14,
+  "pl": "Może mieć bardzo piękną, ale jaką?...",
+  "start": 258.43
+ },
+ {
+  "i": 15,
+  "pl": "Odsuwa tamburek i ze stolika, na którym leżą Szekspir, Dante, album europejskich znakomitości tudzież kilka pism, bierze: „Le Moniteur de la Mode”<sup>154<\/sup> i zaczyna go przeglądać z największą uwagą.",
+  "start": 263.92
+ },
+ {
+  "i": 16,
+  "pl": "Oto jest toaleta obiadowa; oto ubiory wiosenne dla panienek, panien, mężatek, młodych mężatek i ich matek; oto suknie wizytowe, ceremonialne, spacerowe; sześć nowych form kapeluszy, z dziesięć materiałów, kilkadziesiąt barw... Co tu wybrać, o Boże?...",
+  "start": 277.83
+ },
+ {
+  "i": 17,
+  "pl": "Niepodobna wybierać bez naradzenia się z panną Florentyną i z magazynierką...",
+  "start": 298.63
+ },
+ {
+  "i": 18,
+  "pl": "Panna Izabela z niechęcią odrzuca monitora mody i siada na szezlongu<sup>155<\/sup> w postaci półleżącej. Ręce splecione jak do modlitwy opiera na poręczy, głowę na rękach i patrzy w niebo rozmarzonymi oczyma.",
+  "start": 304.64
+ },
+ {
+  "i": 19,
+  "pl": "Kwesta wielkotygodniowa, nowa toaleta, chmury na niebie, wszystko miesza się w jej wyobraźni na tle żalu za serwisem i lekkiego uczucia wstydu, że go sprzedaje.",
+  "start": 320.13
+ },
+ {
+  "i": 20,
+  "pl": "„Ach, wszystko jedno!” — mówi sobie i znowu pragnie, ażeby chmury rozdarły się choć na chwilę. Ale chmury zgęszczają się, a w jej sercu wzmaga się żal, wstyd i niepokój. Spojrzenie jej pada na stolik stojący tuż obok szezlonga i na książkę do nabożeństwa oprawną w kość słoniową.",
+  "start": 332.33
+ },
+ {
+  "i": 21,
+  "pl": "Panna Izabela bierze do rąk książkę i powoli, kartka za kartką, wyszukuje w niej modlitwy: Acte de resignation<sup>156<\/sup>, a znalazłszy, zaczyna czytać:",
+  "start": 353.93
+ },
+ {
+  "i": 22,
+  "pl": "„Que votre nom soit beni à jamais, bien qui avez voulu m’éprouver par cette peine.”<sup>157<\/sup>. W miarę jak czyta, szare niebo wyjaśnia się, a przy ostatnich słowach...",
+  "start": 365.63
+ },
+ {
+  "i": 23,
+  "pl": "„et d’attendre en paix votre divin secours...”<sup>158<\/sup>, chmury pękają, ukazuje się kawałek czystego błękitu, gabinet panny Izabeli napełnia się światłem, a jej dusza spokojem.",
+  "start": 380.78
+ },
+ {
+  "i": 24,
+  "pl": "Teraz jest pewna, że modły jej zostały wysłuchane, że będzie miała najpiękniejszą toaletę i najlepszy kościół do kwesty.",
+  "start": 394.72
+ },
+ {
+  "i": 25,
+  "pl": "W tej chwili delikatnie otwierają się drzwi gabinetu; staje w nich panna Florentyna, wysoka, czarno ubrana, nieśmiała, trzyma w dwu palcach list i mówi cicho:",
+  "start": 403.7
+ },
+ {
+  "i": 26,
+  "pl": "— Od pani Karolowej.",
+  "start": 414.59
+ },
+ {
+  "i": 27,
+  "pl": "— Ach, w sprawie kwesty — odpowiada panna Izabela z czarującym uśmiechem. — Cały dzień nie zaglądałaś do mnie, Florciu.",
+  "start": 416.33
+ },
+ {
+  "i": 28,
+  "pl": "— Nie chcę ci przeszkadzać.",
+  "start": 425.91
+ },
+ {
+  "i": 29,
+  "pl": "— W nudzeniu się?... — pyta panna Izabela. — Kto wie, czy nie byłoby nam weselej nudzić się w jednym pokoju.",
+  "start": 428.39
+ },
+ {
+  "i": 30,
+  "pl": "— List... — mówi nieśmiała osoba w czarnej sukni, wyciągając rękę do Izabeli.",
+  "start": 436.22
+ },
+ {
+  "i": 31,
+  "pl": "— Znam jego treść — przerywa panna Izabela. — Posiedź trochę u mnie i jeżeli nie zrobi ci subiekcji<sup>159<\/sup>, przeczytaj ten list.",
+  "start": 443.13
+ },
+ {
+  "i": 32,
+  "pl": "Panna Florentyna siada nieśmiało na fotelu, delikatnie bierze z biurka nożyk i z największą ostrożnością przecina kopertę. Kładzie na biurku nożyk, potem kopertę, rozwija papier i cichym, melodyjnym głosem czyta list pisany po francusku:",
+  "start": 450.94
+ },
+ {
+  "i": 33,
+  "pl": "„Droga Belu! wybacz, że odzywam się w sprawie, którą tylko ty i twój ojciec macie prawo rozstrzygać. Wiem, drogie dziecię, że pozbywasz się tego serwisu i sreber, sama mi zresztą o tym mówiłaś.",
+  "start": 467.81
+ },
+ {
+  "i": 34,
+  "pl": "Wiem też, że znalazł się nabywca, który ofiarowuje wam pięć tysięcy rubli, moim zdaniem za mało, choć w tych czasach trudno spodziewać się więcej. Po rozmowie jednak, jaką miałam w tej materii z Krzeszowską, zaczynam lękać się, ażeby piękne te pamiątki nie przeszły w niewłaściwe ręce.",
+  "start": 482.19
+ },
+ {
+  "i": 35,
+  "pl": "Chciałabym temu zapobiec, proponuję ci więc, jeżeli zgodzisz się, trzy tysiące rubli pożyczki na zastaw wspomnianego serwisu i sreber. Sądzę, że dziś wygodniej będzie im u mnie, gdy ojciec twój znajduje się w takich kłopotach.",
+  "start": 501.69
+ },
+ {
+  "i": 36,
+  "pl": "Odebrać je będziesz mogła, kiedy zechcesz, a w razie mojej śmierci nawet bez zwracania pożyczki.",
+  "start": 517.67
+ },
+ {
+  "i": 37,
+  "pl": "Nie narzucam się, tylko proponuję. Rozważ, jak ci będzie wygodniej, a nade wszystko pomyśl o następstwach.",
+  "start": 523.75
+ },
+ {
+  "i": 38,
+  "pl": "O ile cię znam, byłabyś boleśnie dotkniętą usłyszawszy kiedyś, że nasze rodzinne pamiątki zdobią stół jakiego bankiera albo należą do wyprawy jego córki.",
+  "start": 531.01
+ },
+ {
+  "i": 39,
+  "pl": "Zasyłam ci tysiące pocałunków.",
+  "start": 542.64
+ },
+ {
+  "i": 40,
+  "pl": "Joanna",
+  "start": 545.56
+ },
+ {
+  "i": 41,
+  "pl": "P. S. Wyobraź sobie, co za szczęście spotkało moją ochronkę. Będąc wczoraj w sklepie tego sławnego Wokulskiego przymówiłam się o mały datek dla sierot.",
+  "start": null
+ },
+ {
+  "i": 42,
+  "pl": "Liczyłam na jakie kilkanaście rubli, a on, czy uwierzysz, ofiarował mi tysiąc, wyraźnie: tysiąc rubli, i jeszcze powiedział, że na moje ręce nie śmiałby złożyć mniejszej sumy. Kilku takich Wokulskich, a czuję, że na starość zostałabym demokratką.”",
+  "start": 558.86
+ },
+ {
+  "i": 43,
+  "pl": "Panna Florentyna skończywszy list nie śmiała oderwać od niego oczu. Wreszcie odważyła się i spojrzała: panna Izabela siedziała na szezlongu blada, z zaciśniętymi rękami.",
+  "start": 577.61
+ },
+ {
+  "i": 44,
+  "pl": "— Cóż ty na to, Florciu? — spytała po chwili.",
+  "start": 591.22
+ },
+ {
+  "i": 45,
+  "pl": "— Myślę — odparła cicho zapytana — że pani Karolowa na początku listu najtrafniej osądziła swoje stanowisko w tej sprawie.",
+  "start": 594.92
+ },
+ {
+  "i": 46,
+  "pl": "— Co za upokorzenie! — szepnęła panna Izabela, nerwowo bijąc ręką w szezlong.",
+  "start": 604.7
+ },
+ {
+  "i": 47,
+  "pl": "— Upokorzeniem jest proponować komuś trzy tysiące rubli na zastaw sreber, i to wówczas, gdy obcy ofiarowują pięć tysięcy... Innego nie widzę.",
+  "start": 610.78
+ },
+ {
+  "i": 48,
+  "pl": "— Jak ona nas traktuje... My chyba naprawdę jesteśmy zrujnowani...",
+  "start": 621.52
+ },
+ {
+  "i": 49,
+  "pl": "— Ależ, Belciu!... — przerwała ożywiając się panna Florentyna. — Właśnie ten cierpki list dowodzi, że nie jesteście zrujnowani. Ciotka lubi być cierpką, ale umie oszczędzać nieszczęście. Gdyby wam groziła ruina, znaleźlibyście w niej tkliwą i delikatną pocieszycielkę.",
+  "start": 626.38
+ },
+ {
+  "i": 50,
+  "pl": "— Dziękuję za to.",
+  "start": 647.17
+ },
+ {
+  "i": 51,
+  "pl": "— I nie potrzebujesz obawiać się tego. Jutro wpłynie nam pięć tysięcy rubli, za które można prowadzić dom przez pół roku... choćby przez kwartał. Za parę miesięcy...",
+  "start": 648.81
+ },
+ {
+  "i": 52,
+  "pl": "— Zlicytują nam kamienicę...",
+  "start": 659.48
+ },
+ {
+  "i": 53,
+  "pl": "— Prosta forma, i nic więcej. Owszem, możecie zyskać, podczas gdy dzisiaj kamienica jest tylko ciężarem. No, a po ciotce Hortensji dostaniesz ze sto tysięcy rubli. Zresztą — dodała po chwili panna Florentyna podnosząc brwi — ja sama nie jestem pewna, czy i ojciec nie ma jeszcze majątku.",
+  "start": 662.42
+ },
+ {
+  "i": 54,
+  "pl": "Wszyscy są tego zdania...",
+  "start": 681.5
+ },
+ {
+  "i": 55,
+  "pl": "Panna Izabela wychyliła się z szezlonga i ujęła rękę panny Florentyny.",
+  "start": 684.07
+ },
+ {
+  "i": 56,
+  "pl": "— Florciu — rzekła zniżając głos — komu ty to mówisz?... Więc naprawdę uważasz mnie tylko za pannę na wydaniu, która nic nie widzi i niczego nie pojmuje?... Myślisz, że nie wiem — domówiła jeszcze ciszej — że już miesiąc, jak pieniądze na utrzymanie domu pożyczasz od Mikołaja...",
+  "start": 689.76
+ },
+ {
+  "i": 57,
+  "pl": "— Może właśnie ojciec chce tego...",
+  "start": 709.6
+ },
+ {
+  "i": 58,
+  "pl": "— Czy i tego chce, ażebyś mu co rano podkładała kilka rubli do pugilaresu?",
+  "start": 712.92
+ },
+ {
+  "i": 59,
+  "pl": "Panna Florentyna spojrzała jej w oczy i poruszyła głową.",
+  "start": 718.86
+ },
+ {
+  "i": 60,
+  "pl": "— Za dużo wiesz — odparła — ale nie wszystko. Już od dwu tygodni, może od dziesięciu dni widzę, że ojciec miewa po kilkanaście rubli...",
+  "start": 723.34
+ },
+ {
+  "i": 61,
+  "pl": "— Więc zaciąga długi...",
+  "start": 734.03
+ },
+ {
+  "i": 62,
+  "pl": "— Nie, ojciec nigdy nie zaciąga długów w mieście. Każdy wierzyciel przychodzi z pożyczką do domu i w gabinecie ojca dostaje kwit albo procent. Nie znasz go pod tym względem.",
+  "start": 736.46
+ },
+ {
+  "i": 63,
+  "pl": "— Więc skądże teraz ma pieniądze?",
+  "start": 749.17
+ },
+ {
+  "i": 64,
+  "pl": "— Nie wiem. Widzę, że ma, i słyszę, że zawsze je miał.",
+  "start": 751.73
+ },
+ {
+  "i": 65,
+  "pl": "— Po cóż w takim razie zezwala na sprzedaż sreber? — pytała natarczywie panna Izabela.",
+  "start": 756.76
+ },
+ {
+  "i": 66,
+  "pl": "— Może chce zirytować rodzinę.",
+  "start": 762.99
+ },
+ {
+  "i": 67,
+  "pl": "— A kto wykupił jego weksle?",
+  "start": 766.15
+ },
+ {
+  "i": 68,
+  "pl": "Panna Florentyna zrobiła rękoma ruch oznaczający rezygnację.",
+  "start": 768.5
+ },
+ {
+  "i": 69,
+  "pl": "— Nie wykupiła ich Krzeszowska — rzekła — to wiem na pewno. — Więc — albo ciotka Hortensja, albo...",
+  "start": 773.4
+ },
+ {
+  "i": 70,
+  "pl": "— Albo?...",
+  "start": 781.58
+ },
+ {
+  "i": 71,
+  "pl": "— Albo sam ojciec. Czy nie wiesz, ile rzeczy robi ojciec, ażeby zaniepokoić rodzinę, a potem śmiać się...",
+  "start": 782.54
+ },
+ {
+  "i": 72,
+  "pl": "— Za cóż chciałby mnie, nas niepokoić?",
+  "start": 790.78
+ },
+ {
+  "i": 73,
+  "pl": "— Myśli, że ty jesteś spokojna. Córka powinna nieograniczenie ufać ojcu.",
+  "start": 794.44
+ },
+ {
+  "i": 74,
+  "pl": "— Ach, tak!... — szepnęła panna Izabela zamyślając się.",
+  "start": 799.74
+ },
+ {
+  "i": 75,
+  "pl": "Czarno ubrana kuzynka z wolna podniosła się z fotelu i cicho wyszła.",
+  "start": 805.1
+ },
+ {
+  "i": 76,
+  "pl": "Panna Izabela znowu poczęła patrzeć na swój pokój, który wydał się jej popielatym, na czarne gałązki, które chwiały się za oknem, na parę wróbli świergoczących może o budowie gniazda, na niebo, które stało się jednolicie szarym, bez żadnej jaśniejszej prążki.",
+  "start": 810.34
+ },
+ {
+  "i": 77,
+  "pl": "W jej pamięci znowu odżyła sprawa kwesty i nowej toalety, ale obie wydały się jej tak małymi, tak prawie śmiesznymi, że myśląc o nich nieznacznie wzruszyła ramionami.",
+  "start": 829.28
+ },
+ {
+  "i": 78,
+  "pl": "Dręczyły ją inne pytania: czyby nie oddać serwisu hrabinie Karolowej — i — skąd ojciec ma pieniądze? Jeżeli miał je dawniej, dlaczego pozwolił na zaciąganie długów u Mikołaja?... A jeżeli nie miał, z jakiego źródła czerpie je dziś?...",
+  "start": 841.08
+ },
+ {
+  "i": 79,
+  "pl": "Jeżeli ona odda serwis i srebra ciotce, może stracić okazję do korzystnego pozbycia się ich, a jeżeli sprzeda za pięć tysięcy, pamiątki te naprawdę mogą dostać się w niewłaściwe ręce, jak pisała hrabina.",
+  "start": 860.64
+ },
+ {
+  "i": 80,
+  "pl": "Nagle przerwał się ten bieg myśli: bystre jej ucho usłyszało w dalszych pokojach szmer. Było to męskie stąpanie, miarowe, spokojne. W salonie stłumił je nieco dywan, w pokoju jadalnym wzmocniło się, w jej sypialni przycichło, jakby ktoś szedł na palcach.",
+  "start": 875.6
+ },
+ {
+  "i": 81,
+  "pl": "— Proszę, papo — odezwała się panna Izabela usłyszawszy pukanie do swych drzwi.",
+  "start": 895.64
+ },
+ {
+  "i": 82,
+  "pl": "Wszedł pan Tomasz. Ona podniosła się z szezlonga, ale ojciec nie pozwolił na to. Objął ją w ramiona, ucałował w głowę i zanim usiadł przy niej, rzucił okiem w duże lustro na ścianie.",
+  "start": 901.93
+ },
+ {
+  "i": 83,
+  "pl": "Zobaczył tam swoją piękną twarz, siwe wąsy, swój ciemny żakiet<sup>160<\/sup> bez zarzutu, gładkie spodnie, jakby dopiero co wyszły od krawca, i uznał, że wszystko jest dobrze.",
+  "start": 915.23
+ },
+ {
+  "i": 84,
+  "pl": "— Słyszę — rzekł do córki uśmiechając się — że panienka odbiera korespondencje, które jej psują humor.",
+  "start": 927.22
+ },
+ {
+  "i": 85,
+  "pl": "— Ach, papo, gdybyś wiedział, jakim tonem przemawia ciotka...",
+  "start": 935.73
+ },
+ {
+  "i": 86,
+  "pl": "— Zapewne tonem osoby chorej na nerwy. Za to nie możesz mieć do niej żalu.",
+  "start": 939.97
+ },
+ {
+  "i": 87,
+  "pl": "— Gdyby tylko żal. Ja boję się, że ona ma rację i że nasze srebra mogą naprawdę znaleźć się na jakim bankierskim stole.",
+  "start": 945.68
+ },
+ {
+  "i": 88,
+  "pl": "Przytuliła głowę do ramienia ojca. Pan Tomasz spojrzał niechcący w lusterko na stoliku i przyznał w duchu, że oboje w tej chwili tworzą bardzo piękną grupę. Szczególniej dobrze odbijała obawa rozlana na twarzy córki od jego spokoju. Uśmiechnął się.",
+  "start": 954.77
+ },
+ {
+  "i": 89,
+  "pl": "— Bankierskie stoły!... — powtórzył. — Srebra naszych przodków bywały już na stołach Tatarów, Kozaków, zbuntowanych chłopów, i nie tylko nam to nie uchybiało, ale nawet przynosiło zaszczyt. Kto walczy, naraża się na straty.",
+  "start": 972.47
+ },
+ {
+  "i": 90,
+  "pl": "— Tracili przez wojnę i na wojnie — wtrąciła panna Izabela.",
+  "start": 989.87
+ },
+ {
+  "i": 91,
+  "pl": "— A dziś nie ma wojny?... Zmieniła się tylko broń: zamiast kosą albo jataganem<sup>161<\/sup> walczą rublem. Joasia dobrze to rozumiała sprzedając nie serwis — ale rodzinny majątek, albo rozbierając na wybudowanie spichlerza ruiny zamku.",
+  "start": 995.78
+ },
+ {
+  "i": 92,
+  "pl": "— Więc jesteśmy zwyciężeni!... — szepnęła panna Izabela.",
+  "start": 1013.22
+ },
+ {
+  "i": 93,
+  "pl": "— Nie, dziecko — odparł pan Tomasz prostując się. — My dopiero zaczniemy triumfować i bodaj czy nie tego boi się moja siostra i jej koteria<sup>162<\/sup>. Oni tak głęboko zasnęli, że razi ich każdy objaw żywotności, każdy mój śmielszy krok — dodał jakby do siebie.",
+  "start": 1018.37
+ },
+ {
+  "i": 94,
+  "pl": "— Twój, papo?",
+  "start": 1036.65
+ },
+ {
+  "i": 95,
+  "pl": "— Tak. Myśleli, że poproszę ich o pomoc. Sama Joasia chętnie zrobiłaby mnie swoim plenipotentem. Ja natomiast podziękowałem im za emeryturę i zbliżyłem się do mieszczaństwa. Zyskałem u tych ludzi powagę, która zaczyna trwożyć nasze sfery.",
+  "start": 1038.23
+ },
+ {
+  "i": 96,
+  "pl": "Myśleli, że zejdę na drugi plan, a widzą, że mogę wysunąć się na pierwszy.",
+  "start": 1056.58
+ },
+ {
+  "i": 97,
+  "pl": "— Ty, papo?",
+  "start": 1062.21
+ },
+ {
+  "i": 98,
+  "pl": "— Ja. Dotychczas milczałem nie mając odpowiednich wykonawców. Dziś znalazłem takiego, który zrozumiał moje idee, i zacznę działać.",
+  "start": 1063.51
+ },
+ {
+  "i": 99,
+  "pl": "— Któż to jest? — spytała panna Izabela, ze zdumieniem patrząc na ojca.",
+  "start": 1073.26
+ },
+ {
+  "i": 100,
+  "pl": "— Niejaki Wokulski, kupiec, żelazny człowiek. Przy jego pomocy zorganizuję nasze mieszczaństwo, stworzę towarzystwo do handlu ze Wschodem, tym sposobem dźwignę przemysł...",
+  "start": 1078.58
+ },
+ {
+  "i": 101,
+  "pl": "— Ty, papo?",
+  "start": 1091.88
+ },
+ {
+  "i": 102,
+  "pl": "— I wówczas zobaczymy, kto wysunie się naprzód, choćby przy możliwych wyborach do rady miejskiej<sup>163<\/sup>...",
+  "start": 1093.25
+ },
+ {
+  "i": 103,
+  "pl": "Panna Izabela słuchała z szeroko otwartymi oczyma.",
+  "start": 1100.94
+ },
+ {
+  "i": 104,
+  "pl": "— Czy ten człowiek — szepnęła — o którym mówisz, papo, nie jest jakim aferzystą, awanturnikiem?...",
+  "start": 1104.59
+ },
+ {
+  "i": 105,
+  "pl": "— Nie znasz go więc? — spytał pan Tomasz. — On jednak jest jednym z naszych dostawców.",
+  "start": 1111.17
+ },
+ {
+  "i": 106,
+  "pl": "— Sklep znam, bardzo ładny — mówiła panna Izabela zamyślając się. — Jest tam stary subiekt, który wygląda trochę na dziwaka, ale nadzwyczajnie uprzejmy... Ach, zdaje mi się, że kilka dni temu poznałam i właściciela... Wygląda na gbura...",
+  "start": 1117.27
+ },
+ {
+  "i": 107,
+  "pl": "— Wokulski gbur?... — zdziwił się pan Tomasz. — Jest on wprawdzie trochę sztywny, ale bardzo grzeczny.",
+  "start": 1133.44
+ },
+ {
+  "i": 108,
+  "pl": "Panna Izabela wstrząsnęła głową.",
+  "start": 1140.34
+ },
+ {
+  "i": 109,
+  "pl": "— Niemiły człowiek — odpowiedziała z ożywieniem. — Teraz przypominam go sobie... Będąc we wtorek w sklepie zapytałam go o cenę wachlarza. Trzeba było widzieć, jak spojrzał na mnie!...",
+  "start": 1142.72
+ },
+ {
+  "i": 110,
+  "pl": "Nie odpowiedział nic, tylko wyciągnął swoją ogromną czerwoną rękę do subiekta (nawet dość eleganckiego chłopca) i mruknął głosem, w którym czuć było gniew: panie Morawski czy Mraczewski (bo nie pamiętam), pani zapytuje o cenę wachlarza. A... nieciekawego znalazł papo wspólnika!...",
+  "start": 1154.12
+ },
+ {
+  "i": 111,
+  "pl": "— śmiała się panna Izabela.",
+  "start": 1174.36
+ },
+ {
+  "i": 112,
+  "pl": "— Szalonej energii człowiek, żelazny człowiek — odparł pan Tomasz. — Oni tacy. Poznasz ich, bo myślę urządzić w domu parę zebrań. Wszyscy oryginalni, ale ten oryginalniejszy od innych.",
+  "start": 1176.52
+ },
+ {
+  "i": 113,
+  "pl": "— Papa tych panów chce przyjmować?...",
+  "start": 1191.6
+ },
+ {
+  "i": 114,
+  "pl": "— Muszę naradzać się z niektórymi. A co do naszych — dodał patrząc w oczy córce — zapewniam cię, że gdy usłyszą, kto u mnie bywa, ani jednego nie zabraknie w salonie.",
+  "start": 1194.56
+ },
+ {
+  "i": 115,
+  "pl": "W tej chwili weszła panna Florentyna zapraszając na obiad. Pan Tomasz podał rękę córce i przeszli we troje do jadalnego pokoju, gdzie już znajdowała się waza tudzież Mikołaj odziany we frak i wielki biały krawat.",
+  "start": 1206.64
+ },
+ {
+  "i": 116,
+  "pl": "— Śmieję się z Belci — rzekł pan Tomasz do kuzynki, która nalewała rosół z wazy. — Wyobraź sobie, Floro, że Wokulski zrobił na niej wrażenie gbura. Czy ty go znasz?",
+  "start": 1222.82
+ },
+ {
+  "i": 117,
+  "pl": "— Któż by dziś nie znał Wokulskiego — odpowiedziała panna Florentyna podając Mikołajowi talerz dla pana. — No, elegancki on nie jest, ale — robi wrażenie...",
+  "start": 1234.08
+ },
+ {
+  "i": 118,
+  "pl": "— Pnia z czerwonymi rękoma — wtrąciła ze śmiechem panna Izabela.",
+  "start": 1246.22
+ },
+ {
+  "i": 119,
+  "pl": "— On mi przypomina Trostiego, pamiętasz, Belu, tego pułkownika strzelców w Paryżu — odpowiedział Pan Tomasz.",
+  "start": 1251.52
+ },
+ {
+  "i": 120,
+  "pl": "— A mnie posąg triumfującego gladiatora<sup>164<\/sup> — melodyjnym głosem dodała panna Florentyna. — Pamiętasz Belu, we Florencji, tego z podniesionym mieczem? Twarz surowa, nawet dzika, ale piękna.",
+  "start": 1258.98
+ },
+ {
+  "i": 121,
+  "pl": "— A czerwone ręce?... — zapytała panna Izabela.",
+  "start": 1273.13
+ },
+ {
+  "i": 122,
+  "pl": "— Odmroził je na Syberii — wtrąciła panna Florentyna z akcentem.",
+  "start": 1277.07
+ },
+ {
+  "i": 123,
+  "pl": "— Cóż on tam robił?",
+  "start": 1281.72
+ },
+ {
+  "i": 124,
+  "pl": "— Pokutował za uniesienia młodości — rzekł pan Tomasz. — Można mu to przebaczyć.",
+  "start": 1283.33
+ },
+ {
+  "i": 125,
+  "pl": "— Ach, więc jest i bohaterem!...",
+  "start": 1289.53
+ },
+ {
+  "i": 126,
+  "pl": "— I milionerem — dodała panna Florentyna.",
+  "start": 1292.09
+ },
+ {
+  "i": 127,
+  "pl": "— I milionerem? — powtórzyła panna Izabela. — zaczynam wierzyć, że papo zrobił dobry wybór przyjmując go na wspólnika. Chociaż...",
+  "start": 1295.87
+ },
+ {
+  "i": 128,
+  "pl": "— Chociaż?... — spytał ojciec.",
+  "start": 1305.53
+ },
+ {
+  "i": 129,
+  "pl": "— Co powie świat na tę spółkę?",
+  "start": 1308.03
+ },
+ {
+  "i": 130,
+  "pl": "— Kto ma siłę w rękach, ma świat u nóg.",
+  "start": 1310.72
+ },
+ {
+  "i": 131,
+  "pl": "Właśnie Mikołaj obniósł polędwicę, gdy w przedpokoju zadzwoniono. Stary służący wyszedł i po chwili wrócił z listem na srebrnej, a może platerowanej tacy.",
+  "start": 1314.28
+ },
+ {
+  "i": 132,
+  "pl": "— Od pani hrabiny — rzekł.",
+  "start": 1326.04
+ },
+ {
+  "i": 133,
+  "pl": "— Do ciebie, Belu — dodał pan Tomasz biorąc list do ręki. — Pozwolisz, że cię zastąpię w połknięciu tej nowej pigułki.",
+  "start": 1328.78
+ },
+ {
+  "i": 134,
+  "pl": "Otworzył list, zaczął go czytać i ze śmiechem podał pannie Izabeli.",
+  "start": 1335.92
+ },
+ {
+  "i": 135,
+  "pl": "— Oto — zawołał — cała Joasia jest w tym liście. Nerwy, zawsze nerwy!...",
+  "start": 1340.28
+ },
+ {
+  "i": 136,
+  "pl": "Panna Izabela odsunęła talerz i z niepokojem przebiegła papier oczyma. Lecz stopniowo twarz jej wypogodziła się.",
+  "start": 1345.74
+ },
+ {
+  "i": 137,
+  "pl": "— Słuchaj, Florciu — rzekła — bo to ciekawe.",
+  "start": 1354.21
+ },
+ {
+  "i": 138,
+  "pl": "„Droga Belu! — pisze ciotka. — Zapomnij, aniołku, o moim poprzednim liście. W rezultacie twój serwis nic mnie nie obchodzi i znajdziemy inny, gdy będziesz szła za mąż. Ale chodzi mi, ażebyś koniecznie kwestowała tylko ze mną, i właśnie o tym miałam zamiar pisać poprzednio, nie o serwisie.",
+  "start": 1358.02
+ },
+ {
+  "i": 139,
+  "pl": "Biedne moje nerwy! jeżeli nie chcesz ich do reszty rozstroić, musisz zgodzić się na moją prośbę.",
+  "start": 1377.14
+ },
+ {
+  "i": 140,
+  "pl": "Grób w naszym kościele będzie cudowny. Mój poczciwy Wokulski daje fontannę, sztuczne ptaszki śpiewające, pozytywkę<sup>165<\/sup>, która będzie grała same poważne kawałki, i mnóstwo dywanów.",
+  "start": 1382.96
+ },
+ {
+  "i": 141,
+  "pl": "Hozer<sup>166<\/sup> dostarcza kwiatów, a amatorowie urządzają koncert na organ<sup>167<\/sup>, skrzypce, wiolonczelę i głosy. Jestem zachwycona, ale gdyby mi wśród tych cudów zabrakło ciebie, rozchorowałabym się. A więc tak?... Ściskam cię i całuję po tysiąc razy, kochająca ciotka.",
+  "start": 1395.82
+ },
+ {
+  "i": 142,
+  "pl": "Joanna",
+  "start": 1415.8
+ },
+ {
+  "i": 143,
+  "pl": "Postscriptum. Jutro jedziemy do magazynu zamówić dla ciebie kostium wiosenny. Umarłabym, gdybyś go nie przyjęła.”",
+  "start": 1417.31
+ },
+ {
+  "i": 144,
+  "pl": "Panna Izabela była rozpromieniona. List ten spełniał wszystkie jej nadzieje.",
+  "start": 1426.14
+ },
+ {
+  "i": 145,
+  "pl": "— Wokulski jest nieporównany! — rzekł śmiejąc się Pan Tomasz. — Szturmem zdobył Joasię, która nie tylko nie będzie mi wymawiała wspólnika, lecz nawet gotowa o niego walczyć ze mną.",
+  "start": 1431.79
+ },
+ {
+  "i": 146,
+  "pl": "Mikołaj podał kurczęta.",
+  "start": 1443.71
+ },
+ {
+  "i": 147,
+  "pl": "— Musi to być jednakże genialny człowiek — zauważyła panna Florentyna.",
+  "start": 1445.85
+ },
+ {
+  "i": 148,
+  "pl": "— Wokulski?... no, nie — mówił pan Tomasz. — Jest to człowiek szalonej energii, ale co się tyczy daru kombinowania, nie powiem, ażeby posiadał go w wysokim stopniu.",
+  "start": 1451.13
+ },
+ {
+  "i": 149,
+  "pl": "— Zdaje mi się, że składa tego dowody.",
+  "start": 1463.5
+ },
+ {
+  "i": 150,
+  "pl": "— Wszystko to są dowody tylko energii — odpowiedział pan Tomasz. — Dar kombinacji, genialny umysł poznaje się w innych rzeczach, choćby... w grze. Ja z nim dosyć często grywam w pikietę<sup>168<\/sup>, gdzie koniecznie trzeba kombinować.",
+  "start": 1466.12
+ },
+ {
+  "i": 151,
+  "pl": "Rezultat jest taki, że przegrałem osiem do dziesięciu rubli, a wygrałem około siedemdziesięciu, chociaż — nie mam pretensji do geniuszu! — dodał skromnie.",
+  "start": 1481.74
+ },
+ {
+  "i": 152,
+  "pl": "Pannie Izabeli wypadł z ręki widelec. Pobladła i chwyciwszy się za czoło szepnęła:",
+  "start": 1493.38
+ },
+ {
+  "i": 153,
+  "pl": "— A!... a!...",
+  "start": 1498.64
+ },
+ {
+  "i": 154,
+  "pl": "Ojciec i panna Florentyna zerwali się z krzeseł.",
+  "start": 1500.8
+ },
+ {
+  "i": 155,
+  "pl": "— Co ci jest Belu?... — spytał zatrwożony pan Tomasz.",
+  "start": 1503.76
+ },
+ {
+  "i": 156,
+  "pl": "— Nic — odpowiedziała wstając od stołu — migrena. Od godziny czułam, że będę ją mieć... To nic, papo...",
+  "start": 1508.08
+ },
+ {
+  "i": 157,
+  "pl": "Pocałowała ojca w rękę i wyszła do swego pokoju.",
+  "start": 1516.08
+ },
+ {
+  "i": 158,
+  "pl": "— Nagła migrena powinna by przejść zaraz — rzekł Pan Tomasz. — Pójdź do niej, Florciu. Ja na chwilę wyjdę do miasta, bo muszę zobaczyć się z kilkoma osobami, ale wcześniej wrócę.",
+  "start": 1519.89
+ },
+ {
+  "i": 159,
+  "pl": "Tymczasem czuwaj nad nią, kochana Florciu, proszę cię o to — mówił pan Tomasz ze spokojną fizjognomią człowieka, bez którego poleceń albo prośby nie może być dobrze na świecie.",
+  "start": 1530.79
+ },
+ {
+  "i": 160,
+  "pl": "— Zaraz do niej pójdę, tylko tu zrobię porządek — odpowiedziała panna Florentyna, dla której ład w domu był sprawą ważniejszą od czyjejkolwiek migreny.",
+  "start": 1542.53
+ },
+ {
+  "i": 161,
+  "pl": "Już mrok ogarnął ziemię... Panna Izabela jest znowu sama w swoim gabinecie; upadła na szezlong i obu rękami zasłoniła oczy. Spod kaskady tkanin spływających aż na podłogę wysunął się jej wąski pantofelek i kawałek pończoszki; ale tego nikt nie widzi ani ona o tym nie myśli.",
+  "start": 1554.1
+ },
+ {
+  "i": 162,
+  "pl": "W tej chwili jej duszę znowu targa gniew, żal i wstyd. Ciotka ją przeprosiła, ona sama będzie kwestować przy najładniejszym grobie i będzie miała najpiękniejszy kostium; lecz mimo to — jest nieszczęśliwą...",
+  "start": 1575.72
+ },
+ {
+  "i": 163,
+  "pl": "Doznaje takich uczuć, jak gdyby wszedłszy do pełnego salonu ujrzała nagle na swym nowym kostiumie ogromną tłustą plamę obrzydłej formy i koloru, jakby suknię wytarzano gdzieś na kuchennych schodach. Myśl o tym jest dla niej tak wstrętna, że ślina napływa jej do ust.",
+  "start": 1591.79
+ },
+ {
+  "i": 164,
+  "pl": "Co za straszne położenie!... Już miesiąc zadłużają się u swego lokaja, a od dziesięciu dni jej ojciec na swoje drobne wydatki wygrywa pieniądze w karty... Wygrać można; panowie wygrywają tysiące, ale — nie na opędzenie pierwszych potrzeb, i przecież — nie od kupców.",
+  "start": 1610.84
+ },
+ {
+  "i": 165,
+  "pl": "Ach, gdyby można, upadłaby ojcu do nóg i błagała go, ażeby nie grywał z tymi ludźmi, a przynajmniej nie teraz, kiedy ich stan majątkowy jest tak ciężki.",
+  "start": 1631.3
+ },
+ {
+  "i": 166,
+  "pl": "Za kilka dni, gdy odbierze pieniądze za swój serwis, sama wręczy ojcu paręset rubli prosząc, ażeby je przegrał do tego pana Wokulskiego, ażeby wynagrodził go hojniej, niż ona wynagrodzi Mikołaja za zaciągnięte długi.",
+  "start": 1640.64
+ },
+ {
+  "i": 167,
+  "pl": "Ale czyż jej wypada zrobić to, a nawet mówić o tym ojcu?...",
+  "start": 1656.96
+ },
+ {
+  "i": 168,
+  "pl": "„Wokulski?... Wokulski?... — szepcze panna Izabela. — Któż to jest ten Wokulski, który dziś tak nagle ukazał się jej od razu z kilku stron, pod rozmaitymi postaciami. Co on ma do czynienia z jej ciotką, z ojcem?...”",
+  "start": 1661.3
+ },
+ {
+  "i": 169,
+  "pl": "I otóż zdaje się jej, że już od kilku tygodni coś słyszała o tym człowieku. Jakiś kupiec niedawno ofiarował parę tysięcy rubli na dobroczynność, ale nie była pewna, czy to był handlujący strojami damskimi, czy futrami.",
+  "start": 1676.72
+ },
+ {
+  "i": 170,
+  "pl": "Potem mówiono, że także jakiś kupiec podczas wojny bułgarskiej<sup>169<\/sup> dorobił się wielkiego majątku, tylko nie uważała, czy dorobił się szewc, u którego ona bierze buciki, czy jej fryzjer?",
+  "start": 1692.93
+ },
+ {
+  "i": 171,
+  "pl": "I dopiero teraz przypomina sobie, że ten kupiec, który dał pieniądze na dobroczynność, i ten, który zyskał duży majątek, są jedną osobą, że to właśnie jest ów Wokulski, który do jej ojca przegrywa w karty, a którego jej ciotka, znana z dumy hrabina Karolowa, nazywa: „mój poczciwy Wokulski!...”",
+  "start": 1705.73
+ },
+ {
+  "i": 172,
+  "pl": "W tej chwili przypomina sobie nawet fizjognomię tego człowieka, który w sklepie nie chciał z nią mówić, tylko cofnąwszy się za ogromne japońskie wazony przypatrywał się jej posępnie. Jak on na nią patrzył...",
+  "start": 1726.47
+ },
+ {
+  "i": 173,
+  "pl": "Jednego dnia weszła z panną Florentyną na czekoladę do cukierni, przez figle. Usiadły przy oknie, za którym zebrało się kilkoro obdartych dzieci. Dzieci spoglądały na nią, na czekoladę i na ciastka z ciekawością i łakomstwem głodnych zwierzątek, a ten kupiec — tak samo na nią patrzył.",
+  "start": 1741.45
+ },
+ {
+  "i": 174,
+  "pl": "Lekki dreszcz przebiegł pannę Izabelę. I to ma być wspólnik jej ojca?... Do czego ten wspólnik?... Skąd jej ojcu przyszło do głowy zawiązywać jakieś towarzystwa handlowe, tworzyć jakieś rozległe plany, o których nigdy dawniej nie marzył?...",
+  "start": 1761.19
+ },
+ {
+  "i": 175,
+  "pl": "Chce przy pomocy mieszczaństwa wysunąć się na czoło arystokracji; chce zostać wybranym do rady miejskiej, której nie było i nie ma?...",
+  "start": 1777.85
+ },
+ {
+  "i": 176,
+  "pl": "Ależ ten Wokulski to naprawdę jakiś aferzysta, może oszust, który potrzebuje głośnego nazwiska na szyld do swoich przedsiębiorstw. Bywały takie wypadki.",
+  "start": 1787.15
+ },
+ {
+  "i": 177,
+  "pl": "Ileż pięknych nazwisk szlachty niemieckiej i węgierskiej unurzało się w operacjach handlowych, których ona nawet nie rozumie, a ojciec chyba nie więcej.",
+  "start": 1798.31
+ },
+ {
+  "i": 178,
+  "pl": "Zrobiło się już zupełnie ciemno; na ulicy zapalono latarnie, których blask wpadał do gabinetu panny Izabeli malując na suficie ramę okna i zwoje firanki. Wyglądało to jak krzyż na tle jasności, którą powoli zasłania gęsty obłok.",
+  "start": 1808.78
+ },
+ {
+  "i": 179,
+  "pl": "„Gdzie to ja widziałam taki krzyż, taką chmurę i jasność?...” — zapytała się panna Izabela. Zaczęła przypominać sobie widziane w życiu okolice i — marzyć.",
+  "start": 1826.98
+ },
+ {
+  "i": 180,
+  "pl": "Zdawało się jej, że powozem jedzie przez jakąś znaną miejscowość. Krajobraz jest podobny do olbrzymiego pierścienia, utworzonego z lasów i zielonych gór, a jej powóz znajduje się na krawędzi pierścienia i zjeżdża na dół.",
+  "start": 1839.03
+ },
+ {
+  "i": 181,
+  "pl": "Czy on zjeżdża? bo ani zbliża się do niczego, ani od niczego nie oddala, tak jakby stał w miejscu. Ale zjeżdża: widać to po wizerunku słońca, które odbija się w lakierowanym skrzydle powozu i drgając, z wolna posuwa się w tył. Zresztą słychać turkot... To turkot dorożki na ulicy?...",
+  "start": 1854.29
+ },
+ {
+  "i": 182,
+  "pl": "Nie, to turkoczą machiny pracujące gdzieś w głębi owego pierścienia gór i lasów. Widać tam nawet, na dole, jakby jezioro czarnych dymów i białych par, ujęte w ramę zieloności.",
+  "start": 1876.11
+ },
+ {
+  "i": 183,
+  "pl": "Teraz panna Izabela spostrzega ojca, który siedzi przy niej i z uwagą ogląda sobie paznokcie, od czasu do czasu rzucając okiem na krajobraz. Powóz ciągle stoi na krawędzi pierścienia niby bez ruchu, a tylko wizerunek słońca, odbitego w lakierowanym skrzydle, wolno posuwa się ku tyłowi.",
+  "start": 1890.26
+ },
+ {
+  "i": 184,
+  "pl": "Ten pozorny spoczynek czy też utajony ruch w wysokim stopniu drażni pannę Izabelę. „Czy my jedziemy, czy stoimy?” — pyta ojca. Ale ojciec nie odpowiada nic, jakby jej nie widział; ogląda swoje piękne paznokcie i czasami rzuca okiem na okolicę...",
+  "start": 1909.62
+ },
+ {
+  "i": 185,
+  "pl": "Wtem (powóz ciągle drży i słychać turkot) z głębi jeziora czarnych dymów i białych par wynurza się do pół figury jakiś człowiek. Ma krótko ostrzyżone włosy, śniadą twarz, która przypomina Trostiego, pułkownika strzelców (a może gladiatora z Florencji?), i ogromne czerwone dłonie.",
+  "start": 1928.22
+ },
+ {
+  "i": 186,
+  "pl": "Odziany jest w zasmoloną koszulę z rękawami zawiniętymi wyżej łokcia; w lewej ręce, tuż przy piersi, trzyma karty ułożone w wachlarz, w prawej, którą podniósł nad głowę, trzyma jedną kartę, widocznie w tym celu, aby ją rzucić na przód siedzenia powozu. Reszty postaci nie widać spośród dymu.",
+  "start": 1949.44
+ },
+ {
+  "i": 187,
+  "pl": "„Co on robi, ojcze?” — pyta się zalękniona panna Izabela.",
+  "start": 1970.12
+ },
+ {
+  "i": 188,
+  "pl": "„Gra ze mną w pikietę” — odpowiada ojciec, również trzymając w rękach karty.",
+  "start": 1975.04
+ },
+ {
+  "i": 189,
+  "pl": "„Ależ to straszny człowiek, papo!”",
+  "start": 1980.78
+ },
+ {
+  "i": 190,
+  "pl": "„Nawet tacy nie robią nic złego kobietom” — odpowiada pan Tomasz.",
+  "start": 1983.29
+ },
+ {
+  "i": 191,
+  "pl": "Teraz dopiero panna Izabela spostrzega, że człowiek w koszuli patrzy na nią jakimś szczególnym wzrokiem, ciągle trzymając kartę nad głową. Dym i para, kotłujące w dolinie, chwilami zasłaniają jego rozpiętą koszulę i surowe oblicze; tonie wśród nich — nie ma go.",
+  "start": 1987.63
+ },
+ {
+  "i": 192,
+  "pl": "Tylko spoza dymu widać blady połysk jego oczów, a nad dymem obnażoną do łokcia rękę i — kartę.",
+  "start": 2006.47
+ },
+ {
+  "i": 193,
+  "pl": "„Co znaczy ta karta, papo?...” — zapytuje ojca.",
+  "start": 2016.29
+ },
+ {
+  "i": 194,
+  "pl": "Ale ojciec spokojnie patrzy we własne karty i nie powiada nic, jakby jej nie widział.",
+  "start": 2020.55
+ },
+ {
+  "i": 195,
+  "pl": "„Kiedyż nareszcie wyjedziemy z tego miejsca?...”",
+  "start": 2026.73
+ },
+ {
+  "i": 196,
+  "pl": "Ale choć powóz drży i słońce odbite w skrzydle posuwa się ku tyłowi, ciągle u stopni widać jezioro dymu, a w nim zanurzonego człowieka, jego rękę nad głową i — kartę.",
+  "start": 2030.21
+ },
+ {
+  "i": 197,
+  "pl": "Pannę Izabelę ogarnia nerwowy niepokój, skupia wszystkie wspomnienia, wszystkie myśli, ażeby odgadnąć co znaczy karta, którą trzyma ten człowiek?...",
+  "start": 2044.66
+ },
+ {
+  "i": 198,
+  "pl": "Czy to są pieniądze, które przegrał do ojca w pikietę? Chyba nie. Może ofiara, jaką złożył Towarzystwu Dobroczynności? I to nie. Może tysiąc rubli, które dał ciotce na ochronę, a może to jest kwit na fontannę, ptaszki i dywany do ubrania grobu Pańskiego?...",
+  "start": 2054.04
+ },
+ {
+  "i": 199,
+  "pl": "Także nie; to wszystko nie niepokoiłoby jej.",
+  "start": 2076.42
+ },
+ {
+  "i": 200,
+  "pl": "Stopniowo pannę Izabelę napełnia wielka bojaźń. Może to są weksle jej ojca, które ktoś niedawno wykupił?... W takim razie wziąwszy pieniądze za srebra i serwis spłaci ten dług najpierwej i uwolni się od podobnego wierzyciela. Ale człowiek pogrążony w dymie wciąż patrzy jej w oczy i karty nie rzuca.",
+  "start": 2081.22
+ },
+ {
+  "i": 201,
+  "pl": "Więc może... Ach!...",
+  "start": 2101.94
+ },
+ {
+  "i": 202,
+  "pl": "Panna Izabela zrywa się z szezlonga, potrąca w ciemności o taburet i drżącymi rękoma dzwoni. Dzwoni już drugi raz, nie odpowiada nikt, więc wybiega do przedpokoju i we drzwiach spotyka pannę Florentynę, która chwyta ją za rękę i mówi ze zdziwieniem:",
+  "start": 2104.72
+ },
+ {
+  "i": 203,
+  "pl": "— Co tobie, Belciu?...",
+  "start": 2120.78
+ },
+ {
+  "i": 204,
+  "pl": "Światło w przedpokoju nieco oprzytomnia pannę Izabelę. Uśmiecha się.",
+  "start": 2122.89
+ },
+ {
+  "i": 205,
+  "pl": "— Weź, Florciu, lampę do mego pokoju. Papa jest?",
+  "start": 2127.15
+ },
+ {
+  "i": 206,
+  "pl": "— Przed chwilą wyjechał.",
+  "start": 2131.09
+ },
+ {
+  "i": 207,
+  "pl": "— A Mikołaj?",
+  "start": 2132.85
+ },
+ {
+  "i": 208,
+  "pl": "— Zaraz wróci, poszedł oddać list posłańcowi. Czy gorzej boli cię głowa? — pyta panna Florentyna.",
+  "start": 2134.19
+ },
+ {
+  "i": 209,
+  "pl": "— Nie — śmieje się panna Izabela — tylko zdrzemnęłam się i tak mi się coś majaczyło.",
+  "start": 2141.43
+ },
+ {
+  "i": 210,
+  "pl": "Panna Florentyna bierze lampę i obie z kuzynką idą do jej gabinetu. Panna Izabela siada na szezlongu, zasłania ręką oczy przed światłem i mówi:",
+  "start": 2147.47
+ },
+ {
+  "i": 211,
+  "pl": "— Wiesz, Florciu, namyśliłam się, nie sprzedam moich sreber obcemu. Mogą naprawdę dostać się Bóg wie w jakie ręce. Siądź zaraz, jeżeliś łaskawa, przy moim biurku i napisz do ciotki, że... przyjmuję jej propozycję. Niech nam pożyczy trzy tysiące rubli i niech weźmie serwis i srebra.",
+  "start": 2157.19
+ },
+ {
+  "i": 212,
+  "pl": "Panna Florentyna patrzy na nią z najwyższym zdumieniem, wreszcie odpowiada:",
+  "start": 2176.75
+ },
+ {
+  "i": 213,
+  "pl": "— To jest niemożliwe, Belciu.",
+  "start": 2181.58
+ },
+ {
+  "i": 214,
+  "pl": "— Dlaczego?...",
+  "start": 2184.4
+ },
+ {
+  "i": 215,
+  "pl": "— Przed kwadransem otrzymałam list od pani Meliton, że srebra i serwis już kupione.",
+  "start": 2186.09
+ },
+ {
+  "i": 216,
+  "pl": "— Już?... Kto je kupił? — woła panna Izabela chwytając kuzynkę za ręce.",
+  "start": 2192.58
+ },
+ {
+  "i": 217,
+  "pl": "Panna Florentyna jest zmieszana.",
+  "start": 2198.68
+ },
+ {
+  "i": 218,
+  "pl": "— Podobno jakiś kupiec z Rosji... — mówi, lecz czuć, że mówi nieprawdę.",
+  "start": 2201.02
+ },
+ {
+  "i": 219,
+  "pl": "— Ty coś wiesz, Florciu!... Proszę cię, powiedz!... — błaga ją panna Izabela. Jej oczy napełniają się łzami.",
+  "start": 2206.8
+ },
+ {
+  "i": 220,
+  "pl": "— Zresztą tobie powiem, tylko nie zdradź tajemnicy przed ojcem — prosi kuzynka.",
+  "start": 2214.14
+ },
+ {
+  "i": 221,
+  "pl": "— Więc kto?... No, kto kupił?...",
+  "start": 2219.26
+ },
+ {
+  "i": 222,
+  "pl": "— Wokulski — odpowiada panna Florentyna.",
+  "start": 2222.8
+ },
+ {
+  "i": 223,
+  "pl": "Pannie Izabeli w jednej chwili obeschły oczy nabierając przy tym barwy stalowej. Odpycha z gniewem ręce kuzynki, przechodzi tam i na powrót swój gabinet, wreszcie siada na foteliku naprzeciw panny Florentyny.",
+  "start": 2226.53
+ },
+ {
+  "i": 224,
+  "pl": "Nie jest już przestraszoną i zdenerwowaną pięknością, ale wielką damą, która ma zamiar kogoś ze służby osądzić, a może wydalić.",
+  "start": 2240.35
+ },
+ {
+  "i": 225,
+  "pl": "— Powiedz mi, kuzynko — mówi pięknym kontraltowym głosem — co to za śmieszny spisek knujecie przeciwko mnie?",
+  "start": 2249.83
+ },
+ {
+  "i": 226,
+  "pl": "— Ja?... spisek?... — powtarza panna Florentyna, przyciskając rękoma piersi. — Nie rozumiem cię, Belu...",
+  "start": 2259.22
+ },
+ {
+  "i": 227,
+  "pl": "— Tak. Ty, pani Meliton i ten... zabawny bohater... Wokulski...",
+  "start": 2267.48
+ },
+ {
+  "i": 228,
+  "pl": "— Ja i Wokulski?... — powtarza panna Florentyna. Tym razem zdziwienie jej jest tak szczere, że wątpić nie można.",
+  "start": 2273.96
+ },
+ {
+  "i": 229,
+  "pl": "— Przypuśćmy, że nie spiskujesz — ciągnie dalej Panna Izabela — ale coś wiesz...",
+  "start": 2282.66
+ },
+ {
+  "i": 230,
+  "pl": "— O Wokulskim wiem to, co wszyscy. Ma sklep, w którym kupujemy, zrobił majątek na wojnie...",
+  "start": 2289.06
+ },
+ {
+  "i": 231,
+  "pl": "— A o tym, że wciąga papę do spółki handlowej, nie słyszałaś?",
+  "start": 2295.4
+ },
+ {
+  "i": 232,
+  "pl": "Wyraziste oczy panny Florentyny zrobiły się bardzo dużymi.",
+  "start": 2301.35
+ },
+ {
+  "i": 233,
+  "pl": "— Ojca twego wciąga do spółki?... — rzekła wzruszając ramionami. — Do jakiejże spółki może go wciągnąć?...",
+  "start": 2306.53
+ },
+ {
+  "i": 234,
+  "pl": "I w tej chwili przestrasza się własnych słów...",
+  "start": 2314.59
+ },
+ {
+  "i": 235,
+  "pl": "Panna Izabela nie mogła wątpić o jej niewinności; znowu parę razy przeszła się po gabinecie z ruchami zamkniętej lwicy i nagle zapytała:",
+  "start": 2319.17
+ },
+ {
+  "i": 236,
+  "pl": "— Powiedzże mi przynajmniej: co sądzisz o tym człowieku?",
+  "start": 2330.0
+ },
+ {
+  "i": 237,
+  "pl": "— Ja o Wokulskim?... Nic o nim nie sądzę, wyjąwszy chyba to, że szuka rozgłosu i stosunków.",
+  "start": 2333.76
+ },
+ {
+  "i": 238,
+  "pl": "— Więc dla rozgłosu ofiarował tysiąc rubli na ochronę?",
+  "start": 2340.6
+ },
+ {
+  "i": 239,
+  "pl": "— Z pewnością. Dał przecie dwa razy tyle na dobroczynność.",
+  "start": 2344.42
+ },
+ {
+  "i": 240,
+  "pl": "— A dlaczego kupił mój serwis i srebra?",
+  "start": 2348.96
+ },
+ {
+  "i": 241,
+  "pl": "— Zapewne dlatego, ażeby je z zyskiem sprzedać — odpowiedziała panna Florentyna. — W Anglii za podobne rzeczy dobrze płacą.",
+  "start": 2352.05
+ },
+ {
+  "i": 242,
+  "pl": "— A dlaczego... wykupił weksle papy?",
+  "start": 2359.6
+ },
+ {
+  "i": 243,
+  "pl": "— Skąd wiesz, że to on? W tym nie miałby żadnego interesu.",
+  "start": 2362.8
+ },
+ {
+  "i": 244,
+  "pl": "— Nic nie wiem — pochwyciła gorączkowo panna Izabela — ale wszystko przeczuwam, wszystko rozumiem... Ten człowiek chce zbliżyć się do nas...",
+  "start": 2367.42
+ },
+ {
+  "i": 245,
+  "pl": "— Już się przecie poznał z ojcem — wtrąciła panna Florentyna.",
+  "start": 2376.0
+ },
+ {
+  "i": 246,
+  "pl": "— Więc do mnie chce się zbliżyć!... — zawołała panna Izabela z wybuchem. — Poznałam to po...",
+  "start": 2380.63
+ },
+ {
+  "i": 247,
+  "pl": "Wstyd jej było dodać: „po jego spojrzeniu”.",
+  "start": 2388.23
+ },
+ {
+  "i": 248,
+  "pl": "— Czy nie uprzedzasz się, Belciu?...",
+  "start": 2392.3
+ },
+ {
+  "i": 249,
+  "pl": "— Nie. To, czego doznaję w tej chwili, nie jest uprzedzeniem, ale raczej jasnowidzeniem. Nawet nie domyślasz się, jak ja dawno znam tego człowieka, a raczej — od jak dawna on mnie prześladuje.",
+  "start": 2394.92
+ },
+ {
+  "i": 250,
+  "pl": "Teraz dopiero przypominam sobie, że przed rokiem nie było przedstawienia w teatrze, nie było koncertu, odczytu, na którym bym go nie spotkała, i dopiero dziś ta... bezmyślna figura wydaje mi się straszną...",
+  "start": 2407.08
+ },
+ {
+  "i": 251,
+  "pl": "Panna Florentyna aż cofnęła się z fotelikiem, szepcząc:",
+  "start": 2420.96
+ },
+ {
+  "i": 252,
+  "pl": "— Więc przypuszczasz, żeby się ośmielił...",
+  "start": 2424.36
+ },
+ {
+  "i": 253,
+  "pl": "— Zagustować we mnie?... — przerwała ze śmiechem panna Izabela. — Tego nawet nie myślałabym mu bronić. Nie jestem ani tak naiwna, ani tak fałszywie skromna, ażeby nie wiedzieć, że się podobam... mój Boże! nawet służbie...",
+  "start": 2428.04
+ },
+ {
+  "i": 254,
+  "pl": "Kiedyś gniewało mnie to jak żebranina, która zastępuje nam drogę na ulicach, dzwoni do mieszkań albo pisuje listy z prośbą o wsparcie. Ale dziś — tylko zrozumiałam lepiej słowa Zbawcy: „Komu wiele dano, od tego wiele żądać będą.”<sup>170<\/sup>.",
+  "start": 2443.84
+ },
+ {
+  "i": 255,
+  "pl": "— Zresztą — dodała wzruszając ramionami — mężczyźni w tak bezceremonialny sposób zaszczycają nas swoim uwielbieniem, że nie tylko już nie dziwię się ich nadskakiwaniu albo impertynenckim spojrzeniom, ale temu, gdy jest inaczej. Jeżeli w salonie spotkam człowieka,",
+  "start": 2459.26
+ },
+ {
+  "i": 256,
+  "pl": "który mi nie mówi o swej sympatii i cierpieniach albo nie milczy posępnie w sposób zdradzający jeszcze większą sympatię i cierpienia, albo nie okazuje mi lodowatej obojętności, co ma być oznaką najwyższej sympatii i cierpień, wtedy — czuję, że mi czegoś brak,",
+  "start": 2476.93
+ },
+ {
+  "i": 257,
+  "pl": "jak gdybym zapomniała wachlarza albo chusteczki... O, ja ich znam! tych wszystkich donżuanów<sup>171<\/sup>, poetów, filozofów, bohaterów, te wszystkie tkliwe, bezinteresowne, złamane, rozmarzone albo silne dusze... Znam całą tę maskaradę i zapewniam cię, że dobrze się nią bawię.",
+  "start": 2493.33
+ },
+ {
+  "i": 258,
+  "pl": "Cha! cha! cha!... jacy oni śmieszni...",
+  "start": 2512.09
+ },
+ {
+  "i": 259,
+  "pl": "— Nie rozumiem cię, Belciu... — wtrąciła panna Florentyna rozkładając ręce.",
+  "start": 2515.86
+ },
+ {
+  "i": 260,
+  "pl": "— Nie rozumiesz?... Więc chyba nie jesteś kobietą.",
+  "start": 2520.89
+ },
+ {
+  "i": 261,
+  "pl": "Panna Florentyna zrobiła gest przeczący, a następnie powątpiewający.",
+  "start": 2524.06
+ },
+ {
+  "i": 262,
+  "pl": "— Posłuchaj — przerwała panna Izabela. — Od roku już straciliśmy stanowisko w świecie. Nie zaprzeczaj, bo tak jest, wszyscy o tym wiemy. Dziś jesteśmy zrujnowani.",
+  "start": 2529.38
+ },
+ {
+  "i": 263,
+  "pl": "— Przesadzasz...",
+  "start": 2540.38
+ },
+ {
+  "i": 264,
+  "pl": "— Ach, Floro, nie pocieszaj mnie, nie kłam!... Czyżeś nie słyszała przy obiedzie, że nawet tych kilkanaście rubli, które ma obecnie mój ojciec, są wygrane w karty od...",
+  "start": 2541.36
+ },
+ {
+  "i": 265,
+  "pl": "Panna Izabela mówiąc to drżała na całym ciele. Oczy jej błyszczały, na twarzy miała wypieki.",
+  "start": 2552.95
+ },
+ {
+  "i": 266,
+  "pl": "— Otóż w takiej chwili przychodzi ten... kupiec, nabywa nasze weksle, nasz serwis, opętuje mego ojca i ciotkę, czyli — ze wszystkich stron otacza mnie sieciami jak myśliwiec zwierzynę. To już nie smutny wielbiciel, to nie konkurent, którego można odrzucić, to... zdobywca!...",
+  "start": 2559.31
+ },
+ {
+  "i": 267,
+  "pl": "On nie wzdycha, ale zakrada się do łask ciotki, ręce i nogi oplątuje ojcu, a mnie chce porwać gwałtem, jeżeli nie zmusić do tego, ażebym mu się sama oddała... Czy rozumiesz tę wyrafinowaną nikczemność?",
+  "start": 2578.25
+ },
+ {
+  "i": 268,
+  "pl": "Panna Florentyna przestraszyła się.",
+  "start": 2596.64
+ },
+ {
+  "i": 269,
+  "pl": "— W takim razie masz bardzo prosty sposób. Powiedz...",
+  "start": 2599.59
+ },
+ {
+  "i": 270,
+  "pl": "— Komu i co?... Czy ciotce, która gotowa popierać tego pana, ażeby mnie zmusić do oddania ręki marszałkowi?... Czy może mam powiedzieć ojcu, przerazić go i przyśpieszyć katastrofę?",
+  "start": 2602.67
+ },
+ {
+  "i": 271,
+  "pl": "Jedno tylko zrobię: nie pozwolę ojcu, ażeby zaciągał się do jakichkolwiek spółek, choćbym miała włóczyć mu się u nóg, choćbym miała... zabronić mu tego w imieniu zmarłej matki....",
+  "start": 2614.91
+ },
+ {
+  "i": 272,
+  "pl": "Panna Florentyna patrzy na nią z zachwytem...",
+  "start": 2627.03
+ },
+ {
+  "i": 273,
+  "pl": "— Doprawdy, Belciu — rzekła — przesadzasz. Z twoją energią i taką genialną domyślnością...",
+  "start": 2630.37
+ },
+ {
+  "i": 274,
+  "pl": "— Nie znasz tych ludzi, a ja widziałam ich przy pracy. W ich rękach stalowe szyny zwijają się jak wstążki. To straszni ludzie. Oni dla swoich celów umieją poruszyć wszystkie siły ziemskie, jakich my nawet nie znamy.",
+  "start": 2636.13
+ },
+ {
+  "i": 275,
+  "pl": "Oni potrafią łamać, usidlać, płaszczyć się, wszystko ryzykować, nawet — cierpliwie czekać...",
+  "start": 2649.15
+ },
+ {
+  "i": 276,
+  "pl": "— Mówisz na podstawie czytanych romansów.",
+  "start": 2657.14
+ },
+ {
+  "i": 277,
+  "pl": "— Mówię na mocy moich przeczuć, które ostrzegają... wołają, że ten człowiek po to jeździł na wojnę, ażeby mnie zdobyć. I ledwie wrócił, już mnie ze wszystkich stron obsacza<sup>172<\/sup>... Ale niech się strzeże!... Chce mnie kupić? dobrze, niech kupuje!... przekona się, że jestem bardzo droga...",
+  "start": 2659.7
+ },
+ {
+  "i": 278,
+  "pl": "Chce mnie złapać w sieci?... Dobrze, niech je rozsnuwa... ale ja mu się wymknę, choćby — w objęcia marszałka... O Boże! nawet nie domyślałam się, jak głęboką jest przepaść, w którą spadamy, dopóki nie zobaczyłam takiego dna. Z salonów Kwirynału<sup>173<\/sup> do sklepu...",
+  "start": 2679.06
+ },
+ {
+  "i": 279,
+  "pl": "To już nawet nie upadek, to hańba...",
+  "start": 2697.5
+ },
+ {
+  "i": 280,
+  "pl": "Siadła na szezlongu i utuliwszy głowę rękoma szlochała.",
+  "start": 2701.33
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

@@ -1,0 +1,1971 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-07.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-07.md audio/chapter-07.webm
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-07.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-07.md
+     It reads chapter-07.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path audio/chapter-07.webm, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Lalka · Tom I, Rozdział VII</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative;
+    cursor: help;
+    color: var(--accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    top: 12px;
+    width: min(360px, calc(100vw - 36px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans);
+    text-align: left;
+    white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* Ukrainian reveal block */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Lalka · Tom I, Rozdział VII</h1>
+      <p class="chapter-name">Gołąb wychodzi na spotkanie węża</p>
+      <p>bilingual study edition: PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>audio/chapter-07.webm</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" src="audio/chapter-07.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (PL → UA, in reading order)  */
+/*    Generated from chapter-07.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "pl": "Serwis i srebra familii Łęckich były już sprzedane i nawet jubiler odniósł panu Tomaszowi pieniądze, strąciwszy dla siebie sto kilkadziesiąt rubli składowego<sup>174<\/sup> i za pośrednictwo.",
+  "ua": "Посуд і срібло родини Ленцьких уже продали, і ювелір навіть приніс пану Томашеві гроші, відрахувавши собі за зберігання<sup>174<\/sup> та посередництво понад сто рублів.",
+  "para": 0,
+  "start": 8.61
+ },
+ {
+  "pl": "Mimo to hrabina Karolowa nie przestała kochać panny Izabeli; owszem — jej energia i poświęcenie, okazane przy sprzedaży pamiątek, zbudziły w sercu starej damy nowe źródło uczuć rodzinnych.",
+  "ua": "Попри це, графиня Каролова не перестала любити панну Ізабелу; навпаки, її енергія й самопожертва, виявлені під час продажу родинних реліквій, пробудили в серці старої пані нове джерело родинних почуттів.",
+  "para": 0,
+  "start": 20.81
+ },
+ {
+  "pl": "Nie tylko uprosiła pannę Izabelę o przyjęcie pięknego kostiumu, nie tylko co dzień bywała u niej albo ją wzywała do siebie, ale jeszcze (co było dowodem niesłychanej łaski) na całą Wielką Środę ofiarowała jej swój powóz.",
+  "ua": "Вона не лише впросила панну Ізабелу прийняти чудовий костюм і щодня або навідувала її, або кликала до себе, а ще й (що було доказом нечуваної ласки) віддала їй свій екіпаж на всю Велику середу.",
+  "para": 0,
+  "start": 33.61
+ },
+ {
+  "pl": "— Przejedź się, aniołku, po mieście — mówiła hrabina całując siostrzenicę — i pozałatwiaj drobne sprawunki. Tylko pamiętaj, żebyś mi za to w czasie kwesty wyglądała ślicznie... Tak ślicznie, jak to tylko ty potrafisz!... Proszę cię...",
+  "ua": "— Прокотися містом, янголятко, — казала графиня, цілуючи племінницю, — і владнай дрібні справи. Тільки пам'ятай: під час збору пожертв ти маєш виглядати чарівно... Так чарівно, як тільки ти вмієш!.. Прошу тебе...",
+  "para": 1,
+  "start": 48.94
+ },
+ {
+  "pl": "Panna Izabela nie odpowiedziała nic, ale jej spojrzenie i rumieniec kazały domyślać się, że z całą gotowością spełni wolę ciotki.",
+  "ua": "Панна Ізабела нічого не відповіла, але її погляд і рум'янець давали зрозуміти, що вона охоче виконає волю тітки.",
+  "para": 2,
+  "start": 63.69
+ },
+ {
+  "pl": "W Wielką Środę, punkt o jedynastej rano, panna Izabela już siedziała w otwartym powozie wraz ze swoją nieodstępną towarzyszką, panną Florentyną.",
+  "ua": "У Велику середу, рівно об одинадцятій ранку, панна Ізабела вже сиділа у відкритому екіпажі зі своєю невідступною супутницею, панною Флорентиною.",
+  "para": 3,
+  "start": 72.13
+ },
+ {
+  "pl": "Po Alei chodziły wiosenne powiewy roznosząc tę szczególną, surową woń, która poprzedza pękanie liści na drzewach i ukazanie się pierwiosnków; szare trawniki nabrały zielonawego odcienia; słońce grzało tak mocno, że panie otworzyły parasolki.",
+  "ua": "Алеєю гуляли весняні подихи, розносячи особливий, терпкий запах, що віщує розпускання листя на деревах і появу первоцвітів; сірі газони набули зеленкуватого відтінку; сонце припікало так сильно, що пані розкрили парасольки.",
+  "para": 3,
+  "start": 83.53
+ },
+ {
+  "pl": "— Śliczny dzień — westchnęła panna Izabela patrząc na niebo, gdzieniegdzie poplamione białymi obłokami.",
+  "ua": "— Який чудовий день, — зітхнула панна Ізабела, дивлячись на небо, де подекуди біліли хмаринки.",
+  "para": 4,
+  "start": 100.72
+ },
+ {
+  "pl": "— Gdzie jaśnie panienka rozkaże jechać? — spytał lokaj zatrzasnąwszy drzwiczki powozu.",
+  "ua": "— Куди панночка накаже їхати? — спитав лакей, зачинивши дверцята екіпажа.",
+  "para": 5,
+  "start": 108.75
+ },
+ {
+  "pl": "— Do sklepu Wokulskiego — z nerwowym pośpiechem odpowiedziała panna Izabela.",
+  "ua": "— До крамниці Вокульського, — нервово поквапившись, відповіла панна Ізабела.",
+  "para": 6,
+  "start": 115.21
+ },
+ {
+  "pl": "Lokaj skoczył na kozioł i spasione gniade konie ruszyły uroczystym kłusem parskając i wyrzucając łbami.",
+  "ua": "Лакей скочив на козли, і вгодовані гніді коні рушили урочистою риссю, фиркаючи й закидаючи головами.",
+  "para": 7,
+  "start": 119.67
+ },
+ {
+  "pl": "— Dlaczego, Belciu, do Wokulskiego? — zapytała trochę zdziwiona panna Florentyna.",
+  "ua": "— Чому до Вокульського, Белю? — трохи здивовано запитала панна Флорентина.",
+  "para": 8,
+  "start": 129.12
+ },
+ {
+  "pl": "— Chcę sobie kupić paryskie rękawiczki, kilka flakonów perfum...",
+  "ua": "— Хочу купити паризькі рукавички, кілька флаконів парфумів...",
+  "para": 9,
+  "start": 134.86
+ },
+ {
+  "pl": "— To samo dostaniemy gdzie indziej.",
+  "ua": "— Те саме знайдемо деінде.",
+  "para": 10,
+  "start": 139.56
+ },
+ {
+  "pl": "— Chcę tam — odpowiedziała sucho panna Izabela.",
+  "ua": "— Я хочу саме туди, — сухо відповіла панна Ізабела.",
+  "para": 11,
+  "start": 142.08
+ },
+ {
+  "pl": "Od paru dni męczył ją osobliwy niepokój, jakiego już raz doznała w życiu. Będąc przed laty za granicą w ogrodzie aklimatyzacyjnym<sup>175<\/sup> zobaczyła w jednej z klatek ogromnego tygrysa, który spał oparty o kratę w taki sposób, że mu część głowy i jedno ucho wysunęło się na zewnątrz.",
+  "ua": "Уже кілька днів її мучив дивний неспокій, який вона колись уже відчувала. Багато років тому, перебуваючи за кордоном у зоологічному саду<sup>175<\/sup>, вона побачила в одній із кліток величезного тигра: той спав, прихилившись до ґрат так, що частина голови й одне вухо висунулися назовні.",
+  "para": 12,
+  "start": 145.44
+ },
+ {
+  "pl": "Widząc to panna Izabela uczuła nieprzepartą chęć pochwycenia tygrysa za ucho. Zapach klatki napełniał ją wstrętem, potężne łapy zwierzęcia nieopisaną trwogą, lecz mimo to czuła, że — musi tygrysa przynajmniej dotknąć w ucho.",
+  "ua": "Побачивши це, панна Ізабела відчула непереборне бажання схопити тигра за вухо. Запах клітки викликав у неї огиду, могутні лапи звіра — невимовний жах, та попри це вона відчувала: мусить принаймні торкнутися тигрового вуха.",
+  "para": 13,
+  "start": 166.28
+ },
+ {
+  "pl": "Dziwny ten pociąg wydał się jej samej niebezpiecznym i nawet śmiesznym. Przemogła się więc i poszła dalej; lecz po paru minutach — wróciła. Znowu cofnęła się, przejrzała inne klatki, starała się o czym innym myśleć. Na próżno.",
+  "ua": "Цей дивний потяг здався їй самій небезпечним і навіть смішним. Вона опанувала себе й пішла далі, та за кілька хвилин повернулася. Знову відступила, оглянула інші клітки, намагалася думати про щось інше. Дарма.",
+  "para": 14,
+  "start": 183.8
+ },
+ {
+  "pl": "Wróciła się i choć tygrys już nie spał, tylko mrucząc lizał swoje straszliwe łapy, panna Izabela podbiegła do klatki, wsunęła rękę i — drżąca i blada — dotknęła tygrysiego ucha.",
+  "ua": "Вона повернулася, і хоч тигр уже не спав, а, муркочучи, лизав свої страшні лапи, панна Ізабела підбігла до клітки, просунула руку й — тремтячи та збліднувши — торкнулася тигрового вуха.",
+  "para": 14,
+  "start": 200.76
+ },
+ {
+  "pl": "W chwilę później wstydziła się swego szaleństwa, lecz zarazem czuła to gorzkie zadowolenie znane ludziom, którzy usłuchają w ważnej sprawie głosu instynktu.",
+  "ua": "За мить їй стало соромно за своє божевілля, але водночас вона відчула гірке задоволення, знайоме людям, які в важливій справі дослухаються до голосу інстинкту.",
+  "para": 15,
+  "start": 214.14
+ },
+ {
+  "pl": "Dziś zbudziło się w niej podobnego rodzaju pragnienie.",
+  "ua": "Сьогодні в ній прокинулося бажання такого самого роду.",
+  "para": 16,
+  "start": 225.39
+ },
+ {
+  "pl": "Gardziła Wokulskim, serce jej zamierało na samo przypuszczenie, że ten człowiek mógł zapłacić za srebra więcej, niż były warte, a mimo to czuła nieprzeparty pociąg — wejść do sklepu, spojrzeć w oczy Wokulskiemu i zapłacić mu za parę drobiazgów tymi właśnie pieniędzmi, które pochodziły od niego.",
+  "ua": "Вона зневажала Вокульського, і саме припущення, що цей чоловік міг заплатити за срібло більше, ніж воно коштувало, стискало їй серце; і все ж вона відчувала непереборний потяг — зайти до крамниці, подивитися Вокульському в очі й заплатити за кілька дрібничок саме тими грошима, що походили від нього.",
+  "para": 17,
+  "start": 230.88
+ },
+ {
+  "pl": "Strach ją zdejmował na myśl spotkania, lecz niewytłomaczony instynkt popychał.",
+  "ua": "Її охоплював страх від думки про зустріч, але незбагненний інстинкт штовхав уперед.",
+  "para": 17,
+  "start": 249.64
+ },
+ {
+  "pl": "Na Krakowskim już z daleka zobaczyła szyld z napisem: J. Mincel i S. Wokulski, a o jeden dom bliżej nowy, jeszcze nie wykończony sklep<sup>176<\/sup> o pięciu oknach frontu, z lustrzanymi szybami.",
+  "ua": "На Краківському тракті вона здалеку побачила вивіску «Я. Мінцель і С. Вокульський», а за один будинок перед нею — нову, ще не добудовану крамницю<sup>176<\/sup> з п'ятьма фасадними вікнами та дзеркальними шибками.",
+  "para": 18,
+  "start": 255.78
+ },
+ {
+  "pl": "Z kilku pracujących przy nim rzemieślników i robotników jedni od wewnątrz wycierali szyby, drudzy złocili i malowali drzwi i futryny, inni umocowywali przed oknami ogromne mosiężne bariery.",
+  "ua": "Кілька ремісників і робітників працювали там: одні зсередини протирали шибки, другі золотили й фарбували двері та рами, інші кріпили перед вікнами величезні латунні ґрати.",
+  "para": 18,
+  "start": 270.61
+ },
+ {
+  "pl": "— Cóż to za sklep budują? — spytała panny Florentyny.",
+  "ua": "— Що це за крамницю будують? — спитала вона панну Флорентину.",
+  "para": 19,
+  "start": 283.68
+ },
+ {
+  "pl": "— Chyba dla Wokulskiego, bo słyszałam, że wziął obszerniejszy lokal.",
+  "ua": "— Мабуть, для Вокульського, бо я чула, що він узяв більше приміщення.",
+  "para": 20,
+  "start": 287.82
+ },
+ {
+  "pl": "„Dla mnie ten sklep!” — pomyślała panna Izabela szarpiąc rękawiczki.",
+  "ua": "«Це для мене крамниця!» — подумала панна Ізабела, смикаючи рукавички.",
+  "para": 21,
+  "start": 292.46
+ },
+ {
+  "pl": "Powóz stanął, lokaj zeskoczył z kozła i pomógł paniom wysiąść. Lecz gdy następnie otworzył z łoskotem drzwi do sklepu Wokulskiego, panna Izabela tak osłabła, że nogi zachwiały się pod nią. Przez chwilę chciała wrócić do powozu i uciec stąd; wnet jednak opanowała się i z podniesioną głową weszła.",
+  "ua": "Екіпаж зупинився, лакей зіскочив із козел і допоміг паням вийти. Та коли він із гуркотом відчинив двері крамниці Вокульського, панна Ізабела так ослабла, що ноги під нею затремтіли. На мить їй захотілося повернутися до екіпажа й утекти звідси; проте вона швидко опанувала себе і з високо піднятою головою увійшла.",
+  "para": 22,
+  "start": 297.43
+ },
+ {
+  "pl": "Pan Rzecki stał już na środku sklepu i zacierając ręce, witał ją niskimi ukłonami. W głębi pan Lisiecki, podczesując piękną brodę, okrągłymi i pełnymi godności ruchami prezentował brązowe kandelabry jakiejś damie, która siedziała na krześle.",
+  "ua": "Пан Жецький уже стояв посеред крамниці й, потираючи руки, вітав її низькими поклонами. У глибині пан Лісецький, пригладжуючи розкішну бороду, округлими й поважними жестами показував бронзові канделябри якійсь дамі, що сиділа на стільці.",
+  "para": 23,
+  "start": 319.35
+ },
+ {
+  "pl": "Mizerny Klejn wybierał laski młodzieńcowi, który na widok panny Izabeli szybko uzbroił się w binokle — a pachnący heliotropem<sup>177<\/sup> Mraczewski palił wzrokiem i sztyletował wąsikami dwie rumiane panienki, które towarzyszyły damie i oglądały toaletowe cacka.",
+  "ua": "Худорлявий Клейн добирав ціпки для молодого чоловіка, який, побачивши панну Ізабелу, хутко озброївся лорнетом; а пахучий геліотропом<sup>177<\/sup> Мрацевський палив поглядом і колов вусиками двох рум'яних панянок, що супроводжували даму й розглядали туалетні дрібнички.",
+  "para": 23,
+  "start": 337.86
+ },
+ {
+  "pl": "Na prawo ode drzwi, za kantorkiem, siedział Wokulski schylony nad rachunkami.",
+  "ua": "Праворуч від дверей, за конторкою, сидів Вокульський, схилившись над рахунками.",
+  "para": 24,
+  "start": 355.01
+ },
+ {
+  "pl": "Gdy panna Izabela weszła, młodzieniec oglądający laski poprawił kołnierzyk na szyi, dwie panienki spojrzały na siebie, pan Lisiecki urwał w połowie swój okrągły frazes o stylu kandelabrów, ale zatrzymał okrągłą pozę, a nawet dama słuchająca jego wykładu ciężko odwróciła się na krześle.",
+  "ua": "Коли панна Ізабела увійшла, молодий чоловік, що вибирав ціпок, поправив комірець; дві панянки перезирнулися; пан Лісецький урвав на півслові свій пишномовний вислів про стиль канделябрів, зберігши поважну позу; навіть дама, яка слухала його пояснення, важко повернулася на стільці.",
+  "para": 25,
+  "start": 361.77
+ },
+ {
+  "pl": "Przez chwilę sklep zaległa cisza, którą dopiero panna Izabela przerwała odezwawszy się pięknym kontraltem:",
+  "ua": "На мить у крамниці запала тиша, яку перервала лише панна Ізабела, озвавшись своїм прекрасним контральтом:",
+  "para": 25,
+  "start": 381.96
+ },
+ {
+  "pl": "— Czy zastałyśmy pana Mraczewskiego?...",
+  "ua": "— Чи пан Мрацевський тут?",
+  "para": 26,
+  "start": 391.68
+ },
+ {
+  "pl": "— Panie Mraczewski!... — pochwycił pan Ignacy.",
+  "ua": "— Пане Мрацевський! — підхопив пан Ігнацій.",
+  "para": 27,
+  "start": 395.56
+ },
+ {
+  "pl": "Mraczewski już stał przy pannie Izabeli, zarumieniony jak wiśnia, pachnący jak kadzielnica, z pochyloną głową, jak kita wodnej trzciny.",
+  "ua": "Мрацевський уже стояв біля панни Ізабели — почервонілий, мов вишня, пахучий, мов кадильниця, і схилив голову, наче китиця водяної трави.",
+  "para": 28,
+  "start": 398.62
+ },
+ {
+  "pl": "— Przyszłyśmy prosić pana o rękawiczki.",
+  "ua": "— Ми прийшли попросити у вас рукавички.",
+  "para": 29,
+  "start": 409.14
+ },
+ {
+  "pl": "— Numerek pięć i pół — odparł Mraczewski i już trzymał pudełko, które mu nieco drżało w rękach pod wpływem spojrzenia panny Izabeli.",
+  "ua": "— Номер п'ять із половиною, — відповів Мрацевський і вже тримав коробку, що ледь тремтіла в його руках під поглядом панни Ізабели.",
+  "para": 30,
+  "start": 413.2
+ },
+ {
+  "pl": "— Otóż nie... — przerwała panna ze śmiechem. — Pięć i trzy czwarte... Już pan zapomniał!...",
+  "ua": "— Та ні... — засміявшись, перебила панна. — П'ять і три чверті... Ви вже забули!",
+  "para": 31,
+  "start": 422.04
+ },
+ {
+  "pl": "— Pani, są rzeczy, których się nigdy nie zapomina. Jeżeli jednak rozkazuje pani pięć i trzy czwarte, będę służył w nadziei, że niebawem znowu zaszczyci nas pani swoją obecnością.",
+  "ua": "— Пані, є речі, яких ніколи не забувають. Та якщо пані бажає п'ять і три чверті, я до ваших послуг і сподіваюся, що невдовзі ви знову ощасливите нас своєю присутністю.",
+  "para": 32,
+  "start": 428.72
+ },
+ {
+  "pl": "Bo rękawiczki pięć i trzy czwarte — dodał z lekkim westchnieniem, podsuwając jej kilka innych pudełek — stanowczo zsuną się z rączek...",
+  "ua": "— Бо рукавички п'ять і три чверті, — додав він із легким зітханням, підсуваючи їй кілька інших коробок, — неодмінно спадатимуть з ваших ручок...",
+  "para": 32,
+  "start": 438.44
+ },
+ {
+  "pl": "— Geniusz! — cicho szepnął pan Ignacy mrugając na Lisieckiego, który pogardliwie ruszył ustami.",
+  "ua": "— Геній! — тихо прошепотів пан Ігнацій, підморгнувши Лісецькому, який зневажливо скривив губи.",
+  "para": 33,
+  "start": 447.12
+ },
+ {
+  "pl": "Dama siedząca na krześle zwróciła się do kandelabrów, dwie panny do toaletki z oliwkowego drzewa, młodzieniec w binoklach począł znowu wybierać laski i — rzeczy w sklepie przeszły do spokojnego trybu. Tylko rozgorączkowany Mraczewski zeskakiwał i wbiegał na drabinkę,",
+  "ua": "Дама на стільці знову повернулася до канделябрів, дві панянки — до туалетного столика з оливкового дерева, молодий чоловік у лорнеті знову почав вибирати ціпки, й у крамниці запанував звичайний спокій. Лише збуджений Мрацевський зіскакував із драбини й знову видирався на неї,",
+  "para": 34,
+  "start": 453.6
+ },
+ {
+  "pl": "wysuwał szuflady i wydobywał coraz nowe pudełka tłomacząc pannie Izabeli po polsku i po francusku, że nie może nosić innych rękawiczek, tylko pięć i pół, ani używać innych perfum, tylko oryginalnych Atkinsona<sup>178<\/sup>, ani ozdabiać swego stolika innymi drobiazgami, jak paryskimi.",
+  "ua": "висував шухляди й діставав дедалі нові коробки, пояснюючи панні Ізабелі польською та французькою, що вона не може носити інших рукавичок, крім п'ятьох із половиною, користуватися іншими парфумами, ніж оригінальні Аткінсона<sup>178<\/sup>, чи прикрашати свій столик чимось, крім паризьких дрібничок.",
+  "para": 34,
+  "start": 470.84
+ },
+ {
+  "pl": "Wokulski pochylił się nad kantorkiem tak, że żyły nabrzmiały mu na czole, i — wciąż rachował w myśli:",
+  "ua": "Вокульський схилився над конторкою так, що на чолі в нього набрякли жили, і все рахував подумки:",
+  "para": 35,
+  "start": 488.29
+ },
+ {
+  "pl": "„29 a 36 — to 65, a 15 to 80, a 73 — to... to...”",
+  "ua": "«Двадцять дев'ять та тридцять шість — шістдесят п'ять, іще п'ятнадцять — вісімдесят, а сімдесят три — це... це...»",
+  "para": 36,
+  "start": 496.12
+ },
+ {
+  "pl": "Tu urwał i spod oka spojrzał w stronę panny Izabeli rozmawiającej z Mraczewskim. Oboje stali zwróceni do niego profilem; dostrzegł więc pałający wzrok subiekta przykuty do panny Izabeli, na co ona w sposób demonstracyjny odpowiadała uśmiechem i spojrzeniami łagodnej zachęty.",
+  "ua": "Він урвався й скоса глянув у бік панни Ізабели, яка розмовляла з Мрацевським. Вони стояли до нього в профіль, тож він побачив, як продавець палко втупився в панну Ізабелу, а вона демонстративно відповідала йому усмішкою та лагідними, заохочувальними поглядами.",
+  "para": 37,
+  "start": 505.72
+ },
+ {
+  "pl": "„29 a 36 — to 65, a 15...” — liczył w myśli Wokulski, lecz nagle pióro prysło mu w ręku. Nie podnosząc głowy wydobył nową stalówkę z szuflady, a jednocześnie, nie wiadomo jakim sposobem, z rachunku wypadło mu pytanie:",
+  "ua": "«Двадцять дев'ять та тридцять шість — шістдесят п'ять, іще п'ятнадцять...» — рахував подумки Вокульський, але раптом у нього в руці тріснуло перо. Не підводячи голови, він дістав із шухляди нове, а тим часом невідомо як із рахунку виринуло запитання:",
+  "para": 38,
+  "start": 525.84
+ },
+ {
+  "pl": "„I ja mam niby to ją kochać?... Głupstwo! Przez rok cierpiałem na jakąś chorobę mózgową, a zdawało mi się, że jestem zakochany... 29 a 36... 29 a 36... Nigdym nie przypuszczał, ażeby mogła mi być tak dalece obojętną... Jak ona patrzy na tego osła...",
+  "ua": "«І це я нібито її кохаю?.. Дурниця! Рік я хворів на якусь мозкову недугу, а мені здавалося, що я закоханий... Двадцять дев'ять та тридцять шість... Двадцять дев'ять та тридцять шість... Ніколи б не подумав, що вона може бути мені такою байдужою... Як вона дивиться на цього осла...",
+  "para": 39,
+  "start": 542.98
+ },
+ {
+  "pl": "No, jest to widocznie osoba, która kokietuje nawet subiektów, a czy tego samego nie robi z furmanami i lokajami!... Pierwszy raz czuję spokój... o Boże... A tak go bardzo pragnąłem...”",
+  "ua": "Так, очевидно, це така особа, що кокетує навіть із продавцями; хіба вона не робить того самого з фурманами й лакеями?! Уперше я відчуваю спокій... Боже... А як же я його прагнув...»",
+  "para": 39,
+  "start": 562.94
+ },
+ {
+  "pl": "Do sklepu weszło jeszcze parę osób, do których niechętnie zwrócił się Mraczewski, powoli wiążąc paczki.",
+  "ua": "До крамниці зайшло ще кілька людей, і Мрацевський неохоче взявся їх обслуговувати, поволі зав'язуючи пакунки.",
+  "para": 40,
+  "start": 573.91
+ },
+ {
+  "pl": "Panna Izabela zbliżyła się do Wokulskiego i wskazując w jego stronę parasolką rzekła dobitnie:",
+  "ua": "Панна Ізабела підійшла до Вокульського й, указуючи на нього парасолькою, виразно сказала:",
+  "para": 41,
+  "start": 581.01
+ },
+ {
+  "pl": "— Floro, bądź łaskawa zapłacić temu panu. Wracamy do domu.",
+  "ua": "— Флоро, будь ласка, заплати цьому панові. Ми повертаємося додому.",
+  "para": 42,
+  "start": 587.05
+ },
+ {
+  "pl": "— Kasa jest tu — odezwał się Rzecki podbiegając do panny Florentyny. Wziął od niej pieniądze i oboje cofnęli się w głąb sklepu.",
+  "ua": "— Каса тут, — озвався Жецький, підбігши до панни Флорентини. Він узяв у неї гроші, і вони обоє відійшли вглиб крамниці.",
+  "para": 43,
+  "start": 591.38
+ },
+ {
+  "pl": "Panna Izabela z wolna podsunęła się tuż do kantorka, za którym siedział Wokulski. Była bardzo blada. Zdawało się, że widok tego człowieka wywiera na nią wpływ magnetyczny<sup>179<\/sup>.",
+  "ua": "Панна Ізабела поволі наблизилася до конторки, за якою сидів Вокульський. Вона була дуже бліда. Здавалося, сам вигляд цього чоловіка мав на неї магнетичний вплив<sup>179<\/sup>.",
+  "para": 44,
+  "start": 601.44
+ },
+ {
+  "pl": "— Czy mówię z panem Wokulskim?",
+  "ua": "— Чи я розмовляю з паном Вокульським?",
+  "para": 45,
+  "start": 615.39
+ },
+ {
+  "pl": "Wokulski powstał z krzesła i odparł obojętnie:",
+  "ua": "Вокульський підвівся зі стільця й байдуже відповів:",
+  "para": 46,
+  "start": 618.16
+ },
+ {
+  "pl": "— Jestem do usług.",
+  "ua": "— До ваших послуг.",
+  "para": 47,
+  "start": 622.51
+ },
+ {
+  "pl": "— Wszakże to pan kupił nasz serwis i srebra? — mówiła zdławionym głosem.",
+  "ua": "— Це ж ви купили наш сервіз і срібло? — промовила вона здавленим голосом.",
+  "para": 48,
+  "start": 624.62
+ },
+ {
+  "pl": "— Ja, pani.",
+  "ua": "— Я, пані.",
+  "para": 49,
+  "start": 630.56
+ },
+ {
+  "pl": "Teraz panna Izabela zawahała się. Po chwili jednak słaby rumieniec wrócił jej na twarz. Ciągnęła dalej:",
+  "ua": "Тепер панна Ізабела завагалася. Та за мить її обличчя знову ледь зарум'янилося. Вона повела далі:",
+  "para": 50,
+  "start": null
+ },
+ {
+  "pl": "— Zapewne pan sprzeda te przedmioty?",
+  "ua": "— Ви, мабуть, продасте ці речі?",
+  "para": 51,
+  "start": 639.51
+ },
+ {
+  "pl": "— W tym celu je kupiłem.",
+  "ua": "— Саме для цього я їх і купив.",
+  "para": 52,
+  "start": 641.97
+ },
+ {
+  "pl": "Rumieniec panny Izabeli wzmocnił się.",
+  "ua": "Рум'янець панни Ізабели став виразнішим.",
+  "para": 53,
+  "start": 644.45
+ },
+ {
+  "pl": "— Przyszły nabywca w Warszawie mieszka? — pytała dalej.",
+  "ua": "— Майбутній покупець живе у Варшаві? — запитала вона далі.",
+  "para": 54,
+  "start": 647.21
+ },
+ {
+  "pl": "— Rzeczy tych nie sprzedam tutaj, lecz za granicą. Tam... dadzą mi wyższą cenę — dodał spostrzegłszy w jej oczach zapytanie.",
+  "ua": "— Цих речей я продам не тут, а за кордоном. Там... за них дадуть більше, — додав він, помітивши запитання в її очах.",
+  "para": 55,
+  "start": 651.35
+ },
+ {
+  "pl": "— Pan spodziewa się dużo zyskać?",
+  "ua": "— Ви сподіваєтеся багато заробити?",
+  "para": 56,
+  "start": 660.36
+ },
+ {
+  "pl": "— Dlatego, ażeby zyskać, kupiłem.",
+  "ua": "— Я купив їх саме для того, щоб заробити.",
+  "para": 57,
+  "start": 663.04
+ },
+ {
+  "pl": "— Czy i dlatego mój ojciec nie wie, że srebra te są w pańskim ręku? — rzekła ironicznie.",
+  "ua": "— То й тому мій батько не знає, що це срібло у ваших руках? — іронічно мовила вона.",
+  "para": 58,
+  "start": 665.82
+ },
+ {
+  "pl": "Wokulskiemu drgnęły usta.",
+  "ua": "У Вокульського здригнулися губи.",
+  "para": 59,
+  "start": 672.0
+ },
+ {
+  "pl": "— Serwis i srebra nabyłem od jubilera. Sekretu z tego nie robię. Osób trzecich do sprawy nie mieszam, ponieważ to nie jest w zwyczajach handlowych.",
+  "ua": "— Сервіз і срібло я придбав у ювеліра. Я цього не приховую. Третіх осіб у справу не втручаю, бо так не заведено в торгівлі.",
+  "para": 60,
+  "start": 674.04
+ },
+ {
+  "pl": "Pomimo tak szorstkich odpowiedzi panna Izabela odetchnęła. Nawet oczy jej nieco pociemniały i straciły połysk nienawiści.",
+  "ua": "Попри такі різкі відповіді, панна Ізабела полегшено зітхнула. Навіть очі її трохи потемнішали й утратили ненависний блиск.",
+  "para": 61,
+  "start": 683.42
+ },
+ {
+  "pl": "— A gdyby mój ojciec namyśliwszy się chciał odkupić te przedmioty, za jaką cenę odstąpiłby je pan teraz?",
+  "ua": "— А якби мій батько, передумавши, захотів викупити ці речі, за яку ціну ви віддали б їх тепер?",
+  "para": 62,
+  "start": 691.08
+ },
+ {
+  "pl": "— Za jaką kupiłem. Rozumie się z doliczeniem procentu w stosunku... sześć... do ośmiu od sta rocznie...",
+  "ua": "— За ту, за яку купив. Звісно, з нарахуванням відсотків... шість... до восьми відсотків річних...",
+  "para": 63,
+  "start": 697.88
+ },
+ {
+  "pl": "— I wyrzekłby się pan spodziewanego zysku?... Dlaczegóż to?... — przerwała mu z pośpiechem.",
+  "ua": "— І ви відмовилися б від очікуваного прибутку?.. Чому ж?.. — квапливо перебила вона.",
+  "para": 64,
+  "start": 705.61
+ },
+ {
+  "pl": "— Dlatego, proszę pani, że handel opiera się nie na zyskach spodziewanych, ale na ciągłym obrocie gotówki.",
+  "ua": "— Тому, пані, що торгівля ґрунтується не на очікуваних прибутках, а на безперервному обігу готівки.",
+  "para": 65,
+  "start": 711.99
+ },
+ {
+  "pl": "— Żegnam pana i... dziękuję za wyjaśnienia — rzekła panna Izabela widząc, że jej towarzyszka już kończy rachunki.",
+  "ua": "— Прощавайте і... дякую за пояснення, — сказала панна Ізабела, побачивши, що її супутниця вже закінчує розрахунки.",
+  "para": 66,
+  "start": 719.15
+ },
+ {
+  "pl": "Wokulski ukłonił się i znowu usiadł do swej księgi.",
+  "ua": "Вокульський уклонився й знову сів до своєї книги.",
+  "para": 67,
+  "start": 728.39
+ },
+ {
+  "pl": "Gdy lokaj zabrał paczki i panie zajęły miejsca w powozie, panna Florentyna odezwała się tonem wyrzutu:",
+  "ua": "Коли лакей забрав пакунки, а пані посідали в екіпаж, панна Флорентина докірливим тоном озвалася:",
+  "para": 68,
+  "start": 731.85
+ },
+ {
+  "pl": "— Mówiłaś z tym człowiekiem, Belu?...",
+  "ua": "— Ти розмовляла з тим чоловіком, Белю?",
+  "para": 69,
+  "start": 738.75
+ },
+ {
+  "pl": "— Tak i nie żałuję tego. On wszystko skłamał, ale...",
+  "ua": "— Так, і не шкодую. Він усе збрехав, але...",
+  "para": 70,
+  "start": 741.03
+ },
+ {
+  "pl": "— Co znaczy to: ale?... — z niepokojem zapytała panna Florentyna.",
+  "ua": "— Що означає це «але»? — стривожено запитала панна Флорентина.",
+  "para": 71,
+  "start": 745.0
+ },
+ {
+  "pl": "— Nie pytaj mnie... Nic do mnie nie mów, jeżeli nie chcesz, ażebym rozpłakała się na ulicy...",
+  "ua": "— Не питай мене... Нічого не кажи, якщо не хочеш, щоб я розплакалася просто на вулиці...",
+  "para": 72,
+  "start": 749.96
+ },
+ {
+  "pl": "A po chwili dodała po francusku:",
+  "ua": "За мить вона додала французькою:",
+  "para": 73,
+  "start": 754.76
+ },
+ {
+  "pl": "— Zresztą, może zrobiłam źle przyjeżdżając tutaj, ale... wszystko mi jedno!...",
+  "ua": "— Зрештою, може, я й дарма приїхала сюди, але... мені однаково!",
+  "para": 74,
+  "start": 757.79
+ },
+ {
+  "pl": "— Myślę, Belciu — rzekła, z powagą sznurując usta, jej towarzyszka — że należałoby pomówić o tym z ojcem albo z ciotką.",
+  "ua": "— Гадаю, Белю, — сказала її супутниця, серйозно стиснувши губи, — тобі слід було б поговорити про це з батьком або тіткою.",
+  "para": 75,
+  "start": 763.77
+ },
+ {
+  "pl": "— Chcesz powiedzieć — przerwała panna Izabela — że muszę pomówić z marszałkiem albo z baronem? Na to zawsze będzie czas; dziś nie mam jeszcze odwagi.",
+  "ua": "— Ти хочеш сказати, — перебила панна Ізабела, — що я маю поговорити з маршалком чи бароном? На це ще буде час; сьогодні я не маю сміливості.",
+  "para": 76,
+  "start": 774.01
+ },
+ {
+  "pl": "Przerwała się rozmowa. Panie milcząc wróciły do domu; panna Izabela cały dzień była rozdrażniona.",
+  "ua": "Розмова урвалася. Пані мовчки повернулися додому; весь день панна Ізабела була роздратована.",
+  "para": 77,
+  "start": 784.17
+ },
+ {
+  "pl": "Po wyjściu panny Izabeli ze sklepu Wokulski wziął się znowu do rachunków i bez błędu zsumował dwie duże kolumny cyfr. W połowie trzeciej zatrzymał się i dziwił się temu spokojowi, jaki zapanował w jego duszy. Po całorocznej gorączce i tęsknocie przerywanej wybuchami szału skąd naraz ta obojętność?",
+  "ua": "Після виходу панни Ізабели з крамниці Вокульський знову взявся до рахунків і без помилки підсумував два великі стовпчики цифр. На половині третього він зупинився й здивувався спокою, що запанував у його душі. Звідки раптом ця байдужість після року гарячки й туги, яку переривали напади шаленства?",
+  "para": 78,
+  "start": 791.15
+ },
+ {
+  "pl": "Gdyby można było jakiegoś człowieka nagle przerzucić z balowej sali do lasu albo z dusznego więzienia na chłodne i obszerne pole, nie doznałby innych wrażeń ani głębszego zdumienia.",
+  "ua": "Якби людину раптом перенести з бальної зали до лісу або з задушливої в'язниці на прохолодне й просторе поле, вона не зазнала б сильнішого враження чи глибшого подиву.",
+  "para": 78,
+  "start": 816.69
+ },
+ {
+  "pl": "„Widocznie przez rok ulegałem częściowemu obłąkaniu” — myślał Wokulski. — „Nie było niebezpieczeństwa, nie było ofiary, której nie poniósłbym dla tej osoby, i ledwiem ją zobaczył, już nic mnie nie obchodzi...",
+  "ua": "«Очевидно, цілий рік я був частково божевільний, — думав Вокульський. — Не було небезпеки, не було жертви, на яку я не пішов би заради цієї жінки; та щойно я її побачив — і вона вже мене не обходить...",
+  "para": 79,
+  "start": 829.74
+ },
+ {
+  "pl": "A jak ona rozmawiała ze mną. Ile tam było pogardy dla marnego kupca... »Zapłać temu panu!...« Paradne są te wielkie damy; próżniak, szuler, nawet złodziej, byle miał nazwisko, stanowi dla nich dobre towarzystwo, choćby fizjognomią zamiast ojca przypominał lokaja swej matki.",
+  "ua": "А як вона зі мною розмовляла! Скільки зневаги до жалюгідного купця... “Заплати цьому панові!” Чудові ці великі пані: нероба, шулер, навіть злодій — аби мав гучне ім'я, той для них гідне товариство, хоч би обличчям замість батька нагадував лакея її матері.",
+  "para": 80,
+  "start": 843.74
+ },
+ {
+  "pl": "Ale kupiec — jest pariasem<sup>180<\/sup>... Co mnie to wreszcie obchodzi; gnijcie sobie w spokoju!”",
+  "ua": "А купець — парія<sup>180<\/sup>... Та зрештою, яке мені діло; гнийте собі спокійно!»",
+  "para": 80,
+  "start": 864.82
+ },
+ {
+  "pl": "Znowu dodał jedną kolumnę nie uważając nawet, co się dzieje w sklepie.",
+  "ua": "Він знову підсумував стовпчик, навіть не зважаючи на те, що відбувалося в крамниці.",
+  "para": 81,
+  "start": 871.92
+ },
+ {
+  "pl": "„Skąd ona wie — myślał dalej — że ja kupiłem serwis i srebra?... A jak wybadywała, czym nie zapłacił więcej niż warte! Z przyjemnością ofiarowałbym im ten pamiątkowy drobiazg. Winienem jej dozgonną wdzięczność, bo gdyby nie szał dla niej, nie dorobiłbym się majątku i spleśniałbym za kantorkiem.",
+  "ua": "«Звідки вона знає, — міркував він далі, — що це я купив сервіз і срібло?.. Як вона вивідувала, чи не заплатив я більше, ніж вони варті! Я б із задоволенням подарував їм цю пам'ятну дрібничку. Я завдячую їй довічною вдячністю: якби не моє божевільне кохання до неї, я б не нажив багатства й запліснявів би за конторкою.",
+  "para": 82,
+  "start": 877.16
+ },
+ {
+  "pl": "A teraz może mi smutno będzie bez tych żalów, rozpaczy i nadziei... Głupie życie!... Po ziemi gonimy marę, którą każdy nosi we własnym sercu, i dopiero gdy stamtąd ucieknie, poznajemy, że to był obłęd... No, nigdy bym nie przypuszczał, że mogą istnieć tak cudowne kuracje.",
+  "ua": "А тепер, може, мені бракуватиме цієї туги, розпачу й надії... Дурне життя!.. Ми ганяємося по землі за примарою, яку кожен носить у власному серці, і лише коли вона звідти тікає, розуміємо, що то було божевілля... Ну, ніколи б не подумав, що бувають такі дивовижні ліки.",
+  "para": 82,
+  "start": 897.96
+ },
+ {
+  "pl": "Przed godziną byłem pełen trucizny, a w tej chwili jestem tak spokojny i — jakiś pusty, jakby uciekła ze mnie dusza i wnętrzności, a została tylko skóra i odzież. Co ja teraz będę robił? czym będę żył?... Chyba pojadę na wystawę do Paryża<sup>181<\/sup>, a potem w Alpy...”",
+  "ua": "Ще годину тому я був сповнений отрути, а тепер такий спокійний і — якийсь порожній, ніби з мене втекли душа й нутрощі, залишилися тільки шкіра та одяг. Що я тепер робитиму? Чим житиму?.. Хіба поїду на виставку до Парижа<sup>181<\/sup>, а потім — в Альпи...»",
+  "para": 82,
+  "start": 917.92
+ },
+ {
+  "pl": "W tej chwili zbliżył się do niego na palcach Rzecki i szepnął:",
+  "ua": "Тієї миті Жецький навшпиньки підійшов до нього й прошепотів:",
+  "para": 83,
+  "start": 935.58
+ },
+ {
+  "pl": "— Pyszny jest ten Mraczewski, co? Jak on umie rozmawiać z kobietami!",
+  "ua": "— Чудовий цей Мрацевський, правда? Як він уміє розмовляти з жінками!",
+  "para": 84,
+  "start": 940.38
+ },
+ {
+  "pl": "— Jak fryzjerczyk, którego uzuchwalono — odpowiedział Wokulski nie odrywając oczu od księgi.",
+  "ua": "— Мов перукарчик, якого розпустили, — відповів Вокульський, не відриваючи очей від книги.",
+  "para": 85,
+  "start": 946.01
+ },
+ {
+  "pl": "— Nasze klientki zrobiły go takim — odpowiedział stary subiekt, lecz widząc, że przeszkadza pryncypałowi, cofnął się. Wokulski znowu wpadł w zadumę. Nieznacznie spojrzał na Mraczewskiego i dopiero w tej chwili zauważył, że młody człowiek ma coś szczególnego w fizjognomii.",
+  "ua": "— Наші клієнтки зробили його таким, — відповів старий продавець, але, побачивши, що заважає господареві, відступив. Вокульський знову замислився. Непомітно глянув на Мрацевського й лише тепер помітив у молодика щось особливе в обличчі.",
+  "para": 86,
+  "start": 952.67
+ },
+ {
+  "pl": "„Tak — myślał — on jest bezczelnie głupi i zapewne dlatego podoba się kobietom.”",
+  "ua": "«Так, — думав він, — він нахабно дурний, і, мабуть, саме тому подобається жінкам».",
+  "para": 87,
+  "start": 970.97
+ },
+ {
+  "pl": "Śmiać mu się chciało i ze spojrzeń panny Izabeli, wysyłanych pod adresem pięknego młodzieńca, i z własnych przywidzeń, które dziś tak nagle go opuściły.",
+  "ua": "Йому хотілося сміятися і з поглядів панни Ізабели, адресованих красеню, і з власних марень, які так раптово його покинули.",
+  "para": 88,
+  "start": 976.81
+ },
+ {
+  "pl": "Wtem drgnął; usłyszał imię panny Izabeli i spostrzegł, że w sklepie nie ma nikogo z gości.",
+  "ua": "Раптом він здригнувся: почув ім'я панни Ізабели й помітив, що в крамниці вже не лишилося покупців.",
+  "para": 89,
+  "start": 987.48
+ },
+ {
+  "pl": "— No, ale dzisiaj toś się pan nie ukrywał ze swoimi amorami — mówił ze smutnym uśmiechem Klejn do Mraczewskiego.",
+  "ua": "— Ну, сьогодні ви вже й не приховували своїх амурів, — зі смутною усмішкою сказав Клейн Мрацевському.",
+  "para": 90,
+  "start": 994.34
+ },
+ {
+  "pl": "— Ale bo jak ona na mnie patrzyła, to ach!... — westchnął Mraczewski, jedną rękę kładąc na piersi, drugą podkręcając wąsika. — Jestem pewny — mówił — że za parę dni otrzymam wonny bilecik.",
+  "ua": "— Та як же вона на мене дивилася, ах!.. — зітхнув Мрацевський, поклавши одну руку на груди, а другою підкручуючи вусика. — Упевнений, за кілька днів отримаю запашний листочок.",
+  "para": 91,
+  "start": 1002.8
+ },
+ {
+  "pl": "Potem — pierwsza schadzka, potem: „dla pana łamię zasady, w jakich mnie wychowano”, a potem: „czy nie gardzisz mną?” Chwila wcześniej jest bardzo rozkoszną, ale w chwilę później człowiek jest tak zakłopotany...",
+  "ua": "Потім — перше побачення, потім: «Заради вас я порушую правила, за якими мене виховали», а далі: «Невже ви мною зневажаєте?» Мить перед тим — справжня насолода, а вже за мить чоловік почувається таким ніяково...",
+  "para": 91,
+  "start": 1017.09
+ },
+ {
+  "pl": "— Co pan blagujesz! — przerwał mu Lisiecki. — Znamy przecież pańskie konkiety<sup>182<\/sup>: nazywają się Matyldami, którym pan imponujesz porcją pieczeni i kuflem piwa.",
+  "ua": "— Та що ви верзете! — перебив його Лісецький. — Ми ж знаємо ваші залицяння<sup>182<\/sup>: ваші Матильди — це ті, кого ви вражаєте шматком печені та кухлем пива.",
+  "para": 92,
+  "start": 1031.07
+ },
+ {
+  "pl": "— Matyldy są na co dzień, damy na święta. Ale Iza będzie największym świętem. Słowo honoru daję, że nie znam kobiety, która by na mnie tak piekielne robiła wrażenie... No, ale bo też i ona lgnie do mnie!",
+  "ua": "— Матильди — на будень, пані — на свята. А Іза буде найбільшим святом. Чесне слово, я не знаю жінки, яка справляла б на мене таке шалене враження... Та й вона ж до мене горнеться!",
+  "para": 93,
+  "start": 1042.41
+ },
+ {
+  "pl": "Trzasnęły drzwi i do sklepu wszedł jegomość szpakowaty; zażądał breloku<sup>183<\/sup> do zegarka, a krzyczał i stukał laską tak mocno, jakby miał zamiar kupić całą japońszczyznę.",
+  "ua": "Двері грюкнули, і до крамниці ввійшов сивуватий пан. Він попросив брелок<sup>183<\/sup> до годинника, а кричав і стукав палицею так, ніби збирався купити всі японські товари.",
+  "para": 94,
+  "start": 1060.17
+ },
+ {
+  "pl": "Wokulski słuchał przechwałek Mraczewskiego bez ruchu. Doświadczał wrażenia, jakby mu na głowę i na piersi spadały ciężary.",
+  "ua": "Вокульський нерухомо слухав вихваляння Мрацевського. Йому здавалося, ніби тягарі падають йому на голову й груди.",
+  "para": 95,
+  "start": 1072.22
+ },
+ {
+  "pl": "— W rezultacie nic mnie to nie obchodzi — szepnął.",
+  "ua": "— Зрештою, мене це не обходить, — прошепотів він.",
+  "para": 96,
+  "start": 1079.39
+ },
+ {
+  "pl": "Po szpakowatym jegomościu weszła do sklepu dama żądająca parasola, później pan w średnim wieku chcący nabyć kapelusz, potem młody człowiek żądający cygarnicy, nareszcie trzy panny, z których jedna kazała podać sobie rękawiczki Szolca<sup>184<\/sup>, ale koniecznie Szolca, bo innych nie używa.",
+  "ua": "Після сивуватого пана до крамниці зайшла дама, яка просила парасольку; потім пан середніх літ, що хотів купити капелюха; далі молодик, якому потрібен був портсигар; нарешті — три панянки, одна з яких попросила подати рукавички Шольца<sup>184<\/sup>, неодмінно Шольца, бо інших вона не носить.",
+  "para": 97,
+  "start": 1084.15
+ },
+ {
+  "pl": "Wokulski złożył księgę, z wolna podniósł się z fotelu i sięgnąwszy po kapelusz stojący na kantorku skierował się ku drzwiom. Czuł brak oddechu i jakby rozsadzanie czaszki.",
+  "ua": "Вокульський закрив книгу, поволі підвівся з крісла, взяв капелюха з конторки й попрямував до дверей. Йому бракувало повітря, а голова наче розпиралася.",
+  "para": 98,
+  "start": 1102.97
+ },
+ {
+  "pl": "Pan Ignacy zabiegł mu drogę.",
+  "ua": "Пан Ігнацій заступив йому дорогу.",
+  "para": 99,
+  "start": 1116.05
+ },
+ {
+  "pl": "— Wychodzisz?... Może zajrzysz do tamtego sklepu — rzekł.",
+  "ua": "— Виходиш?.. Може, зазирнеш до тієї крамниці? — сказав він.",
+  "para": 100,
+  "start": 1118.61
+ },
+ {
+  "pl": "— Nigdzie nie zajrzę, jestem zmęczony — odpowiedział Wokulski nie patrząc mu w oczy.",
+  "ua": "— Нікуди не зайду, я втомився, — відповів Вокульський, не дивлячись йому в очі.",
+  "para": 101,
+  "start": 1122.63
+ },
+ {
+  "pl": "Gdy wyszedł, Lisiecki trącił Rzeckiego w ramię.",
+  "ua": "Коли він вийшов, Лісецький штовхнув Жецького в плече.",
+  "para": 102,
+  "start": 1127.79
+ },
+ {
+  "pl": "— Coś stary jakby zaczynał robić bokami — szepnął.",
+  "ua": "— Старий наче вже починає здавати, — прошепотів він.",
+  "para": 103,
+  "start": 1131.46
+ },
+ {
+  "pl": "— No — odparł pan Ignacy — puszczenie w ruch takiego interesu jak moskiewski to nie chy-chy. Rozumie się.",
+  "ua": "— Авжеж, — відповів пан Ігнацій. — Запустити таку справу, як московська, — то вам не жарти. Авжеж.",
+  "para": 104,
+  "start": 1135.06
+ },
+ {
+  "pl": "— Po cóż się w to wdaje?",
+  "ua": "— Чого ж він у це вплутується?",
+  "para": 105,
+  "start": 1143.6
+ },
+ {
+  "pl": "— Po to, żeby miał nam z czego pensje podwyższać — surowo odpowiedział pan Ignacy.",
+  "ua": "— Щоб було з чого підвищувати нам платню, — суворо відповів пан Ігнацій.",
+  "para": 106,
+  "start": 1145.11
+ },
+ {
+  "pl": "— A niechże sobie zakłada sto nowych interesów, nawet w Irkucku, byle tak co roku podwyższał — rzekł Lisiecki. — Ja z nim się o to spierać nie będę. Ale swoją drogą, uważam, że jest diabelnie zmieniony, osobliwie dzisiaj. Żydzi, panie, Żydzi — dodał — jak zwąchają jego projekta, dadzą mu łupnia.",
+  "ua": "— Та нехай би відкривав хоч сотню нових справ, хоч в Іркутську, аби тільки щороку підвищував платню, — сказав Лісецький. — Я сперечатися з ним через це не буду. Але все ж він страшенно змінився, особливо сьогодні. Жиди, пане, жиди, — додав він, — як пронюхають про його плани, дадуть йому прочухана.",
+  "para": 107,
+  "start": 1151.67
+ },
+ {
+  "pl": "— Co tam Żydzi...",
+  "ua": "— Та що ті жиди...",
+  "para": 108,
+  "start": 1172.19
+ },
+ {
+  "pl": "— Żydzi, mówię, Żydzi!... Wszystkich trzymają za łeb i nie pozwolą, ażeby im bruździł jakiś Wokulski, nie Żyd ani nawet meches<sup>185<\/sup>.",
+  "ua": "— Жиди, кажу, жиди!.. Вони всіх тримають у кулаці й не дозволять, щоб їм заважав якийсь Вокульський — не жид і навіть не віровідступник<sup>185<\/sup>.",
+  "para": 109,
+  "start": 1173.47
+ },
+ {
+  "pl": "— Wokulski zwiąże się ze szlachtą — odpowiedział Ignacy — a i tam są kapitały.",
+  "ua": "— Вокульський об'єднається зі шляхтою, — відповів Ігнацій, — а й там є капітали.",
+  "para": 110,
+  "start": 1183.07
+ },
+ {
+  "pl": "— Kto wie, co gorsze: Żyd czy szlachcic — wtrącił mimochodem Klejn i podniósł brwi w sposób bardzo żałosny.",
+  "ua": "— Хтозна, що гірше: жид чи шляхтич, — мимохідь кинув Клейн і дуже жалібно підняв брови.",
+  "para": 111,
+  "start": 1189.16
+ }
+];
+const ANNOTATIONS = {"174": {"term": "składowe", "definition": "opłata za przechowanie towaru na składzie. [przypis redakcyjny]", "translation": "плата за зберігання товару на складі. [przypis redakcyjny]"}, "175": {"term": "gród aklimatyzacyjny", "definition": "tu: ogród zoologiczny, ogród dla zwierząt egzotycznych. [przypis redakcyjny]", "translation": "тут: зоологічний сад, сад для екзотичних тварин. [przypis redakcyjny]"}, "176": {"term": "nowy, jeszcze nie wykończony sklep...", "definition": "nowy sklep Wokulskiego umieścił Prus na Krakowskim Przedmieściu pod nr 7 (tzw. „dom Grodzickiego”). Dom ten, wypalony w 1944 r., obecnie został odbudowany. [przypis redakcyjny]", "translation": "новий магазин Вокульського Прус розмістив на Краківському передмісті під № 7 (так званий „дім Гродзицького”). Цей будинок, згорілий 1944 р., нині відбудовано. [przypis redakcyjny]"}, "177": {"term": "heliotrop", "definition": "krzew o silnie pachnących kwiatach. [przypis redakcyjny]", "translation": "кущ із дуже запашними квітами. [przypis redakcyjny]"}, "178": {"term": "perfumy Atkinsona", "definition": "luksusowe perfumy angielskie. [przypis redakcyjny]", "translation": "розкішні англійські парфуми. [przypis redakcyjny]"}, "179": {"term": "wpływ magnetyczny", "definition": "dziś powiedzielibyśmy: hipnotyczny. Osoba w stanie hipnozy, podobnym do snu, traci świadomość i wolę i spełnia jedynie rozkazy hipnotyzera. W wieku XIX uważano hipnozę za zjawisko analogiczne do magnetyzmu fizycznego i nazywano je również magnetyzmem. [przypis redakcyjny]", "translation": "сьогодні ми сказали б: гіпнотичний. Особа в стані гіпнозу, подібному до сну, втрачає свідомість і волю і виконує лише накази гіпнотизера. У XIX столітті гіпноз вважали явищем, аналогічним фізичному магнетизму, і також називали магнетизмом. [przypis redakcyjny]"}, "180": {"term": "parias", "definition": "członek najniższej kasty w Indiach; ogólnie: najbardziej pogardzany i krzywdzony członek społeczeństwa. [przypis redakcyjny]", "translation": "член найнижчої касті в Індії; загалом: найбільш зневажуваний і скривджений член суспільства. [przypis redakcyjny]"}, "181": {"term": "wystawa w Paryżu", "definition": "1 maja 1878 r. została otwarta w Paryżu wielka wystawa powszechna, która pociągnęła za sobą duży napływ obcokrajowców. Zwiedziło ją około dwustu tysięcy cudzoziemców, w tym blisko dwa tysiące Polaków. [przypis redakcyjny]", "translation": "1 травня 1878 р. у Парижі було відкрите велику Всесвітню виставку, яка спричинила великий наплив іноземців. Її відвідало близько двохсот тисяч чужинців, серед яких майже дві тисячі поляків. [przypis redakcyjny]"}, "182": {"term": "konkiety", "definition": "podboje. [przypis redakcyjny]", "translation": "завоювання. [przypis redakcyjny]"}, "183": {"term": "brelok", "definition": "ozdobny wisiorek przy łańcuszku. [przypis redakcyjny]", "translation": "оздобна підвіска на ланцюжку. [przypis redakcyjny]"}, "184": {"term": "Szolc", "definition": "firma galanteryjna w Warszawie. [przypis redakcyjny]", "translation": "галантерейна фірма у Варшаві. [przypis redakcyjny]"}, "185": {"term": "meches", "definition": "pogardliwa nazwa przechrzty, używana przez Żydów ortodoksyjnych (ściśle przestrzegających zasad religii). [przypis redakcyjny]", "translation": "зневажлива назва віровідступника, яку вживають ортодоксальні євреї (які суворо дотримуються релігійних правил). [przypis redakcyjny]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into audio/chapter-07.webm, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  8.61,    // [  0] conf 0.89  "Serwis i srebra familii Łęckich były już…"
+  20.81,   // [  1] conf 1.00  "Mimo to hrabina Karolowa nie przestała ko…"
+  33.61,   // [  2] conf 1.00  "Nie tylko uprosiła pannę Izabelę o przyję…"
+  48.94,   // [  3] conf 1.00  "— Przejedź się, aniołku, po mieście — mów…"
+  63.69,   // [  4] conf 1.00  "Panna Izabela nie odpowiedziała nic, ale…"
+  72.13,   // [  5] conf 0.95  "W Wielką Środę, punkt o jedynastej rano,…"
+  83.53,   // [  6] conf 1.00  "Po Alei chodziły wiosenne powiewy roznosz…"
+  100.72,  // [  7] conf 1.00  "— Śliczny dzień — westchnęła panna Izabel…"
+  108.75,  // [  8] conf 1.00  "— Gdzie jaśnie panienka rozkaże jechać? —…"
+  115.21,  // [  9] conf 1.00  "— Do sklepu Wokulskiego — z nerwowym pośp…"
+  119.67,  // [ 10] conf 0.93  "Lokaj skoczył na kozioł i spasione gniade…"
+  129.12,  // [ 11] conf 1.00  "— Dlaczego, Belciu, do Wokulskiego? — zap…"
+  134.86,  // [ 12] conf 0.88  "— Chcę sobie kupić paryskie rękawiczki, k…"
+  139.56,  // [ 13] conf 1.00  "— To samo dostaniemy gdzie indziej."
+  142.08,  // [ 14] conf 1.00  "— Chcę tam — odpowiedziała sucho panna Iz…"
+  145.44,  // [ 15] conf 0.94  "Od paru dni męczył ją osobliwy niepokój,…"
+  166.28,  // [ 16] conf 1.00  "Widząc to panna Izabela uczuła nieprzepar…"
+  183.80,  // [ 17] conf 1.00  "Dziwny ten pociąg wydał się jej samej nie…"
+  200.76,  // [ 18] conf 1.00  "Wróciła się i choć tygrys już nie spał, t…"
+  214.14,  // [ 19] conf 1.00  "W chwilę później wstydziła się swego szal…"
+  225.39,  // [ 20] conf 1.00  "Dziś zbudziło się w niej podobnego rodzaj…"
+  230.88,  // [ 21] conf 0.98  "Gardziła Wokulskim, serce jej zamierało n…"
+  249.64,  // [ 22] conf 0.90  "Strach ją zdejmował na myśl spotkania, le…"
+  255.78,  // [ 23] conf 0.85  "Na Krakowskim już z daleka zobaczyła szyl…"
+  270.61,  // [ 24] conf 1.00  "Z kilku pracujących przy nim rzemieślnikó…"
+  283.68,  // [ 25] conf 1.00  "— Cóż to za sklep budują? — spytała panny…"
+  287.82,  // [ 26] conf 1.00  "— Chyba dla Wokulskiego, bo słyszałam, że…"
+  292.46,  // [ 27] conf 1.00  "„Dla mnie ten sklep!” — pomyślała panna I…"
+  297.43,  // [ 28] conf 0.98  "Powóz stanął, lokaj zeskoczył z kozła i p…"
+  319.35,  // [ 29] conf 1.00  "Pan Rzecki stał już na środku sklepu i za…"
+  337.86,  // [ 30] conf 0.92  "Mizerny Klejn wybierał laski młodzieńcowi…"
+  355.01,  // [ 31] conf 1.00  "Na prawo ode drzwi, za kantorkiem, siedzi…"
+  361.77,  // [ 32] conf 1.00  "Gdy panna Izabela weszła, młodzieniec ogl…"
+  381.96,  // [ 33] conf 1.00  "Przez chwilę sklep zaległa cisza, którą d…"
+  391.68,  // [ 34] conf 1.00  "— Czy zastałyśmy pana Mraczewskiego?..."
+  395.56,  // [ 35] conf 1.00  "— Panie Mraczewski!... — pochwycił pan Ig…"
+  398.62,  // [ 36] conf 1.00  "Mraczewski już stał przy pannie Izabeli,…"
+  409.14,  // [ 37] conf 1.00  "— Przyszłyśmy prosić pana o rękawiczki."
+  413.20,  // [ 38] conf 0.95  "— Numerek pięć i pół — odparł Mraczewski…"
+  422.04,  // [ 39] conf 1.00  "— Otóż nie... — przerwała panna ze śmiech…"
+  428.72,  // [ 40] conf 1.00  "— Pani, są rzeczy, których się nigdy nie…"
+  438.44,  // [ 41] conf 0.95  "Bo rękawiczki pięć i trzy czwarte — dodał…"
+  447.12,  // [ 42] conf 1.00  "— Geniusz! — cicho szepnął pan Ignacy mru…"
+  453.60,  // [ 43] conf 1.00  "Dama siedząca na krześle zwróciła się do…"
+  470.84,  // [ 44] conf 0.91  "wysuwał szuflady i wydobywał coraz nowe p…"
+  488.29,  // [ 45] conf 1.00  "Wokulski pochylił się nad kantorkiem tak,…"
+  496.12,  // [ 46] conf 0.54  "„29 a 36 — to 65, a 15 to 80, a 73 — to..…"   // LOW CONFIDENCE; low match ratio; start word fuzzy-corrected
+  505.72,  // [ 47] conf 1.00  "Tu urwał i spod oka spojrzał w stronę pan…"
+  525.84,  // [ 48] conf 0.97  "„29 a 36 — to 65, a 15...” — liczył w myś…"
+  542.98,  // [ 49] conf 0.80  "„I ja mam niby to ją kochać?... Głupstwo!…"
+  562.94,  // [ 50] conf 1.00  "No, jest to widocznie osoba, która kokiet…"
+  573.91,  // [ 51] conf 1.00  "Do sklepu weszło jeszcze parę osób, do kt…"
+  581.01,  // [ 52] conf 1.00  "Panna Izabela zbliżyła się do Wokulskiego…"
+  587.05,  // [ 53] conf 1.00  "— Floro, bądź łaskawa zapłacić temu panu.…"
+  591.38,  // [ 54] conf 1.00  "— Kasa jest tu — odezwał się Rzecki podbi…"
+  601.44,  // [ 55] conf 0.83  "Panna Izabela z wolna podsunęła się tuż d…"
+  615.39,  // [ 56] conf 1.00  "— Czy mówię z panem Wokulskim?"
+  618.16,  // [ 57] conf 1.00  "Wokulski powstał z krzesła i odparł oboję…"
+  622.51,  // [ 58] conf 1.00  "— Jestem do usług."
+  624.62,  // [ 59] conf 1.00  "— Wszakże to pan kupił nasz serwis i sreb…"
+  630.56,  // [ 60] conf 1.00  "— Ja, pani."   // absorbed short next unit
+  null,    // [ 61] conf 0.94  "Teraz panna Izabela zawahała się. Po chwi…"   // merged into previous section; merged into previous (<0.8s)
+  639.51,  // [ 62] conf 1.00  "— Zapewne pan sprzeda te przedmioty?"
+  641.97,  // [ 63] conf 1.00  "— W tym celu je kupiłem."
+  644.45,  // [ 64] conf 1.00  "Rumieniec panny Izabeli wzmocnił się."
+  647.21,  // [ 65] conf 1.00  "— Przyszły nabywca w Warszawie mieszka? —…"
+  651.35,  // [ 66] conf 1.00  "— Rzeczy tych nie sprzedam tutaj, lecz za…"
+  660.36,  // [ 67] conf 1.00  "— Pan spodziewa się dużo zyskać?"
+  663.04,  // [ 68] conf 1.00  "— Dlatego, ażeby zyskać, kupiłem."
+  665.82,  // [ 69] conf 1.00  "— Czy i dlatego mój ojciec nie wie, że sr…"
+  672.00,  // [ 70] conf 1.00  "Wokulskiemu drgnęły usta."
+  674.04,  // [ 71] conf 1.00  "— Serwis i srebra nabyłem od jubilera. Se…"
+  683.42,  // [ 72] conf 0.94  "Pomimo tak szorstkich odpowiedzi panna Iz…"
+  691.08,  // [ 73] conf 1.00  "— A gdyby mój ojciec namyśliwszy się chci…"
+  697.88,  // [ 74] conf 0.88  "— Za jaką kupiłem. Rozumie się z doliczen…"
+  705.61,  // [ 75] conf 0.92  "— I wyrzekłby się pan spodziewanego zysku…"
+  711.99,  // [ 76] conf 1.00  "— Dlatego, proszę pani, że handel opiera…"
+  719.15,  // [ 77] conf 1.00  "— Żegnam pana i... dziękuję za wyjaśnieni…"
+  728.39,  // [ 78] conf 1.00  "Wokulski ukłonił się i znowu usiadł do sw…"
+  731.85,  // [ 79] conf 1.00  "Gdy lokaj zabrał paczki i panie zajęły mi…"
+  738.75,  // [ 80] conf 1.00  "— Mówiłaś z tym człowiekiem, Belu?..."
+  741.03,  // [ 81] conf 1.00  "— Tak i nie żałuję tego. On wszystko skła…"
+  745.00,  // [ 82] conf 1.00  "— Co znaczy to: ale?... — z niepokojem za…"
+  749.96,  // [ 83] conf 1.00  "— Nie pytaj mnie... Nic do mnie nie mów,…"
+  754.76,  // [ 84] conf 1.00  "A po chwili dodała po francusku:"
+  757.79,  // [ 85] conf 1.00  "— Zresztą, może zrobiłam źle przyjeżdżają…"
+  763.77,  // [ 86] conf 1.00  "— Myślę, Belciu — rzekła, z powagą sznuru…"
+  774.01,  // [ 87] conf 1.00  "— Chcesz powiedzieć — przerwała panna Iza…"
+  784.17,  // [ 88] conf 1.00  "Przerwała się rozmowa. Panie milcząc wróc…"
+  791.15,  // [ 89] conf 0.96  "Po wyjściu panny Izabeli ze sklepu Wokuls…"
+  816.69,  // [ 90] conf 1.00  "Gdyby można było jakiegoś człowieka nagle…"
+  829.74,  // [ 91] conf 0.93  "„Widocznie przez rok ulegałem częściowemu…"
+  843.74,  // [ 92] conf 1.00  "A jak ona rozmawiała ze mną. Ile tam było…"
+  864.82,  // [ 93] conf 0.75  "Ale kupiec — jest pariasem<sup>180</sup>.…"
+  871.92,  // [ 94] conf 1.00  "Znowu dodał jedną kolumnę nie uważając na…"
+  877.16,  // [ 95] conf 0.96  "„Skąd ona wie — myślał dalej — że ja kupi…"
+  897.96,  // [ 96] conf 1.00  "A teraz może mi smutno będzie bez tych ża…"
+  917.92,  // [ 97] conf 0.94  "Przed godziną byłem pełen trucizny, a w t…"
+  935.58,  // [ 98] conf 1.00  "W tej chwili zbliżył się do niego na palc…"
+  940.38,  // [ 99] conf 1.00  "— Pyszny jest ten Mraczewski, co? Jak on…"
+  946.01,  // [100] conf 1.00  "— Jak fryzjerczyk, którego uzuchwalono —…"
+  952.67,  // [101] conf 1.00  "— Nasze klientki zrobiły go takim — odpow…"
+  970.97,  // [102] conf 1.00  "„Tak — myślał — on jest bezczelnie głupi…"
+  976.81,  // [103] conf 1.00  "Śmiać mu się chciało i ze spojrzeń panny…"
+  987.48,  // [104] conf 0.94  "Wtem drgnął; usłyszał imię panny Izabeli…"   // start word fuzzy-corrected
+  994.34,  // [105] conf 0.89  "— No, ale dzisiaj toś się pan nie ukrywał…"
+  1002.80, // [106] conf 1.00  "— Ale bo jak ona na mnie patrzyła, to ach…"
+  1017.09, // [107] conf 0.94  "Potem — pierwsza schadzka, potem: „dla pa…"
+  1031.07, // [108] conf 0.88  "— Co pan blagujesz! — przerwał mu Lisieck…"
+  1042.41, // [109] conf 0.97  "— Matyldy są na co dzień, damy na święta.…"
+  1060.17, // [110] conf 0.86  "Trzasnęły drzwi i do sklepu wszedł jegomo…"
+  1072.22, // [111] conf 0.88  "Wokulski słuchał przechwałek Mraczewskieg…"
+  1079.39, // [112] conf 1.00  "— W rezultacie nic mnie to nie obchodzi —…"
+  1084.15, // [113] conf 0.91  "Po szpakowatym jegomościu weszła do sklep…"
+  1102.97, // [114] conf 0.93  "Wokulski złożył księgę, z wolna podniósł…"
+  1116.05, // [115] conf 0.80  "Pan Ignacy zabiegł mu drogę."   // start word fuzzy-corrected
+  1118.61, // [116] conf 1.00  "— Wychodzisz?... Może zajrzysz do tamtego…"
+  1122.63, // [117] conf 1.00  "— Nigdzie nie zajrzę, jestem zmęczony — o…"
+  1127.79, // [118] conf 0.86  "Gdy wyszedł, Lisiecki trącił Rzeckiego w…"
+  1131.46, // [119] conf 1.00  "— Coś stary jakby zaczynał robić bokami —…"
+  1135.06, // [120] conf 1.00  "— No — odparł pan Ignacy — puszczenie w r…"
+  1143.60, // [121] conf 1.00  "— Po cóż się w to wdaje?"
+  1145.11, // [122] conf 0.92  "— Po to, żeby miał nam z czego pensje pod…"
+  1151.67, // [123] conf 1.00  "— A niechże sobie zakłada sto nowych inte…"
+  1172.19, // [124] conf 1.00  "— Co tam Żydzi..."
+  1173.47, // [125] conf 0.87  "— Żydzi, mówię, Żydzi!... Wszystkich trzy…"
+  1183.07, // [126] conf 1.00  "— Wokulski zwiąże się ze szlachtą — odpow…"
+  1189.16, // [127] conf 0.88  "— Kto wie, co gorsze: Żyd czy szlachcic —…"
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function setStudyText(element, text) {
+  // Render supported numeric footnotes; all annotation content is inserted as text.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      appendTooltipText(tooltip, note.definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function appendTooltipText(parent, text) {
+  // Support the source table's *italic* notation and escaped literal asterisks.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- Ukrainian reveal chip and block --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+    toggles.append(uaChip);
+
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, uaBox, pbar);
+
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, uaChip, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: audio/chapter-07.webm`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = "UA " + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(open) {
+  state.uaOpen = open;
+  els.forEach((e, i) => setUa(i, open));
+  toggleUaEl.textContent = (open ? "Hide all UA" : "Reveal all UA");
+  toggleUaEl.setAttribute("aria-pressed", String(open));
+  toggleUaEl.classList.toggle("is-on", open);
+}
+
+toggleUaEl.addEventListener("click", () => setAll(!state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+// If metadata never arrives (missing file / unsupported codec), tell the user.
+setTimeout(() => { if (audio.readyState < 1) showBanner(); }, 2500);
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll(!state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

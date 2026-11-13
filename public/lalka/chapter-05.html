@@ -1,0 +1,2237 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-05.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-05.md mp3/lalka_005_lalka-tom-pierwszy_tom-i-rozdzial-v.mp3
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-05.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-05.md
+     It reads chapter-05.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path mp3/lalka_005_lalka-tom-pierwszy_tom-i-rozdzial-v.mp3, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Lalka · Tom I, Rozdział V</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative;
+    cursor: help;
+    color: var(--accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    top: 12px;
+    width: min(360px, calc(100vw - 36px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans);
+    text-align: left;
+    white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* Ukrainian reveal block */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Lalka · Tom I, Rozdział V</h1>
+      <p class="chapter-name">Demokratyzacja pana i marzenia panny z towarzystwa</p>
+      <p>bilingual study edition: PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>mp3/lalka_005_lalka-tom-pierwszy_tom-i-rozdzial-v.mp3</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" src="audio/chapter-05.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (PL → UA, in reading order)  */
+/*    Generated from chapter-05.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "pl": "Pan Tomasz Łęcki z jedyną córką Izabelą i kuzynką panną Florentyną nie mieszkał we własnej kamienicy, lecz wynajmował lokal, złożony z ośmiu pokojów, w stronie Alei Ujazdowskiej<sup>110<\/sup>. Miał tam salon o trzech oknach, gabinet własny, gabinet córki, sypialnię dla siebie, sypialnię dla córki,",
+  "ua": "Пан Томаш Ленцький з єдиною дочкою Ізабелою й кузиною панною Флорентиною мешкав не у власній кам'яниці, а орендував помешкання з восьми кімнат убік Алеї Уяздовської<sup>110<\/sup>. Там була вітальня з трьома вікнами, власний кабінет, кабінет дочки, спальня для себе, спальня для дочки,",
+  "para": 0,
+  "start": 8.16
+ },
+ {
+  "pl": "pokój stołowy, pokój dla panny Florentyny i garderobę, nie licząc kuchni i mieszkania dla służby, składającej się ze starego kamerdynera Mikołaja, jego żony, która była kucharką, i panny służącej, Anusi.",
+  "ua": "їдальня, кімната для панни Флорентини й гардеробна, не рахуючи кухні й житла для челяді, що складалася зі старого камердинера Миколи, його дружини, що була кухаркою, і панни-служниці Ануся.",
+  "para": 0,
+  "start": 28.86
+ },
+ {
+  "pl": "Mieszkanie posiadało wielkie zalety. Było suche, ciepłe, obszerne, widne. Miało marmurowe schody, gaz, dzwonki elektryczne i wodociągi. Każdy pokój w miarę potrzeby łączył się z innymi lub tworzył zamkniętą w sobie całość.",
+  "ua": "Помешкання мало великі переваги. Воно було сухе, тепле, просторе, світле. Мало мармурові сходи, газ, електричні дзвінки й водогін. Кожна кімната за потреби з'єднувалася з іншими або становила замкнену в собі цілість.",
+  "para": 1,
+  "start": 43.12
+ },
+ {
+  "pl": "Sprzętów wreszcie miało liczbę dostateczną, ani za mało, ani za wiele, a każdy odznaczał się raczej wygodną prostotą aniżeli skaczącymi do oczu ozdobami.",
+  "ua": "Меблів, нарешті, було досить — ні замало, ні забагато, і кожна вирізнялася радше зручною простотою, аніж очі кидаючими прикрасами.",
+  "para": 1,
+  "start": 59.07
+ },
+ {
+  "pl": "Kredens budził w widzu uczucie pewności, że z niego nie zginą srebra; łóżko przywodziło na myśl bezpieczny spoczynek dobrze zasłużonych; stół można było obciążyć, na krześle usiąść bez obawy załamania się, na fotelu marzyć.",
+  "ua": "Креденс викликав у глядача почуття впевненості, що з нього не зникне срібло; ложе наштовхувало на думку про безпечний відпочинок добре заслужений; стіл можна було обтяжувати, на стільці сідати без побоювання обвалитися, у кріслі мріяти.",
+  "para": 1,
+  "start": 69.47
+ },
+ {
+  "pl": "Kto tu wszedł, miał swobodę ruchu; nie potrzebował lękać się, że mu coś zastąpi drogę lub że on coś zepsuje. Czekając na gospodarza nie nudził się, otaczały go bowiem rzeczy, które warto było oglądać.",
+  "ua": "Хто сюди ввходив, мав свободу рухів; не треба було боятися, що щось стане йому на дорозі або він щось зламає. Чекаючи господаря, не нудьгував, бо оточували його речі, варто було оглядати.",
+  "para": 2,
+  "start": 85.64
+ },
+ {
+  "pl": "Zarazem widok przedmiotów, wyrobionych nie wczoraj i mogących służyć kilku pokoleniom, nastrajał go na jakiś ton uroczysty.",
+  "ua": "Водночас вигляд предметів, зроблених не вчора й таких, що можуть служити кільком поколінням, налаштовував його на якийсь урочистий лад.",
+  "para": 2,
+  "start": 99.24
+ },
+ {
+  "pl": "Na tym poważnym tle dobrze zarysowywali się jego mieszkańcy.",
+  "ua": "На цьому серйозному тлі добре вирізнялися його мешканці.",
+  "para": 3,
+  "start": 108.25
+ },
+ {
+  "pl": "Pan Tomasz Łęcki był to sześdziesięciokilkoletni człowiek, niewysoki, pełnej tuszy, krwisty. Nosił nieduże wąsy białe i do góry podczesane włosy, tej samej barwy. Miał siwe, rozumne oczy, postawę wyprostowaną, chodził ostro.",
+  "ua": "Пан Томаш Ленцький був то шістдесяти кількох років чоловік, невисокий, повної туші, рум'яний. Носив невеликі вуса білі й нагору зачесане волосся тієї самої барви. Мав сірі, розумні очі, поставу випрямлену, ходив гостро.",
+  "para": 4,
+  "start": 113.63
+ },
+ {
+  "pl": "Na ulicy ustępowano mu z drogi — a ludzie prości mówili: oto musi być pan z panów.",
+  "ua": "На вулиці уступали йому дорогу, — а люди прості казали: то, певно, пан із панів.",
+  "para": 4,
+  "start": 130.39
+ },
+ {
+  "pl": "Istotnie, pan Łęcki liczył w swoim rodzie całe szeregi senatorów. Ojciec jego jeszcze posiadał miliony, a on sam za młodu krocie<sup>111<\/sup>. Później jednak część majątku pochłonęły zdarzenia polityczne<sup>112<\/sup>, resztę — podróże po Europie i wysokie stosunki.",
+  "ua": "Справді, пан Ленцький мав у своєму роді цілі ряди сенаторів. Батько його ще володів мільйонами, а він сам у молодості кроці<sup>111<\/sup>. Пізніше, втім, частину маєтку поглинули політичні події<sup>112<\/sup>, решту — мандри Європою й високі зв'язки.",
+  "para": 5,
+  "start": 138.03
+ },
+ {
+  "pl": "Pan Tomasz bywał bowiem przed rokiem 1870 na dworze francuskim, następnie na wiedeńskim i włoskim. Wiktor Emanuel<sup>113<\/sup>, oczarowany pięknością jego córki, zaszczycał go swoją przyjaźnią i nawet chciał mu nadać tytuł hrabiego.",
+  "ua": "Пан Томаш бував бо до 1870 року при французькому дворі, потім при віденському й італійському. Віктор Емануїл<sup>113<\/sup>, зачарований красою його дочки, удостоював його своєї дружби й навіть хотів надати йому титул графа.",
+  "para": 5,
+  "start": 155.43
+ },
+ {
+  "pl": "Nie dziw, że pan Tomasz po śmierci wielkiego króla przez dwa miesiące nosił na kapeluszu krepę.",
+  "ua": "Не дивно, що пан Томаш після смерті великого короля два місяці носив на капелюсі креп.",
+  "para": 5,
+  "start": 171.3
+ },
+ {
+  "pl": "Od paru lat pan Tomasz nie ruszał się z Warszawy, za mało mając już pieniędzy, ażeby błyszczeć na dworach. Za to jego mieszkanie stało się ogniskiem eleganckiego świata i było nim aż do czasu rozejścia się pogłosek, że pan Tomasz postradał nie tylko swój majątek, ale nawet posag panny Izabeli.",
+  "ua": "Кілька років пан Томаш не рушався з Варшави, маючи вже замало грошей, щоб блищати при дворах. Натомість його помешкання стало вогнищем елегантного світу й ним було аж до часу, коли розійшлися чутки, що пан Томаш втратив не лише свій маєток, а й навіть посаг панни Ізабели.",
+  "para": 6,
+  "start": 177.65
+ },
+ {
+  "pl": "Pierwsi cofnęli się epuzerowie<sup>114<\/sup>, za nimi damy mające brzydkie córki, z pozostałą zaś resztą zerwał sam pan Tomasz i ograniczył swoje znajomości wyłącznie do stosunków z familią.",
+  "ua": "Першими відступили епузери<sup>114<\/sup>, за ними дами, що мали потворних дочок, а з рештою сам пан Томаш рвав стосунки й обмежив свої знайомства виключно стосунками з родиною.",
+  "para": 7,
+  "start": 198.08
+ },
+ {
+  "pl": "Lecz gdy i tu zauważył zniżenie się uczuciowej temperatury, zupełnie wycofał się z towarzystwa, a nawet ku zgorszeniu wielu szanownych osób, jako właściciel domu w Warszawie, wpisał się do Resursy Kupieckiej<sup>115<\/sup>. Chciano go tam zrobić prezesem, ale nie zgodził się.",
+  "ua": "Коли ж і тут помітив зниження емоційної температури, цілком відійшов від товариства, а навіть на спокій багатьох шановних осіб, як власник дому у Варшаві, записався до Купецької Ресурси<sup>115<\/sup>. Хотіли там зробити його президентом, але він не погодився.",
+  "para": 7,
+  "start": 211.4
+ },
+ {
+  "pl": "Tylko jego córka bywała u sędziwej hrabiny Karolowej i paru jej przyjaciółek, co znowu dało początek pogłosce, że pan Tomasz jeszcze posiada majątek i że zerwał z towarzystwem w części przez dziwactwo, w części dla poznania rzeczywistych przyjaciół i wybrania córce męża,",
+  "ua": "Тільки його дочка бувала у сивої графині Каролеви та кількох її подруг, що знову дало привід чутці, ніби пан Томаш ще володіє маєтком і що він рвав з товариством частково через дивацтво, частково щоб пізнати справжніх друзів і вибрати дочці чоловіка,",
+  "para": 8,
+  "start": 229.87
+ },
+ {
+  "pl": "który by ją kochał dla niej samej, nie dla posagu.",
+  "ua": "який би кохав її заради неї самої, а не за посагом.",
+  "para": 8,
+  "start": 248.27
+ },
+ {
+  "pl": "Więc znowu dokoła panny Łęckiej począł zbierać się tłum wielbicieli, a na stoliku w jej salonie stosy biletów wizytowych. Gości jednak nie przyjmowano, co zresztą między nimi nie wywołało zbyt wielkiego oburzenia, ponieważ rozeszła się trzecia z kolei pogłoska, że Łęckiemu licytują kamienicę.",
+  "ua": "Тож знову довкола панни Ленцької почав збиратися натовп шанувальників, а на столику у її вітальні — стоси візитних карток. Гостей, втім, не приймали, що, до речі, між ними не викликало надто великого обурення, бо розійшлася третя поспіль чутка, що кам'яницю Ленцького виставлено на аукціон.",
+  "para": 9,
+  "start": 252.08
+ },
+ {
+  "pl": "Tym razem w towarzystwie powstał zamęt. Jedni twierdzili, że pan Tomasz jest zdeklarowanym bankrutem, drudzy gotowi byli przysiąc, że zataił majątek, aby zapewnić szczęście jedynaczce. Kandydaci do małżeństwa i ich rodziny znaleźli się w dręczącej niepewności.",
+  "ua": "Цього разу в товаристві виник замішання. Одні стверджували, що пан Томаш задекларований банкрут, інші готові були присягнути, що він приховав маєток, аби забезпечити щастя єдиній дочці. Кандидати на шлюб і їхні родини опинилися в мучливій невпевненості.",
+  "para": 10,
+  "start": 273.22
+ },
+ {
+  "pl": "Ażeby więc nic nie ryzykować i nic nie stracić, składali hołdy pannie Izabeli nie angażując się zbytecznie i po cichu rzucali w jej domu swoje karty, prosząc Boga, ażeby ich czasem nie zaproszono przed wyklarowaniem się sytuacji.",
+  "ua": "Аби ж нічого не ризикувати й нічого не втратити, виявляли шану панні Ізабелі, не вступаючи зайве в зобов'язання, і тихо кидали в її домі свої картки, молячи Бога, щоб їх часом не запросили до прояснення ситуації.",
+  "para": 10,
+  "start": 290.64
+ },
+ {
+  "pl": "O rewizytach ze strony pana Tomasza nie było mowy. Usprawiedliwiano go ekscentrycznością i smutkiem po Wiktorze Emanuelu.",
+  "ua": "Про взаємні візити з боку пана Томаша не було мови. Виправдовували його ексцентричністю й жалобою по Віктору Емануїлу.",
+  "para": 11,
+  "start": 307.17
+ },
+ {
+  "pl": "Tymczasem pan Tomasz w dzień spacerował po Alejach, a wieczorem grywał w wista<sup>116<\/sup> w resursie. Fizjognomia jego była zawsze tak spokojna, a postawa tak dumna, że wielbiciele jego córki zupełnie potracili głowy.",
+  "ua": "Тим часом пан Томаш удень прогулювався Алеями, а ввечері грав у віст<sup>116<\/sup> у ресурсі. Фізіогномія його була завжди така спокійна, а постава така горда, що шанувальники його дочки цілком утратили голови.",
+  "para": 12,
+  "start": 316.85
+ },
+ {
+  "pl": "Rozważniejsi czekali, ale śmielsi poczęli znowu darzyć ją powłóczystymi spojrzeniami, cichym westchnieniem lub drżącym uściskiem ręki, na co panna odpowiadała lodowatą, a niekiedy pogardliwą obojętnością.",
+  "ua": "Обережніші чекали, але сміливіші почали знову дарувати їй затяжні погляди, тихий зітк чи тремкий потис руки, на що панна відповідала крижаною, а інколи й зневажливою байдужістю.",
+  "para": 12,
+  "start": 333.2
+ },
+ {
+  "pl": "Panna Izabela była niepospolicie piękną kobietą. Wszystko w niej było oryginalne i doskonałe. Wzrost więcej niż średni, bardzo kształtna figura, bujne włosy blond z odcieniem popielatym, nosek prosty, usta trochę odchylone, zęby perłowe, ręce i stopy modelowe<sup>117<\/sup>.",
+  "ua": "Панна Ізабела була незвичайно красивою жінкою. Все в ній було оригінальне й досконале. Зріст більший за середній, дуже струнка фігура, пишне волосся русяве з попільним відтінком, носик прямий, уста трохи відхилені, зуби перлові, руки й ноги модельні<sup>117<\/sup>.",
+  "para": 13,
+  "start": 347.84
+ },
+ {
+  "pl": "Szczególne wrażenie robiły jej oczy, niekiedy ciemne i rozmarzone, niekiedy pełne iskier wesołości, czasem jasnoniebieskie i zimne jak lód.",
+  "ua": "Особливе враження робили її очі: інколи темні й мрійливі, інколи повні іскор веселості, часом блідо-блакитні й холодні, як лід.",
+  "para": 13,
+  "start": 369.8
+ },
+ {
+  "pl": "Uderzająca była gra jej fizjognomii. Kiedy mówiła, mówiły jej usta, brwi, nozdrza, ręce, cała postawa, a nade wszystko oczy, którymi zdawało się, że chce przelać swoją duszę w słuchacza. Kiedy słuchała, zdawało się, że chce wypić duszę z opowiadającego.",
+  "ua": "Вражаючою була гра її фізіогномії. Коли говорила, говорили її уста, брови, ніздрі, руки, вся постава, а найбільше очі, якими здавалося, що хоче влити свою душу в слухача. Коли слухала, здавалося, що хоче впити душу з того, хто розповідає.",
+  "para": 14,
+  "start": 379.6
+ },
+ {
+  "pl": "Jej oczy umiały tulić, pieścić, płakać bez łez, palić i mrozić. Niekiedy można było myśleć, że rozmarzona otoczy kogoś rękami i oprze mu głowę na ramieniu; lecz gdy szczęśliwy topniał z rozkoszy, nagle wykonywała jakiś ruch, który mówił, że schwycić jej niepodobna, gdyż albo wymknie się,",
+  "ua": "Її очі вміли пригортати, пестити, плакати без сліз, палити й морозити. Інколи можна було подумати, що мрійливо обійме когось руками й покладе йому голову на плече; та коли щасливий танув від насолоди, раптом робила якийсь рух, що казав: схопити її неможливо, бо або вислизне,",
+  "para": 14,
+  "start": 397.0
+ },
+ {
+  "pl": "albo odepchnie, albo po prostu każe lokajowi wyprowadzić wielbiciela za drzwi...",
+  "ua": "або відштовхне, або просто накаже лакею вивести шанувальника за двері...",
+  "para": 14,
+  "start": 418.38
+ },
+ {
+  "pl": "Ciekawym zjawiskiem była dusza panny Izabeli.",
+  "ua": "Цікавим явищем була душа панни Ізабели.",
+  "para": 15,
+  "start": 424.7
+ },
+ {
+  "pl": "Gdyby ją kto szczerze zapytał: czym jest świat, a czym ona sama? niezawodnie odpowiedziałaby, że świat jest zaczarowanym ogrodem, napełnionym czarodziejskimi zamkami, a ona — boginią czy nimfą uwięzioną w formy cielesne.",
+  "ua": "Якби щиро хтось спитав її: чим є світ, а чим вона сама? — неодмінно відповіла б, що світ — це чарівний сад, наповнений чарівницькими замками, а вона — богиня чи німфа, закута в тілесні форми.",
+  "para": 16,
+  "start": 428.12
+ },
+ {
+  "pl": "Panna Izabela od kolebki żyła w świecie pięknym i nie tylko nadludzkim, ale — nadnaturalnym.",
+  "ua": "Панна Ізабела з колиски жила у світі красивому й не лише надлюдському, а — надприродному.",
+  "para": 17,
+  "start": 444.84
+ },
+ {
+  "pl": "Sypiała w puchach, odziewała się w jedwabie i hafty, siadała na rzeźbionych i wyściełanych hebanach<sup>118<\/sup> lub palisandrach<sup>119<\/sup>, piła z kryształów, jadała ze sreber i porcelany kosztownej jak złoto.",
+  "ua": "Спала на пухах, одягалася в шовки й вишивки, сідала на різьблені й вистелені крісла з чорного дерева<sup>118<\/sup> чи палісандра<sup>119<\/sup>, пила з кришталю, їла зі срібла й порцелани, дорогої, як золото.",
+  "para": 17,
+  "start": 452.5
+ },
+ {
+  "pl": "Dla niej nie istniały pory roku, tylko wiekuista wiosna, pełna łagodnego światła, żywych kwiatów i woni. Nie istniały pory dnia, gdyż nieraz przez całe miesiące kładła się spać o ósmej rano, a jadała obiad o drugiej po północy. Nie istniały różnice położeń jeograficznych, gdyż w Paryżu, Wiedniu,",
+  "ua": "Для неї не існували пори року, а лише вічна весна, повна м'якого світла, живих квітів і пахощів. Не існували пори дня, бо інколи цілі місяці лягала спати о восьмій ранку, а обідала о другій ночі. Не існували відмінності географічних положень, бо в Парижі, Відні,",
+  "para": 18,
+  "start": 464.8
+ },
+ {
+  "pl": "Rzymie, Berlinie czy Londynie znajdowali się ci sami ludzie, te same obyczaje, te same sprzęty, a nawet te same potrawy: zupy z wodorostów Oceanu Spokojnego, ostrygi z Morza Północnego, ryby z Atlantyku albo z Morza Śródziemnego, zwierzyna ze wszystkich krajów, owoce ze wszystkich części świata.",
+  "ua": "Римі, Берліні чи Лондоні були ті самі люди, ті самі звичаї, ті самі меблі, а й ті самі страви: супи з водоростей Тихого океану, устриці з Північного моря, риби з Атлантики чи Середземного моря, дичина з усіх країн, плоди з усіх частин світу.",
+  "para": 18,
+  "start": 485.92
+ },
+ {
+  "pl": "Dla niej nie istniała nawet siła ciężkości, gdyż krzesła jej podsuwano, talerze podawano, ją samą na ulicy wieziono, na schody wprowadzano, na góry wnoszono.",
+  "ua": "Для неї не існувало навіть сили тяжіння, бо їй підсовували крісла, подавали тарілки, її саму на вулиці везли, на сходи вводили, на гори підіймали.",
+  "para": 18,
+  "start": 505.96
+ },
+ {
+  "pl": "Woalka chroniła ją od wiatru, kareta od deszczu, sobole od zimna, parasolka i rękawiczki od słońca. I tak żyła z dnia na dzień, z miesiąca na miesiąc, z roku na rok, wyższa nad ludzi, a nawet nad prawa natury. Dwa razy spotkała ją straszna burza, raz w Alpach, drugi — na Morzu Śródziemnym.",
+  "ua": "Вуаль оберігала її від вітру, карета — від дощу, соболі — від холоду, парасолька й рукавиці — від сонця. І так жила з дня на день, з місяця на місяць, з року на рік, вища за людей, а й за закони природи. Двічі потрапила в страшну бурю: раз у Альпах, удруге — в Середземному морі.",
+  "para": 19,
+  "start": 518.61
+ },
+ {
+  "pl": "Truchleli najodważniejsi, ale panna Izabela ze śmiechem przysłuchiwała się łoskotowi druzgotanych skał i trzeszczeniu okrętu, ani przypuszczając możliwości niebezpieczeństwa.",
+  "ua": "Тремтіли найсміливіші, але панна Ізабела зі сміхом прислухалася до гуркоту розбитих скель і потрясіння корабля, ані не уявляючи можливості небезпеки.",
+  "para": 19,
+  "start": 539.91
+ },
+ {
+  "pl": "Natura urządziła dla niej piękne widowisko z piorunów, kamieni i morskiego odmętu, jak w innym czasie pokazała jej księżyc nad Jeziorem Genewskim<sup>120<\/sup> albo nad wodospadem Renu<sup>121<\/sup> rozdarła chmury, które zakrywały słońce.",
+  "ua": "Природа влаштувала для неї гарне видовище з блискавок, каміння й морської безодні, як іншого разу показала їй місяць над Женевським озером<sup>120<\/sup> або над водоспадом Рейну<sup>121<\/sup> роздерла хмари, що вкривали сонце.",
+  "para": 19,
+  "start": 552.64
+ },
+ {
+  "pl": "To samo przecie robią co dzień maszyniści teatrów i nawet w zdenerwowanych damach nie wywołują obawy.",
+  "ua": "Те саме, ж бо, щодня роблять машиністи театрів і навіть у нервових дам не викликають страху.",
+  "para": 19,
+  "start": 567.02
+ },
+ {
+  "pl": "Ten świat wiecznej wiosny, gdzie szeleściły jedwabie, rosły tylko rzeźbione drzewa, a glina pokrywała się artystycznymi malowidłami, ten świat miał swoją specjalną ludność.",
+  "ua": "Цей світ вічної весни, де шелестіли шовки, росли лише різьблені дерева, а глина вкривалася художніми малюнками, мав свою особливу людність.",
+  "para": 20,
+  "start": 575.88
+ },
+ {
+  "pl": "Właściwymi jego mieszkańcami były księżniczki i książęta, hrabianki i hrabiowie tudzież bardzo stara i majętna szlachta obojej płci.",
+  "ua": "Справжніми його мешканцями були принцеси й князі, графині та графи, а також дуже стара й заможна шляхта обох статей.",
+  "para": 20,
+  "start": 587.4
+ },
+ {
+  "pl": "Znajdowały się tam jeszcze damy zamężne i panowie żonaci w charakterze gospodarzy domów, matrony strzegące wykwintnego obejścia i dobrych obyczajów i starzy panowie, którzy zasiadali na pierwszych miejscach przy stole, oświadczali młodzież, błogosławili ją i grywali w karty.",
+  "ua": "Там були ще дами заміжні й чоловіки одружені в характері господарів дімів, матрони, що бережуть вишукане господарство й добрі звичаї, та старі пани, які сідали на перші місця за столом, сватали молодь, благословляли її й грали в карти.",
+  "para": 20,
+  "start": 596.42
+ },
+ {
+  "pl": "Byli też biskupi, wizerunki Boga na ziemi, wysocy urzędnicy, których obecność zabezpieczała świat od nieporządków społecznych i trzęsienia ziemi, a nareszcie dzieci, małe cherubiny, zesłane z nieba po to, ażeby starsi mogli urządzać kinderbale<sup>122<\/sup>.",
+  "ua": "Були й єпископи, образи Бога на землі, високі урядовці, чия присутність оберігала світ від суспільних безладів і землетрусів, а нарешті — діти, малі херувими, послані з неба для того, щоб старші могли влаштовувати кіндербалі<sup>122<\/sup>.",
+  "para": 20,
+  "start": 614.46
+ },
+ {
+  "pl": "Wśród stałej ludności zaczarowanego świata ukazywał się od czasu do czasu zwykły śmiertelnik, który na skrzydłach reputacji potrafił wzbić się aż do szczytów Olimpu<sup>123<\/sup>. Zwykle bywał nim jakiś inżynier, który łączył oceany albo wiercił czy też budował Alpy.",
+  "ua": "Серед постійного населення чарівного світу час від часу з'являвся звичайний смертний, який на крилах репутації вмів здійнятися аж до вершин Олімпу<sup>123<\/sup>. Звичайно це був якийсь інженер, що з'єднував океани або бурив чи будував Альпи.",
+  "para": 21,
+  "start": 632.23
+ },
+ {
+  "pl": "Był jakiś kapitan, który w walce z dzikimi stracił swoją kompanię, a sam okryty ranami ocalał dzięki miłości murzyńskiej księżniczki. Był podróżnik, który podobno odkrył nową część świata, rozbił się z okrętem na bezludnej wyspie i bodaj czy nie kosztował ludzkiego mięsa.",
+  "ua": "Був якийсь капітан, який у битві з дикими втратив свою компанію, а сам, укритий ранами, врятувався завдяки коханню негритянської принцеси. Був мандрівник, який, кажуть, відкрив нову частину світу, розбився з кораблем на безлюдному острові й, може, куштував людського м'яса.",
+  "para": 21,
+  "start": 649.75
+ },
+ {
+  "pl": "Bywali tam wreszcie sławni malarze, a nade wszystko natchnieni poeci, którzy w sztambuchach<sup>124<\/sup> hrabianek pisywali ładne wiersze, mogli kochać się bez nadziei i uwieczniać wdzięki swoich okrutnych bogiń naprzód w gazetach, a następnie w oddzielnych tomikach,",
+  "ua": "Бували там, нарешті, славетні художники, а найбільше натхненні поети, які в штамбухах<sup>124<\/sup> графинь писали гарні вірші, могли кохатися без надії й увічнювати чари своїх жорстоких богинь спершу в газетах, а потім в окремих збірках,",
+  "para": 22,
+  "start": 667.67
+ },
+ {
+  "pl": "drukowanych na welinowym papierze<sup>125<\/sup>.",
+  "ua": "надрукованих на веленевому папері<sup>125<\/sup>.",
+  "para": 22,
+  "start": 683.63
+ },
+ {
+  "pl": "Cała ta ludność, między którą ostrożnie przesuwali się wygalonowani<sup>126<\/sup> lokaje, damy do towarzystwa, ubogie kuzynki i łaknący wyższych posad kuzyni, cała ta ludność obchodziła wieczne święto.",
+  "ua": "Ця вся людність, між якою обережно прослизали лакеї з нашитими галунами<sup>126<\/sup>, дами-супутниці, бідні кузини й прагнінні вищих посад кузени, — ця вся людність святкувала вічне свято.",
+  "para": 23,
+  "start": 687.16
+ },
+ {
+  "pl": "Od południa składano sobie i oddawano wizyty i rewizyty albo zjeżdżano się w magazynach. Ku wieczorowi bawiono się przed obiadem, w czasie obiadu i po obiedzie. Potem jechano na koncert lub do teatru, ażeby tam zobaczyć inny sztuczny świat, gdzie bohaterowie rzadko kiedy jedzą i pracują,",
+  "ua": "Опівдні робили собі візити й взаємні візити або збиралися в магазинах. Надвечір розважалися перед обідом, під час обіду й по обіду. Потім їхали на концерт чи до театру, аби там побачити інший штучний світ, де герої рідко їдять і працюють,",
+  "para": 24,
+  "start": 700.53
+ },
+ {
+  "pl": "ale za to wciąż gadają sami do siebie — gdzie niewierność kobiet staje się źródłem wielkich katastrof i gdzie kochanek, zabity przez męża w piątym akcie, na drugi dzień zmartwychwstaje w pierwszym akcie, ażeby popełniać te same błędy i gadać do siebie nie będąc słyszanym przez osoby obok stojące.",
+  "ua": "а натомість постійно балакають самі до себе — де жіноча зрада стає джерелом великих катастроф, і де коханець, убитий чоловіком у п'ятій дії, наступного дня воскресає в першій дії, аби вчиняти ті самі помилки й балакати до себе, не чутий тими, хто стоїть поруч.",
+  "para": 24,
+  "start": 719.31
+ },
+ {
+  "pl": "Po wyjściu z teatru znowu zbierano się w salonach, gdzie służba roznosiła zimne i gorące napoje, najęci artyści śpiewali, młode mężatki słuchały opowiadań porąbanego kapitana o murzyńskiej księżniczce, panny rozmawiały z poetami o powinowactwie dusz,",
+  "ua": "По виході з театру знову збиралися у вітальнях, де челядь розносила холодні й гарячі напої, наймані артисти співали, молоді дружини слухали оповіді скаженого капітана про негритянську принцесу, панни розмовляли з поетами про спорідненість душ,",
+  "para": 24,
+  "start": 738.03
+ },
+ {
+  "pl": "starsi panowie wykładali inżynierom swoje poglądy na inżynierię, a damy w średnim wieku półsłówkami i spojrzeniami walczyły między sobą o podróżnika, który jadł ludzkie mięso.",
+  "ua": "старі пани викладали інженерам свої погляди на інженерію, а дами в середньому віці півсловами й поглядами билися між собою за мандрівника, який їв людське м'ясо.",
+  "para": 24,
+  "start": 754.33
+ },
+ {
+  "pl": "Potem zasiadano do kolacji, gdzie usta jadły, żołądki trawiły, a buciki rozmawiały o uczuciach lodowatych serc i marzeniach głów niezawrotnych. A potem — rozjeżdżano się, ażeby w śnie rzeczywistym nabrać sił do snu życia.",
+  "ua": "Потім сідали до вечері, де уста їли, шлунки перетравлювали, а черевички розмовляли про почуття крижаних сердець і мрії голів неозорних. А потім — роз'їжджалися, аби у сні справжньому набрати сил до сну життя.",
+  "para": 24,
+  "start": 766.05
+ },
+ {
+  "pl": "Poza tym czarodziejskim był jeszcze inny świat — zwyczajny.",
+  "ua": "Окрім цього чарівного, був ще інший світ — звичайний.",
+  "para": 25,
+  "start": 784.93
+ },
+ {
+  "pl": "O jego istnieniu wiedziała panna Izabela i nawet lubiła mu się przypatrywać z okna karety, wagonu albo z własnego mieszkania. W takich ramach i z takiej odległości wydawał on się jej malowniczym i nawet sympatycznym.",
+  "ua": "Про його існування знала панна Ізабела й навіть любила його розглядати з вікна карети, вагона чи власного помешкання. У таких рамках і з такої відстані здавався він їй мальовничим і навіть приємним.",
+  "para": 26,
+  "start": 789.49
+ },
+ {
+  "pl": "Widywała rolników powoli orzących ziemię — duże fury ciągnione przez chudą szkapę — roznosicieli owoców i jarzyn — starca, który tłukł kamienie na szosie — posłańców idących gdzieś z pośpiechem — ładne i natrętne kwiaciarki — rodzinę złożoną z ojca, bardzo otyłej matki i czworga dzieci,",
+  "ua": "Бачила селян, які повільно орали землю — великі вози, що тягнула худа шкапа — рознощиків фруктів і овочів — старого, який бив каміння на шосе — посильних, що йшли десь поспішно — гарних і нав'язливих квітникарок — родину, що складалася з батька, дуже повної матері й чотирьох дітей,",
+  "para": 26,
+  "start": 803.96
+ },
+ {
+  "pl": "parami trzymających się za ręce — eleganta niższej sfery, który jechał dorożką i rozpierał się w sposób bardzo zabawny — czasem pogrzeb. I mówiła sobie, że tamten świat, choć niższy, jest ładny; jest nawet ładniejszy od obrazów rodzajowych<sup>127<\/sup>, gdyż porusza się i zmienia co chwilę.",
+  "ua": "парами за руки — елеганта нижчого світу, який їхав возом і розпинався дуже кумедно — інколи похорон. І казала собі, що той світ, хоч і нижчий, гарний; навіть гарніший за жанрові картини<sup>127<\/sup>, бо рухається й змінюється щомиті.",
+  "para": 26,
+  "start": 823.56
+ },
+ {
+  "pl": "I jeszcze wiedziała panna Izabela, że jak w oranżeriach rosną kwiaty, a w winnicach winogrona, tak w tamtym, niższym świecie, wyrastają rzeczy jej potrzebne.",
+  "ua": "І ще знала панна Ізабела, що як в оранжереях ростуть квіти, а у виноградниках виноград, так у тому, нижчому світі виростають речі, потрібні їй.",
+  "para": 27,
+  "start": 841.7
+ },
+ {
+  "pl": "Stamtąd pochodzi jej wierny Mikołaj i Anusia, tam robią rzeźbione fotele, porcelany, kryształy i firanki, tam rodzą się froterzy<sup>128<\/sup>, tapicerowie, ogrodnicy i panny szyjące suknie.",
+  "ua": "Звідти походить її вірний Микола й Ануся, там роблять різьблені крісла, порцелану, кришталь і фіранки, там народжуються полірувальники<sup>128<\/sup>, оббивачі, садівники та панни, що шиють сукні.",
+  "para": 27,
+  "start": 854.3
+ },
+ {
+  "pl": "Będąc raz w magazynie kazała zaprowadzić się do szwalni i bardzo ciekawym wydał się jej widok kilkudziesięciu pracownic, które krajały, fastrygowały i układały na formach fałdy ubrań.",
+  "ua": "Бувши раз у магазині, наказала себе провести до швейного цеху й дуже цікавим видався їй вигляд кількох десятків працівниць, які кроїли, намічували й укладали на лекала складки вбрання.",
+  "para": 27,
+  "start": 867.66
+ },
+ {
+  "pl": "Była pewna, że robi im to wielką przyjemność, ponieważ te panny, które brały jej miarę albo przymierzały suknie, były zawsze uśmiechnięte i bardzo zainteresowane tym, ażeby strój leżał na niej dobrze.",
+  "ua": "Була певна, що робить їм велике задоволення, бо ті панні, які брали її міру або міряли сукні, були завжди усміхнені й дуже зацікавлені тим, щоб убрання лежало на ній добре.",
+  "para": 27,
+  "start": 879.5
+ },
+ {
+  "pl": "I jeszcze wiedziała panna Izabela, że na tamtym, zwyczajnym świecie trafiają się ludzie nieszczęśliwi.",
+  "ua": "І ще знала панна Ізабела, що на тому, звичайному світі трапляються нещасливі люди.",
+  "para": 28,
+  "start": 892.96
+ },
+ {
+  "pl": "Więc każdemu ubogiemu, o ile spotkał ją, kazała dawać po kilka złotych; raz spotkawszy mizerną matkę z bladym jak wosk dzieckiem przy piersi oddała jej bransoletę, a brudne, żebrzące dzieci obdarzała cukierkami i całowała z pobożnym uczuciem.",
+  "ua": "Тож кожному бідному, коли зустрічав її, наказувала давати по кілька злотих; раз, зустрівши змарнілу матір із блідою, як віск, дитиною на грудях, віддала їй браслет, а брудних, жебрачих дітей обдаровувала цукерками й цілувала з побожним почуттям.",
+  "para": 28,
+  "start": 899.53
+ },
+ {
+  "pl": "Zdawało się jej, że w którymś z tych biedaków, a może w każdym, jest utajony Chrystus, który zastąpił jej drogę, ażeby dać okazję do spełnienia dobrego czynu.",
+  "ua": "Здавалося їй, що в якомусь із цих бідаків, а може, в кожному, є таємний Христос, який став їй на дорогу, аби дати нагоду вчинити добру справу.",
+  "para": 28,
+  "start": 915.26
+ },
+ {
+  "pl": "W ogóle dla ludzi z niższego świata miała serce życzliwe. Przychodziły jej na myśl słowa Pisma świętego: „W pocie czoła pracować będziesz.”<sup>129<\/sup>. Widocznie popełnili oni jakiś ciężki grzech, skoro skazano ich na pracę; ależ tacy jak ona aniołowie nie mogli nie ubolewać nad ich losem.",
+  "ua": "Взагалі для людей з нижчого світу мала серце прихильне. Приходили їй на думку слова Святого Письма: «В поті чола працюватимеш.»<sup>129<\/sup> Очевидно, вчинили вони якийсь тяжкий гріх, коли засудили їх на працю; але ж такі, як вона, ангели не могли не сумувати за їхньою долею.",
+  "para": 29,
+  "start": 925.44
+ },
+ {
+  "pl": "Tacy jak ona, dla której największą pracą było dotknięcie elektrycznego dzwonka albo wydanie rozkazu.",
+  "ua": "Такі, як вона, для якої найбільшою працею було доторкнутися електричного дзвінка або віддати наказ.",
+  "para": 29,
+  "start": 943.43
+ },
+ {
+  "pl": "Raz tylko niższy świat zrobił na niej potężne wrażenie.",
+  "ua": "Лише раз нижчий світ справив на неї могутнє враження.",
+  "para": 30,
+  "start": 949.45
+ },
+ {
+  "pl": "Pewnego dnia, we Francji, zwiedzała fabrykę żelazną. Zjeżdżając z góry, w okolicy pełnej lasów i łąk, pod szafirowym niebem zobaczyła otchłań wypełnioną obłokami czarnych dymów i białych par i usłyszała głuchy łoskot, zgrzyt i sapanie machin. Potem widziała piece, jak wieże średniowiecznych zamków,",
+  "ua": "Одного дня, у Франції, оглядала залізну фабрику. Спускаючись згори, у місцевості, повній лісів і лук, під сапфіровим небом побачила безодню, наповнену хмарами чорного диму й білої пари, й почула глухий гуркіт, скрегіт і хекання машин. Потім бачила печі, як вежі середньовічних замків,",
+  "para": 31,
+  "start": 953.53
+ },
+ {
+  "pl": "dyszące płomieniami — potężne koła, które obracały się z szybkością błyskawic — wielkie rusztowania, które same toczyły się po szynach — strumienie rozpalonego do białości żelaza i półnagich robotników, jak spiżowe posągi, o ponurych wejrzeniach.",
+  "ua": "які хекали полум'ям — могутні кола, що оберталися зі швидкістю блискавок — великі риштування, що самі котилися по рейках — потоки нагрітого до білого заліза й напівоголених робітників, як бронзові статуї, з похмурими поглядами.",
+  "para": 31,
+  "start": 975.37
+ },
+ {
+  "pl": "Ponad tym wszystkim — krwawa łuna, warczenie kół, jęki miechów, grzmot młotów i niecierpliwe oddechy kotłów, a pod stopami dreszcz wylęknionej ziemi.",
+  "ua": "Над усім цим — криваве сяйво, гарчання колів, стогін міхів, грім молотів і нетерпіння дихання котлів, а під ногами тремтіння наляканої землі.",
+  "para": 31,
+  "start": 990.83
+ },
+ {
+  "pl": "Wtedy zdało się jej, że z wyżyn szczęśliwego Olimpu zstąpiła do beznadziejnej otchłani Wulkana<sup>130<\/sup>, gdzie cyklopowie<sup>131<\/sup> kują pioruny mogące zdruzgotać sam Olimp.",
+  "ua": "Тоді здалося їй, що з висот щасливого Олімпу зійшла в безнадійну безодню Вулкана<sup>130<\/sup>, де циклопи<sup>131<\/sup> кують блискавки, здатні розтрощити сам Олімп.",
+  "para": 32,
+  "start": 1002.33
+ },
+ {
+  "pl": "Przyszły jej na myśl legendy o zbuntowanych olbrzymach, o końcu tego pięknego świata, w którym przebywała, i pierwszy raz w życiu ją, boginię, przed którą gięli się marszałkowie i senatorzy, zdjęła trwoga.",
+  "ua": "Прийшли їй на думку легенди про бунтівних велетнів, про кінець цього красивого світу, в якому перебувала, і вперше в житті її, богиню, перед якою схилялися маршали й сенатори, огорнув жах.",
+  "para": 32,
+  "start": 1013.61
+ },
+ {
+  "pl": "— To są straszni ludzie, papo... — szepnęła do ojca.",
+  "ua": "— Це страшні люди, тату... — прошепотіла до батька.",
+  "para": 33,
+  "start": 1027.91
+ },
+ {
+  "pl": "Ojciec milczał, tylko mocniej przycisnął jej ramię.",
+  "ua": "Батько мовчав, лише міцніше притиснув її плече.",
+  "para": 34,
+  "start": 1032.26
+ },
+ {
+  "pl": "— Ale kobietom oni nic złego nie zrobią?",
+  "ua": "— Але жінкам вони нічого злого не зроблять?",
+  "para": 35,
+  "start": 1035.74
+ },
+ {
+  "pl": "— Tak, nawet oni — odpowiedział pan Tomasz.",
+  "ua": "— Так, навіть їм, — відповів пан Томаш.",
+  "para": 36,
+  "start": 1039.06
+ },
+ {
+  "pl": "W tej chwili pannę Izabelę ogarnął wstyd na myśl, że troszczyła się tylko o kobiety. Więc szybko dodała:",
+  "ua": "У ту мить панну Ізабелу огорнув сором за думку, що турбувалася лише про жінок. Тож швидко додала:",
+  "para": 37,
+  "start": 1043.12
+ },
+ {
+  "pl": "— A jeżeli nam, to i wam nie zrobią nic złego...",
+  "ua": "— А якщо нам, то й вам не зроблять нічого злого...",
+  "para": 38,
+  "start": 1049.79
+ },
+ {
+  "pl": "Ale pan Tomasz uśmiechnął się i potrząsnął głową. W owym czasie dużo mówiono o zbliżającym się końcu starego świata, a pan Tomasz głęboko odczuwał to, z wielkimi trudnościami wydobywając pieniądze od swoich pełnomocników.",
+  "ua": "Але пан Томаш усміхнувся й похитав головою. У той час багато говорили про наближаємий кінець старого світу, а пан Томаш глибоко це відчував, з великими труднощами витягуючи гроші від своїх повірених.",
+  "para": 39,
+  "start": 1054.5
+ },
+ {
+  "pl": "Odwiedziny fabryki stanowiły ważną epokę w życiu panny Izabeli. Z religijną czcią czytywała ona poezje swego dalekiego kuzyna, Zygmunta<sup>132<\/sup>, i zdawało się jej, że dziś znalazła ilustrację do Nie-Boskiej komedii.",
+  "ua": "Відвідування фабрики стало важливою епохою в житті панни Ізабели. З релігійним благоговінням читала вона поезії свого далекого кузена Зигмунта<sup>132<\/sup> і здавалося їй, що сьогодні знайшла ілюстрацію до «Небожественної комедії».",
+  "para": 40,
+  "start": 1069.34
+ },
+ {
+  "pl": "Odtąd często marzyła o zmroku, że na górze kąpiącej się w słońcu, skąd zjeżdżał jej powóz do fabryki, stoją Okopy Św. Trójcy<sup>133<\/sup>, a w tej dolinie zasnutej dymami i parą było obozowisko zbuntowanych demokratów, gotowych lada chwila ruszyć do szturmu i zburzyć jej piękny świat.",
+  "ua": "Відтоді часто мріяла у сутінках, що на горі, що купається в сонці, звідки спускався її екіпаж до фабрики, стоять Окопи Святої Трійці<sup>133<\/sup>, а в цій долині, вкритій димом і парою, було табір заколотних демократів, готових будь-якої миті рушити до штурму й зруйнувати її гарний світ.",
+  "para": 40,
+  "start": 1083.28
+ },
+ {
+  "pl": "Teraz dopiero zrozumiała, jak gorąco kocha tę swoją duchową ojczyznę, gdzie kryształowe pająki zastępują słońce, dywany — ziemię, posągi i kolumny — drzewa. Tę drugą ojczyznę, która ogarnia arystokrację wszystkich narodów, wykwintność wszystkich czasów i najpiękniejsze zdobycze cywilizacji.",
+  "ua": "Тепер лише зрозуміла, як палко кохала цю свою духовну батьківщину, де кришталеві павутинки замінюють сонце, килими — землю, статуї й колони — дерева. Цю другу батьківщину, що обіймає аристократію всіх народів, вишуканість усіх часів і найкрасивіші здобутки цивілізації.",
+  "para": 41,
+  "start": 1103.22
+ },
+ {
+  "pl": "I to wszystko miałoby runąć, umrzeć albo rozpierzchnąć się!... Rycerska młodzież, która śpiewa z takim uczuciem, tańczy z wdziękiem, pojedynkuje się z uśmiechem albo skacze na środku jeziora w wodę za zgubionym kwiatkiem?...",
+  "ua": "І все це мало б обвалитися, померти або розсіятися!... Рицарська молодь, що співає з таким почуттям, танцює з грацією, дуелює з усмішкою чи стрибає посеред озера у воду за загубленим квітком?...",
+  "para": 42,
+  "start": 1124.89
+ },
+ {
+  "pl": "Mają zginąć te ukochane przyjaciółki, które okrywały ją tyloma pieszczotami albo siedząc u jej nóg opowiadały jej tyle drobnych tajemnic, albo oddalone od niej pisywały takie długie, bardzo długie listy, w których tkliwe uczucia mieszały się z nader wątpliwą ortografią?",
+  "ua": "Мають зникнути ці любі подруги, які вкривали її стількоми ласками, або сидячи в неї в ніг розповідали їй стільки дрібних таємниць, або, віддалені від неї, писали такі довгі, дуже довгі листи, в яких ніжні почуття мішалися з надто сумнівною орфографією?",
+  "para": 42,
+  "start": 1139.61
+ },
+ {
+  "pl": "A ta dobra służba, która ze swymi panami postępuje tak, jakby zaprzysięgała im dozgonną miłość, wierność i posłuszeństwo? A te modystki, które zawsze witają ją z uśmiechem i tak pamiętają o najdrobniejszym szczególe jej toalety, tak dokładnie wiedzą o jej triumfach?",
+  "ua": "А ця добра челядь, яка зі своїми панами поводиться так, ніби присягала їм вічну любов, вірність і покірність? А ці модистки, які завжди вітають її з усмішкою й так пам'ятають про найдрібнішу деталь її туалету, так точно знають про її тріумфи?",
+  "para": 43,
+  "start": 1156.11
+ },
+ {
+  "pl": "A te piękne konie, którym jaskółka mogłaby zazdrościć lotu, a te psy mądre i przywiązane jak ludzie, a te ogrody, gdzie ręka ludzka powznosiła pagórki, wylewała strumienie, modelowała drzewa?... I to wszystko miałoby kiedyś zniknąć?...",
+  "ua": "А ці гарні коні, яким ластівка могла б заздрити польоту, а ці пси розумні й прив'язані, як люди, а ці сади, де рука людська насипала пагорби, виливала потоки, моделювала дерева?... І все це мало б колись зникнути?...",
+  "para": 43,
+  "start": 1172.79
+ },
+ {
+  "pl": "Od tych rozmyślań przybył pannie Izabeli na twarz nowy wyraz — łagodnego smutku, który ją robił jeszcze piękniejszą. Mówiono, że już zupełnie dojrzała.",
+  "ua": "Від цих роздумів панна Ізабела набула на обличчі нового виразу — м'якого смутку, який робив її ще красивішою. Казали, що вона вже цілком дозріла.",
+  "para": 44,
+  "start": 1188.95
+ },
+ {
+  "pl": "Rozumiejąc, że wielki świat jest wyższym światem, panna Izabela dowiedziała się powoli, że do tych wyżyn wzbić się można i stale na nich przebywać tylko za pomocą dwóch skrzydeł: urodzenia i majątku.",
+  "ua": "Розуміючи, що великий світ — вищий світ, панна Ізабела довідалася повільно, що на ці вершини піднятися й постійно перебувати на них можна лише за допомогою двох крил: народження й маєтку.",
+  "para": 45,
+  "start": 1200.81
+ },
+ {
+  "pl": "Urodzenie zaś i majątek są przywiązane do pewnych wybranych familii, jak kwiat i owoc pomarańczy do pomarańczowego drzewa.",
+  "ua": "Народження ж і маєток прикріплені до певних обраних родів, як квіт і плід помаранчі до помаранчевого дерева.",
+  "para": 45,
+  "start": 1214.39
+ },
+ {
+  "pl": "Bardzo też jest możliwym, że dobry Bóg widząc dwie dusze z pięknymi nazwiskami, połączone węzłem sakramentu, pomnaża ich dochody i zsyła im na wychowanie aniołka, który w dalszym ciągu podtrzymuje sławę rodów swoimi cnotami, dobrym ułożeniem i pięknością.",
+  "ua": "Дуже ймовірно, що добрий Бог, побачивши дві душі з гарними прізвищами, з'єднані вузлом сакраменту, помножує їхні доходи й посилає їм на виховання ангеля, який надалі підтримує славу родів своїми чеснотами, гарною поведінкою й красою.",
+  "para": 45,
+  "start": 1223.66
+ },
+ {
+  "pl": "Stąd wynika obowiązek oględnego zawierania małżeństw, na czym najlepiej znają się stare damy i sędziwi panowie. Wszystko znaczy trafny dobór nazwisk i majątków.",
+  "ua": "Звідси випливає обов'язок обережно укладати шлюби, на чому найкраще знають старі дами й сиві пани. Усе вирішує вдалий підбір прізвищ і маєтків.",
+  "para": 45,
+  "start": 1240.35
+ },
+ {
+  "pl": "Miłość bowiem, nie ta szalona, o jakiej marzą poeci, ale prawdziwie chrześcijańska, zjawia się dopiero po sakramencie i najzupełniej wystarcza, ażeby żona umiała pięknie prezentować się w domu, a mąż z powagą asystować jej w świecie.",
+  "ua": "Любов бо, не та шалена, про яку мріють поети, а справді християнська, з'являється лише після сакраменту й цілком достатня, аби дружина вміла гарно представлятися в домі, а чоловік з повагою супроводжував її у світі.",
+  "para": 45,
+  "start": 1251.62
+ },
+ {
+  "pl": "Tak było dawniej i było dobrze, według zgodnej opinii wszystkich matron. Dziś zapomniano o tym i jest źle: mnożą się mezalianse i upadają wielkie rodziny.",
+  "ua": "Так було раніше й було добре, за згодною думкою всіх матрон. Сьогодні забули про це й погано: множаться мезальянси й падають великі родини.",
+  "para": 46,
+  "start": 1266.87
+ },
+ {
+  "pl": "„I nie ma szczęścia w małżeństwach” — dodawała po cichu panna Izabela, której młode mężatki opowiedziały niejeden sekret domowy.",
+  "ua": "«І нема щастя в шлюбах» — додавала тихо панна Ізабела, якій молоді дружини розповіли не один домашній секрет.",
+  "para": 47,
+  "start": 1279.12
+ },
+ {
+  "pl": "Dzięki nawet tym opowiadaniom nabrała dużego wstrętu do małżeństwa i lekkiej wzgardy dla mężczyzn.",
+  "ua": "Завдяки навіть цим оповідям набула великої відрази до шлюбу й легкої зневаги до чоловіків.",
+  "para": 48,
+  "start": 1289.0
+ },
+ {
+  "pl": "Mąż w szlafroku, który ziewa przy żonie, całuje ją mając pełne usta dymu z cygar, często odzywa się: „A dajże mi spokój”, albo po prostu: „Głupia jesteś!...” — ten mąż, który robi hałasy w domu za nowy kapelusz, a za domem wydaje pieniądze na ekwipaże dla aktorek, to wcale nieciekawe stworzenie.",
+  "ua": "Чоловік у халаті, який зіхає при дружині, цілує її, маючи повний рот диму від сигар, часто каже: «Дай уже мені спокій!» або просто: «Дурна ти!...» — цей чоловік, який робить галас у домі за новий капелюх, а поза домом витрачає гроші на карети для актрис, — зовсім нецікаве створіння.",
+  "para": 49,
+  "start": 1296.44
+ },
+ {
+  "pl": "Co najgorsze, że każdy z nich przed ślubem był gorącym wielbicielem, mizerniał nie widząc długo swej pani, rumienił się, kiedy ją spotkał, a nawet niejeden obiecywał zastrzelić się z miłości.",
+  "ua": "Найгірше, що кожен з них перед весіллям був палким шанувальником, марнів, довго не бачачи своєї пані, червонів, коли її зустрічав, і навіть не один обіцяв застрелитися з кохання.",
+  "para": 49,
+  "start": 1315.36
+ },
+ {
+  "pl": "Toteż mając lat osiemnaście, panna Izabela tyranizowała mężczyzn chłodem. Kiedy Wiktor Emanuel raz pocałował ją w rękę, uprosiła ojca, że tego samego dnia wyjechali z Rzymu. W Paryżu oświadczył się jej pewien bogaty hrabia francuski; odpowiedziała mu, że jest Polką i za cudzoziemca nie wyjdzie.",
+  "ua": "Тож маючи вісімнадцять років, панна Ізабела тиранізувала чоловіків холодністю. Коли Віктор Емануїл раз поцілував її в руку, випросила в батька, щоб того самого дня виїхали з Риму. У Парижі освідчився їй певний багатий французький граф; вона відповіла йому, що є полячкою й за чужинця не вийде.",
+  "para": 50,
+  "start": 1329.17
+ },
+ {
+  "pl": "Podolskiego magnata odepchnęła zdaniem, że odda swoją rękę tylko temu, kogo pokocha, a na co się jeszcze nie zanosi, a oświadczyny jakiegoś amerykańskiego milionera zbyła wybuchem śmiechu.",
+  "ua": "Подільського магната відштовхнула твердженням, що віддасть свою руку лише тому, кого полюбить, а на це ще не нагода, а освідчення якогось американського мільйонера відкинула вибухом сміху.",
+  "para": 50,
+  "start": 1349.18
+ },
+ {
+  "pl": "Takie postępowanie na kilka lat wytworzyło dokoła panny pustkę. Podziwiano ją i wielbiono, ale z daleka; nikt bowiem nie chciał narażać się na szyderczą odmowę.",
+  "ua": "Така поведінка на кілька років створила довкола панни пустку. Захоплювалися нею й шанували, але здалеку; бо ніхто не хотів наражатися на насмішливу відмову.",
+  "para": 51,
+  "start": 1362.04
+ },
+ {
+  "pl": "Po przejściu pierwszego niesmaku panna Izabela zrozumiała, że małżeństwo trzeba przyjąć takim, jakie jest. Była już zdecydowana wyjść za mąż, pod tym wszakże warunkiem, aby przyszły towarzysz — podobał się jej, miał piękne nazwisko i odpowiedni majątek.",
+  "ua": "Після першої огиди панна Ізабела зрозуміла, що шлюб треба прийняти таким, яким він є. Вона вже була рішуче налаштована вийти заміж, але під тією умовою, щоб майбутній товариш подобався їй, мав гарне прізвище й відповідний маєток.",
+  "para": 52,
+  "start": 1372.28
+ },
+ {
+  "pl": "Rzeczywiście, trafiali się jej ludzie piękni, majętni i utytułowani; na nieszczęście jednak, żaden nie łączył w sobie wszystkich trzech warunków, więc — znowu upłynęło kilka lat.",
+  "ua": "Справді, траплялися їй люди гарні, заможні й титуловані; на жаль, однак, жоден не поєднував у собі всіх трьох умов, тож — знову минуло кілька років.",
+  "para": 52,
+  "start": 1388.7
+ },
+ {
+  "pl": "Nagle rozeszły się wieści o złym stanie interesów pana Tomasza i — z całego legionu konkurentów — zostało pannie Izabeli tylko dwu poważnych: pewien baron i pewien marszałek<sup>134<\/sup>, bogaci, ale starzy.",
+  "ua": "Раптом розійшлися чутки про поганий стан справ пана Томаша, і з усього легіону конкурентів лишилося панні Ізабелі тільки двоє серйозних: певний барон і певний маршал<sup>134<\/sup>, багаті, але старі.",
+  "para": 53,
+  "start": 1400.57
+ },
+ {
+  "pl": "Teraz spostrzegła panna Izabela, że w wielkim świecie usuwa jej się grunt pod nogami, więc zdecydowała się obniżyć skalę wymagań. Ale że baron i marszałek pomimo swoich majątków budzili w niej niepokonaną odrazę, więc odkładała stanowczą decyzję z dnia na dzień.",
+  "ua": "Тепер помітила панна Ізабела, що у великому світі в неї з-під ніг усувається ґрунт, тож зважилася знизити шкалу вимог. Але оскільки барон і маршал, попри свої маєтки, викликали в ній непереборну огиду, відкладала остаточне рішення з дня на день.",
+  "para": 54,
+  "start": 1414.56
+ },
+ {
+  "pl": "Tymczasem pan Tomasz zerwał z towarzystwem. Marszałek nie mogąc się doczekać odpowiedzi wyjechał na wieś, strapiony baron za granicę i — panna Izabela pozostała kompletnie samą. Wprawdzie wiedziała, że każdy z nich wróci na pierwsze zawołanie, ale — którego tu wybrać?... jak przytłumić wstręt?...",
+  "ua": "Тим часом пан Томаш рвав з товариством. Маршал, не дочекавшись відповіді, поїхав у село, засмучений барон за кордон, і панна Ізабела лишилася цілком сама. Звісно, знала, що кожен з них повернеться на перший поклик, але — кого тут вибрати?... як придушити відразу?...",
+  "para": 54,
+  "start": 1431.56
+ },
+ {
+  "pl": "Nade wszystko zaś, czy podobna robić z siebie taką ofiarę mając niejaką pewność, że kiedyś odzyska majątek, i wiedząc, że wówczas znowu będzie mogła wybierać. Tym razem już wybierze, poznawszy, jak ciężko jej żyć poza towarzystwem salonów...",
+  "ua": "Найбільше ж, чи годиться робити з себе таку жертву, маючи певність, що колись відновить маєток, і знаючи, що тоді знову зможе обирати. Цього разу вже вибере, пізнавши, як тяжко їй жити поза товариством салонів...",
+  "para": 54,
+  "start": 1450.45
+ },
+ {
+  "pl": "Jedna rzecz w wysokim stopniu ułatwiała jej wyjście za mąż dla stanowiska. Oto panna Izabela nigdy nie była zakochaną. Przyczyniał się do tego jej chłodny temperament, wiara, że małżeństwo obejdzie się bez poetycznych dodatków, nareszcie miłość idealna, najdziwniejsza, o jakiej słyszano.",
+  "ua": "Одна річ у високому ступені полегшувала їй вихід заміж заради становища. Ось панна Ізабела ніколи не була закоханою. Сприяв тому її холодний темперамент, віра, що шлюб обійдеться без поетичних прикрас, нарешті — ідеальна любов, найдивніша, про яку чули.",
+  "para": 55,
+  "start": 1467.71
+ },
+ {
+  "pl": "Raz zobaczyła w pewnej galerii rzeźb posąg Apollina<sup>135<\/sup>, który na niej zrobił tak silne wrażenie, że kupiła piękną jego kopię i ustawiła w swoim gabinecie. Przypatrywała mu się całymi godzinami, myślała o nim i kto wie, ile pocałunków ogrzało ręce i nogi marmurowego bóstwa?...",
+  "ua": "Раз побачила в певній галереї скульптур статую Аполлона<sup>135<\/sup>, яка на ній справила таке сильне враження, що вона купила гарну його копію й поставила у своєму кабінеті. Розглядала його цілими годинами, думала про нього, і хтозна, скільки поцілунків зігріло руки й ноги мармурового божества?...",
+  "para": 55,
+  "start": 1487.49
+ },
+ {
+  "pl": "I stał się cud: pieszczony przez kochającą kobietę głaz ożył. A kiedy pewnej nocy zapłakana usnęła, nieśmiertelny zstąpił ze swego piedestału i przyszedł do niej w laurowym wieńcu na głowie, jaśniejący mistycznym<sup>136<\/sup> blaskiem.",
+  "ua": "І сталося диво: пестлений коханою жінкою камінь ожив. А коли одної ночі, заплакана, заснула, безсмертний зійшов зі свого постаменту й прийшов до неї в лавровому вінку на голові, сяючий містичним<sup>136<\/sup> сяйвом.",
+  "para": 55,
+  "start": 1505.39
+ },
+ {
+  "pl": "Siadł na krawędzi jej łóżka, długo patrzył na nią oczyma, z których przeglądała wieczność, a potem objął ją w potężnym uścisku i pocałunkami białych ust ocierał łzy i chłodził jej gorączkę.",
+  "ua": "Сів на краю її ліжка, довго дивився на неї очима, з яких проступала вічність, а потім обійняв її в могутнім обіймі й поцілунками білих уст витирав сльози й охолоджував її гарячку.",
+  "para": 56,
+  "start": 1521.2
+ },
+ {
+  "pl": "Odtąd nawiedzał ją coraz częściej i omdlewającej w jego objęciach szeptał on, bóg światła, tajemnice nieba i ziemi, jakich dotychczas nie wypowiedziano w śmiertelnym języku.",
+  "ua": "Відтоді навідував її дедалі частіше й, що знемагала в його обіймах, шепотів їй, бог світла, таємниці неба й землі, яких досі не вимовлено в смертній мові.",
+  "para": 57,
+  "start": 1534.1
+ },
+ {
+  "pl": "A przez miłość dla niej sprawił jeszcze większy cud, gdyż w swym boskim obliczu kolejno ukazywał jej upiększone rysy tych ludzi, którzy kiedykolwiek zrobili na niej wrażenie.",
+  "ua": "А через любов до неї вчинив ще більше диво, бо в своєму божественному обличчі по черзі показував їй прикрашені риси тих людей, які коли-небудь справили на неї враження.",
+  "para": 57,
+  "start": 1545.16
+ },
+ {
+  "pl": "Raz był podobnym do odmłodzonego jenerała-bohatera, który wygrał bitwę i z wyżyn swego siodła patrzył na śmierć kilku tysięcy walecznych. Drugi raz przypominał twarz najsławniejszego tenora, któremu kobiety rzucały kwiaty pod nogi, a mężczyźni wyprzęgali konie z powozu.",
+  "ua": "Раз був схожим на помолоділого генерала-героя, який виграв битву й з висот свого сідла дивився на смерть кількох тисяч хоробрих. Іншого разу нагадував обличчя найславетнішого тенора, якому жінки кидали квіти під ноги, а чоловіки випрягали коней з карети.",
+  "para": 58,
+  "start": 1557.42
+ },
+ {
+  "pl": "Inny raz był wesołym i pięknym księciem krwi jednego z najstarszych domów panujących; inny raz dzielnym strażakiem, który za wydobycie trzech osób z płomieni na piątym piętrze dostał legię honorową<sup>137<\/sup>; inny raz był wielkim rysownikiem, który przytłaczał świat bogactwem swojej fantazji,",
+  "ua": "Іншого разу був веселим і гарним князем крові одного з найстаріших правлячих домів; іншого разу сміливим пожежником, який за витягнення трьох осіб із полум'я на п'ятому поверсі отримав Легіон Честі<sup>137<\/sup>; іншого разу великим рисувальником, який пригнічував світ багатством своєї фантазії,",
+  "para": 58,
+  "start": 1576.66
+ },
+ {
+  "pl": "a inny raz weneckim gondolierem albo cyrkowym atletą nadzwyczajnej urody i siły.",
+  "ua": "а іншого разу венеціанським гондольєром чи цирковим атлетом надзвичайної вроди й сили.",
+  "para": 58,
+  "start": 1594.14
+ },
+ {
+  "pl": "Każdy z tych ludzi przez pewien czas zaprzątał tajemne myśli panny Izabeli, każdemu poświęcała najcichsze westchnienia rozumiejąc, że dla tych czy innych powodów kochać go nie może i — każdy z nich za sprawą bóstwa ukazywał się w jego postaci, w półrzeczywistych marzeniach.",
+  "ua": "Кожен із цих людей на певний час заполоняв таємні думки панни Ізабели, кожному присвячувала найтихіші зітхи, розуміючи, що з цих чи інших причин кохати його не може, — і кожен із них за волею божества з'являвся в його постаті, у напівреальних мріях.",
+  "para": 59,
+  "start": 1600.49
+ },
+ {
+  "pl": "A od tych widzeń oczy panny Izabeli przybrały nowy wyraz — jakiegoś nadziemskiego zamyślenia.",
+  "ua": "А від цих видінь очі панни Ізабели набули нового виразу — якогось надземного замріяння.",
+  "para": 59,
+  "start": 1617.77
+ },
+ {
+  "pl": "Niekiedy spoglądały one gdzieś ponad ludzi i poza świat; a gdy jeszcze jej popielate włosy na czole ułożyły się tak dziwnie, jakby je rozwiał tajemniczy podmuch, patrzącym zdawało się, że widzą anioła albo świętą.",
+  "ua": "Інколи дивилися вони десь понад людей і поза світ; а коли ще її попільне волосся на чолі вкладалося так дивно, ніби його розвіяв таємний подув, тим, хто дивився, здавалося, що бачать ангела чи святу.",
+  "para": 59,
+  "start": 1626.17
+ },
+ {
+  "pl": "Przed rokiem w jednej z takich chwil zobaczył pannę Izabelę Wokulski. Odtąd serce jego nie zaznało spokoju.",
+  "ua": "Року тому в одній із таких хвилин побачив панну Ізабелу Вокульський. Відтоді його серце не знало спокою.",
+  "para": 60,
+  "start": 1641.2
+ },
+ {
+  "pl": "Prawie w tym samym czasie pan Tomasz zerwał z towarzystwem i na znak swoich rewolucyjnych usposobień zapisał się do Resursy Kupieckiej.",
+  "ua": "Майже в той самий час пан Томаш рвав з товариством і на знак своїх революційних нахилів записався до Купецької Ресурси.",
+  "para": 61,
+  "start": 1651.36
+ },
+ {
+  "pl": "Tam z pomiatanymi niegdyś garbarzami, szczotkarzami i dystylatorami<sup>138<\/sup> grywał w wista, głosząc na prawo i na lewo, że arystokracja nie powinna zasklepiać się w wyłączności, ale przodować oświeconemu mieszczaństwu, a przez nie narodowi.",
+  "ua": "Там з колишніми зневажуваними дубильниками, щіткарями й дистиляторами<sup>138<\/sup> грав у віста, проголошуючи направо й наліво, що аристократія не повинна замикатися у виключності, а вести освічене міщанство, а через неї — народ.",
+  "para": 61,
+  "start": 1660.55
+ },
+ {
+  "pl": "Za co wywzajemniając się dumni dziś garbarze, szczotkarze i dystylatorzy raczyli przyznawać, że pan Tomasz jest jedynym arystokratą, który pojął swe obowiązki względem kraju i spełnia je sumiennie. Mogli byli dodać: spełnia co dzień od dziewiątej wieczór do północy.",
+  "ua": "За що, віддячуючись, пишні сьогодні дубильники, щіткарі й дистилятори ласкаво визнавали, що пан Томаш єдиний аристократ, який зрозумів свої обов'язки щодо краю й сумлінно їх виконує. Могли б додати: виконує щодня з дев'ятої вечора до півночі.",
+  "para": 61,
+  "start": 1678.27
+ },
+ {
+  "pl": "I kiedy w ten sposób pan Tomasz dźwigał jarzmo stanowiska, panna Izabela trawiła się w samotności i ciszy swego pięknego lokalu.",
+  "ua": "І коли так пан Томаш ніс ярмо становища, панна Ізабела тліла в самотності й тиші свого гарного помешкання.",
+  "para": 62,
+  "start": 1698.8
+ },
+ {
+  "pl": "Nieraz Mikołaj już twardo drzemał w fotelu, panna Florentyna, zatkawszy sobie uszy watą, na dobre spała, a do pokoju panny Izabeli sen jeszcze nie zapukał odpędzany przez wspomnienia.",
+  "ua": "Нераз Микола вже міцно дрімав у кріслі, панна Флорентина, заткнувши собі вуха ватою, міцно спала, а до кімнати панни Ізабели сон ще не постукав, виганяний спогадами.",
+  "para": 62,
+  "start": 1708.64
+ },
+ {
+  "pl": "Wtedy zrywała się z łóżka i odziana w lekki szlafroczek całymi godzinami chodziła po salonie, gdzie dywan głuszył jej kroki i tylko tyle było światła, ile go rzucały dwie skąpe latarnie uliczne.",
+  "ua": "Тоді зривалася з ліжка й, одягнена в легкий халатик, цілими годинами ходила по вітальні, де килим заглушував її кроки й було стільки світла, скільки його кидали дві скупі ліхтарі.",
+  "para": 62,
+  "start": 1722.04
+ },
+ {
+  "pl": "Chodziła, a w ogromnym pokoju tłoczyły się jej smutne myśli i widziadła osób, które tu kiedyś bywały. Tu drzemie stara księżna; tu dwie hrabiny informują się u prałata<sup>139<\/sup>, czy można dziecko ochrzcić wodą różaną<sup>140<\/sup>?",
+  "ua": "Ходила, а в величезній кімнаті тіснилися її сумні думки й привиди осіб, які тут колись бували. Тут дрімає стара княгиня; тут дві графині розпитують у прелата<sup>139<\/sup>, чи можна дитину охрестити водою троянд<sup>140<\/sup>?",
+  "para": 63,
+  "start": 1735.52
+ },
+ {
+  "pl": "Tu rój młodzieży zwraca ku niej tęskne spojrzenia albo udanym chłodem usiłuje podniecić w niej ciekawość; a tam girlanda panien, które pieszczą ją wzrokiem, podziwiają albo jej zazdroszczą.",
+  "ua": "Тут рій молоді кидає до неї сумні погляди або видимим холодом намагається збудити в ній цікавість; а там гірлянда панянок, які пестять її поглядом, захоплюються або їй заздрять.",
+  "para": 63,
+  "start": 1753.03
+ },
+ {
+  "pl": "Pełno świateł, szelestów, rozmów, których większa część, jak motyle około kwiatów, krążyły około jej piękności. Gdzie ona się znalazła, tam obok niej wszystko bladło; inne kobiety były jej tłem, a mężczyźni niewolnikami.",
+  "ua": "Повно світла, шелестів, розмов, більша частина яких, як метелики довкола квітів, кружляла довкола її краси. Де вона опинялася, там поряд із нею все блідло; інші жінки були її тлом, а чоловіки — рабами.",
+  "para": 63,
+  "start": 1766.87
+ },
+ {
+  "pl": "I to wszystko przeszło!... I dziś w tym salonie — chłodno, ciemno i pusto... Jest tylko ona i niewidzialny pająk smutku, który zawsze zasnuwa szarą siecią te miejsca, gdzie byliśmy szczęśliwi i skąd szczęście uciekło. Już uciekło!...",
+  "ua": "І все це минуло!... І сьогодні в цій вітальні — холодно, темно й порожньо... Є лише вона й невидимий павук смутку, який завжди заплітає сірим полотном ті місця, де ми були щасливі й звідки щастя втекло. Уже втекло!...",
+  "para": 64,
+  "start": 1784.52
+ },
+ {
+  "pl": "Panna Izabela wyłamywała sobie palce, ażeby pohamować się od łez, których wstyd jej było nawet w pustce i w nocy.",
+  "ua": "Панна Ізабела ламала собі пальці, аби стриматися від сліз, яких їй було соромно навіть у пустці й вночі.",
+  "para": 64,
+  "start": 1803.2
+ },
+ {
+  "pl": "Wszyscy ją opuścili, z wyjątkiem — hrabiny Karolowej, która, kiedy wezbrał jej zły humor, przychodziła tu i szeroko zasiadłszy na kanapie, prawiła wśród westchnień:",
+  "ua": "Усі її покинули, за винятком — графині Каролеви, яка, коли її брала зла примха, приходила сюди й, широко всівшись на дивані, мовила серед зітхань:",
+  "para": 65,
+  "start": 1812.18
+ },
+ {
+  "pl": "— Tak, droga Belciu, musisz przyznać, że popełniłaś kilka błędów nie do darowania. Nie mówię o Wiktorze Emanuelu, bo tamto był przelotny kaprys króla trochę liberalnego<sup>141<\/sup> i zresztą bardzo zadłużonego.",
+  "ua": "— Так, дорога Бельцю, мусиш визнати, що ти вчинила кілька непрощенних помилок. Не кажу про Віктора Емануїла, бо то був миттєвий каприз трохи ліберального<sup>141<\/sup> короля й, до того ж, дуже закількованого.",
+  "para": 66,
+  "start": 1825.33
+ },
+ {
+  "pl": "Na takie stosunki trzeba mieć więcej — nie powiem: taktu, ale — doświadczenia — ciągnęła hrabina, skromnie spuszczając powieki. — Ale wypuścić czy — jeśli chcesz — odrzucić hrabiego Saint-Auguste, to już daruj!... Człowiek młody, majętny, bardzo dobrze, i jeszcze z taką karierą!...",
+  "ua": "На такі стосунки треба мати більше — не скажу: такту, але — досвіду, — продовжувала графиня, скромно опускаючи повіки. — Але відпустити чи — як хочеш — відкинути графа Сен-Огюста, це вже вибач!... Молода людина, заможна, дуже добре, і ще з такою кар'єрою!...",
+  "para": 66,
+  "start": 1840.26
+ },
+ {
+  "pl": "Teraz właśnie przewodniczy jednej deputacji<sup>142<\/sup> do Ojca świętego i zapewne dostanie specjalne błogosławieństwo dla całej rodziny, no a hrabia Chambord<sup>143<\/sup> nazywa go cher cousin<sup>144<\/sup>... Ach, Boże!",
+  "ua": "Тепер саме очолює одну делегацію<sup>142<\/sup> до Святішого Отця й, певне, отримає особливе благословення для всієї родини, ну а граф Шамбор<sup>143<\/sup> називає його cher cousin<sup>144<\/sup>... Ах, Боже!",
+  "para": 66,
+  "start": 1861.25
+ },
+ {
+  "pl": "— Myślę, ciociu, że martwić się tym już za późno — wtrąciła panna Izabela.",
+  "ua": "— Думаю, тітко, що хвилюватися про це вже запізно, — вставила панна Ізабела.",
+  "para": 67,
+  "start": 1876.72
+ },
+ {
+  "pl": "— Alboż ja chcę cię martwić, biedne dziecko! I bez tego czekają cię ciosy, które ukoić może tylko głęboka wiara. Zapewne wiesz, że ojciec stracił wszystko, nawet resztę twego posagu?",
+  "ua": "— Невже я хочу тебе хвилювати, бідне дитя! І без того тебе чекають удари, які може заспокоїти лише глибока віра. Певне, знаєш, що батько втратив усе, навіть решту твого посагу?",
+  "para": 68,
+  "start": 1882.1
+ },
+ {
+  "pl": "— Cóż ja na to poradzę?",
+  "ua": "— Що я на це вдію?",
+  "para": 69,
+  "start": 1894.14
+ },
+ {
+  "pl": "— A jednak ty tylko możesz radzić i powinnaś — mówiła hrabina z naciskiem. — Marszałek nie jest wprawdzie Adonisem<sup>145<\/sup>, no — ale... Gdyby nasze obowiązki były do spełnienia łatwe, nie istniałaby zasługa.",
+  "ua": "— Але ж лише ти можеш радити й повинна, — говорила графиня з наголосом. — Маршал не є, правда, Адонісом<sup>145<\/sup>, ну — але... Якби наші обов'язки було легко виконувати, не існувало б заслуги.",
+  "para": 70,
+  "start": 1896.35
+ },
+ {
+  "pl": "Zresztą, mój Boże, któż nam broni mieć na dnie duszy jakiś ideał, o którym myśl osładza najcięższe chwile? Na koniec, mogę cię zapewnić, że położenie pięknej kobiety, mającej starego męża, nie należy do najgorszych.",
+  "ua": "До того ж, мій Боже, хто ж нам заборонить мати на дні душі якийсь ідеал, про яку думка підсолоджує найтяжчі хвилини? Нарешті, можу тебе запевнити, що становище гарної жінки, яка має старого чоловіка, не належить до найгірших.",
+  "para": 70,
+  "start": 1911.93
+ },
+ {
+  "pl": "Wszyscy interesują się nią, mówią o niej, składają hołdy jej poświęceniu, a znowu stary mąż jest mniej wymagający od męża w średnim wieku...",
+  "ua": "Усі цікавляться нею, говорять про неї, складають шану її самопожертві, а знову старий чоловік менше вимогливий за чоловіка середнього віку...",
+  "para": 70,
+  "start": 1926.4
+ },
+ {
+  "pl": "— Ach, ciociu...",
+  "ua": "— Ах, тітко...",
+  "para": 71,
+  "start": 1936.36
+ },
+ {
+  "pl": "— Tylko bez egzaltacji, Belciu! Nie masz lat szesnastu i na życie musisz patrzeć serio. Nie można przecie dla jakiejś idiosynkrazji<sup>146<\/sup> poświęcić bytu ojca, a choćby Flory i waszej służby.",
+  "ua": "— Тільки без екзальтації, Бельцю! Ти не маєш шістнадцяти років і на життя мусиш дивитися серйозно. Не можна ж заради якоїсь ідіосинкразії<sup>146<\/sup> пожертвувати існуванням батька, а хоч би Флори й вашої челяді.",
+  "para": 72,
+  "start": 1937.92
+ },
+ {
+  "pl": "Wreszcie pomyśl, ile ty przy twym szlachetnym serduszku mogłabyś zrobić dobrego rozporządzając znacznym majątkiem.",
+  "ua": "Нарешті подумай, скільки б ти, маючи своє шляхетне серденько, могла зробити доброго, розпоряджаючись значним маєтком.",
+  "para": 72,
+  "start": 1952.04
+ },
+ {
+  "pl": "— Ależ, ciociu, marszałek jest obrzydliwy. Jemu nie żony trzeba, ale niańki, która by mu ocierała usta.",
+  "ua": "— Але ж, тітко, маршал огидний. Йому не дружини треба, а няньки, яка б йому витирала рота.",
+  "para": 73,
+  "start": 1962.0
+ },
+ {
+  "pl": "— Nie upieram się przy marszałku, więc baron...",
+  "ua": "— Не наполягаю на маршалі, тож барон...",
+  "para": 74,
+  "start": 1969.86
+ },
+ {
+  "pl": "— Baron jeszcze starszy, farbuje się, różuje i ma jakieś plamy na rękach.",
+  "ua": "— Барон ще старіший, фарбується, рум'яноситься й має якісь плями на руках.",
+  "para": 75,
+  "start": 1973.72
+ },
+ {
+  "pl": "Hrabina podniosła się z kanapy.",
+  "ua": "Графиня піднялася з дивана.",
+  "para": 76,
+  "start": 1979.36
+ },
+ {
+  "pl": "— Nie nalegam, moja droga, nie jestem swatką, to należy do pani Meliton. Zwracam tylko uwagę, że nad ojcem wisi katastrofa.",
+  "ua": "— Не наполягаю, моя дорога, я не сваха, це належить до пані Мелітон. Лише звертаю увагу, що над батьком висить катастрофа.",
+  "para": 77,
+  "start": 1981.94
+ },
+ {
+  "pl": "— Mamy przecie kamienicę.",
+  "ua": "— Адже ми маємо кам'яницю.",
+  "para": 78,
+  "start": 1992.21
+ },
+ {
+  "pl": "— Którą sprzedają najdalej po św. Janie, tak że nawet twoja suma spadnie.",
+  "ua": "— Яку продають найпізніше після святого Яна, так що навіть твоя частка впаде.",
+  "para": 79,
+  "start": 1993.87
+ },
+ {
+  "pl": "— Jak to — dom, który kosztował sto tysięcy, sprzedadzą za sześćdziesiąt?...",
+  "ua": "— Як це — дім, який коштував сто тисяч, продадуть за шістдесят?...",
+  "para": 80,
+  "start": 1999.57
+ },
+ {
+  "pl": "— Bo on nie wart więcej, bo ojciec za dużo wydał. Wiem to od budowniczego, który oglądał go z polecenia Krzeszowskiej.",
+  "ua": "— Бо він не вартий більше, бо батько задуже витратив. Знаю це від будівельника, який оглядав його за дорученням Кшежовської.",
+  "para": 81,
+  "start": 2004.63
+ },
+ {
+  "pl": "— Więc w ostateczności mamy serwis... srebra... — wybuchnęła panna Izabela załamując ręce.",
+  "ua": "— Отже, в останньому випадку ми маємо сервіз... срібло... — вигукнула панна Ізабела, складаючи руки.",
+  "para": 82,
+  "start": 2013.65
+ },
+ {
+  "pl": "Hrabina ucałowała ją kilkakrotnie.",
+  "ua": "Графиня поцілувала її кілька разів.",
+  "para": 83,
+  "start": 2020.12
+ },
+ {
+  "pl": "— Drogie, kochane dziecko — mówiła łkając — że też właśnie ja muszę tak ranić ci serce!... Słuchaj więc... Ojciec ma jeszcze długi wekslowe, jakieś parę tysięcy rubli. Otóż te długi... uważasz... te długi ktoś skupił... kilka dni temu, w końcu marca. Domyślamy się, że to zrobiła Krzeszowska...",
+  "ua": "— Дороге, любе дитя, — говорила ридаючи, — що ж саме я мушу так ранити тобі серце!... Слухай же... Батько має ще вексельні борги, якісь пара тисяч рублів. Отже, ці борги... розумієш... ці борги хтось скупив... кілька днів тому, наприкінці березня. Здогадуємося, що це зробила Кшежовська...",
+  "para": 84,
+  "start": 2023.56
+ },
+ {
+  "pl": "— Cóż za nikczemność! — szepnęła panna Izabela. — Ale mniejsza o nią... Na pokrycie paru tysięcy rubli wystarczy mój serwis i srebra.",
+  "ua": "— Яка нікчемність! — прошепотіла панна Ізабела. — Але неважливо про неї... Для покриття пара тисяч рублів вистачить мого сервізу й срібла.",
+  "para": 85,
+  "start": 2045.19
+ },
+ {
+  "pl": "— Są one warte bez porównania więcej, ale — kto dziś kupi rzeczy tak kosztowne?",
+  "ua": "— Вони варті без порівняння більше, але — хто сьогодні купить такі коштовні речі?",
+  "para": 86,
+  "start": 2053.89
+ },
+ {
+  "pl": "— W każdym razie spróbuję — mówiła rozgorączkowana panna Izabela. — Poproszę panią Meliton, ona mi to ułatwi...",
+  "ua": "— У будь-якому разі спробую, — говорила збуджена панна Ізабела. — Попрошу пані Мелітон, вона мені це полегшить...",
+  "para": 87,
+  "start": 2060.81
+ },
+ {
+  "pl": "— Zastanów się jednak, czy nie szkoda tak pięknych pamiątek.",
+  "ua": "— Подумай, чи не шкода таких гарних пам'яток.",
+  "para": 88,
+  "start": 2067.99
+ },
+ {
+  "pl": "Panna Izabela roześmiała się.",
+  "ua": "Панна Ізабела розсміялася.",
+  "para": 89,
+  "start": 2071.99
+ },
+ {
+  "pl": "— Ach, ciociu... Więc mam wahać się pomiędzy sprzedaniem siebie i serwisu?... Bo na to, ażeby zabierano nam meble, nigdy nie pozwolę... Ach, ta Krzeszowska... to wykupywanie weksli... co za ohyda!",
+  "ua": "— Ах, тітко... Отже мушу вагатися між продажем себе й сервізу?... Бо щоб у нас забирали меблі, я ніколи не дозволю... Ах, та Кшежовська... це скуповування векселів... яка огида!",
+  "para": 90,
+  "start": 2074.35
+ },
+ {
+  "pl": "— No, może to jeszcze nie ona.",
+  "ua": "— Ну, може, це ще не вона.",
+  "para": 91,
+  "start": 2087.65
+ },
+ {
+  "pl": "— Więc chyba znalazł się jakiś nowy nieprzyjaciel, gorszy od niej.",
+  "ua": "— Отже, чи то знайшовся якийсь новий ворог, гірший за неї.",
+  "para": 92,
+  "start": 2090.84
+ },
+ {
+  "pl": "— Może to ciotka Honorata — uspokajała ją hrabina — czy ja wiem? Może chce dopomóc Tomaszowi, ale zawieszając nad nim groźbę. Lecz bądź zdrowa, moje kochane dziecię, adieu<sup>147<\/sup>...",
+  "ua": "— Може, це тітка Гонората, — заспокоювала її графиня, — хто знає? Може, хоче допомогти Томашеві, але, навісивши над ним погрозу. Ну ж, будь здорова, моє любе дитя, adieu<sup>147<\/sup>...",
+  "para": 93,
+  "start": 2095.05
+ },
+ {
+  "pl": "Na tym skończyła się rozmowa w języku polskim, gęsto ozdobionym francuszczyzną, co robiło go podobnym do ludzkiej twarzy okrytej wysypką.",
+  "ua": "На цьому скінчилася розмова польською мовою, щільно прикрашена французькими словами, що робило її схожою на людське обличчя, вкрите висипом.",
+  "para": 94,
+  "start": 2108.39
+ }
+];
+const ANNOTATIONS = {"110": {"term": "Aleja Ujazdowska", "definition": "najpiękniejsza, niegdyś głównie spacerowa aleja w Warszawie. Wznoszą się wzdłuż niej zabytkowe pałace, rozciągają stare parki. Poważnie zniszczona w czasie powstania warszawskiego, została całkowicie odbudowana (obecnie przecina ją Trasa Łazienkowska). [przypis redakcyjny]", "translation": "найкрасивіша, колись переважно прогулянкова алея Варшави. Уздовж неї здіймаються пам'ятні палаци, розкинулися старі парки. Серйозно зруйнована під час Варшавського повстання, була повністю відбудована (нині її перетинає Траса Лазєнковська). [przypis redakcyjny]"}, "111": {"term": "krocie", "definition": "tysiące (liczba bardzo duża, ściślej nie określona). [przypis redakcyjny]", "translation": "тисячі (дуже велике число, більш точно не визначене). [przypis redakcyjny]"}, "112": {"term": "zdarzenia polityczne", "definition": "zapewne powstanie styczniowe, a następnie represje rządu rosyjskiego oraz reforma uwłaszczeniowa. [przypis redakcyjny]", "translation": "мабуть, січневе повстання, а далі репресії російського уряду та реформа з наділення селян землею. [przypis redakcyjny]"}, "113": {"term": "Wiktor Emanuel II (1820–1878)", "definition": "król Sardynii w latach 1849–1861, po zjednoczeniu Włoch w r. 1861 król włoski. [przypis redakcyjny]", "translation": "король Сардинії в 1849–1861 рр., після об'єднання Італії 1861 р. — король італійський. [przypis redakcyjny]"}, "114": {"term": "epuzer", "definition": "kandydat do małżeństwa. [przypis redakcyjny]", "translation": "кандидат на одруження. [przypis redakcyjny]"}, "115": {"term": "Resursa", "definition": "dosłownie: źródło pomocy, dochodu. Nazwa związków towarzyskich oraz należących do nich lokali. — W Warszawie istniały dwie resursy: wielka, czyli Kupiecka, i Obywatelska, przy czym właśnie Resursa Obywatelska miała bardziej mieszczański charakter. [przypis redakcyjny]", "translation": "буквально: джерело допомоги, доходу. Назва товариств та приміщень, що їм належали. — У Варшаві існували два такі товариства: Велике, тобто Купецьке, і Громадянське, причому саме Громадянська ресура мала більш міщанський характер. [przypis redakcyjny]"}, "116": {"term": "wist", "definition": "czteroosobowa gra w karty. [przypis redakcyjny]", "translation": "картярська гра на чотирьох осіб. [przypis redakcyjny]"}, "117": {"term": "modelowy", "definition": "tu w znaczeniu wzorowej piękności. [przypis redakcyjny]", "translation": "тут у значенні взірцевої красуні. [przypis redakcyjny]"}, "118": {"term": "heban", "definition": "drzewo rosnące w ciepłych krajach o naturalnym czarnym kolorze, bardzo twarde i ciężkie, używane w meblarstwie. [przypis redakcyjny]", "translation": "дерево природного чорного кольору, що росте в теплих країнах, дуже тверде й важке, використовуване в меблярстві. [przypis redakcyjny]"}, "119": {"term": "palisander", "definition": "drewno z drzew południowo-amerykańskich (jacarandy), używane na forniry. [przypis redakcyjny]", "translation": "дерево з південноамериканських дерев (джакаранд), використовуване для шпону. [przypis redakcyjny]"}, "120": {"term": "Jezioro Genewskie", "definition": "największe i bardzo malownicze jezioro szwajcarskie na granicy Szwajcarii i Francji. [przypis redakcyjny]", "translation": "найбільше і дуже мальовниче швейцарське озеро на кордоні Швейцарії та Франції. [przypis redakcyjny]"}, "121": {"term": "wodospad Renu", "definition": "w górnym biegu Ren tworzy wiele wodospadów, np. pod Szafuzą w Szwajcarii. [przypis redakcyjny]", "translation": "у верхній течії Рейн утворює багато водоспадів, наприклад під Шаффгаузеном у Швейцарії. [przypis redakcyjny]"}, "122": {"term": "kinderbal (z niem.)", "definition": "zabawa dla dzieci. [przypis redakcyjny]", "translation": "Забава для дітей. [przypis redakcyjny]"}, "123": {"term": "Olimp", "definition": "najwyższe pasmo górskie w Grecji; w greckiej mitologii siedziba bogów. [przypis redakcyjny]", "translation": "найвищий гірський хребет у Греції; в грецькій міфології — оселя богів. [przypis redakcyjny]"}, "124": {"term": "sztambuch", "definition": "album, pamiętnik. [przypis redakcyjny]", "translation": "альбом, пам'ятна книжка. [przypis redakcyjny]"}, "125": {"term": "welinowy papier", "definition": "biały gładki papier, wysokiego gatunku. [przypis redakcyjny]", "translation": "білий гладкий папір високої якості. [przypis redakcyjny]"}, "126": {"term": "wygalonowani", "definition": "w liberii obszytej galonami, czyli złotą lub srebrną taśmą. [przypis redakcyjny]", "translation": "у лівереї, обшитій галунами, тобто золотою або срібною стрічкою. [przypis redakcyjny]"}, "127": {"term": "obrazy rodzajowe", "definition": "przedstawiają ludzi jako typy pewnych warstw społecznych wśród codziennych zajęć. [przypis redakcyjny]", "translation": "зображують людей як типи певних суспільних верств у щоденних заняттях. [przypis redakcyjny]"}, "128": {"term": "froter", "definition": "pracownik zajmujący się woskowaniem i polerowaniem podłóg. [przypis redakcyjny]", "translation": "працівник, що займається вощенням і поліруванням підлог. [przypis redakcyjny]"}, "129": {"term": "W pocie czoła pracować będziesz", "definition": "w Starym Testamencie słowa Boga skierowane do Adama po popełnieniu przez niego grzechu pierworodnego. [przypis redakcyjny]", "translation": "в Старому Завіті слова Бога, звернені до Адама після вчинення ним первородного гріха. [przypis redakcyjny]"}, "130": {"term": "Wulkan", "definition": "w mitologii rzymskiej bóg ognia i opiekun kowalstwa. [przypis redakcyjny]", "translation": "в римській міфології бог вогню і покровитель ковальства. [przypis redakcyjny]"}, "131": {"term": "cyklopowie", "definition": "w mitologii greckiej demony ognia, jednookie olbrzymy, które sporządzały dla Zeusa pioruny. [przypis redakcyjny]", "translation": "в грецькій міфології демони вогню, одноокі велетні, які виготовляли для Зевса блискавки. [przypis redakcyjny]"}, "132": {"term": "Zygmunt", "definition": "mowa o Zygmuncie Krasińskim. [przypis redakcyjny]", "translation": "мова йде про Зигмунта Красінського. [przypis redakcyjny]"}, "133": {"term": "Okopy Św. Trójcy", "definition": "dawna warownia przy ujściu Zbrucza do Dniestru, pod Kamieńcem Podolskim. W *Nie-Boskiej komedii* (1835) Krasiński przedstawił Okopy Św. Trójcy jako ostatnią twierdzę, gdzie broni się arystokracja. [przypis redakcyjny]", "translation": "колишня фортеця біля гирла Збруча, що впадає в Дністер, неподалік Кам'янця-Подільського. У *Небесній комедії* (1835) Красінський зобразив Окопи Святої Трійці як останню фортецю, де обороняється аристократія. [przypis redakcyjny]"}, "134": {"term": "marszałek", "definition": "tu przedstawiciel szlachty z całej guberni prowadzący zarazem księgi rodowodowe szlachty. [przypis redakcyjny]", "translation": "тут представник шляхти з усієї губернії, який водночас вів шляхетські родовідні книги. [przypis redakcyjny]"}, "135": {"term": "posąg Apollina", "definition": "Apollo: w greckiej mitologii starożytnej bóg słońca i sztuk pięknych, zwykle przedstawiany w sztuce jako idealnie piękny młodzieniec. [przypis redakcyjny]", "translation": "Аполлон: у давній грецькій міфології бог сонця і мистецтв, зазвичай зображуваний у мистецтві як ідеально красивий юнак. [przypis redakcyjny]"}, "136": {"term": "mistyczny", "definition": "tu w znaczeniu: tajemniczy, nadprzyrodzony. [przypis redakcyjny]", "translation": "тут у значенні: таємничий, надприродний. [przypis redakcyjny]"}, "137": {"term": "legia honorowa", "definition": "najwyższy order francuski ustanowiony przez Napoleona w 1802 r. [przypis redakcyjny]", "translation": "найвища французька нагорода, запроваджена Наполеоном у 1802 р. [przypis redakcyjny]"}, "138": {"term": "dystylator", "definition": "tu: fabrykant wódek (dziś: destylator). [przypis redakcyjny]", "translation": "тут: фабрикант горілок (нині: дистилятор). [przypis redakcyjny]"}, "139": {"term": "prałat", "definition": "wyższy duchowny w Kościele katolickim. [przypis redakcyjny]", "translation": "вищий церковний ієрарх у Католицькій церкві. [przypis redakcyjny]"}, "140": {"term": "woda różana", "definition": "rozczyn wodny olejku różanego. [przypis redakcyjny]", "translation": "водний розчин трояндової олії. [przypis redakcyjny]"}, "141": {"term": "liberalny", "definition": "tu: w znaczeniu zwolennika swobody obyczajów. [przypis redakcyjny]", "translation": "тут: у значенні прихильника волелюбності у звичаях. [przypis redakcyjny]"}, "142": {"term": "deputacja", "definition": "poselstwo. [przypis redakcyjny]", "translation": "делегація, посольство. [przypis redakcyjny]"}, "143": {"term": "hrabia Chambord (1820–1883)", "definition": "potomek rodu Bourbonów, wnuk Karola X, pretendent do tronu francuskiego, znany pod imieniem Henryka V. [przypis redakcyjny]", "translation": "нащадок роду Бурбонів, онук Карла X, претендент на французький трон, відомий під ім'ям Генріха V. [przypis redakcyjny]"}, "144": {"term": "cher cousin (fr.)", "definition": "drogi kuzynie. [przypis redakcyjny]", "translation": "Любий двоюрідний брате. [przypis redakcyjny]"}, "145": {"term": "Adonis", "definition": "w mit. gr. piękny młodzieniec, kochanek bogini Afrodyty. [przypis redakcyjny]", "translation": "у грецькій міфології: красивий юнак, коханець богині Афродіти. [przypis redakcyjny]"}, "146": {"term": "idiosynkrazja", "definition": "wstręt do pewnych przedmiotów, pokarmów, osób. [przypis redakcyjny]", "translation": "відраза до певних речей, страв, осіб. [przypis redakcyjny]"}, "147": {"term": "adieu (fr.)", "definition": "do widzenia. [przypis redakcyjny]", "translation": "До побачення. [przypis redakcyjny]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into mp3/lalka_005_lalka-tom-pierwszy_tom-i-rozdzial-v.mp3, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  8.16,    // [  0] conf 0.94  "Pan Tomasz Łęcki z jedyną córką Izabelą i…"
+  28.86,   // [  1] conf 1.00  "pokój stołowy, pokój dla panny Florentyny…"
+  43.12,   // [  2] conf 1.00  "Mieszkanie posiadało wielkie zalety. Było…"
+  59.07,   // [  3] conf 1.00  "Sprzętów wreszcie miało liczbę dostateczn…"
+  69.47,   // [  4] conf 0.97  "Kredens budził w widzu uczucie pewności,…"
+  85.64,   // [  5] conf 1.00  "Kto tu wszedł, miał swobodę ruchu; nie po…"
+  99.24,   // [  6] conf 1.00  "Zarazem widok przedmiotów, wyrobionych ni…"
+  108.25,  // [  7] conf 1.00  "Na tym poważnym tle dobrze zarysowywali s…"
+  113.63,  // [  8] conf 0.97  "Pan Tomasz Łęcki był to sześdziesięciokil…"
+  130.39,  // [  9] conf 1.00  "Na ulicy ustępowano mu z drogi — a ludzie…"
+  138.03,  // [ 10] conf 0.81  "Istotnie, pan Łęcki liczył w swoim rodzie…"
+  155.43,  // [ 11] conf 0.91  "Pan Tomasz bywał bowiem przed rokiem 1870…"
+  171.30,  // [ 12] conf 1.00  "Nie dziw, że pan Tomasz po śmierci wielki…"
+  177.65,  // [ 13] conf 1.00  "Od paru lat pan Tomasz nie ruszał się z W…"
+  198.08,  // [ 14] conf 0.90  "Pierwsi cofnęli się epuzerowie<sup>114</s…"
+  211.40,  // [ 15] conf 0.93  "Lecz gdy i tu zauważył zniżenie się uczuc…"
+  229.87,  // [ 16] conf 1.00  "Tylko jego córka bywała u sędziwej hrabin…"
+  248.27,  // [ 17] conf 1.00  "który by ją kochał dla niej samej, nie dl…"
+  252.08,  // [ 18] conf 1.00  "Więc znowu dokoła panny Łęckiej począł zb…"
+  273.22,  // [ 19] conf 1.00  "Tym razem w towarzystwie powstał zamęt. J…"
+  290.64,  // [ 20] conf 0.95  "Ażeby więc nic nie ryzykować i nic nie st…"   // start word fuzzy-corrected
+  307.17,  // [ 21] conf 1.00  "O rewizytach ze strony pana Tomasza nie b…"
+  316.85,  // [ 22] conf 0.89  "Tymczasem pan Tomasz w dzień spacerował p…"
+  333.20,  // [ 23] conf 1.00  "Rozważniejsi czekali, ale śmielsi poczęli…"
+  347.84,  // [ 24] conf 0.88  "Panna Izabela była niepospolicie piękną k…"   // start word fuzzy-corrected
+  369.80,  // [ 25] conf 0.95  "Szczególne wrażenie robiły jej oczy, niek…"
+  379.60,  // [ 26] conf 0.97  "Uderzająca była gra jej fizjognomii. Kied…"
+  397.00,  // [ 27] conf 1.00  "Jej oczy umiały tulić, pieścić, płakać be…"
+  418.38,  // [ 28] conf 1.00  "albo odepchnie, albo po prostu każe lokaj…"
+  424.70,  // [ 29] conf 1.00  "Ciekawym zjawiskiem była dusza panny Izab…"
+  428.12,  // [ 30] conf 1.00  "Gdyby ją kto szczerze zapytał: czym jest…"
+  444.84,  // [ 31] conf 1.00  "Panna Izabela od kolebki żyła w świecie p…"
+  452.50,  // [ 32] conf 0.82  "Sypiała w puchach, odziewała się w jedwab…"
+  464.80,  // [ 33] conf 0.98  "Dla niej nie istniały pory roku, tylko wi…"
+  485.92,  // [ 34] conf 1.00  "Rzymie, Berlinie czy Londynie znajdowali…"
+  505.96,  // [ 35] conf 0.96  "Dla niej nie istniała nawet siła ciężkośc…"
+  518.61,  // [ 36] conf 1.00  "Woalka chroniła ją od wiatru, kareta od d…"
+  539.91,  // [ 37] conf 1.00  "Truchleli najodważniejsi, ale panna Izabe…"
+  552.64,  // [ 38] conf 0.84  "Natura urządziła dla niej piękne widowisk…"
+  567.02,  // [ 39] conf 0.88  "To samo przecie robią co dzień maszyniści…"
+  575.88,  // [ 40] conf 1.00  "Ten świat wiecznej wiosny, gdzie szeleści…"
+  587.40,  // [ 41] conf 0.89  "Właściwymi jego mieszkańcami były księżni…"
+  596.42,  // [ 42] conf 1.00  "Znajdowały się tam jeszcze damy zamężne i…"
+  614.46,  // [ 43] conf 0.89  "Byli też biskupi, wizerunki Boga na ziemi…"
+  632.23,  // [ 44] conf 0.93  "Wśród stałej ludności zaczarowanego świat…"
+  649.75,  // [ 45] conf 1.00  "Był jakiś kapitan, który w walce z dzikim…"
+  667.67,  // [ 46] conf 0.92  "Bywali tam wreszcie sławni malarze, a nad…"
+  683.63,  // [ 47] conf 0.57  "drukowanych na welinowym papierze<sup>125…"   // LOW CONFIDENCE; low match ratio
+  687.16,  // [ 48] conf 0.90  "Cała ta ludność, między którą ostrożnie p…"
+  700.53,  // [ 49] conf 1.00  "Od południa składano sobie i oddawano wiz…"
+  719.31,  // [ 50] conf 1.00  "ale za to wciąż gadają sami do siebie — g…"
+  738.03,  // [ 51] conf 0.97  "Po wyjściu z teatru znowu zbierano się w…"
+  754.33,  // [ 52] conf 1.00  "starsi panowie wykładali inżynierom swoje…"
+  766.05,  // [ 53] conf 1.00  "Potem zasiadano do kolacji, gdzie usta ja…"
+  784.93,  // [ 54] conf 1.00  "Poza tym czarodziejskim był jeszcze inny…"
+  789.49,  // [ 55] conf 0.97  "O jego istnieniu wiedziała panna Izabela…"
+  803.96,  // [ 56] conf 1.00  "Widywała rolników powoli orzących ziemię…"
+  823.56,  // [ 57] conf 0.94  "parami trzymających się za ręce — elegant…"
+  841.70,  // [ 58] conf 1.00  "I jeszcze wiedziała panna Izabela, że jak…"
+  854.30,  // [ 59] conf 0.82  "Stamtąd pochodzi jej wierny Mikołaj i Anu…"   // start word fuzzy-corrected
+  867.66,  // [ 60] conf 1.00  "Będąc raz w magazynie kazała zaprowadzić…"
+  879.50,  // [ 61] conf 1.00  "Była pewna, że robi im to wielką przyjemn…"
+  892.96,  // [ 62] conf 1.00  "I jeszcze wiedziała panna Izabela, że na…"
+  899.53,  // [ 63] conf 0.97  "Więc każdemu ubogiemu, o ile spotkał ją,…"
+  915.26,  // [ 64] conf 1.00  "Zdawało się jej, że w którymś z tych bied…"
+  925.44,  // [ 65] conf 0.94  "W ogóle dla ludzi z niższego świata miała…"
+  943.43,  // [ 66] conf 1.00  "Tacy jak ona, dla której największą pracą…"
+  949.45,  // [ 67] conf 1.00  "Raz tylko niższy świat zrobił na niej pot…"
+  953.53,  // [ 68] conf 0.98  "Pewnego dnia, we Francji, zwiedzała fabry…"
+  975.37,  // [ 69] conf 1.00  "dyszące płomieniami — potężne koła, które…"
+  990.83,  // [ 70] conf 1.00  "Ponad tym wszystkim — krwawa łuna, warcze…"
+  1002.33, // [ 71] conf 0.75  "Wtedy zdało się jej, że z wyżyn szczęśliw…"
+  1013.61, // [ 72] conf 0.94  "Przyszły jej na myśl legendy o zbuntowany…"
+  1027.91, // [ 73] conf 1.00  "— To są straszni ludzie, papo... — szepnę…"
+  1032.26, // [ 74] conf 1.00  "Ojciec milczał, tylko mocniej przycisnął…"
+  1035.74, // [ 75] conf 1.00  "— Ale kobietom oni nic złego nie zrobią?"
+  1039.06, // [ 76] conf 1.00  "— Tak, nawet oni — odpowiedział pan Tomas…"
+  1043.12, // [ 77] conf 0.94  "W tej chwili pannę Izabelę ogarnął wstyd…"
+  1049.79, // [ 78] conf 1.00  "— A jeżeli nam, to i wam nie zrobią nic z…"
+  1054.50, // [ 79] conf 1.00  "Ale pan Tomasz uśmiechnął się i potrząsną…"
+  1069.34, // [ 80] conf 0.82  "Odwiedziny fabryki stanowiły ważną epokę…"
+  1083.28, // [ 81] conf 0.92  "Odtąd często marzyła o zmroku, że na górz…"
+  1103.22, // [ 82] conf 1.00  "Teraz dopiero zrozumiała, jak gorąco koch…"
+  1124.89, // [ 83] conf 0.97  "I to wszystko miałoby runąć, umrzeć albo…"
+  1139.61, // [ 84] conf 1.00  "Mają zginąć te ukochane przyjaciółki, któ…"
+  1156.11, // [ 85] conf 1.00  "A ta dobra służba, która ze swymi panami…"
+  1172.79, // [ 86] conf 0.97  "A te piękne konie, którym jaskółka mogłab…"
+  1188.95, // [ 87] conf 0.95  "Od tych rozmyślań przybył pannie Izabeli…"
+  1200.81, // [ 88] conf 1.00  "Rozumiejąc, że wielki świat jest wyższym…"
+  1214.39, // [ 89] conf 1.00  "Urodzenie zaś i majątek są przywiązane do…"
+  1223.66, // [ 90] conf 1.00  "Bardzo też jest możliwym, że dobry Bóg wi…"
+  1240.35, // [ 91] conf 1.00  "Stąd wynika obowiązek oględnego zawierani…"
+  1251.62, // [ 92] conf 0.97  "Miłość bowiem, nie ta szalona, o jakiej m…"
+  1266.87, // [ 93] conf 1.00  "Tak było dawniej i było dobrze, według zg…"
+  1279.12, // [ 94] conf 1.00  "„I nie ma szczęścia w małżeństwach” — dod…"
+  1289.00, // [ 95] conf 1.00  "Dzięki nawet tym opowiadaniom nabrała duż…"
+  1296.44, // [ 96] conf 0.98  "Mąż w szlafroku, który ziewa przy żonie,…"
+  1315.36, // [ 97] conf 0.97  "Co najgorsze, że każdy z nich przed ślube…"
+  1329.17, // [ 98] conf 0.98  "Toteż mając lat osiemnaście, panna Izabel…"
+  1349.18, // [ 99] conf 1.00  "Podolskiego magnata odepchnęła zdaniem, ż…"
+  1362.04, // [100] conf 1.00  "Takie postępowanie na kilka lat wytworzył…"
+  1372.28, // [101] conf 1.00  "Po przejściu pierwszego niesmaku panna Iz…"
+  1388.70, // [102] conf 1.00  "Rzeczywiście, trafiali się jej ludzie pię…"
+  1400.57, // [103] conf 0.84  "Nagle rozeszły się wieści o złym stanie i…"
+  1414.56, // [104] conf 1.00  "Teraz spostrzegła panna Izabela, że w wie…"
+  1431.56, // [105] conf 1.00  "Tymczasem pan Tomasz zerwał z towarzystwe…"
+  1450.45, // [106] conf 1.00  "Nade wszystko zaś, czy podobna robić z si…"
+  1467.71, // [107] conf 1.00  "Jedna rzecz w wysokim stopniu ułatwiała j…"
+  1487.49, // [108] conf 0.92  "Raz zobaczyła w pewnej galerii rzeźb posą…"
+  1505.39, // [109] conf 0.92  "I stał się cud: pieszczony przez kochając…"
+  1521.20, // [110] conf 1.00  "Siadł na krawędzi jej łóżka, długo patrzy…"
+  1534.10, // [111] conf 1.00  "Odtąd nawiedzał ją coraz częściej i omdle…"
+  1545.16, // [112] conf 1.00  "A przez miłość dla niej sprawił jeszcze w…"
+  1557.42, // [113] conf 0.97  "Raz był podobnym do odmłodzonego jenerała…"
+  1576.66, // [114] conf 0.93  "Inny raz był wesołym i pięknym księciem k…"
+  1594.14, // [115] conf 1.00  "a inny raz weneckim gondolierem albo cyrk…"
+  1600.49, // [116] conf 1.00  "Każdy z tych ludzi przez pewien czas zapr…"
+  1617.77, // [117] conf 1.00  "A od tych widzeń oczy panny Izabeli przyb…"
+  1626.17, // [118] conf 1.00  "Niekiedy spoglądały one gdzieś ponad ludz…"
+  1641.20, // [119] conf 0.94  "Przed rokiem w jednej z takich chwil zoba…"
+  1651.36, // [120] conf 1.00  "Prawie w tym samym czasie pan Tomasz zerw…"
+  1660.55, // [121] conf 0.83  "Tam z pomiatanymi niegdyś garbarzami, szc…"
+  1678.27, // [122] conf 0.97  "Za co wywzajemniając się dumni dziś garba…"
+  1698.80, // [123] conf 1.00  "I kiedy w ten sposób pan Tomasz dźwigał j…"
+  1708.64, // [124] conf 1.00  "Nieraz Mikołaj już twardo drzemał w fotel…"
+  1722.04, // [125] conf 0.91  "Wtedy zrywała się z łóżka i odziana w lek…"
+  1735.52, // [126] conf 0.85  "Chodziła, a w ogromnym pokoju tłoczyły si…"
+  1753.03, // [127] conf 1.00  "Tu rój młodzieży zwraca ku niej tęskne sp…"
+  1766.87, // [128] conf 1.00  "Pełno świateł, szelestów, rozmów, których…"
+  1784.52, // [129] conf 1.00  "I to wszystko przeszło!... I dziś w tym s…"
+  1803.20, // [130] conf 1.00  "Panna Izabela wyłamywała sobie palce, aże…"
+  1812.18, // [131] conf 1.00  "Wszyscy ją opuścili, z wyjątkiem — hrabin…"
+  1825.33, // [132] conf 0.91  "— Tak, droga Belciu, musisz przyznać, że…"
+  1840.26, // [133] conf 0.92  "Na takie stosunki trzeba mieć więcej — ni…"
+  1861.25, // [134] conf 0.71  "Teraz właśnie przewodniczy jednej deputac…"
+  1876.72, // [135] conf 1.00  "— Myślę, ciociu, że martwić się tym już z…"
+  1882.10, // [136] conf 0.97  "— Alboż ja chcę cię martwić, biedne dziec…"
+  1894.14, // [137] conf 1.00  "— Cóż ja na to poradzę?"
+  1896.35, // [138] conf 0.91  "— A jednak ty tylko możesz radzić i powin…"
+  1911.93, // [139] conf 1.00  "Zresztą, mój Boże, któż nam broni mieć na…"
+  1926.40, // [140] conf 1.00  "Wszyscy interesują się nią, mówią o niej,…"
+  1936.36, // [141] conf 1.00  "— Ach, ciociu..."
+  1937.92, // [142] conf 0.84  "— Tylko bez egzaltacji, Belciu! Nie masz…"
+  1952.04, // [143] conf 1.00  "Wreszcie pomyśl, ile ty przy twym szlache…"
+  1962.00, // [144] conf 1.00  "— Ależ, ciociu, marszałek jest obrzydliwy…"
+  1969.86, // [145] conf 1.00  "— Nie upieram się przy marszałku, więc ba…"
+  1973.72, // [146] conf 1.00  "— Baron jeszcze starszy, farbuje się, róż…"
+  1979.36, // [147] conf 1.00  "Hrabina podniosła się z kanapy."
+  1981.94, // [148] conf 1.00  "— Nie nalegam, moja droga, nie jestem swa…"
+  1992.21, // [149] conf 1.00  "— Mamy przecie kamienicę."
+  1993.87, // [150] conf 0.92  "— Którą sprzedają najdalej po św. Janie,…"
+  1999.57, // [151] conf 1.00  "— Jak to — dom, który kosztował sto tysię…"
+  2004.63, // [152] conf 1.00  "— Bo on nie wart więcej, bo ojciec za duż…"
+  2013.65, // [153] conf 1.00  "— Więc w ostateczności mamy serwis... sre…"
+  2020.12, // [154] conf 1.00  "Hrabina ucałowała ją kilkakrotnie."
+  2023.56, // [155] conf 1.00  "— Drogie, kochane dziecko — mówiła łkając…"
+  2045.19, // [156] conf 0.95  "— Cóż za nikczemność! — szepnęła panna Iz…"
+  2053.89, // [157] conf 1.00  "— Są one warte bez porównania więcej, ale…"
+  2060.81, // [158] conf 1.00  "— W każdym razie spróbuję — mówiła rozgor…"
+  2067.99, // [159] conf 1.00  "— Zastanów się jednak, czy nie szkoda tak…"
+  2071.99, // [160] conf 1.00  "Panna Izabela roześmiała się."
+  2074.35, // [161] conf 0.97  "— Ach, ciociu... Więc mam wahać się pomię…"
+  2087.65, // [162] conf 1.00  "— No, może to jeszcze nie ona."
+  2090.84, // [163] conf 1.00  "— Więc chyba znalazł się jakiś nowy niepr…"
+  2095.05, // [164] conf 0.86  "— Może to ciotka Honorata — uspokajała ją…"
+  2108.39, // [165] conf 1.00  "Na tym skończyła się rozmowa w języku pol…"
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function setStudyText(element, text) {
+  // Render supported numeric footnotes; all annotation content is inserted as text.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      appendTooltipText(tooltip, note.definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function appendTooltipText(parent, text) {
+  // Support the source table's *italic* notation and escaped literal asterisks.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- Ukrainian reveal chip and block --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+    toggles.append(uaChip);
+
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, uaBox, pbar);
+
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, uaChip, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: audio/chapter-05.webm`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = "UA " + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(open) {
+  state.uaOpen = open;
+  els.forEach((e, i) => setUa(i, open));
+  toggleUaEl.textContent = (open ? "Hide all UA" : "Reveal all UA");
+  toggleUaEl.setAttribute("aria-pressed", String(open));
+  toggleUaEl.classList.toggle("is-on", open);
+}
+
+toggleUaEl.addEventListener("click", () => setAll(!state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+// If metadata never arrives (missing file / unsupported codec), tell the user.
+setTimeout(() => { if (audio.readyState < 1) showBanner(); }, 2500);
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll(!state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

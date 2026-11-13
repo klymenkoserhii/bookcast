@@ -1,0 +1,948 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to mp3/lalka_002_lalka-tom-pierwszy_tom-i-rozdzial-ii.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-02.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Tom I, Rozdział II — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Tom I, Rozdział II · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="mp3/lalka_002_lalka-tom-pierwszy_tom-i-rozdzial-ii.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Pan Ignacy od dwudziestu pięciu lat mieszkał w pokoiku przy sklepie. W ciągu tego czasu sklep zmieniał właścicieli i podłogę, szafy i szyby w oknach, zakres swojej działalności i subiektów; ale pokój pana Rzeckiego pozostał zawsze taki sam.",
+  "start": 5.74
+ },
+ {
+  "i": 1,
+  "pl": "Było w nim to samo smutne okno, wychodzące na to samo podwórze, z tą samą kratą, na której szczeblach zwieszała się, być może, ćwierćwiekowa pajęczyna, a z pewnością ćwierćwiekowa firanka, niegdyś zielona, obecnie wypłowiała z tęsknoty za słońcem.",
+  "start": 23.53
+ },
+ {
+  "i": 2,
+  "pl": "Pod oknem stał ten sam czarny stół obity suknem, także niegdyś zielonym, dziś tylko poplamionym.",
+  "start": 40.38
+ },
+ {
+  "i": 3,
+  "pl": "Na nim wielki czarny kałamarz wraz z wielką czarną piaseczniczką<sup>23<\/sup>, przymocowaną do tej samej podstawki — para mosiężnych lichtarzy do świec łojowych, których już nikt nie palił, i stalowe szczypce, którymi już nikt nie obcinał knotów<sup>24<\/sup>.",
+  "start": 47.16
+ },
+ {
+  "i": 4,
+  "pl": "Żelazne łóżko z bardzo cienkim materacem, nad nim nigdy nie używana dubeltówka, pod nim pudło z gitarą, przypominające dziecinną trumienkę, wąska kanapka obita skórą, dwa krzesła również skórą obite, duża blaszana miednica i mała szafa ciemnowiśniowej barwy stanowiły umeblowanie pokoju, który,",
+  "start": 62.86
+ },
+ {
+  "i": 5,
+  "pl": "ze względu na swoją długość i mrok w nim panujący, zdawał się być podobniejszym do grobu aniżeli do mieszkania.",
+  "start": 83.72
+ },
+ {
+  "i": 6,
+  "pl": "Równie jak pokój, nie zmieniły się od ćwierć wieku zwyczaje pana Ignacego.",
+  "start": 91.3
+ },
+ {
+  "i": 7,
+  "pl": "Rano budził się zawsze o szóstej; przez chwilę słuchał, czy idzie leżący na krześle zegarek, i spoglądał na skazówki, które tworzyły jedną linię prostą. Chciał wstać spokojnie, bez awantur; ale że chłodne nogi i nieco zesztywniałe ręce nie okazywały się dość uległymi jego woli, więc zrywał się,",
+  "start": 96.64
+ },
+ {
+  "i": 8,
+  "pl": "nagle wyskakiwał na środek pokoju i rzuciwszy na łóżko szlafmycę<sup>25<\/sup>, biegł pod piec do wielkiej miednicy, w której mył się od stóp do głów, rżąc i parskając jak wiekowy rumak szlachetnej krwi, któremu przypomniał się wyścig.",
+  "start": 116.71
+ },
+ {
+  "i": 9,
+  "pl": "Podczas obrządku wycierania się kosmatymi ręcznikami, z upodobaniem patrzył na swoje chude łydki i zarośnięte piersi, mrucząc:",
+  "start": 131.69
+ },
+ {
+  "i": 10,
+  "pl": "„No, przecie nabieram ciała.”",
+  "start": 139.65
+ },
+ {
+  "i": 11,
+  "pl": "W tym samym czasie zeskakiwał z kanapki jego stary pudel Ir z wybitym okiem i mocno otrząsnąwszy się, zapewne z resztek snu, skrobał do drzwi, za którymi rozlegało się pracowite dmuchanie w samowar.",
+  "start": 143.46
+ },
+ {
+  "i": 12,
+  "pl": "Pan Rzecki, wciąż ubierając się z pośpiechem, wypuszczał psa, mówił dzień dobry służącemu, wydobywał z szafy imbryk, mylił się przy zapinaniu mankietów, biegł na podwórze zobaczyć stan pogody, parzył się gorącą herbatą, czesał się nie patrząc w lustro i o wpół do siódmej był gotów.",
+  "start": 156.96
+ },
+ {
+  "i": 13,
+  "pl": "Obejrzawszy się, czy ma krawat na szyi, a zegarek i portmonetkę w kieszeniach, pan Ignacy wydobywał ze stolika wielki klucz i trochę zgarbiony, uroczyście otwierał tylne drzwi sklepu obite żelazną blachą.",
+  "start": 175.63
+ },
+ {
+  "i": 14,
+  "pl": "Wchodzili tam obaj ze służącym, zapalali parę płomyków gazu i podczas gdy służący zamiatał podłogę, pan Ignacy odczytywał przez binokle ze swego notatnika rozkład zajęć na dzień dzisiejszy.",
+  "start": 189.15
+ },
+ {
+  "i": 15,
+  "pl": "„Oddać w banku osiemset rubli, aha... Do Lublina wysłać trzy albumy, tuzin portmonetek... Właśnie!... Do Wiednia przekaz na tysiąc dwieście guldenów<sup>26<\/sup>... Z kolei odebrać transport... Zmonitować<sup>27<\/sup> rymarza<sup>28<\/sup> za nieodesłanie walizek... Bagatela<sup>29<\/sup>!...",
+  "start": 202.1
+ },
+ {
+  "i": 16,
+  "pl": "Napisać list do Stasia... Bagatela...”",
+  "start": 221.5
+ },
+ {
+  "i": 17,
+  "pl": "Skończywszy czytać, zapalał jeszcze kilka płomieni i przy ich blasku robił przegląd towarów w gablotkach i szafach.",
+  "start": 225.36
+ },
+ {
+  "i": 18,
+  "pl": "„Spinki, szpilki, portmonety... dobrze... Rękawiczki, wachlarze, krawaty... tak jest... Laski, parasole, sakwojaże<sup>30<\/sup>... A tu — albumy, neseserki<sup>31<\/sup>... Szafirowy wczoraj sprzedano, naturalnie!... Lichtarze, kałamarze, przyciski... Porcelana...",
+  "start": 232.26
+ },
+ {
+  "i": 19,
+  "pl": "Ciekawym, dlaczego ten wazon odwrócili?... Z pewnością... Nie, nie uszkodzony... Lalki z włosami, teatr, karuzel... Trzeba na jutro postawić w oknie karuzel, bo już fontanna spowszedniała. Bagatela!... Ósma dochodzi... Założyłbym się, że Klejn będzie pierwszy, a Mraczewski ostatni. Naturalnie...",
+  "start": 251.62
+ },
+ {
+  "i": 20,
+  "pl": "Poznał się z jakąś guwernantką i już jej kupił neseserkę na rachunek i z rabatem... Rozumie się... Byle nie zaczął kupować bez rabatu i bez rachunku...”",
+  "start": 273.14
+ },
+ {
+  "i": 21,
+  "pl": "Tak mruczał i chodził po sklepie przygarbiony, z rękoma w kieszeniach, a za nim jego pudel.",
+  "start": 283.04
+ },
+ {
+  "i": 22,
+  "pl": "Pan od czasu do czasu zatrzymywał się i oglądał jakiś przedmiot, pies przysiadał na podłodze i skrobał tylną nogą gęste kudły, a rzędem ustawione w szafie lalki małe, średnie i duże, brunetki i blondynki, przypatrywały się im martwymi oczami.",
+  "start": 289.3
+ },
+ {
+  "i": 23,
+  "pl": "Drzwi od sieni skrzypnęły i ukazał się pan Klejn, mizerny subiekt, ze smutnym uśmiechem na posiniałych ustach.",
+  "start": 306.11
+ },
+ {
+  "i": 24,
+  "pl": "— A co, byłem pewny, że pan przyjdziesz pierwszy. Dzień dobry — rzekł pan Ignacy. — Paweł! gaś światło i otwieraj sklep.",
+  "start": 314.21
+ },
+ {
+  "i": 25,
+  "pl": "Służący wbiegł ciężkim kłusem i zakręcił gaz. Po chwili rozległo się zgrzytanie ryglów, szczękanie sztab i do sklepu wszedł dzień, jedyny gość, który nigdy nie zawodzi kupca. Rzecki usiadł przy kantorku<sup>32<\/sup> pod oknem, Klejn stanął na zwykłym miejscu przy porcelanie.",
+  "start": 322.73
+ },
+ {
+  "i": 26,
+  "pl": "— Pryncypał<sup>33<\/sup> jeszcze nie wraca, nie miał pan listu? — spytał Klejn.",
+  "start": 342.31
+ },
+ {
+  "i": 27,
+  "pl": "— Spodziewam się go w połowie marca, najdalej za miesiąc.",
+  "start": 347.18
+ },
+ {
+  "i": 28,
+  "pl": "— Jeżeli go nie zatrzyma nowa wojna.",
+  "start": 351.02
+ },
+ {
+  "i": 29,
+  "pl": "— Staś... Pan Wokulski — poprawił się Rzecki — pisze mi, że wojny nie będzie.",
+  "start": 353.61
+ },
+ {
+  "i": 30,
+  "pl": "— Kursa jednak spadają, a przed chwilą czytałem, że flota angielska wpłynęła na Dardanele<sup>34<\/sup>.",
+  "start": 359.47
+ },
+ {
+  "i": 31,
+  "pl": "— To nic, wojny nie będzie. Zresztą — westchnął pan Ignacy — co nas obchodzi wojna, w której nie przyjmie udziału Bonaparte.",
+  "start": 364.91
+ },
+ {
+  "i": 32,
+  "pl": "— Bonapartowie skończyli już karierę.",
+  "start": 373.82
+ },
+ {
+  "i": 33,
+  "pl": "— Doprawdy?... — uśmiechnął się ironicznie pan Ignacy. — A na czyjąż korzyść MacMahon z Ducrotem układali w styczniu zamach stanu<sup>35<\/sup>?... Wierz mi, panie Klejn, bonapartyzm<sup>36<\/sup> to potęga!...",
+  "start": 376.42
+ },
+ {
+  "i": 34,
+  "pl": "— Jest większa od niej.",
+  "start": 390.01
+ },
+ {
+  "i": 35,
+  "pl": "— Jaka? — oburzył się pan Ignacy. — Może republika<sup>37<\/sup> z Gambettą<sup>38<\/sup>?... Może Bismarck?...",
+  "start": 392.04
+ },
+ {
+  "i": 36,
+  "pl": "— Socjalizm... — szepnął mizerny subiekt kryjąc się za porcelanę.",
+  "start": 398.76
+ },
+ {
+  "i": 37,
+  "pl": "Pan Ignacy mocniej zasadził binokle i podniósł się na swym fotelu, jakby pragnąc jednym zamachem obalić nową teorię, która przeciwstawiała się jego poglądom, lecz poplątało mu szyki wejście drugiego subiekta z brodą.",
+  "start": 404.57
+ },
+ {
+  "i": 38,
+  "pl": "— A, moje uszanowanie panu Lisieckiemu! — zwrócił się do przybyłego. — Zimny dzień mamy, prawda? Która też godzina w mieście, bo mój zegarek musi się spieszyć. Jeszcze chyba nie ma kwadransa na dziewiątą?...",
+  "start": 418.87
+ },
+ {
+  "i": 39,
+  "pl": "— Także koncept!... Pański zegarek zawsze spieszy się z rana, a późni wieczorem — odparł cierpko Lisiecki ocierając szronem pokryte wąsy.",
+  "start": 433.33
+ },
+ {
+  "i": 40,
+  "pl": "— Założę się, żeś pan był wczoraj na preferansie<sup>39<\/sup>.",
+  "start": 443.45
+ },
+ {
+  "i": 41,
+  "pl": "— Ma się wiedzieć. Cóż pan myślisz, że mi na całą dobę wystarczy widok waszych galanterii i pańskiej siwizny?",
+  "start": 448.13
+ },
+ {
+  "i": 42,
+  "pl": "— No, mój panie, wolę być trochę szpakowatym aniżeli łysym — oburzył się pan Ignacy.",
+  "start": 454.87
+ },
+ {
+  "i": 43,
+  "pl": "— Koncept!... — syknął pan Lisiecki. — Moja łysina, jeżeli ją kto dojrzy, jest smutnym dziedzictwem rodu, ale pańska siwizna i gderliwy charakter są owocami starości, którą... chciałbym szanować.",
+  "start": 460.77
+ },
+ {
+  "i": 44,
+  "pl": "Do sklepu wszedł pierwszy gość: kobieta ubrana w salopę<sup>40<\/sup> i chustkę na głowie, żądająca mosiężnej spluwaczki...",
+  "start": 475.25
+ },
+ {
+  "i": 45,
+  "pl": "Pan Ignacy bardzo nisko ukłonił się jej i ofiarował krzesło, a pan Lisiecki zniknął za szafami i wróciwszy po chwili doręczył interesantce ruchem pełnym godności żądany przedmiot.",
+  "start": 485.98
+ },
+ {
+  "i": 46,
+  "pl": "Potem zapisał cenę spluwaczki na kartce, podał ją przez ramię Rzeckiemu i poszedł za gablotkę z miną bankiera, który złożył na cel dobroczynny kilka tysięcy rubli.",
+  "start": 498.04
+ },
+ {
+  "i": 47,
+  "pl": "Spór o siwiznę i łysinę był zażegnany.",
+  "start": 508.8
+ },
+ {
+  "i": 48,
+  "pl": "Dopiero około dziewiątej wszedł, a raczej wpadł do sklepu pan Mraczewski, piękny, dwudziestokilkoletni<sup>41<\/sup> blondynek, z oczyma jak gwiazdy, ustami jak korale, z wąsikami jak zatrute sztylety. Wbiegł ciągnąc za sobą od progu smugę woni i zawołał:",
+  "start": 514.02
+ },
+ {
+  "i": 49,
+  "pl": "— Słowo honoru daję, że musi już być wpół do dziesiątej. Letkiewicz jestem, gałgan jestem, no — podły jestem, ale cóż zrobię, kiedy matka mi zachorowała i musiałem szukać doktora. Byłem u sześciu...",
+  "start": 532.18
+ },
+ {
+  "i": 50,
+  "pl": "— Czy u tych, którym dajesz pan neseserki? — spytał Lisiecki.",
+  "start": 545.83
+ },
+ {
+  "i": 51,
+  "pl": "— Neseserki?... Nie. Nasz doktór nie przyjąłby nawet szpilki. Zacny człowiek... Prawda, panie Rzecki, że już jest wpół do dziesiątej? Stanął mi zegarek.",
+  "start": 550.49
+ },
+ {
+  "i": 52,
+  "pl": "— Dochodzi dziewiąta... — odparł ze szczególnym naciskiem pan Ignacy.",
+  "start": 560.35
+ },
+ {
+  "i": 53,
+  "pl": "— Dopiero dziewiąta?... No, kto by myślał! A tak projektowałem sobie, że dziś przyjdę do sklepu pierwszy, wcześniej od pana Klejna...",
+  "start": 564.99
+ },
+ {
+  "i": 54,
+  "pl": "— Ażeby wyjść przed ósmą — wtrącił pan Lisiecki.",
+  "start": 573.15
+ },
+ {
+  "i": 55,
+  "pl": "Mraczewski utkwił w nim błękitne oczy, w których malowało się najwyższe zdumienie.",
+  "start": 576.85
+ },
+ {
+  "i": 56,
+  "pl": "— Pan skąd wie?... — odparł. — No, słowo honoru daję, że ten człowiek ma zmysł proroczy! Właśnie dziś, słowo honoru... muszę być na mieście przed siódmą, choćbym umarł, choćbym... miał podać się do dymisji...",
+  "start": 581.99
+ },
+ {
+  "i": 57,
+  "pl": "— Niech pan od tego zacznie — wybuchnął Rzecki — a będzie pan wolny przed jedynastą<sup>42<\/sup>, nawet w tej chwili, panie Mraczewski. Pan powinieneś być hrabią, nie kupcem, i dziwię się, że pan od razu nie wstąpił do tamtego fachu, przy którym zawsze ma się czas, panie Mraczewski. Naturalnie!",
+  "start": 595.77
+ },
+ {
+  "i": 58,
+  "pl": "— No, i pan w jego wieku latałeś za spódniczkami — odezwał się Lisiecki. — Co tu bawić się w morały.",
+  "start": 613.03
+ },
+ {
+  "i": 59,
+  "pl": "— Nigdy nie latałem! — krzyknął Rzecki uderzając pięścią w kantorek.",
+  "start": 619.95
+ },
+ {
+  "i": 60,
+  "pl": "— Przynajmniej raz wygadał się, że całe życie jest niedołęgą — mruknął Lisiecki do Klejna, który uśmiechał się podnosząc jednocześnie brwi bardzo wysoko.",
+  "start": 624.71
+ },
+ {
+  "i": 61,
+  "pl": "Do sklepu wszedł drugi gość i zażądał kaloszy. Naprzeciw niego wysunął się Mraczewski.",
+  "start": 634.83
+ },
+ {
+  "i": 62,
+  "pl": "— Kaloszyków żąda szanowny pan? Który numerek, jeżeli wolno spytać? Ach, szanowny pan zapewne nie pamięta! Nie każdy ma czas myśleć o numerze swoich kaloszy, to należy do nas. Szanowny pan pozwoli, że przymierzymy?... Szanowny pan raczy zająć miejsce na taburecie<sup>43<\/sup>.",
+  "start": 641.4
+ },
+ {
+  "i": 63,
+  "pl": "Paweł! przynieś ręcznik, zdejm panu kalosze i wytrzyj obuwie...",
+  "start": 658.76
+ },
+ {
+  "i": 64,
+  "pl": "Wbiegł Paweł ze ścierką i rzucił się do nóg przybyłemu.",
+  "start": 661.9
+ },
+ {
+  "i": 65,
+  "pl": "— Ależ, panie, ależ przepraszam!... — tłomaczył się<sup>44<\/sup> odurzony gość.",
+  "start": 665.9
+ },
+ {
+  "i": 66,
+  "pl": "— Bardzo prosimy — mówił prędko Mraczewski — to nasz obowiązek. Zdaje mi się, że te będą dobre — ciągnął podając parę sczepionych nitką kaloszy. — Doskonałe, pysznie wyglądają; szanowny pan ma tak normalną nogę, że niepodobna mylić się co do numeru.",
+  "start": 670.08
+ },
+ {
+  "i": 67,
+  "pl": "Szanowny pan życzy sobie zapewne literki; jakie mają być literki?...",
+  "start": 685.96
+ },
+ {
+  "i": 68,
+  "pl": "— L. P. — mruknął gość czując, że tonie w bystrym potoku wymowy grzecznego subiekta.",
+  "start": 689.3
+ },
+ {
+  "i": 69,
+  "pl": "— Panie Lisiecki, panie Klejn, przybijcie z łaski swojej literki. Szanowny pan każe zawinąć dawne kalosze? Paweł! wytrzyj kalosze i okręć w bibułę. A może szanowny pan nie życzy sobie dźwigać zbytecznego ciężaru? Paweł! rzuć kalosze do paki... Należy się dwa ruble kopiejek pięćdziesiąt...",
+  "start": 695.96
+ },
+ {
+  "i": 70,
+  "pl": "Kaloszy z literkami nikt szanownemu panu nie zamieni, a to przykra rzecz znaleźć w miejsce nowych artykułów dziurawe graty... Dwa ruble pięćdziesiąt kopiejek do kasy, z tą karteczką. Panie kasjerze, pięćdziesiąt kopiejek reszty dla szanownego pana...",
+  "start": 712.32
+ },
+ {
+  "i": 71,
+  "pl": "Nim gość oprzytomniał, ubrano go w kalosze, wydano resztę i wśród niskich ukłonów odprowadzono do drzwi. Interesant stał przez chwilę na ulicy, bezmyślnie patrząc w szybę, spoza której Mraczewski darzył go słodkim uśmiechem i ognistymi spojrzeniami.",
+  "start": 725.74
+ },
+ {
+  "i": 72,
+  "pl": "Wreszcie machnął ręką i poszedł dalej, może myśląc, że w innym sklepie kalosze bez literek kosztowałyby go dziesięć złotych<sup>45<\/sup>.",
+  "start": 741.18
+ },
+ {
+  "i": 73,
+  "pl": "Pan Ignacy zwrócił się do Lisieckiego i kiwał głową w sposób oznaczający podziw i zadowolenie. Mraczewski dostrzegł ten ruch kątem oka i podbiegłszy do Lisieckiego, rzekł półgłosem:",
+  "start": 749.75
+ },
+ {
+  "i": 74,
+  "pl": "— Niech no pan patrzy, czy nasz stary nie jest podobny z profilu do Napoleona III<sup>46<\/sup>? Nos... wąs... hiszpanka<sup>47<\/sup>...",
+  "start": 761.01
+ },
+ {
+  "i": 75,
+  "pl": "— Do Napoleona, kiedy chorował na kamień<sup>48<\/sup> — odparł Lisiecki.",
+  "start": 768.99
+ },
+ {
+  "i": 76,
+  "pl": "Na ten dowcip pan Ignacy skrzywił się z niesmakiem. Swoją drogą Mraczewski dostał urlop przed siódmą wieczorem, a w parę dni później w prywatnym katalogu Rzeckiego otrzymał notatkę:",
+  "start": 773.85
+ },
+ {
+  "i": 77,
+  "pl": "„Był na Hugonotach<sup>49<\/sup> w ósmym rzędzie krzeseł z niejaką Matyldą...???”",
+  "start": 785.51
+ },
+ {
+  "i": 78,
+  "pl": "Na pociechę mógłby sobie powiedzieć, że w tym samym katalogu równie posiadają notatki dwaj inni jego koledzy, a także inkasent, posłańcy, nawet — służący Paweł. Skąd Rzecki znał podobne szczegóły z życia swych współpracowników? Jest to tajemnica, z którą przed nikim się nie zwierzał<sup>50<\/sup>.",
+  "start": 791.91
+ },
+ {
+  "i": 79,
+  "pl": "Około pierwszej w południe pan Ignacy zdawszy kasę Lisieckiemu, któremu pomimo ciągłych sporów ufał najbardziej, wymykał się do swego pokoiku, ażeby zjeść obiad przyniesiony z restauracji.",
+  "start": 812.99
+ },
+ {
+  "i": 80,
+  "pl": "Współcześnie z nim wychodził Klejn i wracał do sklepu o drugiej; potem obaj z Rzeckim zostawali w sklepie, a Lisiecki i Mraczewski szli na obiad. O trzeciej znowu wszyscy byli na miejscu.",
+  "start": 826.05
+ },
+ {
+  "i": 81,
+  "pl": "O ósmej wieczór zamykano sklep; subiekci rozchodzili się i zostawał tylko Rzecki. Robił dzienny rachunek, sprawdzał kasę, układał plan czynności na jutro i przypominał sobie: czy zrobiono wszystko, co wypadało na dziś?",
+  "start": 837.07
+ },
+ {
+  "i": 82,
+  "pl": "Każdą zaniedbaną sprawę opłacał długą bezsennością i smętnymi marzeniami na temat ruiny sklepu, stanowczego upadku Napoleonidów<sup>51<\/sup> i tego, że wszystkie nadzieje, jakie miał w życiu, były tylko głupstwem.",
+  "start": 851.61
+ },
+ {
+  "i": 83,
+  "pl": "„Nic nie będzie! Giniemy bez ratunku” — wzdychał przewracając się na twardej pościeli.",
+  "start": 865.79
+ },
+ {
+  "i": 84,
+  "pl": "Jeżeli dzień udał się dobrze, pan Ignacy był kontent<sup>52<\/sup>.",
+  "start": 872.6
+ },
+ {
+  "i": 85,
+  "pl": "Wówczas przed snem czytał historię konsulatu i cesarstwa<sup>53<\/sup> albo wycinki z gazet opisujących wojnę włoską z roku 1859<sup>54<\/sup>, albo też, co trafiało się rzadziej, wydobywał spod łóżka gitarę i grał na niej Marsza Rakoczego<sup>55<\/sup> przyśpiewując wątpliwej wartości tenorem.",
+  "start": 876.78
+ },
+ {
+  "i": 86,
+  "pl": "Potem śniły mu się obszerne węgierskie równiny, granatowe i białe linie wojsk, przysłoniętych chmurą dymu... Nazajutrz miewał posępny humor i skarżył się na ból głowy.",
+  "start": 896.83
+ },
+ {
+  "i": 87,
+  "pl": "Do przyjemniejszych dni należała u niego niedziela; wówczas bowiem obmyślał i wykonywał plany wystaw okiennych na cały tydzień.",
+  "start": 908.8
+ },
+ {
+  "i": 88,
+  "pl": "W jego pojęciu okna nie tylko streszczały zasoby sklepu, ale jeszcze powinny były zwracać uwagę przechodniów bądź najmodniejszym towarem, bądź pięknym ułożeniem, bądź figlem. Prawe okno przeznaczone dla galanteryj zbytkownych mieściło zwykle jakiś brąz, porcelanową wazę,",
+  "start": 917.69
+ },
+ {
+  "i": 89,
+  "pl": "całą zastawę buduarowego<sup>56<\/sup> stolika, dokoła których ustawiały się albumy, lichtarze, portmonety, wachlarze, w towarzystwie lasek, parasoli i niezliczonej ilości drobnych, a eleganckich przedmiotów.",
+  "start": 938.66
+ },
+ {
+  "i": 90,
+  "pl": "W lewym znowu oknie, napełnionym okazami krawatów, rękawiczek, kaloszy i perfum, miejsce środkowe zajmowały zabawki, najczęściej poruszające się.",
+  "start": 950.92
+ },
+ {
+  "i": 91,
+  "pl": "Niekiedy podczas tych samotnych zajęć w starym subiekcie budziło się dziecko. Wydobywał wtedy i ustawiał na stole wszystkie mechaniczne cacka.",
+  "start": 963.05
+ },
+ {
+  "i": 92,
+  "pl": "Był tam niedźwiedź wdrapujący się na słup, był piejący kogut, mysz, która biegała, pociąg, który toczył się po szynach, cyrkowy pajac, który cwałował na koniu, dźwigając drugiego pajaca, i kilka par, które tańczyły walca przy dźwiękach niewyraźnej muzyki.",
+  "start": 972.24
+ },
+ {
+  "i": 93,
+  "pl": "Wszystkie te figury pan Ignacy nakręcał i jednocześnie puszczał w ruch. A gdy kogut zaczął piać łopocząc sztywnymi skrzydłami, gdy tańczyły martwe pary, co chwilę potykając się i zatrzymując, gdy ołowiani pasażerowie pociągu, jadącego bez celu,",
+  "start": 989.45
+ },
+ {
+  "i": 94,
+  "pl": "zaczęli przypatrywać mu się ze zdziwieniem i gdy cały ten świat lalek, przy drgającym świetle gazu, nabrał jakiegoś fantastycznego życia, stary subiekt podparłszy się łokciami śmiał się cicho i mruczał:",
+  "start": 1006.45
+ },
+ {
+  "i": 95,
+  "pl": "— Hi! hi! hi! dokąd wy jedziecie, podróżni?... Dlaczego narażasz kark, akrobato?... Co wam po uściskach, tancerze?... Wykręcą się sprężyny i pójdziecie na powrót do szafy. Głupstwo, wszystko głupstwo!... a wam, gdybyście myśleli, mogłoby się zdawać, że to jest coś wielkiego!...",
+  "start": 1021.41
+ },
+ {
+  "i": 96,
+  "pl": "Po takich i tym podobnych monologach szybko składał zabawki i rozdrażniony chodził po pustym sklepie, a za nim jego brudny pies.",
+  "start": 1041.35
+ },
+ {
+  "i": 97,
+  "pl": "„Głupstwo handel... głupstwo polityka... głupstwo podróż do Turcji... głupstwo całe życie, którego początku nie pamiętamy, a końca nie znamy... Gdzież prawda?...”",
+  "start": 1052.49
+ },
+ {
+  "i": 98,
+  "pl": "Ponieważ tego rodzaju zdania wypowiadał niekiedy głośno i publicznie, więc uważano go za bzika, a poważne damy, mające córki na wydaniu, nieraz mówiły.",
+  "start": 1065.15
+ },
+ {
+  "i": 99,
+  "pl": "— Oto do czego prowadzi mężczyznę starokawalerstwo!",
+  "start": 1077.46
+ },
+ {
+  "i": 100,
+  "pl": "Z domu pan Ignacy wychodził rzadko i na krótko i zwykle kręcił się po ulicach, na których mieszkali jego koledzy albo oficjaliści<sup>57<\/sup> sklepu.",
+  "start": 1082.68
+ },
+ {
+  "i": 101,
+  "pl": "Wówczas jego ciemnozielona algierka<sup>58<\/sup> lub tabaczkowy surdut<sup>59<\/sup>, popielate spodnie z czarnym lampasem i wypłowiały cylinder, nade wszystko zaś jego nieśmiałe zachowanie się zwracały powszechną uwagę. Pan Ignacy wiedział to i coraz bardziej zniechęcał się do spacerów.",
+  "start": 1092.32
+ },
+ {
+  "i": 102,
+  "pl": "Wolał przy święcie kłaść się na łóżku i całymi godzinami patrzeć w swoje zakratowane okno, za którym widać było szary mur sąsiedniego domu, ozdobiony jednym jedynym, również zakratowanym oknem, gdzie czasami stał garnczek masła albo wisiały zwłoki zająca.",
+  "start": 1110.3
+ },
+ {
+  "i": 103,
+  "pl": "Lecz im mniej wychodził, tym częściej marzył o jakiejś dalekiej podróży na wieś lub za granicę. Coraz częściej spotykał we snach zielone pola i ciemne bory, po których błąkałby się, przypominając sobie młode czasy.",
+  "start": 1129.53
+ },
+ {
+  "i": 104,
+  "pl": "Powoli zbudziła się w nim głucha tęsknota do tych krajobrazów, więc postanowił natychmiast po powrocie Wokulskiego wyjechać gdzieś na całe lato.",
+  "start": 1145.02
+ },
+ {
+  "i": 105,
+  "pl": "— Choć raz przed śmiercią, ale na kilka miesięcy — mówił kolegom, którzy nie wiadomo dlaczego uśmiechali się z tych projektów.",
+  "start": 1155.76
+ },
+ {
+  "i": 106,
+  "pl": "Dobrowolnie odcięty od natury i ludzi, utopiony w wartkim, ale ciasnym wirze sklepowych interesów, czuł coraz mocniej potrzebę wymiany myśli. A ponieważ jednym nie ufał, inni go nie chcieli słuchać, a Wokulskiego nie było, więc rozmawiał sam z sobą i — w największym sekrecie pisywał pamiętnik.",
+  "start": 1165.54
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>
