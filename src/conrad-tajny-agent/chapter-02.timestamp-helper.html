@@ -1,0 +1,1718 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to chapter-02.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-02.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tajny agent · Rozdział II — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Tajny agent · Rozdział II · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="chapter-02.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Taki oto dom, taki warsztat pracy i takich domowników opuścił pan Verloc, dążąc o pół do jedenastej rano ku zachodniej części Londynu. Była to dlań wyjątkowo wczesna godzina; z całej jego osoby bił urok prawie nieskalanej świeżości;",
+  "start": 1.52
+ },
+ {
+  "i": 1,
+  "pl": "granatowe sukienne palto było rozpięte, buty lśniły, na ogolonych policzkach igrało coś na kształt połysku; nawet oczy o ciężkich powiekach, pokrzepione całonocnym spokojnym snem, rzucały dość raźne spojrzenia.",
+  "start": 17.4
+ },
+ {
+  "i": 2,
+  "pl": "Przez ogrodzenie parku pan Verloc przyglądał się mężczyznom i kobietom jadącym konno po Row¹⁴, parom, które sunęły harmonijnie lekkim galopem lub jechały statecznego stępa, niespiesznym grupom złożonym z trzech lub czterech osób, pojedynczym jeźdźcom wyglądającym na odludków i samotnym amazonkom, za którymi trzymał się w oddali chłopak stajenny w kapeluszu ozdobionym kokardą, ubrany w obcisłą liberię przepasaną skórzanym pasem.",
+  "start": 31.4
+ },
+ {
+  "i": 3,
+  "pl": "Pojazdy, przeważnie dwukonne karety, toczyły się szybko; czasem trafiał się kabriolet, a wewnątrz niego skóra jakiegoś dzikiego zwierzęcia i wyłaniająca się z opuszczonej budy kobieca głowa w kapeluszu.",
+  "start": 59.1
+ },
+ {
+  "i": 4,
+  "pl": "Charakterystyczne słońce londyńskie, któremu można zarzucić tylko to, że wygląda jak nabiegłe krwią, powlekało wszystko wspaniałością swego spojrzenia. Tkwiło niezbyt wysoko nad Hyde Park Corner¹⁵, jakby strzegło wszystkiego, dobroduszne i punktualne.",
+  "start": 71.9
+ },
+ {
+  "i": 5,
+  "pl": "Nawet bruk pod nogami pana Verloca nabrał barwy starego złota w tym rozproszonym świetle, w którym ani mur, ani drzewo, ani zwierzę, ani człowiek nie rzucali cienia.",
+  "start": 89.18
+ },
+ {
+  "i": 6,
+  "pl": "Pan Verloc szedł ku zachodowi przez miasto pozbawione cieni i powietrze przesycone spatynowanym złotym pyłem. Czerwone jak miedź połyski lśniły na dachach, na załomach murów, na szybach pojazdów, nawet na sierści koni i na szerokich plecach pana Verloca, gdzie wyglądały jak ciemna rdza.",
+  "start": 100.26
+ },
+ {
+  "i": 7,
+  "pl": "Ale pan Verloc nie zdawał sobie sprawy, że rdza na nim osiada. Jego życzliwy wzrok padał przez ogrodzenie na oznaki londyńskich bogactw i zbytku. Tak jest, wszystkich tych ludzi trzeba otoczyć opieką. Opieka jest pierwszym warunkiem bogactwa i zbytku.",
+  "start": 119.86
+ },
+ {
+  "i": 8,
+  "pl": "Trzeba otoczyć opieką tych ludzi, zarówno jak ich konie, powozy, domy, służbę; trzeba otoczyć opieką źródło ich bogactw w sercu miasta i w sercu kraju;",
+  "start": 137.4
+ },
+ {
+  "i": 9,
+  "pl": "trzeba otoczyć opieką cały społeczny ład sprzyjający higienicznej bezczynności tej sfery, trzeba jej strzec przed płytką zawiścią niehigienicznej pracy.",
+  "start": 147.24
+ },
+ {
+  "i": 10,
+  "pl": "Trzeba to zrobić koniecznie — tu pan Verloc byłby zatarł ręce z zadowoleniem, gdyby nie miał wrodzonej niechęci do wszelkich niepotrzebnych wysiłków. Bezczynność jego, choć nie podyktowana przez higienę, dogadzała mu bardzo.",
+  "start": 157.02
+ },
+ {
+  "i": 11,
+  "pl": "Miał dla niej pewnego rodzaju kult nacechowany bezwładnym fanatyzmem, a może raczej fanatycznym bezwładem.",
+  "start": 170.74
+ },
+ {
+  "i": 12,
+  "pl": "Syn pracowitych rodziców, urodzony na znojne życie, oddał się gnuśności z popędu równie głębokiego, niepojętego i władczego jak popęd, który skłania mężczyznę do wyboru jednej kobiety spośród tysiąca. Był za gnuśny nawet na demagoga, na wiecowego mówcę, na przywódcę robotników.",
+  "start": 177.84
+ },
+ {
+  "i": 13,
+  "pl": "To by go kosztowało zbyt wiele trudu. Potrzebował wygody edytorski] w formie bardziej doskonałej, a może owładnęła nim filozoficzna niewiara w skuteczność każdego ludzkiego wysiłku. Ten ostatni rodzaj lenistwa wymaga pewnego zasobu inteligencji.",
+  "start": 196.82
+ },
+ {
+  "i": 14,
+  "pl": "Panu Verlocowi inteligencji nie brakowało i byłby może mrugnął do siebie znacząco na myśl o zagrożonym porządku społecznym, gdyby ten objaw sceptycyzmu nie wymagał pewnego wysiłku. Wielkie wypukłe oczy pana Verloca nie były przystosowane do mrugania.",
+  "start": 211.53
+ },
+ {
+  "i": 15,
+  "pl": "Należały raczej do kategorii oczu, które zamykają się poważnie przy zasypianiu, wywierając majestatyczne wrażenie.",
+  "start": 228.14
+ },
+ {
+  "i": 16,
+  "pl": "Powściągliwy w ruchach, opasły na kształt tłustego wieprza, pan Verloc szedł swoją drogą, nie zacierając rąk z zadowoleniem i nie mrugając sceptycznie do swych myśli. Stąpał ciężko po bruku w błyszczących trzewikach i wyglądał jak zamożny rzemieślnik posiadający własny warsztat.",
+  "start": 235.91
+ },
+ {
+  "i": 17,
+  "pl": "Można go było wziąć za pierwszego lepszego majstra, od ramiarza do ślusarza, za pracodawcę w skromnym zakresie.",
+  "start": 253.81
+ },
+ {
+  "i": 18,
+  "pl": "Ale był przy tym w panu Verlocu jakiś rys nieokreślony, którego żaden rzemieślnik nie nabyłby w ciągu swej pracy, choćby wykonywał ją najmniej sumiennie: rys wspólny tym, co żerują na występkach, głupocie albo tchórzostwie, rys moralnego nihilizmu, właściwy ludziom prowadzącym szulernie lub domy publiczne, a cechujący również prywatnych detektywów i wywiadowców, szynkarzy, sprzedawców elektrycznych pasów przywracających siły i wynalazców patentowanych leków.",
+  "start": 261.15
+ },
+ {
+  "i": 19,
+  "pl": "Co do owych wynalazców nie mam pewności, bo tego tak dalece nie zgłębiałem. Zdaje mi się jednak, że wyraz twarzy tych ludzi może być po prostu szatański; wcale bym się temu nie dziwił. Chciałem tylko zaznaczyć, iż wyraz twarzy pana Verloca daleki był od demonizmu.",
+  "start": 292.35
+ },
+ {
+  "i": 20,
+  "pl": "Nie dochodząc do Knightsbridge, pan Verloc skręcił w lewo z rojnej głównej ulicy, tętniącej hałasem rozkołysanych omnibusów¹⁶ i wozów toczących się szybko wśród prawie bezgłośnej, chyżej fali dwukołowych dorożek.",
+  "start": 310.67
+ },
+ {
+  "i": 21,
+  "pl": "Pod kapeluszem zsuniętym lekko z czoła wyszczotkowane włosy pana Verloca ułożyły się gładko i kornie, albowiem pan Verloc miał sprawę z pewną ambasadą. Nieugięty jak skała — z rodzaju tych miększych skał — kroczył teraz ulicą, która zasługiwała w pełni na nazwę zacisznej.",
+  "start": 325.21
+ },
+ {
+  "i": 22,
+  "pl": "W jej szerokości, pustce i obszarze tkwił majestat martwej przyrody, która nie podlega śmierci. Jedynym napomknieniem o śmiertelności była karetka jakiegoś doktora, stojąca we wzniosłym osamotnieniu tuż obok chodnika.",
+  "start": 342.77
+ },
+ {
+  "i": 23,
+  "pl": "Wyczyszczone kołatki u drzwi błyszczały jak okiem sięgnąć, czyste okna lśniły ciemnym połyskiem. Nic się nie poruszało. Lecz oto wózek z mlekiem zaturkotał hałaśliwie i przeciął w głębi ulicę;",
+  "start": 358.15
+ },
+ {
+  "i": 24,
+  "pl": "zza węgła wypadł drugi wózek, a na nim chłopiec od rzeźnika siedział wysoko nad parą czerwonych kół, powożąc ze wspaniałym rozmachem, niby uczestnik gier olimpijskich kierujący rydwanem. Spod kamieni wysunął się kot, który najwidoczniej coś zbroił;",
+  "start": 371.33
+ },
+ {
+  "i": 25,
+  "pl": "biegł chwilę, wyprzedzając pana Verloca, i dał nurka do sutereny; a gruby policjant, z pozoru niedostępny wszelkim uczuciom, jakby również był częścią martwej przyrody, wyłonił się, rzekłbyś, z latarni, nie zwracając na Verloca najmniejszej uwagi.",
+  "start": 388.61
+ },
+ {
+  "i": 26,
+  "pl": "Pan Verloc skręcił na lewo i szedł wąską uliczką wzdłuż żółtej ściany, na której z niezbadanych powodów widniał czarnymi literami napis: Chesham Square nr 1. Tymczasem Chesham Square znajdował się przynajmniej sześćdziesiąt jardów¹⁷ dalej, pan Verloc zaś, który był w dostatecznym stopniu kosmopolitą, aby nie dać się zwieść topograficznym tajemnicom Londynu, szedł wciąż spokojnie naprzód, nie zdradzając oznak zdziwienia czy oburzenia.",
+  "start": 404.47
+ },
+ {
+  "i": 27,
+  "pl": "Wreszcie z wytrwałością cechującą człowieka interesu dotarł do skweru i przeciął go na ukos, zmierzając pod numer 107. Ten numer widniał na imponującej bramie wjazdowej, umieszczonej w wysokiej, gładkiej ścianie między dwoma domami;",
+  "start": 434.33
+ },
+ {
+  "i": 28,
+  "pl": "jeden z nich był oznaczony dość rozsądnie numerem 9, natomiast na drugim widniał numer 37;",
+  "start": 448.97
+ },
+ {
+  "i": 29,
+  "pl": "o fakcie, że ten ostatni dom należy do znanej w sąsiedztwie Porthill Street, głosił napis nad parterowymi oknami, umieszczony przez jakąś bardzo sprężystą władzę, której polecono tropić zbłąkane domy londyńskie.",
+  "start": 455.41
+ },
+ {
+  "i": 30,
+  "pl": "Dlaczego nie żąda się od parlamentu, aby wydał rozkaz (wystarczyłby krótki akt) polecający tym gmachom powrót do miejsc, gdzie przynależą, jest jedną z tajemnic miejskiego zarządu.",
+  "start": 470.19
+ },
+ {
+  "i": 31,
+  "pl": "Pan Verloc nie łamał sobie nad edytorski] tym głowy, ponieważ jego posłannictwo życiowe stanowiła ochrona społecznego ustroju, nie zaś doskonalenie tegoż ustroju czy chociażby jego krytyka.",
+  "start": 482.49
+ },
+ {
+  "i": 32,
+  "pl": "Było tak wcześnie, że portier ambasady wybiegł ze swego mieszkania, mocując się jeszcze z lewym rękawem liberii. Miał na sobie czerwoną kamizelkę, krótkie spodnie i był najwidoczniej zmieszany.",
+  "start": 494.06
+ },
+ {
+  "i": 33,
+  "pl": "Pan Verloc dostrzegł to natarcie z flanki i odparł je, wyciągnąwszy po prostu kopertę z godłem ambasady, po czym szedł dalej. Ten sam talizman pokazał lokajowi, który otworzył drzwi i cofnął się, aby go wpuścić do hallu.",
+  "start": 505.04
+ },
+ {
+  "i": 34,
+  "pl": "Jasny ogień palił się na dużym kominku; zwrócony tyłem do ognia stał starszy mężczyzna we fraku, z łańcuchem na szyi i popatrzył na pana Verloca znad rozpostartej gazety, którą trzymał oburącz przed spokojną, surową twarzą. Nie poruszył się wcale.",
+  "start": 519.52
+ },
+ {
+  "i": 35,
+  "pl": "Drugi lokaj w brunatnych spodniach i fraku obrzeżonym cienkim żółtym sznurkiem zbliżył się do pana Verloca; usłyszawszy wyszeptane przez niego nazwisko, zawrócił na pięcie i zaczął iść, nie oglądając się wcale.",
+  "start": 535.04
+ },
+ {
+  "i": 36,
+  "pl": "Prowadził tak pana Verloca parterowym korytarzem na lewo od wielkich schodów pokrytych dywanem i nagle wskazał mu wejście do małego pokoju, gdzie stało ciężkie biurko oraz kilka krzeseł. Drzwi się zamknęły i pan Verloc został sam. Nie usiadł.",
+  "start": 547.38
+ },
+ {
+  "i": 37,
+  "pl": "Rozglądał się, przeciągając pulchną, krótką ręką po gładko uczesanej głowie; w drugiej ręce trzymał kapelusz i laskę.",
+  "start": 561.8
+ },
+ {
+  "i": 38,
+  "pl": "Jakieś drzwi otwarły się bez szelestu; pan Verloc, skierowawszy wzrok w tamtą stronę, zobaczył zrazu tylko czarne ubranie, łysy czubek głowy i obwisłe ciemnosiwe bokobrody po obu stronach pomarszczonych rąk. Człowiek, który wszedł, trzymał przed oczami plik papierów;",
+  "start": 570.34
+ },
+ {
+  "i": 39,
+  "pl": "przeglądając je, zbliżał się do stołu drobnymi krokami. Tajny radca Wurmt, chancelier d’ambassade¹⁸, miał wzrok dość krótki. Zasłużony ten urzędnik złożył papiery na stole, odsłaniając nalaną, bladą twarz o melancholijnej brzydocie, otoczoną gąszczem cienkich, długich ciemnosiwych włosów;",
+  "start": 587.68
+ },
+ {
+  "i": 40,
+  "pl": "przekreślała tę twarz gruba linia gęstych i krzaczastych brwi. Wurmt włożył na tępy, bezkształtny nos binokle¹⁹ w czarnej oprawie i wydał się zaskoczony widokiem pana Verloca. Pod ogromnymi brwiami krótkowzroczne oczy radcy mrugały bezradnie zza szkieł.",
+  "start": 608.34
+ },
+ {
+  "i": 41,
+  "pl": "Nie przywitał się wcale, podobnie jak i pan Verloc, który oczywiście wiedział, jak się zachować; lecz nieznaczna zmiana w zarysie barków i pleców pana Verloca nasunęła myśl, że jego grzbiet pochylił się z lekka pod obszerną powierzchnią palta. Robiło to wrażenie dyskretnego szacunku.",
+  "start": 626.44
+ },
+ {
+  "i": 42,
+  "pl": "— Mam tu kilka pańskich raportów — rzekł biurokrata nadspodziewanie miękkim, jakby znużonym głosem, przyciskając mocno papiery końcem wskazującego palca. Umilkł, a pan Verloc, który poznał od razu własne pismo, czekał z zapartym tchem.",
+  "start": 643.58
+ },
+ {
+  "i": 43,
+  "pl": "— Nie jesteśmy zadowoleni z zachowania się tutejszej policji — ciągnął Wurmt z wszelkimi pozorami umysłowego wyczerpania.",
+  "start": 659.63
+ },
+ {
+  "i": 44,
+  "pl": "Plecy pana Verloca właściwie nawet nie drgnęły, a jednak wydało się, że wzruszył ramionami. Usta jego otworzyły się po raz pierwszy od chwili, gdy wyszedł z domu.",
+  "start": 667.61
+ },
+ {
+  "i": 45,
+  "pl": "— Każdy kraj ma swoją policję — rzekł filozoficznie. Lecz urzędnik ambasady patrzył na niego, w dalszym ciągu mrugając oczami, i pan Verloc dorzucił jakby pod przymusem: — Niech pan pozwoli mi zauważyć, że nie mam wpływu na tutejszą policję.",
+  "start": 678.63
+ },
+ {
+  "i": 46,
+  "pl": "— Pożądane jest, aby zaszedł jakiś określony wypadek, który by pobudził jej czujność — rzekł biurokrata. — To wchodzi w zakres pana obowiązków… nieprawdaż?",
+  "start": 697.98
+ },
+ {
+  "i": 47,
+  "pl": "Pan Verloc odpowiedział na to tylko westchnieniem, które wyrwało mu się niechcący, bo postarał się zaraz nadać twarzy wyraz wesoły. Urzędnik mrugał niepewnie, jakby mu dokuczało przyćmione światło pokoju. Powtórzył ogólnikowo:",
+  "start": 708.29
+ },
+ {
+  "i": 48,
+  "pl": "— Wypadek, który by pobudził czujność policji… i surowość urzędników. Zasadnicza łagodność tutejszej procedury sądowej oraz absolutny brak wszelkich środków represyjnych są zgorszeniem dla Europy. Czego nam teraz potrzeba, to wzmożonego niepokoju… wrzenia, które niewątpliwie istnieje.",
+  "start": 721.3
+ },
+ {
+  "i": 49,
+  "pl": "— Oczywiście, oczywiście — wtrącił pan Verloc pełnym szacunku, niskim basem typu krasomówczego, różniącym się tak dalece od tonu, którym mówił dotychczas, że radca się zdumiał. — Istnieje, i to w stopniu niebezpiecznym. Moje raporty z ostatnich dwunastu miesięcy wyjaśniają to dostatecznie.",
+  "start": 743.21
+ },
+ {
+  "i": 50,
+  "pl": "— Pana raporty z ostatnich dwunastu miesięcy — zaczął radca stanu Wurmt swym łagodnym, beznamiętnym głosem — zostały przeze mnie przeczytane. Nie mogę zrozumieć, po co je pan w ogóle pisał.",
+  "start": 766.83
+ },
+ {
+  "i": 51,
+  "pl": "Smutne milczenie zapadło na chwilę. Zdawało się, że pan Verloc zapomniał języka w gębie, radca zaś utkwił wzrok w leżących na stole papierach. Wreszcie odsunął je z lekka.",
+  "start": 779.28
+ },
+ {
+  "i": 52,
+  "pl": "— Ze stanu rzeczy, który pan tutaj przedstawia, wypływa jedynie to, że w ogóle pana zatrudniamy. A teraz chodzi nam nie o pisaninę, lecz o wykrycie znaczącego, wybitnego faktu, powiedziałbym nawet: faktu niepokojącego.",
+  "start": 792.24
+ },
+ {
+  "i": 53,
+  "pl": "— Nie potrzebuję mówić, że ten cel będzie przyświecał wszystkim moim wysiłkom — rzekł pan Verloc, nadając ton przeświadczenia swemu ochrypłemu głosowi od codziennego użytku. Ale zmieszał się, czując, że jest bacznie śledzony zza ślepego połysku okularów po drugiej stronie stołu.",
+  "start": 806.26
+ },
+ {
+  "i": 54,
+  "pl": "Umilkł nagle z gestem bezwzględnego oddania. Pożyteczny i zapracowany, lecz skromny członek ambasady przybrał nagle taki wyraz twarzy, jakby błysnęła mu jakaś nowa myśl.",
+  "start": 823.7
+ },
+ {
+  "i": 55,
+  "pl": "— Pan jest bardzo otyły — rzekł.",
+  "start": 834.83
+ },
+ {
+  "i": 56,
+  "pl": "Ta uwaga, treści właściwie psychologicznej, uraziła pana Verloca jak niegrzeczny przytyk, choć została wypowiedziana ze skromnością i wahaniem urzędnika lepiej obeznanego z piórem i atramentem niż z wymaganiami czynnego życia. Pan Verloc odstąpił o krok.",
+  "start": 837.79
+ },
+ {
+  "i": 57,
+  "pl": "— Jak to? Co pan był łaskaw powiedzieć? — wykrzyknął urażonym, chrypliwym głosem.",
+  "start": 856.42
+ },
+ {
+  "i": 58,
+  "pl": "Chancelier d’ambassade, któremu powierzono przeprowadzenie owej rozmowy, był widać zdania, że ta misja przekracza jego siły.",
+  "start": 863.71
+ },
+ {
+  "i": 59,
+  "pl": "— Chyba będzie najlepiej, jeśli pan się zobaczy z panem Władimirem. Tak, powinien pan stanowczo rozmówić się z panem Władimirem. Niech pan tu poczeka — dodał i wyszedł drobnymi krokami.",
+  "start": 871.41
+ },
+ {
+  "i": 60,
+  "pl": "Pan Verloc przesunął natychmiast ręką po włosach. Drobne krople potu wystąpiły mu na czoło. Wypuścił powietrze przez ściągnięte usta jak człowiek dmuchający na łyżkę gorącej zupy.",
+  "start": 883.89
+ },
+ {
+  "i": 61,
+  "pl": "A gdy lokaj w brązowej liberii ukazał się cicho we drzwiach, pan Verloc stał dosłownie na tym samym miejscu, gdzie się znajdował poprzednio. Stał bez ruchu, jakby czuł, że jest otoczony wilczymi dołami²⁰.",
+  "start": 895.05
+ },
+ {
+  "i": 62,
+  "pl": "Poszedł za lokajem przejściem oświetlonym przez samotny płomień gazowy, potem kręconymi schodami i wreszcie oszklonym, wesołym korytarzem na pierwszym piętrze. Lokaj otworzył jakieś drzwi i usunął się na bok. Pan Verloc poczuł pod nogami gruby dywan. Pokój był obszerny, trzyokienny;",
+  "start": 906.66
+ },
+ {
+  "i": 63,
+  "pl": "młody człowiek o wygolonej, dużej twarzy, siedzący w obszernym fotelu przed wielkim mahoniowym biurkiem, rzekł po francusku do chancelier d’ambassade, który odchodził z papierami w ręku:",
+  "start": 924.32
+ },
+ {
+  "i": 64,
+  "pl": "— Masz rację, mon cher²¹. Bestia tłusta, bo tłusta.",
+  "start": 936.31
+ },
+ {
+  "i": 65,
+  "pl": "Pan Władimir, pierwszy sekretarz, cieszył się w salonach opinią człowieka przyjemnego i zajmującego. Był poniekąd ulubieńcem towarzystwa. Jego dowcip polegał na odkrywaniu zabawnych związków między niepasującymi do siebie pojęciami;",
+  "start": 941.11
+ },
+ {
+  "i": 66,
+  "pl": "rozprawiając w tym duchu, przysiadał na samym brzegu krzesła i podnosił lewą rękę, jakby wystawiał na pokaz swe ucieszne wywody, trzymając je między kciukiem a palcem wskazującym; wygolona, okrągła twarz sekretarza przybierała wtedy wyraz wesołego zdziwienia.",
+  "start": 955.57
+ },
+ {
+  "i": 67,
+  "pl": "Lecz w oczach, zwróconych na pana Verloca, nie było śladu wesołości ani zdziwienia. Rozparł się w głębokim fotelu, rozstawiwszy szeroko łokcie, i zarzucił nogę na grube kolano;",
+  "start": 970.99
+ },
+ {
+  "i": 68,
+  "pl": "jego gładka, różowa twarz nadawała mu wygląd przedwcześnie rozwiniętego niemowlęcia, które nikomu gadać głupstw nie pozwoli.",
+  "start": 982.93
+ },
+ {
+  "i": 69,
+  "pl": "— Pan chyba rozumie po francusku? — zapytał.",
+  "start": 991.92
+ },
+ {
+  "i": 70,
+  "pl": "Pan Verloc potwierdził ochrypłym głosem, że rozumie. Cała jego tłusta postać pochylała się ku przodowi. Stał na dywanie w środku pokoju, trzymając w jednej ręce kapelusz i laskę; druga ręka wisiała bezwładnie u boku. Mruknął skromnie z głębi gardła, że odbył służbę wojskową w artylerii francuskiej.",
+  "start": 995.5
+ },
+ {
+  "i": 71,
+  "pl": "Naraz pan Władimir, wiedziony pogardliwą przekorą, przerzucił się na inny język i zaczął mówić nieskazitelną angielszczyzną bez śladu cudzoziemskiego akcentu.",
+  "start": 1015.2
+ },
+ {
+  "i": 72,
+  "pl": "— Hm! Tak. Naturalnie. No, zobaczymy. Ile panu wlepili za to, że pan wykradł rysunek udoskonalonego zamka tej ich nowej armaty polowej?",
+  "start": 1026.79
+ },
+ {
+  "i": 73,
+  "pl": "— Pięć lat obostrzonego więzienia w fortecy — odrzekł niespodzianie pan Verloc bez najlżejszego przejawu uczuć.",
+  "start": 1040.19
+ },
+ {
+  "i": 74,
+  "pl": "— Wyszedł pan obronną ręką — zauważył pan Władimir. — I dobrze tak panu za to, że się pan dał nakryć. A co pana skłoniło do tego rodzaju roboty?",
+  "start": 1048.9
+ },
+ {
+  "i": 75,
+  "pl": "W odpowiedzi rozległ się ochrypły głos pana Verloca, ten od codziennego użytku, mówiący o młodości, o nieszczęsnym zadurzeniu się…",
+  "start": 1061.01
+ },
+ {
+  "i": 76,
+  "pl": "— Aha! Cherchez la femme²² — raczył przerwać pan Władimir, trochę przystępniejszy, lecz bynajmniej nie uprzejmy; wręcz przeciwnie, jego łaskawość miała w sobie coś okrutnego. — Jak dawno jest pan na służbie naszej ambasady?",
+  "start": 1068.83
+ },
+ {
+  "i": 77,
+  "pl": "— Już od czasów nieboszczyka barona Stott-Wartenheima — odrzekł pan Verloc stłumionym głosem, wysuwając wargi ze smutkiem na znak żalu za zmarłym dyplomatą. Pierwszy sekretarz obserwował spokojnie grę jego fizjonomii.",
+  "start": 1086.94
+ },
+ {
+  "i": 78,
+  "pl": "— Aha! już od czasu… No! Co pan powie na swoje usprawiedliwienie? — spytał ostro.",
+  "start": 1101.92
+ },
+ {
+  "i": 79,
+  "pl": "Pan Verloc odrzekł nieco zdziwiony, że nie sądzi, aby miał coś szczególnego do powiedzenia. Wezwano go listem… — I zagłębił szybko rękę w bocznej kieszeni palta, lecz wobec szyderczej, cynicznej czujności pana Władimira postanowił listu nie wyjmować.",
+  "start": 1109.7
+ },
+ {
+  "i": 80,
+  "pl": "— Ba! Jak pan mógł tak wyjść z fasonu? — rzekł pan Władimir. — Pan nie ma nawet powierzchowności, jakiej pana zawód wymaga. I pan ma być członkiem zagłodzonego proletariatu? Cóż znowu! Pan ma być zaciekłym socjalistą… czy też anarchistą… bo nie wiem?",
+  "start": 1125.1
+ },
+ {
+  "i": 81,
+  "pl": "— Anarchistą — stwierdził głucho pan Verloc.",
+  "start": 1145.65
+ },
+ {
+  "i": 82,
+  "pl": "— Bzdury! — ciągnął pan Władimir, nie podnosząc głosu. — Nawet stary Wurmt był zaskoczony pana wyglądem. Nie oszukałby pan idioty. Nawiasem mówiąc, oni wszyscy to banda idiotów, ale pański wygląd jest po prostu niemożliwy.",
+  "start": 1149.32
+ },
+ {
+  "i": 83,
+  "pl": "A więc pana stosunki z nami zaczęły się od kradzieży tych rysunków francuskich armat. I dał się pan nakryć. To musiało być bardzo nieprzyjemne dla naszego rządu. Nie wygląda mi pan na sprytnego.",
+  "start": 1163.39
+ },
+ {
+  "i": 84,
+  "pl": "Pan Verloc starał się usprawiedliwić zachrypłym głosem:",
+  "start": 1175.22
+ },
+ {
+  "i": 85,
+  "pl": "— Jak miałem już sposobność zaznaczyć, zadurzyłem się najfatalniej w niegodnej…",
+  "start": 1180.18
+ },
+ {
+  "i": 86,
+  "pl": "Pan Władimir podniósł białą, pulchną rękę.",
+  "start": 1186.87
+ },
+ {
+  "i": 87,
+  "pl": "— Ach, tak. Tamto nieszczęsne uczucie… z czasów pana młodości. Wzięła pańskie pieniądze, a potem sprzedała pana policji… co?",
+  "start": 1190.99
+ },
+ {
+  "i": 88,
+  "pl": "Bolesna zmiana w wyrazie twarzy pana Verloca i nagłe obwiśnięcie całej jego postaci świadczyły, że ten godny pożałowania fakt zaszedł istotnie. Pan Władimir objął w kostce swą nogę założoną na kolano. Skarpetka była jedwabna, granatowa.",
+  "start": 1201.58
+ },
+ {
+  "i": 89,
+  "pl": "— W tym wypadku sprytu pan nie wykazał. Może pan jest zanadto wrażliwy na płeć piękną?",
+  "start": 1219.02
+ },
+ {
+  "i": 90,
+  "pl": "Pan Verloc dał do zrozumienia gardłowym, głuchym szeptem, że nie jest już młody.",
+  "start": 1225.96
+ },
+ {
+  "i": 91,
+  "pl": "— Hm! Ta wada z wiekiem nie ustępuje — zauważył pan Władimir ze złowrogą poufałością. — Ale nie! Za tłusty pan na to. Nigdy by pan tak nie wyglądał, gdyby pan był choć trochę wrażliwy na kobiety. Powiem panu, w czym rzecz: pan jest wałkoń. Jak dawno wyciąga pan od nas pieniądze?",
+  "start": 1232.87
+ },
+ {
+  "i": 92,
+  "pl": "— Od jedenastu lat — zabrzmiała odpowiedź po chwili posępnego wahania. — Powierzono mi w Londynie kilka zleceń, gdy jego ekscelencja baron Stott-Wartenheim był jeszcze ambasadorem w Paryżu. Potem na skutek wskazówek jego ekscelencji osiedliłem się w Londynie. Jestem Anglikiem.",
+  "start": 1256.98
+ },
+ {
+  "i": 93,
+  "pl": "— Pan jest Anglikiem! Co też pan mówi! Naprawdę?",
+  "start": 1275.38
+ },
+ {
+  "i": 94,
+  "pl": "— Urodziłem się poddanym brytyjskim — rzekł niezwruszenie pan Verloc. — Ale ojciec mój był Francuzem i stąd…",
+  "start": 1280.96
+ },
+ {
+  "i": 95,
+  "pl": "— Dość tych wyjaśnień — przerwał tamten. — Więc pan mógł według prawa zostać marszałkiem Francji lub posłem do angielskiego parlamentu… a wówczas byłby pan istotnie oddał naszej ambasadzie pewne usługi.",
+  "start": 1288.66
+ },
+ {
+  "i": 96,
+  "pl": "Ten wybryk fantazji przywołał coś na kształt słabego uśmiechu na twarz VerIoca. Pan Władimir zachował niewzruszoną powagę.",
+  "start": 1305.83
+ },
+ {
+  "i": 97,
+  "pl": "— Ale, jak powiedziałem, wałkoń z pana; nie wyzyskuje pan nasuwających się sposobności. Za barona Stott-Wartenheima wielu półgłówków pracowało w tej ambasadzie. Z ich winy ludzie tacy jak pan wyrobili sobie fałszywe pojęcie o tym, czym jest fundusz tajnego wywiadu.",
+  "start": 1314.02
+ },
+ {
+  "i": 98,
+  "pl": "Obowiązek każe mi tę pomyłkę sprostować: muszę panu wyjaśnić, czym tajny wywiad nie jest. Otóż nie jest instytucją filantropijną. Wezwałem pana umyślnie, aby to panu powiedzieć.",
+  "start": 1332.88
+ },
+ {
+  "i": 99,
+  "pl": "Pan Władimir zauważył wymuszone zdumienie na twarzy Verloca i uśmiechnął się szyderczo.",
+  "start": 1347.24
+ },
+ {
+  "i": 100,
+  "pl": "— Widzę, że pan mnie świetnie rozumie. Zdaje się, że pan jest wystarczająco inteligentny na swój fach. Czego nam teraz potrzeba, to czynów… czynów.",
+  "start": 1352.26
+ },
+ {
+  "i": 101,
+  "pl": "Powtarzając ostatnie słowo, pan Władimir położył biały palec wskazujący na brzegu biurka. Najlżejszy ślad chrypki znikł z głosu Verloca. Jego gruby kark nabiegł purpurą nad aksamitnym kołnierzem palta. Wargi mu zadrżały i otworzyły się szeroko.",
+  "start": 1367.32
+ },
+ {
+  "i": 102,
+  "pl": "— Jeśli pan tylko zechce przejrzeć moje sprawozdanie — zahuczał swym tubalnym, dźwięcznym basem od krasomówczych występów — przekona się pan, że ostrzegałem ambasadę jeszcze przed trzema miesiącami, gdy wielki książę Romuald miał przyjechać do Paryża;",
+  "start": 1384.32
+ },
+ {
+  "i": 103,
+  "pl": "telegrafowano stąd o mych ostrzeżeniach do policji francuskiej i…",
+  "start": 1402.92
+ },
+ {
+  "i": 104,
+  "pl": "— Ciszej! — wybuchnął pan Władimir, krzywiąc się i marszcząc. — Francuska policja nic sobie nie robiła z pana ostrzeżeń. Niech pan tak nie ryczy. O cóż panu chodzi do diabła?",
+  "start": 1406.9
+ },
+ {
+  "i": 105,
+  "pl": "Pan Verloc przeprosił tonem wyniosłej pokory za to, że tak się zapomniał. Oświadczył, iż jego głos, słynny od szeregu lat z mów na zebraniach pod wolnym niebem i na wiecach robotniczych w wielkich salach, przyczynił się niemało do ustalenia jego reputacji jako solidnego, zaufanego towarzysza.",
+  "start": 1419.53
+ },
+ {
+  "i": 106,
+  "pl": "Głos wchodził więc w skład jego użyteczności. Budził zaufanie do jego zasad. „Przywódcy wysuwali mnie zawsze na mówcę w krytycznej chwili” — oświadczył Verloc z nieukrywanym zadowoleniem. Dodał, że potrafi przekrzyczeć każdy hałas, i nagle to zademonstrował.",
+  "start": 1437.55
+ },
+ {
+  "i": 107,
+  "pl": "— Proszę, niech pan mi pozwoli — rzekł.",
+  "start": 1456.49
+ },
+ {
+  "i": 108,
+  "pl": "Ze spuszczoną głową, nie podnosząc oczu, przeszedł przez pokój szybkim, ciężkim krokiem, zmierzając ku drzwiom balkonowym, i uchylił je jakby pod wpływem nieodpartego impulsu. Pan Władimir porwał się zdumiony z głębi fotela i spojrzał przez ramię Verloca;",
+  "start": 1461.39
+ },
+ {
+  "i": 109,
+  "pl": "w dole, za dziedzińcem ambasady, dobry jeszcze kawał za otwartą bramą, widać było szerokie plecy policjanta, który stał bezczynnie i śledził wspaniały wózek z jakimś dzieckiem, przejeżdżający pompatycznie przez skwer.",
+  "start": 1476.35
+ },
+ {
+  "i": 110,
+  "pl": "— Policja! — rzekł Verloc bez najmniejszego wysiłku, jak gdyby szeptał; pan Władimir zaś wybuchnął śmiechem, zobaczywszy, że policjant odwrócił się na pięcie niby żgnięty z tyłu. Verloc zamknął spokojnie okno i wrócił na środek pokoju.",
+  "start": 1490.63
+ },
+ {
+  "i": 111,
+  "pl": "— Dzięki temu głosowi — rzekł, zniżywszy ton do konwersacyjnego, chrypliwego brzmienia — wierzono mi z reguły. A przy tym wiedziałem, co mówić!",
+  "start": 1507.0
+ },
+ {
+  "i": 112,
+  "pl": "Pan Władimir, poprawiając krawat, śledził Verloca w lustrze nad kominkiem.",
+  "start": 1518.08
+ },
+ {
+  "i": 113,
+  "pl": "— Nie wątpię, że pan wyuczył się na pamięć socjalistyczno-rewolucyjnego żargonu — rzekł pogardliwie. — Vox et…²³ Pewno nie studiował pan nigdy łaciny, co?",
+  "start": 1523.18
+ },
+ {
+  "i": 114,
+  "pl": "— Nie — burknął pan Verloc. — Chyba tego się pan po mnie nie spodziewał. Jestem jednym z miliona. Któż zna łacinę? Zaledwie kilkuset durniów, którzy nie potrafią dbać o własną skórę.",
+  "start": 1537.73
+ },
+ {
+  "i": 115,
+  "pl": "Jeszcze przez jakieś pół minuty pan Władimir obserwował w lustrze mięsisty profil i wielką tuszę człowieka, który stał za nim.",
+  "start": 1550.49
+ },
+ {
+  "i": 116,
+  "pl": "Jednocześnie zaś widział także własną twarz, okrągłą, wygoloną, różową w okolicy podbródka, o wąskich, wrażliwych ustach stworzonych do wypowiadania subtelnych dowcipów, dzięki którym stał się ulubieńcem najwyższych sfer.",
+  "start": 1557.17
+ },
+ {
+  "i": 117,
+  "pl": "Wreszcie zawrócił na pięcie i ruszył przez pokój z taką stanowczością, iż nawet końce jego niebanalnego staroświeckiego krawata zdawały się jeżyć od niewysłowionych gróźb. Ruchy miał tak szybkie i dzikie, że pan Verloc, który spojrzał na niego z ukosa, zadrżał w duchu.",
+  "start": 1570.35
+ },
+ {
+  "i": 118,
+  "pl": "— Oho! Pan sobie pozwala na bezczelność — zaczął pan Władimir zdumiewająco gardłowym tonem, nie tylko nie angielskim, ale wręcz nie europejskim, co przestraszyło nawet Verloca, doświadczonego bywalca międzynarodowych zaułków. — Pan się ośmiela… Więc przemówię panu do słuchu.",
+  "start": 1587.45
+ },
+ {
+  "i": 119,
+  "pl": "Nic tu z pana głosu nie przyjdzie. Nie potrzeba nam pana głosu. Potrzeba nam faktów — przerażających faktów… do jasnej cholery — dodał z opanowaną dzikością, mówiąc Verlocowi prosto w twarz.",
+  "start": 1608.54
+ },
+ {
+  "i": 120,
+  "pl": "— Nie zastraszy mnie pan swym barbarzyńskim obejściem — bronił się ochrypłym głosem pan Verloc, patrząc w dywan. W odpowiedzi na to jego interlokutor, uśmiechając się kpiąco znad zjeżonego fontazia²⁴, przeszedł na język francuski.",
+  "start": 1624.72
+ },
+ {
+  "i": 121,
+  "pl": "— Pan się podaje za agent provocateur²⁵. Zajęciem odpowiednim dla agent provocateur jest prowokacja. O ile wiem z informacji, które mamy o panu, przez trzy ostatnie lata nie zrobił pan nic, żeby zarobić na swój chleb.",
+  "start": 1639.67
+ },
+ {
+  "i": 122,
+  "pl": "— Nic nie zrobiłem! — wykrzyknął Verloc, nie poruszając się wcale i nie podnosząc oczu, choć jego głos drgał szczerym uczuciem. — Kilka razy zapobiegałem temu, co mogło było się stać.",
+  "start": 1654.69
+ },
+ {
+  "i": 123,
+  "pl": "— Jest w tym kraju przysłowie, które mówi, że lepiej zapobiec chorobie, niż ją leczyć — przerwał pan Władimir, rzucając się na fotel. — W gruncie rzeczy to absurd. Tutaj wiecznie czemuś zapobiegają. Ale to przysłowie jest charakterystyczne. W Anglii nie lubią energicznych środków.",
+  "start": 1668.88
+ },
+ {
+  "i": 124,
+  "pl": "Niech no pan nie będzie zanadto angielski. A w tym konkretnym wypadku niech pan nie będzie głupi. Zło już tu przeniknęło. My nie chcemy zapobiegać — my chcemy leczyć.",
+  "start": 1689.68
+ },
+ {
+  "i": 125,
+  "pl": "Urwał, zwrócił się do biurka i przeglądając jakieś papiery, odezwał się już innym, rzeczowym tonem, nie patrząc na VerIoca.",
+  "start": 1703.73
+ },
+ {
+  "i": 126,
+  "pl": "— Pan wie naturalnie o międzynarodowej konferencji odbywającej się w Mediolanie?",
+  "start": 1711.79
+ },
+ {
+  "i": 127,
+  "pl": "Pan Verloc oznajmił ochrypłym głosem, że ma zwyczaj czytywać gazety. Na dalsze pytanie odpowiedź jego brzmiała, że oczywiście rozumie, co czyta. Pan Władimir, uśmiechając się z lekka do dokumentów, które przeglądał wciąż jeden za drugim, mruknął:",
+  "start": 1716.23
+ },
+ {
+  "i": 128,
+  "pl": "— O ile to nie jest po łacinie.",
+  "start": 1731.79
+ },
+ {
+  "i": 129,
+  "pl": "— Albo po chińsku — dodał niewzruszenie pan VerIoc.",
+  "start": 1735.84
+ },
+ {
+  "i": 130,
+  "pl": "— Hm. Niektóre z wynurzeń pańskich przyjaciół to bzdury równie niezrozumiałe jak chińszczyzna. — Pan Władimir odrzucił pogardliwie szary arkusz zadrukowanego papieru. — Cóż to za świstki z literami P. P. w nagłówku, ze skrzyżowanymi młotkiem, piórem i pochodnią? Cóż to znaczy, P. P.?",
+  "start": 1742.07
+ },
+ {
+  "i": 131,
+  "pl": "Pan Verloc zbliżył się do imponującego biurka.",
+  "start": 1762.04
+ },
+ {
+  "i": 132,
+  "pl": "— Przyszłość Proletariatu. To jest stowarzyszenie — wyjaśnił, stanąwszy ciężko obok fotela — w zasadzie nie tylko anarchistyczne, otwarte dla wszelkich odcieni przekonań rewolucyjnych.",
+  "start": 1766.23
+ },
+ {
+  "i": 133,
+  "pl": "— Czy pan do niego należy?",
+  "start": 1779.37
+ },
+ {
+  "i": 134,
+  "pl": "— Jestem jednym z wiceprezesów — wysapał pan Verloc, a pierwszy sekretarz ambasady podniósł głowę i spojrzał na niego.",
+  "start": 1781.42
+ },
+ {
+  "i": 135,
+  "pl": "— Więc powinien pan się wstydzić — rzekł dobitnie. — Czy pańskie stowarzyszenie nie potrafi nic innego, tylko drukować te prorocze bzdury stępionymi czcionkami na brudnym papierze… co? Dlaczego pan nie weźmie się do roboty? Proszę posłuchać.",
+  "start": 1790.3
+ },
+ {
+  "i": 136,
+  "pl": "Teraz ja mam w ręku te sprawy i mówię panu wyraźnie, że będzie pan musiał na chleb zarobić. Dawne dobre czasy z epoki Stott-Wartenheima minęły. Bez pracy nie zobaczy pan ani grosza.",
+  "start": 1806.26
+ },
+ {
+  "i": 137,
+  "pl": "Pan Verloc poczuł, że nogi pod nim dziwnie osłabły. Cofnął się i wytarł głośno nos.",
+  "start": 1819.58
+ },
+ {
+  "i": 138,
+  "pl": "Był naprawdę zaskoczony i niespokojny. Rdzawe słońce londyńskie, przedarłszy się przez londyńską mgłę, rozsiewało ciepławą jasność w gabinecie sekretarza; wśród ciszy usłyszał pan Verloc słabe brzęczenie muchy na szybie — pierwszej muchy w tym roku;",
+  "start": 1825.64
+ },
+ {
+  "i": 139,
+  "pl": "zwiastowało to wiosnę bardziej niezawodnie od najliczniejszej rzeszy jaskółek. Bezowocne miotanie się drobnego, energicznego organizmu dotknęło w przykry sposób grubasa, który czuł się zagrożony w swej gnuśności.",
+  "start": 1840.64
+ },
+ {
+  "i": 140,
+  "pl": "Podczas tej pauzy pan Władimir sformułował w myśli szereg negatywnych uwag dotyczących twarzy i figury pana Verloca. Ten człowiek był nadspodziewanie pospolity, opasły i bezczelnie ograniczony. Wyglądał jota w jotę jak specjalista od robót kanalizacyjnych, który przyszedł z rachunkiem.",
+  "start": 1856.07
+ },
+ {
+  "i": 141,
+  "pl": "Pierwszy sekretarz ambasady nabrał specjalnego wyobrażenia o tej kategorii pracowników, czytując od czasu do czasu amerykańskie humoreski; uważał ich za wcielenie nieuctwa i podstępnej gnuśności.",
+  "start": 1875.31
+ },
+ {
+  "i": 142,
+  "pl": "A więc to był ów znakomity, zaufany tajny agent, tak dalece tajny, że w oficjalnej, półoficjalnej i poufnej korespondencji nieboszczyka barona Stott-Wartenheima określano go zawsze tylko symbolem Δ;",
+  "start": 1887.71
+ },
+ {
+  "i": 143,
+  "pl": "słynny agent Δ, którego ostrzeżenia zmieniały plany i daty królewskich, cesarskich, wielkoksiążęcych podróży, a czasem były przyczyną ich zaniechania! To indywiduum!",
+  "start": 1902.55
+ },
+ {
+  "i": 144,
+  "pl": "Tu pan Władimir pozwolił sobie w duchu na gwałtowny wybuch szyderczej wesołości, wywołanej po części własnym zdumieniem, które uznał za naiwne; głównie jednak rozśmieszyła go myśl o żałowanym powszechnie baronie Stott- -Wartenheimie.",
+  "start": 1914.03
+ },
+ {
+  "i": 145,
+  "pl": "Świętej pamięci ekscelencja, którego najwyższa łaska cesarskiego władcy narzuciła jako ambasadora kilku niechętnym ministrom spraw zagranicznych, cieszył się za życia opinią łatwowiernego pesymisty. Miał manię na punkcie rewolucji społecznej.",
+  "start": 1927.59
+ },
+ {
+  "i": 146,
+  "pl": "Wyobrażał sobie, że jest dyplomatą, który ze specjalnego wyroku przeznaczenia stanie się świadkiem kresu dyplomacji i poniekąd kresu świata w straszliwym przewrocie demokratycznym. Jego prorocze i żałosne raporty były w ciągu lat przedmiotem dowcipów po różnych ministerstwach spraw zagranicznych.",
+  "start": 1943.39
+ },
+ {
+  "i": 147,
+  "pl": "Mówiono, że na łożu śmierci zawołał (podczas wizyty swego cesarskiego władcy i przyjaciela): „Nieszczęsna Europo! Zepsucie twych dzieci doprowadzi cię do zguby!”.",
+  "start": 1960.61
+ },
+ {
+  "i": 148,
+  "pl": "Ten Stott-Wartenheim był ofiarą pierwszego lepszego łajdackiego blagiera, jaki mu się nawinął — myślał Władimir, uśmiechając się niewyraźnie do Verloca.",
+  "start": 1971.45
+ },
+ {
+  "i": 149,
+  "pl": "— Powinien pan czcić pamięć barona Stott-Wartenheima — wykrzyknął nagle.",
+  "start": 1982.66
+ },
+ {
+  "i": 150,
+  "pl": "Spuszczona twarz Verloca wyrażała posępną udrękę i znużenie.",
+  "start": 1987.77
+ },
+ {
+  "i": 151,
+  "pl": "— Pozwoli mi pan zauważyć — rzekł — że przyszedłem tu wezwany listownym rozkazem. Dotychczas w ciągu jedenastu lat byłem tu tylko dwa razy i oczywiście nigdy o jedenastej rano. Nie jest rzeczą rozsądną wzywać mnie o tej porze. A gdyby mnie przypadkiem spostrzegli? Miałbym się z pyszna.",
+  "start": 1992.4
+ },
+ {
+  "i": 152,
+  "pl": "Pan Władimir wzruszył ramionami.",
+  "start": 2012.19
+ },
+ {
+  "i": 153,
+  "pl": "— Przestałbym być użyteczny — gorączkował się Verloc.",
+  "start": 2014.66
+ },
+ {
+  "i": 154,
+  "pl": "— To jest pańska sprawa — mruknął pan Władimir z łagodną brutalnością. — Gdy pan przestanie być użyteczny, przestaniemy się panem posługiwać. Tak. Natychmiast. Szlus. Zostanie pan… — Pierwszy sekretarz zmarszczył brwi i urwał, szukając należycie dosadnego określenia;",
+  "start": 2019.0
+ },
+ {
+  "i": 155,
+  "pl": "rozjaśnił się natychmiast, błysnąwszy wspaniałą bielą zębów w kpiącym uśmiechu. — Zostanie pan wylany — wygarnął z okrucieństwem.",
+  "start": 2038.37
+ },
+ {
+  "i": 156,
+  "pl": "Raz jeszcze musiał Verloc użyć całej siły woli, aby zwalczyć uczucie omdlałości jakby spływającej po nogach, uczucie, które natchnęło ongi jakiegoś nieboraka do trafnego określenia: „dusza uciekła mi w pięty”. Pan Verloc, świadom tego uczucia, podniósł odważnie głowę.",
+  "start": 2049.01
+ },
+ {
+  "i": 157,
+  "pl": "Pan Władimir zniósł jego tępy, badawczy wzrok z najzupełniejszą pogodą.",
+  "start": 2065.77
+ },
+ {
+  "i": 158,
+  "pl": "— Czego nam teraz potrzeba, to jakiegoś krzepiącego zastrzyku dla konferencji mediolańskiej — rzekł lekko. — Debaty nad międzynarodową akcją w celu stłumienia zbrodni politycznych nie doprowadzą do niczego. Anglia ociąga się.",
+  "start": 2072.9
+ },
+ {
+  "i": 159,
+  "pl": "Ten kraj ma bzika na punkcie sentymentalnego szacunku dla swobody indywidualnej. Wszystko się w człowieku gotuje na myśl, że pierwszemu lepszemu z pana przyjaciół wystarcza po prostu przebyć Kanał Angielski²⁶, aby…",
+  "start": 2089.08
+ },
+ {
+  "i": 160,
+  "pl": "— Dzięki temu mam ich wszystkich na oku — przerwał Verloc chrypliwie.",
+  "start": 2103.22
+ },
+ {
+  "i": 161,
+  "pl": "— Byłoby znacznie rozsądniej mieć ich wszystkich pod kluczem. Anglia musi zrównać się pod tym względem z innymi krajami. Głupia bourgeoisie²⁷ tego kraju stała się wspólniczką właśnie tych ludzi, którzy dążą do wyrzucenia jej z własnych domów, aby wyzdychała po rowach.",
+  "start": 2108.63
+ },
+ {
+  "i": 162,
+  "pl": "A przecież burżuazja trzyma jeszcze w ręku siłę polityczną; gdybyż miała dość rozsądku, aby użyć jej dla swej obrony. Pan zgodzi się chyba z tym, że klasy średnie są głupie?",
+  "start": 2125.71
+ },
+ {
+  "i": 163,
+  "pl": "Pan Verloc przytwierdził ochrypłym głosem:",
+  "start": 2139.18
+ },
+ {
+  "i": 164,
+  "pl": "— O tak.",
+  "start": 2143.07
+ },
+ {
+  "i": 165,
+  "pl": "— Ci ludzie pozbawieni są wyobraźni. Zaślepia ich idiotyczna próżność. Trzeba koniecznie napędzić im teraz porządnego stracha. Oto chwila stosowna do puszczenia w ruch pańskich przyjaciół. Wezwałem tu pana, bo chcę przedstawić panu swój plan.",
+  "start": 2145.44
+ },
+ {
+  "i": 166,
+  "pl": "I pan Władimir wyniosłym tonem zaczął rozwijać swój projekt z pogardliwą łaskawością, zdradzając tak wielką nieznajomość istotnych celów, pojęć i metod świata rewolucyjnego, że Verloc zdumiał się w duchu. Pierwszy sekretarz nie odróżniał skutków od przyczyn w sposób niedopuszczalny;",
+  "start": 2161.68
+ },
+ {
+  "i": 167,
+  "pl": "mieszał najwybitniejszych propagatorów idei z impulsywnymi zamachowcami; sądził, że organizacja istnieje tam, gdzie z natury rzeczy istnieć nie mogła;",
+  "start": 2179.04
+ },
+ {
+  "i": 168,
+  "pl": "mówił o socjalistycznej partii rewolucyjnej to jak o znakomicie zorganizowanej armii, posłusznej na skinienie wodzów, to znów jak o luźnej grupie zbójeckich straceńców obozujących w górskim wąwozie.",
+  "start": 2187.54
+ },
+ {
+  "i": 169,
+  "pl": "Pan Verloc otworzył raz usta, aby zaprzeczyć, ale wstrzymało go podniesienie dużej, kształtnej, białej ręki. Wkrótce ogarnął go taki strach, że nie usiłował nawet protestować. Słuchał zastygły w lęku, co wyglądało na bezruch wytężonej uwagi.",
+  "start": 2200.8
+ },
+ {
+  "i": 170,
+  "pl": "— Chodzi o szereg gwałtów — ciągnął spokojnie pan Władimir — nie tylko obmyślonych, ale i wykonanych tu, w Anglii; w innym wypadku nie przydadzą się na nic, nie sprawią wrażenia.",
+  "start": 2219.1
+ },
+ {
+  "i": 171,
+  "pl": "Pana przyjaciele mogliby podpalić pół kontynentu, a nie zjednaliby wcale tutejszej opinii publicznej do wprowadzenia powszechnych praw represyjnych. Anglicy nie widzą dalej niż koniec swego nosa.",
+  "start": 2231.46
+ },
+ {
+  "i": 172,
+  "pl": "Pan Verloc odchrząknął, ale odwaga zawiodła go i nic nie powiedział.",
+  "start": 2243.93
+ },
+ {
+  "i": 173,
+  "pl": "— Takie zamachy nie potrzebują być szczególnie krwawe — ciągnął pan Władimir, jakby wygłaszając naukowy odczyt — ale muszą wzbudzić dostateczny lęk… muszą wywrzeć swój skutek. Ich ofiarą mogłyby paść na przykład budynki. Co jest obecnie największym fetyszem całej bourgeoisie, panie Verloc, no?",
+  "start": 2249.02
+ },
+ {
+  "i": 174,
+  "pl": "Pan Verloc rozłożył ręce i wzruszył lekko ramionami.",
+  "start": 2268.77
+ },
+ {
+  "i": 175,
+  "pl": "— Pan jest za leniwy, aby myśleć — objaśnił ten gest pan Władimir. — Niech pan uważa na to, co mówię. Fetyszem dnia dzisiejszego nie jest ani królewski majestat, ani religia. Trzeba więc zostawić w spokoju pałace i kościoły. Rozumie pan, o co mi chodzi, panie Verloc?",
+  "start": 2273.04
+ },
+ {
+  "i": 176,
+  "pl": "Pan Verloc dał ujście swemu przerażeniu i wzgardzie, imając się żartobliwego tonu:",
+  "start": 2291.9
+ },
+ {
+  "i": 177,
+  "pl": "— Świetnie. A co by pan powiedział o ambasadach? Szereg zamachów na różne ambasady — zaczął, ale nie mógł wytrzymać chłodnego, czujnego wzroku pana Władimira.",
+  "start": 2298.21
+ },
+ {
+  "i": 178,
+  "pl": "— Widzę, że pan umie być dowcipny — zauważył niedbale pierwszy sekretarz. — Doskonale. Może to ożywi pańskie krasomówstwo na kongresach socjalistycznych. Ale ten pokój nie jest terenem do tego odpowiednim. Będzie dla pana daleko bezpieczniej, jeśli pan przysłucha się uważnie temu, co mówię.",
+  "start": 2310.08
+ },
+ {
+  "i": 179,
+  "pl": "Ponieważ wezwano pana dla dostarczenia faktów, a nie plecenia bajek o żelaznym wilku, powinien pan wyciągnąć korzyść z tego, co zadaję sobie trud panu wyjaśnić. Najświętszym fetyszem współczesnym jest nauka. Dlaczego pan nie skrzyknie swoich przyjaciół, aby rzucili się na tego bałwana, co?",
+  "start": 2330.49
+ },
+ {
+  "i": 180,
+  "pl": "Przecież i on należy do instytucji, które trzeba sprzątnąć, nim nastanie era Przyszłości Proletariatu.",
+  "start": 2349.34
+ },
+ {
+  "i": 181,
+  "pl": "Pan Verloc nic nie odpowiedział. Bał się otworzyć usta, aby nie jęknąć.",
+  "start": 2355.96
+ },
+ {
+  "i": 182,
+  "pl": "— Musi pan do tego się zabrać. Zamach na koronowaną głowę albo na prezydenta jest w pewnej mierze sensacją, ale nie w takim stopniu, co dawniej. Zamachy stały się częścią ogólnego pojęcia o życiu wszystkich przywódców państw. To jest już prawie banalne… zwłaszcza odkąd zamordowano tylu prezydentów.",
+  "start": 2361.52
+ },
+ {
+  "i": 183,
+  "pl": "A teraz rozpatrzmy zamach na, powiedzmy, kościół. Naturalnie, że w pierwszej chwili wygląda to dość groźnie, ale nie wywrze tak wielkiego skutku, jak by przeciętnemu człowiekowi mogło się zdawać.",
+  "start": 2383.13
+ },
+ {
+  "i": 184,
+  "pl": "Choćby taki zamach był w założeniu na wskroś rewolucyjny i anarchistyczny, znajdą się zawsze durnie, którzy mu przypiszą cechy manifestacji antyreligijnej. A to by odjęło zamachowi specyficznie niepokojące znaczenie, jakie chcemy mu nadać.",
+  "start": 2396.29
+ },
+ {
+  "i": 185,
+  "pl": "Zamach na restaurację lub teatr mógłby z tych samych przyczyn uchodzić za objaw namiętności niemającej nic wspólnego z polityką: za rozwścieczenie głodnego człowieka, za akt zemsty społecznej. Zużyło się to wszystko i nie jest już pouczające jako poglądowa lekcja rewolucyjnego anarchizmu.",
+  "start": 2411.28
+ },
+ {
+  "i": 186,
+  "pl": "Każda gazeta ma pod ręką gotowe frazesy służące do usprawiedliwiania takich objawów. Wykładam panu ze swego punktu widzenia filozofię rzucania bomb; z punktu widzenia, któremu pan podobno służył w ciągu ostatnich jedenastu lat. Staram się mówić w sposób dla pana przystępny.",
+  "start": 2432.21
+ },
+ {
+  "i": 187,
+  "pl": "Wrażliwość klasy, którą atakujecie, stępia się szybko. Własność wydaje się tym ludziom rzeczą niezniszczalną. Nie można liczyć na stałość ich uczuć, czy to będzie litość, czy trwoga.",
+  "start": 2450.58
+ },
+ {
+  "i": 188,
+  "pl": "Jeśli zamach za pomocą bomby ma wywrzeć wpływ na opinię publiczną, musi być czymś efektowniejszym niż akt zemsty lub terroryzmu. Musi dążyć tylko do zniszczenia. Zniszczenie i nic innego, każdy inny cel musi być wykluczony.",
+  "start": 2463.37
+ },
+ {
+  "i": 189,
+  "pl": "Wy, anarchiści, powinniście dowieść czarno na białym, że jesteście bezwzględnie zdecydowani zmieść z oblicza ziemi cały ustrój społeczny. Ale jak wbić ten przerażający absurd w głowy klasy średniej, tak aby go jasno pojęła? Oto jest pytanie!",
+  "start": 2477.21
+ },
+ {
+  "i": 190,
+  "pl": "Odpowiedź brzmi: trzeba skierować zamach niszczycielski przeciw czemuś, co jest poza obrębem zwykłych ludzkich namiętności. Naturalnie mamy jeszcze sztukę. Bomba w National Gallery²⁸ wywołałaby pewien hałas. Ale to by nie wyglądało dość poważnie.",
+  "start": 2493.9
+ },
+ {
+  "i": 191,
+  "pl": "Przypominałoby rozbicie w czyimś domu okien od podwórza; a tymczasem jeśli się chce człowiekiem wstrząsnąć, trzeba przynajmniej zerwać dach. Sztuka nie była nigdy fetyszem burżuazji. Taki zamach na sztukę wywołałby z początku trochę krzyku, ale z czyjej strony? Ze strony artystów…",
+  "start": 2510.99
+ },
+ {
+  "i": 192,
+  "pl": "krytyków sztuki i tym podobnych… ludzi bez znaczenia. Nikt nie zwraca uwagi na to, co mówią. Lecz istnieje jeszcze wiedza… nauka. Wierzy w nią każdy dureń posiadający dochody. Jest przekonany, że nauka coś znaczy, choć nie wie dlaczego. To najświętszy z fetyszów.",
+  "start": 2530.16
+ },
+ {
+  "i": 193,
+  "pl": "Wszyscy, psiakrew, profesorowie są w głębi duszy radykałami. Trzeba pokazać, że tej ich dostojnej kukle grozi także zagłada, że kukła będzie musiała ustąpić wobec Przyszłości Proletariatu. Wycie wszystkich intelektualnych idiotów powinno się przysłużyć pracom konferencji mediolańskiej.",
+  "start": 2549.13
+ },
+ {
+  "i": 194,
+  "pl": "Będą rozpisywali się o tym w gazetach. Ich oburzenia nikt nie będzie podejrzewać, ponieważ żadne interesy materialne jawnie tu w grę nie wejdą; zaniepokoi to do głębi egoizm klasy, na której trzeba wywrzeć wrażenie. Ci ludzie wierzą, że w jakiś tajemniczy sposób nauka jest źródłem ich dobrobytu.",
+  "start": 2566.89
+ },
+ {
+  "i": 195,
+  "pl": "Wierzą w to. A okrutny absurd takiego zamachu dotknie ich głębiej niż wysadzenie w powietrze całej ulicy lub teatru zatłoczonego bliźnimi. O tego rodzaju fakcie mogą zawsze powiedzieć: „Ach, to tylko nienawiść klasowa”.",
+  "start": 2585.46
+ },
+ {
+  "i": 196,
+  "pl": "Ale co powiedzieć na czyn niszczycielskiej dzikości tak bezsensownej, że aż niezrozumiałej, niewytłumaczalnej, prawie nie do pomyślenia — po prostu obłąkanej? Tylko obłęd jest naprawdę przerażający, ponieważ nie można nań zaradzić czy to groźbami, czy perswazją, czy przekupstwem.",
+  "start": 2602.03
+ },
+ {
+  "i": 197,
+  "pl": "Zresztą jestem człowiekiem cywilizowanym. Ani mi w głowie nakazywać, aby pan zorganizował zwykłe jatki, nawet gdybym oczekiwał, że dadzą najlepsze wyniki. Bo po jatkach nie spodziewałbym się wyników, o jakie mi chodzi. Morderstwo jest na porządku dziennym. To niemal instytucja.",
+  "start": 2619.91
+ },
+ {
+  "i": 198,
+  "pl": "Dlatego też zamach musi być skierowany przeciwko wiedzy — przeciwko nauce. Ale nie każda nauka do tego się nadaje. Taki atak powinien razić jaskrawym bezsensem, jak nieuzasadnione bluźnierstwo.",
+  "start": 2637.39
+ },
+ {
+  "i": 199,
+  "pl": "Ponieważ bomby są waszym sposobem wypowiadania się, efekt byłby najskuteczniejszy, gdyby się dało rzucić bombę na czystą matematykę. Ale to niemożliwe. Usiłowałem pana oświecić; przedstawiłem pańską użyteczność z punktu widzenia wyższej filozofii i wysunąłem nieco przydatnych argumentów.",
+  "start": 2650.33
+ },
+ {
+  "i": 200,
+  "pl": "Praktyczne zastosowanie mego wykładu obchodzi przede wszystkim pana. Lecz z chwilą, gdy postanowiłem z panem się rozmówić, poświęciłem również trochę uwagi praktycznej stronie tej kwestii. Co by pan pomyślał o zamachu na astronomię?",
+  "start": 2671.74
+ },
+ {
+  "i": 201,
+  "pl": "Już od pewnego czasu bezruch pana Verloca, stojącego przy fotelu, przypominał stan bezwładnej zapaści — coś jakby bierną nieczułość przerywaną lekkimi konwulsyjnymi drgawkami, które można czasem zauważyć u psa leżącego przed kominkiem i dręczonego senną zmorą.",
+  "start": 2688.7
+ },
+ {
+  "i": 202,
+  "pl": "Brzmiało to jak niespokojne psie warknięcie, gdy pan Verloc powtórzył za sekretarzem:",
+  "start": 2705.44
+ },
+ {
+  "i": 203,
+  "pl": "— Na astronomię.",
+  "start": 2710.12
+ },
+ {
+  "i": 204,
+  "pl": "Nie zdołał się jeszcze otrząsnąć z oszołomienia, w które popadł, usiłując nadążyć myślą za słowami padającymi szybko, dobitnie z ust pana Władimira. Przekraczało to chłonność jego mózgu. Ogarnął go gniew. Ten gniew podszyty był nieufnością.",
+  "start": 2712.88
+ },
+ {
+  "i": 205,
+  "pl": "Nagle zaświtało mu w głowie, że wszystko to jest skomplikowanym żartem. Pan Władimir pokazał w uśmiechu białe zęby i na jego okrągłej, pulchnej twarzy, przechylonej z wyrazem zadowolenia nad zjeżonym krawatem, pojawiły się dołki.",
+  "start": 2729.5
+ },
+ {
+  "i": 206,
+  "pl": "Faworyt inteligentnych pań z towarzystwa upozował się w taki sposób, jakby mówił w salonie wykwintne dowcipy. Pochylił się naprzód w fotelu i podniósł białą rękę, rzekłbyś, delikatnie trzymając swe subtelne uwagi między kciukiem a palcem wskazującym.",
+  "start": 2743.88
+ },
+ {
+  "i": 207,
+  "pl": "— Nic lepszego nie wymyślimy. Taki zamach łączy w sobie możliwie największy szacunek dla ludzkiego życia z najgroźniejszą głupotą i dzikością. Niechże sprytni dziennikarze dowiodą swym czytelnikom, że znalazł się wśród proletariatu człowiek mający osobisty żal do astronomii.",
+  "start": 2761.23
+ },
+ {
+  "i": 208,
+  "pl": "Tu już argument głodu nie da się zastosować, nieprawdaż? A przy tym mój pomysł ma jeszcze inne dobre strony. Cały świat cywilizowany wie, co to jest Greenwich. Nawet czyściciele butów w podziemiach stacji Charing Cross²⁹ coś o tym wiedzą. Rozumie pan?",
+  "start": 2778.03
+ },
+ {
+  "i": 209,
+  "pl": "Twarz pana Władimira, znana z pełnej humoru uprzejmości w kołach najlepszego towarzystwa, promieniała cynicznym zadowoleniem z własnej osoby; zadziwiłoby to inteligentne kobiety przepadające za wytwornym dowcipem sekretarza.",
+  "start": 2796.86
+ },
+ {
+  "i": 210,
+  "pl": "— Tak — ciągnął dalej z pogardliwym uśmiechem — wysadzenie w powietrze pierwszego południka powinno wywołać ryk nienawiści.",
+  "start": 2811.55
+ },
+ {
+  "i": 211,
+  "pl": "— Trudna sprawa — mruknął pan Verloc, czując, że to jedyna rzecz, którą może bezpiecznie powiedzieć.",
+  "start": 2823.33
+ },
+ {
+  "i": 212,
+  "pl": "— Cóż w tym trudnego? Przecież pan ma całą tę bandę pod ręką i to samą ich śmietankę. Jest tu ten stary terrorysta Yundt. Widuję go prawie co dzień, jak chodzi po Piccadilly w zielonym płaszczu. A Michaelis, apostoł na urlopie… nie będzie pan chyba twierdził, że pan nie wie, gdzie on się znajduje!",
+  "start": 2829.95
+ },
+ {
+  "i": 213,
+  "pl": "Bo gdyby pan nie wiedział, to ja mógłbym pana poinformować — ciągnął groźnie pan Władimir. — Jeśli pan sobie wyobraża, że tylko pan pobiera pensję z tajnych funduszów, to się pan myli.",
+  "start": 2850.21
+ },
+ {
+  "i": 214,
+  "pl": "Ta niczym nie uzasadniona uwaga sprawiła, że pan Verloc przestąpił z nogi na nogę.",
+  "start": 2864.02
+ },
+ {
+  "i": 215,
+  "pl": "— No a tamta ich paczka z Lozanny³⁰? Czyż się wszyscy tutaj nie zbiegli na pierwszą wiadomość o konferencji w Mediolanie? Anglia nie ma za grosz rozumu.",
+  "start": 2870.44
+ },
+ {
+  "i": 216,
+  "pl": "— To będzie dużo kosztowało — rzekł pan Verloc, tknięty jakimś instynktem.",
+  "start": 2883.92
+ },
+ {
+  "i": 217,
+  "pl": "— Na to mnie pan nie nabierze — odparował pan Władimir z zadziwiająco dobrym angielskim akcentem. — Otrzyma pan swoją comiesięczną pensję i nic więcej, póki się coś nie stanie. A jeśli się coś nie stanie, i to bardzo prędko, nawet pensji pan nie zobaczy. Jakie jest pana oficjalne zajęcie?",
+  "start": 2890.34
+ },
+ {
+  "i": 218,
+  "pl": "Z czego się pan niby to utrzymuje?",
+  "start": 2911.92
+ },
+ {
+  "i": 219,
+  "pl": "— Prowadzę sklep — odrzekł pan Verloc.",
+  "start": 2915.46
+ },
+ {
+  "i": 220,
+  "pl": "— Sklep! Jaki sklep?",
+  "start": 2919.02
+ },
+ {
+  "i": 221,
+  "pl": "— Towary piśmienne, gazety. Moja żona…",
+  "start": 2922.58
+ },
+ {
+  "i": 222,
+  "pl": "— Pańska co? — przerwał pan Władimir swym gardłowym środkowoazjatyckim tonem.",
+  "start": 2926.48
+ },
+ {
+  "i": 223,
+  "pl": "— Moja żona. — Pan Verloc trochę podniósł ochrypły głos. — Jestem żonaty.",
+  "start": 2934.15
+ },
+ {
+  "i": 224,
+  "pl": "— Co za bujda — wykrzyknął sekretarz z niekłamanym zdumieniem. — Żonaty! I to ma być wyznawca anarchizmu! Co znaczą te bzdury? Ale to chyba tylko się tak nazywa. Anarchiści się nie żenią. Każdy o tym wie. Nie wolno im. To by było odszczepieństwo.",
+  "start": 2941.47
+ },
+ {
+  "i": 225,
+  "pl": "— Moja żona nie jest anarchistką — mruknął opryskliwie pan Verloc. — A przy tym nic to pana nie obchodzi.",
+  "start": 2963.82
+ },
+ {
+  "i": 226,
+  "pl": "— Owszem, obchodzi — rąbnął pan Władimir. — Zaczynam się przekonywać, że pan wcale nie jest odpowiedni do pracy, którą panu powierzono. Przecież pańskie małżeństwo musiało pana w waszym świecie zupełnie zdyskredytować. Nie mógł pan bez tego się obejść? Więc to takie cnotliwe przywiązanie… co?",
+  "start": 2972.9
+ },
+ {
+  "i": 227,
+  "pl": "Tu małżeństwo, tam miłostka i jakiż może być z pana pożytek!",
+  "start": 2995.86
+ },
+ {
+  "i": 228,
+  "pl": "Pan Verloc wydął policzki, wypuścił gwałtownie powietrze i na tym koniec. Uzbroił się w cierpliwość. Nie mogło to już trwać bardzo długo. Pierwszy sekretarz stał się nagle bardzo zwięzły, obojętny, stanowczy.",
+  "start": 3000.92
+ },
+ {
+  "i": 229,
+  "pl": "— A teraz może pan odejść — powiedział. — Musi pan sprowokować zamach dynamitowy. Daję panu na to miesiąc. Posiedzenia konferencji zawieszono. Zanim się znów rozpoczną, musi się tutaj coś stać, albo stosunki nasze się skończą.",
+  "start": 3014.9
+ },
+ {
+  "i": 230,
+  "pl": "Uderzył w inny ton z podstępną zmiennością.",
+  "start": 3033.34
+ },
+ {
+  "i": 231,
+  "pl": "— Proszę rozważyć moją filozofię, panie… panie Verloc — rzekł tonem jakby łaskawego szyderstwa, wskazując drzwi. — Niech pan zaatakuje pierwszy południk. Pan nie zna burżuazji tak dobrze jak ja. Jej wrażliwość jest przytępiona. Pierwszy południk. Sądzę, że to najlepsze i przy tym najłatwiejsze.",
+  "start": 3038.26
+ },
+ {
+  "i": 232,
+  "pl": "Wstał z fotela; jego cienkie, wrażliwe wargi drgały kapryśnie, gdy śledził w lustrze nad kominkiem pana Verloca wycofującego się z pokoju ciężkim krokiem, z kapeluszem i laską w ręku. Drzwi się zamknęły.",
+  "start": 3064.39
+ },
+ {
+  "i": 233,
+  "pl": "Służący w liberii ukazał się nagle na korytarzu; poprowadził pana Verloca inną drogą i wypuścił go przez małe drzwi w rogu dziedzińca. Portier stojący w bramie zignorował zupełnie jego wyjście i pan Verloc szedł z powrotem drogą swej rannej pielgrzymki jak we śnie — jak w złym śnie.",
+  "start": 3078.24
+ },
+ {
+  "i": 234,
+  "pl": "Oderwanie pana Verloca od materialnego świata było tak zupełne, że choć jego śmiertelna powłoka nie zdążała zbyt śpiesznie przez ulice, druga część jego istoty, ta, której tylko niesprawiedliwy brutal mógłby odmówić nieśmiertelności, znalazła się u drzwi sklepu natychmiast, jakby uniesiona z zachodu na wschód na skrzydłach potężnego wiatru.",
+  "start": 3096.22
+ },
+ {
+  "i": 235,
+  "pl": "Poszedł prosto za ladę i siadł na drewnianym krześle. Nikt się nie ukazał i nie zamącił jego samotności. Stevie, opięty w zielony bajowy³¹ fartuch, pilny i sumienny, zamiatał właśnie i odkurzał górne schody, jakby się bawiąc;",
+  "start": 3116.78
+ },
+ {
+  "i": 236,
+  "pl": "pani Verloc zaś, ostrzeżona w kuchni przez grzechot pękniętego dzwonka, podeszła tylko do oszklonych drzwi i odsunąwszy firankę, zajrzała do ciemnego sklepu. Widząc, że jej mąż tam siedzi, barczysty, posępny, z kapeluszem zsuniętym na tył głowy, wróciła natychmiast do gotowania.",
+  "start": 3131.08
+ },
+ {
+  "i": 237,
+  "pl": "Mniej więcej po upływie godziny zdjęła bratu zielony bajowy fartuch i poleciła mu umyć ręce i twarz rozkazującym tonem, którego używała zawsze w tych okolicznościach od jakichś piętnastu lat — to jest odkąd przestała sama go myć.",
+  "start": 3149.84
+ },
+ {
+  "i": 238,
+  "pl": "Po chwili, nakładając jedzenie na półmisek, rzuciła okiem na tę twarz i ręce; Stevie pokazywał je właśnie, podszedłszy do siostry z miną pewną siebie, pod którą krył się nękający go stale niepokój.",
+  "start": 3163.9
+ },
+ {
+  "i": 239,
+  "pl": "Dawniej grożono mu gniewem ojca, w razie gdyby zaniedbał się umyć, lecz obecnie niewzruszony spokój pana Verloca w życiu domowym uniemożliwiał wszelką wzmiankę o gniewie, gdyż nawet biedny Stevie nie mógłby w to uwierzyć.",
+  "start": 3175.74
+ },
+ {
+  "i": 240,
+  "pl": "Twierdziło się zatem, że pan Verloc byłby niewypowiedzianie zmartwiony i zgorszony, gdyby zauważył w czasie posiłku jakiekolwiek wykroczenie przeciw czystości. Po śmierci ojca znaczną pociechą była dla Winnie myśl, że już nie potrzebuje drżeć o biednego Steviego.",
+  "start": 3189.02
+ },
+ {
+  "i": 241,
+  "pl": "Nie mogła znieść, kiedy wyrządzano mu krzywdę. Doprowadzało ją to do szału. Jeszcze jako mała dziewczynka często z pałającymi oczami broniła braciszka przed porywczym kupcem. Ale teraz nic w jej wyglądzie nie świadczyło, aby była zdolna do gwałtownych wystąpień.",
+  "start": 3204.48
+ },
+ {
+  "i": 242,
+  "pl": "Skończyła przygotowywać półmiski. Stół w saloniku był już nakryty. Podszedłszy do schodów, zawołała na matkę. Po tym otworzyła szklane drzwi prowadzące do sklepu i rzekła spokojnie: „Adolfie!”. Pan Verloc siedział ciągle w tej samej pozie; widać przez półtorej godziny nie ruszył ani ręką, ani nogą.",
+  "start": 3220.82
+ },
+ {
+  "i": 243,
+  "pl": "Podniósł się ciężko bez słowa i przyszedł na obiad w palcie i kapeluszu. Jego milczenie nie było samo w sobie niezwykłe ani niepokojące w tym mieszkaniu za mrocznym sklepem o szmatławych, podejrzanych towarach, w cieniu niechlujnej uliczki, rzadko nawiedzanej przez słońce.",
+  "start": 3240.44
+ },
+ {
+  "i": 244,
+  "pl": "Lecz owego dnia milczenie pana Verloca było najwidoczniej tak brzemienne myślami, że wywarło wrażenie na obu kobietach. Siedziały, nie odzywając się ani słowem, i śledziły bacznym okiem biednego Steviego, w obawie, aby nie dostał napadu gadulstwa.",
+  "start": 3256.38
+ },
+ {
+  "i": 245,
+  "pl": "Stevie siedział naprzeciw pana Verloca, bardzo grzeczny, spokojny i patrzył bezmyślnie przed siebie. Niemałym wysiłkiem w życiu obu kobiet było ciągłe troszczenie się o to, żeby powstrzymać Steviego od przeszkadzania panu domu w taki czy inny sposób.",
+  "start": 3270.52
+ },
+ {
+  "i": 246,
+  "pl": "„Chłopiec”, jak go nazywały czule między sobą, był dla nich źródłem tego rodzaju niepokojów prawie od dnia swych urodzin. Posiadanie tak dziwacznego potomka napawało jego ojca upokorzeniem, które ujawniało się skłonnością do brutalnego traktowania Steviego;",
+  "start": 3286.28
+ },
+ {
+  "i": 247,
+  "pl": "albowiem właściciel sklepu spożywczego odznaczał się delikatnością uczuć, a jego ból jako człowieka i jako ojca był najzupełniej szczery.",
+  "start": 3301.64
+ },
+ {
+  "i": 248,
+  "pl": "Z czasem trzeba było pilnować, aby Stevie nie naprzykrzał się wynajmującym pokoje lokatorom, którzy są dziwaczną kategorią ludzi i odznaczają się drażliwością. A przy tym niepokój o przyszłość, jaka czekała biednego chłopca, dręczył stale obie kobiety.",
+  "start": 3310.92
+ },
+ {
+  "i": 249,
+  "pl": "Wizje przytułku dla niedorozwiniętych prześladowały matkę Steviego, gdy się krzątała po pokoju śniadaniowym w suterenie obskurnego domu w dzielnicy Belgravia.",
+  "start": 3327.78
+ },
+ {
+  "i": 250,
+  "pl": "— Moja droga, gdybyś nie znalazła takiego dobrego męża — mawiała często do córki — nie wiem, co by się stało z tym biednym chłopcem.",
+  "start": 3338.5
+ },
+ {
+  "i": 251,
+  "pl": "Pan Verloc poświęcał Steviemu tyleż uwagi, co człowiek obojętny dla zwierząt ulubionemu kotowi swej żony; była to w gruncie rzeczy uwaga tego samego rodzaju, życzliwa i obojętna. Obie kobiety przyznawały w cichości ducha, że właściwie niczego więcej nie można się było spodziewać.",
+  "start": 3347.42
+ },
+ {
+  "i": 252,
+  "pl": "Wystarczyło to, aby Verloc zdobył sobie szacunek i wdzięczność teściowej. Z początku staruszka, która nie spotkała się nigdy z przyjaźnią i którą ciężkie życie usposobiło sceptycznie, pytała czasem z niepokojem:",
+  "start": 3365.42
+ },
+ {
+  "i": 253,
+  "pl": "— Jak myślisz, kochanie, czy to twego męża nie drażni, że wciąż ma Steviego przed oczami?",
+  "start": 3377.04
+ },
+ {
+  "i": 254,
+  "pl": "Na to Winnie odpowiadała zwykle przeczącym ruchem głowy. Raz jednak odparła posępnie i wyzywająco:",
+  "start": 3384.16
+ },
+ {
+  "i": 255,
+  "pl": "— Musiałby się najpierw mną znudzić.",
+  "start": 3392.13
+ },
+ {
+  "i": 256,
+  "pl": "Zapadło długie milczenie. Matka, siedząc z nogami opartymi o stołeczek, zdawała się zgłębiać tę odpowiedź, oszołomiona jej kobiecą przenikliwością. Staruszka nigdy nie mogła właściwie pojąć, dlaczego Winnie wyszła za pana Verloca.",
+  "start": 3395.45
+ },
+ {
+  "i": 257,
+  "pl": "Był to postępek bardzo rozsądny i oczywiście stało się jak najlepiej, ale dziewczyna mogła mieć przecież nadzieję, że znajdzie kogoś w wieku bardziej odpowiednim.",
+  "start": 3410.43
+ },
+ {
+  "i": 258,
+  "pl": "Swego czasu Winnie lubiła się przechadzać z pewnym spokojnym młodym człowiekiem, jedynym synem rzeźnika z sąsiedniej ulicy, pomagającym ojcu w sklepie. Prawda, że był zależny od ojca, ale interesy szły dobrze i miał świetne widoki. Kilka razy zabrał Winnie do teatru.",
+  "start": 3419.28
+ },
+ {
+  "i": 259,
+  "pl": "Potem, właśnie gdy matkę zdjęła obawa, że się zaręczą (bo cóż by była zrobiła sama z tym dużym gospodarstwem i Steviem na głowie), flirt nagle się skończył i Winnie przez jakiś czas wyglądała bardzo posępnie.",
+  "start": 3435.64
+ },
+ {
+  "i": 260,
+  "pl": "Ale zjawił się na szczęście pan Verloc, zajął frontowy pokój na pierwszym piętrze i nie wspominało się już więcej o młodym rzeźniku. To było doprawdy zrządzenie Opatrzności.",
+  "start": 3448.7
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

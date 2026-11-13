@@ -1,0 +1,1278 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to conrad-tajny-agent_011_x.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-10.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tajny agent · Rozdział X — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Tajny agent · Rozdział X · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="conrad-tajny-agent_011_x.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Nadinspektor, jadący szybko dorożką od Soho w stronę Westminsteru, wysiadł w samym środku imperium, nad którym słońce nigdy nie zachodzi⁷⁵. Salutowało mu kilku dzielnych policjantów; nie wydawali się szczególnie przejęci obowiązkiem czuwania nad tym dostojnym terenem.",
+  "start": 2.25
+ },
+ {
+  "i": 1,
+  "pl": "Nadinspektor dostał się przez portal bynajmniej nie wysoki w obręb parlamentu — przedmiotu czci wielu milionów ludzi — i tam spotkał się wreszcie z płochym rewolucjonistą Toodlesem.",
+  "start": 19.67
+ },
+ {
+  "i": 2,
+  "pl": "Ów schludny, miły młodzian ukrył zdziwienie, ujrzawszy tak prędko nadinspektora, którego polecono mu oczekiwać mniej więcej około północy. Uznał jego przedwczesne ukazanie się za niechybną oznakę tego, że sprawa, jakąkolwiek była, nie została załatwiona pomyślnie.",
+  "start": 31.17
+ },
+ {
+  "i": 3,
+  "pl": "Z natychmiastową gotowością do współczucia, która u sympatycznych młodzieńców kojarzy się często z wesołym usposobieniem, zmartwił się ze względu na Wielkiego Dostojnika — nazywał go „szefem” —",
+  "start": 47.27
+ },
+ {
+  "i": 4,
+  "pl": "a także i ze względu na nadinspektora, którego twarz wydała mu się złowróżbnie drewniana, bardziej niż kiedykolwiek — i niepomiernie długa.",
+  "start": 59.21
+ },
+ {
+  "i": 5,
+  "pl": "„Jakąż on ma cudaczną powierzchowność, wygląda zupełnie na cudzoziemca” — pomyślał, uśmiechając się doń już z daleka wesoło i życzliwie. Kiedy znaleźli się obok siebie, zaczął natychmiast mówić w dobrodusznej intencji, aby ukryć w powodzi słów kłopotliwą porażkę nadinspektora.",
+  "start": 69.93
+ },
+ {
+  "i": 6,
+  "pl": "Oświadczył, że jego zdaniem wielki atak, który groził wieczorem, spali na panewce. Jakiś podrzędny stronnik „tego bydlęcia Cheesemanna” zanudza niemiłosiernie bardzo nielicznych posłów bezwstydnie sfałszowaną statystyką.",
+  "start": 88.19
+ },
+ {
+  "i": 7,
+  "pl": "Toodles ma nadzieję, że posłowie będą się z nudów wymykać i lada chwila posiedzenie zostanie odroczone ze względu na brak quorum⁷⁶. Ale może ów poseł umyślnie tak mowę przeciąga, aby żarłok Cheesemann mógł swobodnie zjeść obiad.",
+  "start": 103.63
+ },
+ {
+  "i": 8,
+  "pl": "W każdym razie jemu, Toodlesowi, nie udało się namówić szefa, żeby poszedł do domu.",
+  "start": 118.19
+ },
+ {
+  "i": 9,
+  "pl": "— Z pewnością zaraz pana przyjmie. Siedzi sam w gabinecie i myśli o rybach ze wszystkich mórz — zakończył Toodles lekkim tonem. — Chodźmy.",
+  "start": 123.33
+ },
+ {
+  "i": 10,
+  "pl": "Mimo swej życzliwej natury młody prywatny sekretarz (pracujący honorowo) podlegał zwykłym ludzkim słabościom. Nie chciał zadrasnąć nadinspektora, który według niego wyglądał zupełnie jak człowiek mający na sumieniu jakąś wielką niezręczność.",
+  "start": 132.77
+ },
+ {
+  "i": 11,
+  "pl": "Ale ciekawość sekretarza była zbyt silna, aby się poddać współczuciu. Kiedy szli razem, Toodles nie mógł się powstrzymać i rzucił lekko przez ramię:",
+  "start": 147.67
+ },
+ {
+  "i": 12,
+  "pl": "— A jakże tam pańska szprotka?",
+  "start": 157.79
+ },
+ {
+  "i": 13,
+  "pl": "— Schwytana — odrzekł nadinspektor zwięźle, lecz tonem bynajmniej nie odpychającym.",
+  "start": 162.34
+ },
+ {
+  "i": 14,
+  "pl": "— Świetnie. Nie ma pan pojęcia, jak dalece ci wielcy ludzie nie znoszą małych rozczarowań.",
+  "start": 167.98
+ },
+ {
+  "i": 15,
+  "pl": "Wypowiedziawszy tę głęboką uwagę, doświadczony Toodles zdawał się namyślać. W każdym razie nie powiedział nic przez całe dwie sekundy. Wreszcie rzekł:",
+  "start": 173.84
+ },
+ {
+  "i": 16,
+  "pl": "— Bardzo się cieszę. Ale, proszę pana, czy to naprawdę taka drobnostka, jak pan twierdzi?",
+  "start": 183.9
+ },
+ {
+  "i": 17,
+  "pl": "— Wie pan co można zrobić ze szprotką? — zapytał z kolei nadinspektor.",
+  "start": 190.24
+ },
+ {
+  "i": 18,
+  "pl": "— Czasem kładzie się ją do pudełka od sardynek — zachichotał Toodles, którego erudycja w zakresie przemysłu rybnego była świeża i — w porównaniu z jego absolutną ignorancją we wszelkich innych sprawach przemysłu — olbrzymia.",
+  "start": 195.1
+ },
+ {
+  "i": 19,
+  "pl": "— Na hiszpańskim wybrzeżu są fabryki, gdzie się pakuje sardynki do pudełek, i…",
+  "start": 208.38
+ },
+ {
+  "i": 20,
+  "pl": "Nadinspektor przerwał początkującemu statyście.",
+  "start": 214.04
+ },
+ {
+  "i": 21,
+  "pl": "— Tak, tak. Ale czasem rzuca się z powrotem szprotkę do wody, aby złowić wieloryba.",
+  "start": 218.26
+ },
+ {
+  "i": 22,
+  "pl": "— Wieloryba? Fiu! — gwizdnął Toodles z zapartym oddechem. — Więc pan poluje na wieloryba?",
+  "start": 224.92
+ },
+ {
+  "i": 23,
+  "pl": "— Właściwie to nie. Zwierzyna, którą ścigam, podobniejsza jest do psa morskiego⁷⁷. Ale może pan nie wie, jak wygląda pies morski?",
+  "start": 234.24
+ },
+ {
+  "i": 24,
+  "pl": "— Owszem, wiem. Toniemy po szyję w specjalnych książkach… półki są nimi zapchane… dużo tam drzeworytów… To taka szkodliwa, obmierzła bestia o łotrowskim wyglądzie i gładkim pysku ozdobionym wąsami.",
+  "start": 244.15
+ },
+ {
+  "i": 25,
+  "pl": "— Jakbym go widział — potwierdził nadinspektor. — Tylko ten mój jest zupełnie wygolony. Pan go zna. Sprytna bestia.",
+  "start": 259.12
+ },
+ {
+  "i": 26,
+  "pl": "— Znam go? — rzekł Toodles z niedowierzaniem. — Nie mam pojęcia, gdzie mogłem z nim się spotkać.",
+  "start": 268.78
+ },
+ {
+  "i": 27,
+  "pl": "— W Klubie Podróżników — rzekł spokojnie nadinspektor. Usłyszawszy nazwę tak bardzo ekskluzywnego klubu, Toodles przystanął, jak gdyby się zląkł.",
+  "start": 276.11
+ },
+ {
+  "i": 28,
+  "pl": "— To niemożliwe — oświadczył, lecz w głosie jego zabrzmiała zgroza. — Co pan chce przez to powiedzieć? Członek klubu?",
+  "start": 286.5
+ },
+ {
+  "i": 29,
+  "pl": "— Honorowy — mruknął przez zęby nadinspektor.",
+  "start": 294.88
+ },
+ {
+  "i": 30,
+  "pl": "— Wielki Boże!",
+  "start": 298.12
+ },
+ {
+  "i": 31,
+  "pl": "Toodles był tak przerażony, że nadinspektor uśmiechnął się z lekka.",
+  "start": 299.69
+ },
+ {
+  "i": 32,
+  "pl": "— To wszystko ściśle między nami — dodał.",
+  "start": 304.18
+ },
+ {
+  "i": 33,
+  "pl": "— Potworne! Pierwszy raz w życiu słyszę coś podobnego — rzekł Toodles słabym głosem, jakby zdumienie odjęło mu nagle całą siłę i rześkość.",
+  "start": 307.76
+ },
+ {
+  "i": 34,
+  "pl": "Nadinspektor spojrzał nań z powagą. Póki się nie znaleźli u drzwi wielkiego człowieka, Toodles zachowywał zgorszone i uroczyste milczenie; rzekłbyś, obraził się na nadinspektora za odkrycie tak niesmacznego i niepokojącego faktu.",
+  "start": 318.5
+ },
+ {
+  "i": 35,
+  "pl": "Ten fakt zrewolucjonizował wyobrażenie Toodlesa o krańcowej ekskluzywności Klubu Podróżników, o jego towarzyskiej nieskazitelności.",
+  "start": 333.16
+ },
+ {
+  "i": 36,
+  "pl": "Toodles był rewolucjonistą tylko w zakresie polityki; swoje zasady społeczne i osobiste przekonania pragnął zachować nietknięte w ciągu wszystkich dni wyznaczonych mu na tej ziemi, którą uważał na ogół za całkiem miłe miejsce pobytu.",
+  "start": 342.74
+ },
+ {
+  "i": 37,
+  "pl": "Usunął się na bok.",
+  "start": 356.98
+ },
+ {
+  "i": 38,
+  "pl": "— Niech pan wejdzie bez pukania — powiedział.",
+  "start": 359.08
+ },
+ {
+  "i": 39,
+  "pl": "Dzięki abażurom z zielonego jedwabiu, tkwiącym nisko na wszystkich lampach, w gabinecie panował półmrok głęboki i jakby leśny. Dumne oczy dygnitarza były słabą stroną jego organizmu. Utrzymywano to w tajemnicy. Ale gdy się tylko nasuwała sposobność, wielki człowiek dawał swym oczom wypoczynek.",
+  "start": 361.9
+ },
+ {
+  "i": 40,
+  "pl": "Nadinspektor zobaczył najpierw tylko dużą, białą rękę podpierającą dużą głowę i zasłaniającą górną część dużej bladej twarzy. Otwarte pudełko z depeszami stało na biurku obok kilku podłużnych arkuszy papieru i rozrzuconej wiązki gęsich piór.",
+  "start": 381.64
+ },
+ {
+  "i": 41,
+  "pl": "Na obszernym, poziomym blacie nie było już nic więcej poza małą brązową statuetką w udrapowanej todze, zagadkową i czujną w swym tajemniczym bezruchu. Nadinspektor usiadł, zaproszony skinieniem ręki.",
+  "start": 397.7
+ },
+ {
+  "i": 42,
+  "pl": "W przyćmionym świetle wyglądał bardziej niż kiedykolwiek na cudzoziemca dzięki swym cechom charakterystycznym — długiej twarzy, czarnym włosom i chudości.",
+  "start": 411.64
+ },
+ {
+  "i": 43,
+  "pl": "Wielki człowiek nie zdradził ani zdziwienia, ani zapału, ani w ogóle żadnego uczucia. Jakby zatopiony w głębokiej zadumie, pozwalał wypoczywać swym zagrożonym oczom. Po wejściu nadinspektora wcale nie zmienił pozy. Ale ton jego głosu był trzeźwy.",
+  "start": 421.1
+ },
+ {
+  "i": 44,
+  "pl": "— No! Co tam pan wynalazł? Więc natknął się pan od razu na coś, czego pan nie oczekiwał.",
+  "start": 436.28
+ },
+ {
+  "i": 45,
+  "pl": "— Niekoniecznie, sir Ethelredzie. Natknąłem się przede wszystkim na pewien stan psychiczny.",
+  "start": 445.45
+ },
+ {
+  "i": 46,
+  "pl": "Wielki człowiek poruszył się nieznacznie.",
+  "start": 450.85
+ },
+ {
+  "i": 47,
+  "pl": "— Niech pan mówi wyraźniej.",
+  "start": 453.87
+ },
+ {
+  "i": 48,
+  "pl": "— Dobrze, sir Ethelredzie. Zapewne pan wie, że większość przestępców czuje w pewnych chwilach nieodpartą potrzebę spowiedzi — wyznania komuś wszystkiego… byle komu. I nieraz czyni te wyznania policji. Ów Verloc, którego Heat chciał koniecznie osłonić, znajdował się właśnie w owym stanie psychicznym.",
+  "start": 456.89
+ },
+ {
+  "i": 49,
+  "pl": "Mówiąc w przenośni, rzucił mi się po prostu na szyję. Dość było szepnąć, kim jestem i dodać: „Wiem, że pan jest wmieszany w tę sprawę”. Musiało wydać mu się cudem, że już o wszystkim wiemy, ale prędko się z tym oswoił. Nadzwyczajność faktu nie zastanowiła go ani przez chwilę.",
+  "start": 477.97
+ },
+ {
+  "i": 50,
+  "pl": "Pozostawało mi tylko zadać mu dwa pytania: „Kto pana do tego nakłonił?” i: „Kto to wykonał?”. Na pierwsze pytanie odpowiedział bardzo dobitnie. Co się zaś tyczy drugiego pytania, domyślam się, że człowiekiem, który rzucił bombę, był jego szwagier — niemal wyrostek — słaby na umyśle…",
+  "start": 494.19
+ },
+ {
+  "i": 51,
+  "pl": "To dość ciekawa historia… może za długa, aby ją szczegółowo opowiadać.",
+  "start": 512.23
+ },
+ {
+  "i": 52,
+  "pl": "— Więc czego się pan dowiedział? — spytał wielki człowiek.",
+  "start": 517.84
+ },
+ {
+  "i": 53,
+  "pl": "— Przede wszystkim dowiedziałem się, że były więzień Michaelis nie ma z tym nic wspólnego, choć istotnie chłopiec przebywał chwilowo razem z nim na wsi aż do dzisiaj, do ósmej rano. Jest więcej niż prawdopodobne, że Michaelis nie wie nic o wszystkim aż do tej chwili.",
+  "start": 521.36
+ },
+ {
+  "i": 54,
+  "pl": "— Pan jest tego pewien? — zapytał wielki człowiek.",
+  "start": 537.44
+ },
+ {
+  "i": 55,
+  "pl": "— Zupełnie pewien, sir Ethelredzie. Ten Verloc pojechał tam dziś rano i zabrał chłopca niby to na przechadzkę. Ponieważ działo się to nie po raz pierwszy, Michaelis nie mógł w tym widzieć nic niezwykłego. Zresztą Verloc, oburzony do żywego, wyjawił mi wszystko bez wyjątku.",
+  "start": 541.91
+ },
+ {
+  "i": 56,
+  "pl": "Okazało się, że po prostu stracił głowę, zastraszony niesłychaną sceną, której ani pan, ani ja nie wzięlibyśmy na serio; na nim zrobiła jednak wielkie wrażenie.",
+  "start": 556.81
+ },
+ {
+  "i": 57,
+  "pl": "Nadinspektor wyłożył zwięźle wielkiemu człowiekowi, który siedział bez ruchu i osłaniał dłonią oczy zażywające wypoczynku, jak pan Verloc ocenił postępowanie i charakter pana Władimira. Zdawało się, że nadinspektor nie odmawia tej ocenie pewnej słuszności. Lecz wielka osobistość wypowiedziała uwagę:",
+  "start": 568.15
+ },
+ {
+  "i": 58,
+  "pl": "— To wszystko wygląda mi bardzo fantastycznie.",
+  "start": 586.83
+ },
+ {
+  "i": 59,
+  "pl": "— Prawda? Niby jakiś okrutny żart. Ale nasz Verloc wziął to zdaje się na serio. Poczuł się zagrożony. Przedtem, jak pan wie, porozumiewał się bezpośrednio z samym Stott- -Wartenheimem i nabrał przekonania, że usługi jego, Verloca, są niezbędne. Otrzeźwiono go w sposób niezmiernie brutalny.",
+  "start": 591.62
+ },
+ {
+  "i": 60,
+  "pl": "Najwidoczniej stracił głowę. Rozgniewał się i przestraszył. Według mego przekonania wyobraził sobie, że ci ludzie z ambasady mogą go nie tylko wyrzucić, ale i wydać w taki lub inny sposób…",
+  "start": 610.64
+ },
+ {
+  "i": 61,
+  "pl": "— Jak długo pan z nim rozmawiał? — rozległ się nagle zza ręki głos wielkiego dygnitarza.",
+  "start": 623.43
+ },
+ {
+  "i": 62,
+  "pl": "— Jakieś czterdzieści minut, sir Ethelredzie, w mocno podejrzanym hotelu Continental; siedzieliśmy zamknięci w pokoju, który wziąłem na noc. Okazało się, że Verloc jest pod wpływem reakcji następującej po zbrodniczym wysiłku. Nie można nazwać tego człowieka zatwardziałym przestępcą.",
+  "start": 630.17
+ },
+ {
+  "i": 63,
+  "pl": "Najwidoczniej nie przewidywał śmierci owego nieszczęsnego chłopca — swojego szwagra. Jego śmierć zrobiła na Verlocu wstrząsające wrażenie — widziałem to wyraźnie. Może jest bardzo wrażliwy. Może nawet lubił chłopca… któż to wie?",
+  "start": 647.55
+ },
+ {
+  "i": 64,
+  "pl": "Spodziewał się zapewne, że chłopiec ucieknie, a wówczas byłoby prawie niemożliwe ustalić, kto jest winowajcą. W najgorszym wypadku przewidywał co najwyżej aresztowanie szwagra.",
+  "start": 662.49
+ },
+ {
+  "i": 65,
+  "pl": "Nadinspektor przerwał swe dociekania i przez chwilę rozmyślał.",
+  "start": 673.2
+ },
+ {
+  "i": 66,
+  "pl": "— Ale jak mógł się w takim razie spodziewać, że jego udział w tej historii pozostanie ukryty, to jest dla mnie niezrozumiale — podjął znowu, gdyż nie wiedział o uwielbieniu Steviego dla pana Verloca (który był dobry) ani o niezłomności, z jaką chłopiec potrafił milczeć.",
+  "start": 676.55
+ },
+ {
+  "i": 67,
+  "pl": "Dowiodła tego jeszcze owa dawna historia z fajerwerkami na schodach; Stevie opierał się wówczas przez całe lata prośbom i pieszczotom, i gniewowi, i wszelkim innym środkom badania stosowanym przez ukochaną siostrę. Bo Steviemu można było zaufać… — Nie mam pojęcia — ciągnął dalej nadinspektor.",
+  "start": 693.29
+ },
+ {
+  "i": 68,
+  "pl": "— Może wcale o tym nie myślał? A teraz powiem coś, co wyda się dziwaczne, sir Ethelredzie: oto widok przerażonego Verloca przywiódł mi na myśl kogoś, kto odebrał sobie życie, aby położyć kres swym udręczeniom, i nagle przekonuje się, że samobójstwo wcale mu nie pomogło.",
+  "start": 712.75
+ },
+ {
+  "i": 69,
+  "pl": "Nadinspektor wypowiedział to porównanie takim tonem, jakby za nie przepraszał. Ale pewna przesada stylu ma to do siebie, że uwydatnia treść wypowiadanej myśli i wielki człowiek nie poczuł się urażony.",
+  "start": 730.63
+ },
+ {
+  "i": 70,
+  "pl": "Lekki skurcz targnął jego dużym ciałem, mało widocznym w półmroku zielonych jedwabnych abażurów, i dużą głową wspartą na dużej dłoni, a temu skurczowi towarzyszył przerywany, zduszony, lecz potężny odgłos: wielki człowiek roześmiał się.",
+  "start": 743.39
+ },
+ {
+  "i": 71,
+  "pl": "— Co pan z nim zrobił?",
+  "start": 760.24
+ },
+ {
+  "i": 72,
+  "pl": "Nadinspektor odrzekł natychmiast:",
+  "start": 762.84
+ },
+ {
+  "i": 73,
+  "pl": "— Ponieważ śpieszyło mu się widać bardzo do żony, która została w sklepie, pozwoliłem mu odejść, sir Ethelredzie.",
+  "start": 765.28
+ },
+ {
+  "i": 74,
+  "pl": "— Jak to? Przecież on ucieknie.",
+  "start": 772.52
+ },
+ {
+  "i": 75,
+  "pl": "— Pozwolę sobie być innego zdania. Dokąd by mógł uciec? A przy tym trzeba pamiętać, że Verloc musi także się strzec niebezpieczeństwa grożącego mu ze strony kolegów. Tam w sklepie jest na swym stanowisku. Jak by mógł wyjaśnić opuszczenie tego stanowiska?",
+  "start": 775.32
+ },
+ {
+  "i": 76,
+  "pl": "Ale nawet gdyby miał zupełną swobodę ruchów, nic by teraz nie zrobił. Brak mu dostatecznej energii, aby powziąć jakiekolwiek postanowienie.",
+  "start": 792.32
+ },
+ {
+  "i": 77,
+  "pl": "Niech mi też będzie wolno zaznaczyć, że gdybym go był uwięził, musielibyśmy trzymać się pewnej linii postępowania, co do której pragnę najpierw usłyszeć pana zdanie.",
+  "start": 800.22
+ },
+ {
+  "i": 78,
+  "pl": "Wielka osobistość dźwignęła się z krzesła — imponująca, niewyraźna w zielonawym mroku pokoju.",
+  "start": 810.37
+ },
+ {
+  "i": 79,
+  "pl": "— Zobaczę się dziś z prokuratorem i poślę po pana jutro rano. Czy pan ma jeszcze coś do powiedzenia?",
+  "start": 817.33
+ },
+ {
+  "i": 80,
+  "pl": "Nadinspektor podniósł się także, smukły i giętki.",
+  "start": 824.53
+ },
+ {
+  "i": 81,
+  "pl": "— Sądzę, że nie, sir Ethelredzie, mógłbym tylko wejść w szczegóły, które…",
+  "start": 829.56
+ },
+ {
+  "i": 82,
+  "pl": "— Nie, nie. Żadnych szczegółów.",
+  "start": 835.34
+ },
+ {
+  "i": 83,
+  "pl": "Wielka, niewyraźna postać, rzekłbyś, cofnęła się, jakby w fizycznym lęku przed szczegółami, lecz zaraz potem podeszła do inspektora, rozdęta, olbrzymia, imponująca, wyciągając dużą rękę.",
+  "start": 838.75
+ },
+ {
+  "i": 84,
+  "pl": "— I pan mówi, że ten człowiek ma żonę?",
+  "start": 852.39
+ },
+ {
+  "i": 85,
+  "pl": "— Tak, sir Ethelredzie — rzekł nadinspektor, ściskając z szacunkiem wyciągniętą dłoń. — Ma naprawdę żonę, z którą żyje w poprawnym małżeńskim stosunku.",
+  "start": 856.59
+ },
+ {
+  "i": 86,
+  "pl": "Powiedział mi, że po rozmowie w ambasadzie byłby wszystko rzucił, byłby usiłował sprzedać sklep i wyjechać z kraju, ale był pewien, że jego żona nie zechce nawet słyszeć o wyjeździe za granicę.",
+  "start": 867.09
+ },
+ {
+  "i": 87,
+  "pl": "To bardzo charakterystyczne dla małżeńskich stosunków — ciągnął nieco chmurnie nadinspektor, którego żona również nie chciała słyszeć o wyjeździe za granicę. — Tak, to jest autentyczna żona. A delikwent był autentycznym szwagrem. Mamy tu pewnego rodzaju dramat rodzinny.",
+  "start": 877.39
+ },
+ {
+  "i": 88,
+  "pl": "Nadinspektor roześmiał się z lekka, ale myśli wielkiego człowieka powędrowały już daleko, może do spraw polityki wewnętrznej kraju; był to teren jego mężnej krucjaty przeciw poganinowi zwanemu Cheesemannem.",
+  "start": 897.18
+ },
+ {
+  "i": 89,
+  "pl": "Nadinspektor wyszedł cicho z pokoju; uszło to uwadze dygnitarza, który poniekąd zapomniał już o swym urzędniku.",
+  "start": 911.82
+ },
+ {
+  "i": 90,
+  "pl": "W nadinspektorze także grały instynkty krzyżowca. Sprawa, która z tych lub innych względów zniechęciła do siebie komisarza Heata, wydała mu się opatrznościowym punktem wyjścia dla własnej krucjaty. Rozpoczęcie jej leżało mu bardzo na sercu.",
+  "start": 919.0
+ },
+ {
+  "i": 91,
+  "pl": "Szedł z wolna ku domowi, rozmyślając po drodze o swym przedsięwzięciu i analizując psychologię pana Verloca z odrazą nie pozbawioną zadowolenia. Całą drogę odbył pieszo.",
+  "start": 934.52
+ },
+ {
+  "i": 92,
+  "pl": "Przekonawszy się, że w salonie jest ciemno, poszedł na górę i spędził czas jakiś między ubieralnią a pokojem sypialnym, przebierając się i chodząc tu i tam niby zamyślony lunatyk. Ale otrząsnął się z zadumy i wyszedł znów na ulicę, aby się udać do wielkiej pani, która opiekowała się Michaelisem.",
+  "start": 945.58
+ },
+ {
+  "i": 93,
+  "pl": "Wiedział, że będzie tam życzliwie przyjęty. Wchodząc do mniejszego z dwóch salonów, spostrzegł żonę w małej grupce gości obok fortepianu.",
+  "start": 964.48
+ },
+ {
+  "i": 94,
+  "pl": "Młodociany kompozytor, będący na drodze do sławy, siedział na taborecie, rozmawiając z dwoma tęgimi panami, których plecy wyglądały staro, i z trzema smukłymi kobietami, których plecy wyglądały młodo.",
+  "start": 973.59
+ },
+ {
+  "i": 95,
+  "pl": "Za niebieskim parawanem tylko dwie osoby towarzyszyły opiekunce Michaelisa: mężczyzna i kobieta; siedzieli obok siebie na fotelach u końca szezlongu⁷⁸. Wielka pani wyciągnęła rękę do nadinspektora.",
+  "start": 985.81
+ },
+ {
+  "i": 96,
+  "pl": "— Nie spodziewałam się wcale, że zobaczę pana dziś wieczór. Annie mówiła mi…",
+  "start": 998.23
+ },
+ {
+  "i": 97,
+  "pl": "— Tak. Sam nie miałem pojęcia, że uporam się tak prędko z robotą.",
+  "start": 1004.16
+ },
+ {
+  "i": 98,
+  "pl": "Nadinspektor dodał ściszonym głosem:",
+  "start": 1008.43
+ },
+ {
+  "i": 99,
+  "pl": "— Miło mi panią zawiadomić, że Michaelis jest zupełnie wyłączony z tej sprawy…",
+  "start": 1011.56
+ },
+ {
+  "i": 100,
+  "pl": "Protektorka byłego więźnia przyjęła to z oburzeniem.",
+  "start": 1016.84
+ },
+ {
+  "i": 101,
+  "pl": "— Jak to? Czyżby byli u nas idioci, podejrzewający go o związek z…",
+  "start": 1020.68
+ },
+ {
+  "i": 102,
+  "pl": "— Bynajmniej nie idioci — przerwał z szacunkiem nadinspektor. — Nawet całkiem zręczni ludzie… zupełnie wystarczająco jak na swoje potrzeby.",
+  "start": 1026.04
+ },
+ {
+  "i": 103,
+  "pl": "Zapadło milczenie. Mężczyzna u końca szezlongu przestał rozmawiać z sąsiadką i przyglądał się nadinspektorowi z niewyraźnym uśmiechem.",
+  "start": 1035.34
+ },
+ {
+  "i": 104,
+  "pl": "— Nie pamiętam, czy panowie już się spotkali — rzekła wielka pani.",
+  "start": 1043.84
+ },
+ {
+  "i": 105,
+  "pl": "Pan Władimir i nadinspektor, przedstawieni sobie, stwierdzili nawzajem swoje istnienie z drobiazgową i czujną uprzejmością.",
+  "start": 1048.9
+ },
+ {
+  "i": 106,
+  "pl": "— Ten człowiek mnie nastraszył — oświadczyła nagle dama siedząca obok pana Władimira i kiwnęła głową w jego stronę. Nadinspektor znał ową damę.",
+  "start": 1058.04
+ },
+ {
+  "i": 107,
+  "pl": "— Nie wygląda pani na przestraszoną — wyrzekł, przyjrzawszy się jej sumiennie swym zmęczonym, spokojnym wzrokiem. A jednocześnie pomyślał, że w tym domu wcześniej lub później można było się zetknąć z każdym.",
+  "start": 1069.96
+ },
+ {
+  "i": 108,
+  "pl": "Różowa twarz pana Władimira mieniła się uśmiechem, albowiem był dowcipny, lecz oczy jego zachowały powagę, jak u człowieka, który wie, o co mu chodzi.",
+  "start": 1083.38
+ },
+ {
+  "i": 109,
+  "pl": "— W każdym razie usiłował mnie nastraszyć — poprawiła się znajoma nadinspektora.",
+  "start": 1094.09
+ },
+ {
+  "i": 110,
+  "pl": "— Może to jego zwyczaj — rzekł nadinspektor pod wpływem nieodpartego natchnienia.",
+  "start": 1100.08
+ },
+ {
+  "i": 111,
+  "pl": "— Pan Władimir groził społeczeństwu przeróżnymi okropnościami — ciągnęła dama, wymawiając słowa z wolna i jakby pieszczotliwie — a wszystko z powodu tego wybuchu w Greenwich Park.",
+  "start": 1106.46
+ },
+ {
+  "i": 112,
+  "pl": "Okazuje się, że powinniśmy wszyscy drżeć ze strachu przed tym, co nastąpi, jeśli ci ludzie nie zostaną wytępieni na całym świecie. Nie miałam pojęcia, że to taka ważna sprawa.",
+  "start": 1119.0
+ },
+ {
+  "i": 113,
+  "pl": "Pan Władimir, udając, że nie zwraca na te słowa uwagi, pochylił się ku szezlongowi, mówiąc coś miłym, ściszonym głosem, ale usłyszał, jak nadinspektor rzekł:",
+  "start": 1129.84
+ },
+ {
+  "i": 114,
+  "pl": "— Jestem przekonany, że pan Władimir ma bardzo dokładne pojęcie o istotnym znaczeniu tej sprawy.",
+  "start": 1139.22
+ },
+ {
+  "i": 115,
+  "pl": "Pan Władimir zadał sobie pytanie, do czego zmierza ten przeklęty, natrętny policjant. Jako potomek pokoleń, które były ofiarą narzędzi służących samowładczej potędze, bał się policji rasowo i narodowo, a poza tym bał się jej indywidualnie.",
+  "start": 1145.96
+ },
+ {
+  "i": 116,
+  "pl": "Była to słabość dziedziczna, zupełnie niezależna od jego rozsądku, czy rozumu, czy doświadczenia. Taki już się urodził.",
+  "start": 1162.06
+ },
+ {
+  "i": 117,
+  "pl": "A uczucie to, przypominające irracjonalny wstręt, jaki niektórzy mają do kotów, bynajmniej się nie sprzeciwiało niezmiernej pogardzie, którą pan Władimir żywił dla policji angielskiej. Skończył zdanie skierowane do pani domu i obrócił się trochę na krześle.",
+  "start": 1169.04
+ },
+ {
+  "i": 118,
+  "pl": "— Pan chce zapewne powiedzieć, że my mamy duże doświadczenie, jeśli chodzi o tych ludzi.",
+  "start": 1186.61
+ },
+ {
+  "i": 119,
+  "pl": "Tak jest istotnie; cierpimy wiele od ich działalności, podczas gdy państwo tutaj — pan Władimir zawahał się chwilę, uśmiechnięty i jakby zakłopotany — podczas gdy państwo cierpicie z zadowoleniem obecność ich między sobą — zakończył, ukazując dołki w świeżo wygolonych policzkach.",
+  "start": 1193.37
+ },
+ {
+  "i": 120,
+  "pl": "Potem dodał poważniej: — Powiedziałbym nawet, że cierpimy przez nich tyle właśnie dlatego, że państwo cierpicie ich między sobą.",
+  "start": 1216.58
+ },
+ {
+  "i": 121,
+  "pl": "Gdy pan Władimir przestał mówić, nadinspektor spuścił oczy i rozmowa się urwała. Prawie bezpośrednio potem pan Władimir pożegnał się z gospodynią. Skoro się tylko odwrócił od szezlongu, nadinspektor wstał również.",
+  "start": 1225.94
+ },
+ {
+  "i": 122,
+  "pl": "— Myślałam, że pan zostanie z nami i zabierze Annie do domu — rzekła opiekunka Michaelisa.",
+  "start": 1240.19
+ },
+ {
+  "i": 123,
+  "pl": "— Przypomniałem sobie, że muszę dziś jeszcze trochę popracować.",
+  "start": 1246.55
+ },
+ {
+  "i": 124,
+  "pl": "— W związku z…?",
+  "start": 1250.98
+ },
+ {
+  "i": 125,
+  "pl": "— No tak, do pewnego stopnia.",
+  "start": 1253.26
+ },
+ {
+  "i": 126,
+  "pl": "— Niechże mi pan powie, co to jest właściwie, ta okropna historia?",
+  "start": 1256.96
+ },
+ {
+  "i": 127,
+  "pl": "— Trudno powiedzieć, co to jest, ale może wyniknie z tego une cause célebre⁷⁹ — rzekł nadinspektor.",
+  "start": 1262.1
+ },
+ {
+  "i": 128,
+  "pl": "Wyszedł spiesznie z salonu i zastał jeszcze w hallu pana Władimira, otulającego starannie szyję dużym szalikiem. Za nim stał lokaj, trzymając palto. Drugi lokaj czekał u drzwi, aby je w odpowiedniej chwili otworzyć. Nadinspektorowi podano płaszcz; wyszedł natychmiast.",
+  "start": 1268.02
+ },
+ {
+  "i": 129,
+  "pl": "Zstąpiwszy z kilku frontowych schodów przystanął, jakby się namyślając, w którą by stronę się udać. Pan Władimir dostrzegł to przez drzwi, które pozostały otwarte i zatrzymał się jeszcze w sieni, aby wyjąć cygaro i poprosić o ogień.",
+  "start": 1285.4
+ },
+ {
+  "i": 130,
+  "pl": "Starszy mężczyzna we fraku podał mu zapałkę z miną pełną spokojnej troskliwości. Ale zapałka zgasła; wówczas lokaj zamknął drzwi i pan Władimir zapalił powoli i starannie duże hawańskie cygaro.",
+  "start": 1298.88
+ },
+ {
+  "i": 131,
+  "pl": "Gdy nareszcie wydostał się z domu, spostrzegł z odruchem wstrętu, że ten „przeklęty policjant” sterczy jeszcze wciąż na chodniku.",
+  "start": 1313.22
+ },
+ {
+  "i": 132,
+  "pl": "„Czyżby na mnie czekał?” — pomyślał pan Władimir, rozglądając się za dorożką. Nie było żadnej. Parę prywatnych wehikułów czekało tuż przy chodniku.",
+  "start": 1322.37
+ },
+ {
+  "i": 133,
+  "pl": "Latarnie ich paliły się równo, konie stały w zupełnym spokoju jak wyrzeźbione z kamienia, stangreci siedzieli bez najlżejszego ruchu w obszernych futrzanych pelerynach; białe, skórzane końce wielkich batów wisiały nieporuszenie.",
+  "start": 1332.51
+ },
+ {
+  "i": 134,
+  "pl": "Pan Władimir zaczął iść, a „przeklęty policjant” szedł krok w krok obok niego, nie mówiąc ani słowa. Za czwartym krokiem pan Władimir poczuł wściekłość i niepokój. Dłużej tak trwać nie mogło.",
+  "start": 1346.69
+ },
+ {
+  "i": 135,
+  "pl": "— Wstrętny czas — warknął dziko.",
+  "start": 1360.07
+ },
+ {
+  "i": 136,
+  "pl": "— Ciepło — rzekł beznamiętnie nadinspektor. Przez chwilę milczał. — Schwytaliśmy człowieka nazwiskiem Verloc — stwierdził niedbale.",
+  "start": 1363.69
+ },
+ {
+  "i": 137,
+  "pl": "Pan Władimir nie potknął się, nie zatoczył, nie zmienił kroku. Ale wyrwał mu się okrzyk:",
+  "start": 1374.86
+ },
+ {
+  "i": 138,
+  "pl": "— Co takiego?",
+  "start": 1380.9
+ },
+ {
+  "i": 139,
+  "pl": "Nadinspektor nie powtórzył swego oświadczenia.",
+  "start": 1382.65
+ },
+ {
+  "i": 140,
+  "pl": "— Pan go zna — ciągnął tym samym tonem.",
+  "start": 1386.16
+ },
+ {
+  "i": 141,
+  "pl": "Pan Władimir zatrzymał się i rzekł gardłowym głosem:",
+  "start": 1389.47
+ },
+ {
+  "i": 142,
+  "pl": "— Na jakiej podstawie pan to mówi?",
+  "start": 1393.7
+ },
+ {
+  "i": 143,
+  "pl": "— To nie ja mówię, tylko Verloc.",
+  "start": 1396.48
+ },
+ {
+  "i": 144,
+  "pl": "— Łże jak pies — rzekł pan Władimir, wyrażając się w sposób nieco wschodni. Ale w głębi ducha był wręcz przerażony zakrawającą na cud zręcznością angielskiej policji. W jego zapatrywaniach na ten temat nastąpiła zmiana tak gwałtowna, że zrobiło mu się trochę słabo.",
+  "start": 1399.24
+ },
+ {
+  "i": 145,
+  "pl": "Odrzucił cygaro i ruszył znów naprzód.",
+  "start": 1416.9
+ },
+ {
+  "i": 146,
+  "pl": "— Cała ta sprawa dogadza mi z tego względu — ciągnął powoli nadinspektor —",
+  "start": 1420.14
+ },
+ {
+  "i": 147,
+  "pl": "że jest takim doskonałym punktem wyjścia dla pewnego zadania, które mi leży na sercu, mianowicie dla pozbycia się z kraju wszystkich tych cudzoziemskich szpiegów politycznych, policjantów i w ogóle tego rodzaju… tego rodzaju… psów.",
+  "start": 1425.5
+ },
+ {
+  "i": 148,
+  "pl": "Moim zdaniem są okropnie szkodliwi, a przy tym stanowią czynnik niebezpieczny. Ale wyszukiwanie każdego z nich oddzielnie przedstawia pewne trudności. Jedyny sposób, jaki nam pozostaje, to obrzydzić posługiwanie się nimi tym, którzy ich zatrudniają. Obecny stan rzeczy staje się wprost nieprzyzwoity.",
+  "start": 1442.2
+ },
+ {
+  "i": 149,
+  "pl": "A przy tym niebezpieczny dla nas, Anglików.",
+  "start": 1462.54
+ },
+ {
+  "i": 150,
+  "pl": "Pan Władimir przystanął znów na chwilę.",
+  "start": 1466.21
+ },
+ {
+  "i": 151,
+  "pl": "— Co pan chce przez to powiedzieć?",
+  "start": 1469.9
+ },
+ {
+  "i": 152,
+  "pl": "— Śledztwo wytoczone przeciwko Verlocowi wykaże publiczności niebezpieczeństwo i nieprzyzwoitość praktyk tego rodzaju.",
+  "start": 1472.42
+ },
+ {
+  "i": 153,
+  "pl": "— Nikt nie uwierzy temu, co taki człowiek będzie opowiadał — rzekł pogardliwie pan Władimir.",
+  "start": 1481.17
+ },
+ {
+  "i": 154,
+  "pl": "— Obfitość i dokładność szczegółów przekonają szeroką publiczność — odpowiedział łagodnie nadinspektor.",
+  "start": 1487.56
+ },
+ {
+  "i": 155,
+  "pl": "— Więc naprawdę zamierza pan to uczynić?",
+  "start": 1495.42
+ },
+ {
+  "i": 156,
+  "pl": "— Schwytaliśmy człowieka; nie mamy żadnego wyboru.",
+  "start": 1499.0
+ },
+ {
+  "i": 157,
+  "pl": "— To będzie tylko żer dla łotrowskiej hipokryzji rewolucjonistów — zapewnił pan Władimir. — Po co robić taki skandal? Chodzi panu o moralność, czy jak tam?",
+  "start": 1502.38
+ },
+ {
+  "i": 158,
+  "pl": "Niepokój pana Władimira był oczywisty. Nadinspektor upewnił się dzięki temu, że musi być trochę prawdy w zeznaniach Verloca, i rzekł obojętnie:",
+  "start": 1514.62
+ },
+ {
+  "i": 159,
+  "pl": "— W tej sprawie obchodzi nas także i strona praktyczna. Mamy naprawdę już dosyć roboty z pilnowaniem prawdziwych anarchistów. Nie może pan nam zarzucić braku sprawności. Ale pod żadnym pretekstem nie pozwolimy na to, aby nam dokuczali prowokatorzy.",
+  "start": 1523.46
+ },
+ {
+  "i": 160,
+  "pl": "Ton pana Władimira stał się wyniosły.",
+  "start": 1541.38
+ },
+ {
+  "i": 161,
+  "pl": "— Jeśli chodzi o mnie, nie podzielam pana zapatrywań. Są bardzo egoistyczne. O uczuciach, jakie żywię dla swego kraju, wątpić nie można; a jednak czułem zawsze, że poza patriotyzmem winniśmy być także dobrymi Europejczykami — stosuje się to i do rządów, i do poszczególnych ludzi.",
+  "start": 1544.81
+ },
+ {
+  "i": 162,
+  "pl": "— Tak — odrzekł nadinspektor z prostotą. — Tylko że wy patrzycie na Europę od drugiego jej końca. Jednakże — ciągnął dobrodusznym tonem — obce rządy nie mogą się skarżyć na niedołęstwo naszej policji. Na przykład ten zamach; wypadek szczególnie trudny do wyśledzenia, ponieważ chodziło o prowokację.",
+  "start": 1562.93
+ },
+ {
+  "i": 163,
+  "pl": "W niecałych dwanaście godzin ustaliliśmy tożsamość człowieka literalnie rozerwanego na strzępy, odnaleźliśmy organizatora zamachu i uzyskaliśmy pojęcie, kto jest podżegaczem. A mogliśmy się posunąć jeszcze dalej; tylko zatrzymaliśmy się u granic naszego terytorium.",
+  "start": 1584.94
+ },
+ {
+  "i": 164,
+  "pl": "— A więc ta pouczająca zbrodnia została uknuta za granicą — rzekł szybko pan Władimir. — Pan jest zdania, że uknuto ją za granicą?",
+  "start": 1602.61
+ },
+ {
+  "i": 165,
+  "pl": "— W teorii. Tylko w teorii powstała na obcym terytorium, za granicą zaś jedynie w przenośni — rzekł nadinspektor, robiąc aluzję do eksterytorialnego charakteru ambasad, które się uważa za części poszczególnych krajów reprezentowanych przez te ambasady. — Ale to szczegół.",
+  "start": 1613.28
+ },
+ {
+  "i": 166,
+  "pl": "Mówiłem z panem o tej sprawie, ponieważ właśnie pana rząd skarży się najczęściej na naszą policję. Więc widzi pan, że tak źle z nami nie jest. Zależało mi specjalnie na tym, aby powiadomić pana o naszym powodzeniu.",
+  "start": 1631.14
+ },
+ {
+  "i": 167,
+  "pl": "— Bardzo panu jestem obowiązany — mruknął przez zęby pan Władimir.",
+  "start": 1646.48
+ },
+ {
+  "i": 168,
+  "pl": "— Każdej chwili możemy położyć rękę na wszystkich tutejszych anarchistach — ciągnął nadinspektor, jak gdyby przytaczając słowa komisarza Heata. — Teraz pozostaje nam tylko skończyć raz na zawsze z prowokatorami, aby osiągnąć pełne bezpieczeństwo.",
+  "start": 1652.38
+ },
+ {
+  "i": 169,
+  "pl": "Pan Władimir kiwnął ręką na przejeżdżającą dorożkę.",
+  "start": 1667.28
+ },
+ {
+  "i": 170,
+  "pl": "— Nie wstąpi pan tutaj? — zapytał nadinspektor, spoglądając na budynek o szlachetnych wymiarach i gościnnym wyglądzie; przez oszklone drzwi wejściowe padało z wielkiej sieni światło na szerokie schody prowadzące do wnętrza.",
+  "start": 1671.69
+ },
+ {
+  "i": 171,
+  "pl": "Ale pan Władimir siedział już w dorożce i patrząc przed siebie kamiennym wzrokiem, odjechał bez słowa.",
+  "start": 1685.45
+ },
+ {
+  "i": 172,
+  "pl": "Nadinspektor również nie wstąpił do wspaniałego gmachu. Był to Klub Podróżników. Mignęła nadinspektorowi myśl, że pana Władimira, honorowego członka klubu, nie będzie się tam w przyszłości często widywało. Popatrzył na zegarek. Dopiero pół do jedenastej. Spędził wieczór pełen wrażeń.",
+  "start": 1693.45
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

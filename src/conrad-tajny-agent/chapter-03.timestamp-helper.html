@@ -1,0 +1,1323 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to chapter-03.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-03.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tajny agent · Rozdział III — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Tajny agent · Rozdział III · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="chapter-03.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "— …Idealizowanie życia czyni je uboższym. Upiększać je, to znaczy pozbawiać je różnorodności — to znaczy je niszczyć. Zostaw to moralistom, mój drogi. Historię tworzą ludzie, ale nie tworzą jej mózgiem. Idee, które się rodzą w ludzkiej świadomości, grają rolę nieznaczną w rozwoju wypadków.",
+  "start": 2.71
+ },
+ {
+  "i": 1,
+  "pl": "Narzędzia i produkcja — potężne czynniki ekonomiczne — panują nad historią i o niej rozstrzygają. Kapitalizm stworzył socjalizm, a prawa, ustanowione przez kapitalizm dla ochrony własności, są odpowiedzialne za anarchizm.",
+  "start": 18.61
+ },
+ {
+  "i": 2,
+  "pl": "Nikt nie jest w stanie przewidzieć, jaką formę przybierze w przyszłości organizacja społeczna. Po cóż więc oddawać się proroczym fantazjom? W najlepszym razie odzwierciedlają one tylko duszę proroka i nie mogą mieć żadnej wartości obiektywnej. Zostaw tę rozrywkę moralistom, mój drogi.",
+  "start": 32.73
+ },
+ {
+  "i": 3,
+  "pl": "Michaelis, apostoł uwolniony chwilowo zza krat, mówił równym, chrapliwym głosem, rzekłbyś, stłumionym przez pokład tłuszczu na piersiach. Opuścił nader higieniczne więzienie okrągły jak beczka, z ogromnym brzuchem, z wydętymi policzkami o cerze bladej, na wpół przejrzystej;",
+  "start": 50.21
+ },
+ {
+  "i": 4,
+  "pl": "wyglądał, jakby w ciągu piętnastu lat słudzy skrzywdzonego społeczeństwa nie mieli nic innego na względzie prócz opychania go tuczącymi pokarmami w wilgotnej, ciemnej celi. Nie zdołał odtąd już nigdy stracić na wadze choćby jednego grama.",
+  "start": 68.17
+ },
+ {
+  "i": 5,
+  "pl": "Opowiadano, że przez trzy sezony z rzędu pewna stara, bardzo bogata pani wysyłała go na kurację do Marienbadu³², gdzie raz ledwie się nie stał przedmiotem publicznej ciekawości razem z pewną koronowaną głową — lecz policja zażądała, aby opuścił Marienbad w przeciągu dwunastu godzin.",
+  "start": 83.31
+ },
+ {
+  "i": 6,
+  "pl": "Zakazano mu dostępu do leczniczych wód i wskutek tego musiał dźwigać w dalszym ciągu swoje męczeństwo. Ale teraz był już zrezygnowany.",
+  "start": 100.21
+ },
+ {
+  "i": 7,
+  "pl": "Siedział z zarzuconym na poręcz krzesła łokciem, przypominającym raczej zgięte ramię jakiegoś manekina niż ramię człowieka; pochyliwszy się trochę ku swym krótkim, olbrzymim udom, splunął w ogień.",
+  "start": 109.63
+ },
+ {
+  "i": 8,
+  "pl": "— Tak! Miałem czas zastanawiać się nad życiem — dodał spokojnie. — Społeczeństwo dało mi dość czasu do rozmyślań.",
+  "start": 121.71
+ },
+ {
+  "i": 9,
+  "pl": "Z drugiej strony kominka, w fotelu pokrytym włosiem, uprzywilejowanym miejscu matki pani Verloc, Karl Yundt chichotał złośliwie, wykrzywiając usta w bezzębnym, ponurym grymasie. Ów terrorysta, jak sam siebie nazywał, był stary, łysy i miał rzadką, obwisłą, śnieżnobiałą kozią bródkę.",
+  "start": 131.1
+ },
+ {
+  "i": 10,
+  "pl": "Niezwykły wyraz przebiegłej złośliwości tlił się w jego wygasłych oczach. Yundt z trudem dźwignął się z miejsca; jego koścista ręka, zniekształcona przez artretyczne obrzęki, wyciągnęła się niepewnym ruchem jak ręka konającego mordercy, który zbiera resztki sił dla zadania ostatniego ciosu.",
+  "start": 149.9
+ },
+ {
+  "i": 11,
+  "pl": "Oparł się na grubym kiju drżącym pod jego drugą ręką.",
+  "start": 167.76
+ },
+ {
+  "i": 12,
+  "pl": "— Marzyłem zawsze — wymamlał zapalczywym głosem — o grupie ludzi, którzy by z całą bezwzględnością odrzucili wszelkie skrupuły co do środków działania, ludzi dość silnych, aby przybrać otwarcie nazwę niszczycieli, ludzi wolnych od skazy tego zrezygnowanego pesymizmu, który zaraził cały świat.",
+  "start": 172.83
+ },
+ {
+  "i": 13,
+  "pl": "Takich ludzi nieznających litości dla niczego, co ziemskie, nie wyłączając siebie samych, i śmierć wprzęgniętą w służbę ludzkości — oto, co chciałem zobaczyć.",
+  "start": 190.75
+ },
+ {
+  "i": 14,
+  "pl": "Mała łysa głowa Yundta trzęsła się, przejmując zabawnym dygotem białą kozią bródkę. Cudzoziemiec nie zrozumiałby prawie nic z jego tyrady.",
+  "start": 201.57
+ },
+ {
+  "i": 15,
+  "pl": "Wyschnięte gardło i bezzębne dziąsła, do których język jakby się lepił, nie ułatwiały Yundtowi wyładowania bezsilnej pasji, przypominającej zapalczywą niemocą podniecenie lubieżnego starca. Pan Verloc, usadowiony na kanapie w drugim końcu pokoju, mruknął coś parę razy, potakując gorliwie.",
+  "start": 210.95
+ },
+ {
+  "i": 16,
+  "pl": "Stary terrorysta pokręcił z wolna głową osadzoną na wychudłej szyi.",
+  "start": 228.91
+ },
+ {
+  "i": 17,
+  "pl": "— I nigdy nie mogłem znaleźć choćby trzech takich ludzi. To jest odpowiedź na twój zgniły pesymizm — warknął do Michaelisa, który rozkrzyżował grube nogi podobne do kłód i nagle wsunął stopy pod krzesło na znak zniecierpliwienia.",
+  "start": 234.12
+ },
+ {
+  "i": 18,
+  "pl": "On, Michaelis, i pesymizm! Niesłychane! Oburza go to oskarżenie! Jest tak daleki od pesymizmu, że widzi już koniec wszelkiej prywatnej własności zbliżający się logicznie, nieodparcie, po prostu na skutek rozwoju zawartego w niej zła.",
+  "start": 248.77
+ },
+ {
+  "i": 19,
+  "pl": "Posiadacze będą musieli nie tylko stawić czoło zbudzonemu proletariatowi, ale i walczyć pomiędzy sobą. Tak. Walka, wojny są nieodłączne od prywatnej własności. Są nieuniknione.",
+  "start": 264.43
+ },
+ {
+  "i": 20,
+  "pl": "On, Michaelis, nie potrzebuje uczuciowych podniet dla krzepienia swej wiary, nie potrzebuje ani deklamacji, ani gniewu, ani wizji powiewających krwawych flag, ani metafor o ponurych słońcach zemsty, które wschodzą nad horyzontem społeczeństwa skazanego na zagładę. Nic podobnego!",
+  "start": 276.51
+ },
+ {
+  "i": 21,
+  "pl": "Zdrowy rozsądek jest podstawą jego optymizmu, oświadczył chełpliwie. Tak, optymizmu. Mozolne sapanie ustało i Michaelis dodał, odetchnąwszy parę razy głęboko:",
+  "start": 293.65
+ },
+ {
+  "i": 22,
+  "pl": "— Chyba rozumiesz, że gdyby nie mój optymizm, w ciągu piętnastu lat byłbym znalazł sposób, aby sobie poderżnąć gardło. A w ostateczności mogłem zawsze roztrzaskać głowę o ściany celi.",
+  "start": 306.12
+ },
+ {
+  "i": 23,
+  "pl": "Brak tchu odejmował głosowi Michaelisa wszelki zapał i wszelkie ożywienie; wielkie, blade jego policzki wisiały jak pełne sakwy, bez ruchu, bez drgnięcia; niebieskie, zmrużone oczy zdawały się w coś wpatrywać z wyrazem chytrej pewności siebie, nieruchome i trochę błędne;",
+  "start": 316.36
+ },
+ {
+  "i": 24,
+  "pl": "taki sam wyraz musiał mieć ten nieugięty optymista, gdy rozmyślał nocą w swej celi.",
+  "start": 334.3
+ },
+ {
+  "i": 25,
+  "pl": "Przed Michaelisem stał Karl Yundt, z fantazją zarzuciwszy na ramię połę wyblakłego zielonawego haweloka³³. Na wprost kominka siedział towarzysz Ossipon, były student medycyny, główny autor ulotek Przyszłości Proletariatu;",
+  "start": 339.4
+ },
+ {
+  "i": 26,
+  "pl": "jego muskularne nogi były wyciągnięte, a podeszwy butów zwrócone ku żarowi ogniska. Gąszcz żółtych kręconych włosów wznosił się nad jego czerwoną piegowatą twarzą o spłaszczonym nosie i grubych wargach Murzyna; oczy kształtu migdałów rzucały powłóczyste spojrzenia znad wydatnych kości policzkowych.",
+  "start": 353.56
+ },
+ {
+  "i": 27,
+  "pl": "Miał na sobie szarą flanelową koszulę; luźne końce czarnego jedwabnego krawata spadały mu na zapiętą marynarkę; siedząc z głową odchyloną na tył krzesła, z szyją odsłoniętą, podnosił do ust papierosa w długiej drewnianej cygarniczce i pykał kłębami dymu prosto w sufit.",
+  "start": 371.64
+ },
+ {
+  "i": 28,
+  "pl": "Michaelis snuł w dalszym ciągu myśl poczętą w samotnej celi — myśl, którą zawdzięczał więzieniu i która rozrastała się w nim jak objawiona wiara. Mówił do siebie, obojętny na współczucie lub wrogość słuchaczy, obojętny nawet na ich obecność;",
+  "start": 390.24
+ },
+ {
+  "i": 29,
+  "pl": "mówił, gdyż przywykł rozmyślać głośno i ufnie wśród samotności czterech bielonych ścian, wśród grobowej ciszy zalegającej wnętrze olbrzymiego, głuchego stosu cegieł, który sterczał w pobliżu rzeki, złowrogi i szpetny jak kolosalny nagrobek ludzi straconych dla społeczeństwa.",
+  "start": 405.38
+ },
+ {
+  "i": 30,
+  "pl": "Michaelis był słabym polemistą, lecz nie dlatego, aby ustępował przed pierwszym lepszym argumentem;",
+  "start": 423.32
+ },
+ {
+  "i": 31,
+  "pl": "po prostu sam dźwięk czyjegoś głosu mieszał go w przykry sposób, mącąc mu od razu tok myśli, których przez długie lata, wśród samotności ducha bardziej jałowej niż bezwodna pustynia, żaden żyjący głos nie zwalczał, nie pochwalał, nie komentował.",
+  "start": 429.32
+ },
+ {
+  "i": 32,
+  "pl": "Nikt mu teraz nie przerywał; uczynił więc po raz drugi wyznanie swej wiary, która owładnęła nim przemożnie i nieodparcie jak za sprawą zesłanej łaski: oto zrozumiał, że tajemnica przeznaczenia tkwi w materialnej stronie życia;",
+  "start": 444.56
+ },
+ {
+  "i": 33,
+  "pl": "stan ekonomiczny świata ponosi odpowiedzialność za przeszłość, kształtuje przyszłość; jest źródłem wszelkiej historii, wszystkich idei, przewodzi umysłowemu rozwojowi ludzkości, a nawet jej namiętnym porywom…",
+  "start": 457.26
+ },
+ {
+  "i": 34,
+  "pl": "Szorstki śmiech towarzysza Ossipona przeciął nagle tyradę; język zaplątał się apostołowi, a jego łagodne oczy pełne uniesienia zaczęły błąkać się niespokojnie. Zamknął je z wolna na chwilę, jakby chciał zebrać rozproszone myśli. Zapadło milczenie.",
+  "start": 470.86
+ },
+ {
+  "i": 35,
+  "pl": "Dwa płomyki gazowe nad stołem i rozżarzone palenisko kominka nagrzały do niemożliwości niewielki salonik za sklepem. Pan Verloc zlazł z kanapy niechętnie i ociężale, otworzył drzwi prowadzące do kuchni, aby wpuścić więcej powietrza, i odsłonił Steviego.",
+  "start": 486.94
+ },
+ {
+  "i": 36,
+  "pl": "Chłopiec, Bogu ducha winien, siedział grzecznie i spokojnie przy sosnowym stole, rysując kręgi, kręgi, kręgi;",
+  "start": 502.18
+ },
+ {
+  "i": 37,
+  "pl": "niezliczone kręgi dośrodkowe, odśrodkowe, połyskliwy wir kręgów, które przez powikłaną mnogość kół, przez monotonię kształtu i gmatwaninę przecinających się linii przypominały wizerunek kosmicznego chaosu, dzieło jakiejś obłąkanej sztuki symbolicznej porywającej się na niepojęte.",
+  "start": 509.68
+ },
+ {
+  "i": 38,
+  "pl": "Artysta nie odwrócił głowy, przejęty do głębi swoim zadaniem; jego plecy drgały, a szczupły kark z głęboką wklęsłością u podstawy czaszki tak się naprężył, że zdało się, pęknie lada chwila.",
+  "start": 528.18
+ },
+ {
+  "i": 39,
+  "pl": "Pan Verloc, zaskoczony tym widokiem, burknął coś z niechęcią i wrócił na kanapę. Aleksander Ossipon wstał, wysoki pod niskim sufitem w swym wytartym granatowym garniturze z szewiotu³⁴;",
+  "start": 541.56
+ },
+ {
+  "i": 40,
+  "pl": "otrząsnął się ze sztywności wywołanej długim bezruchem i leniwymi krokami poszedł do kuchni (dwa schodki w dół), aby zajrzeć przez ramię Steviego. Wrócił, orzekając tonem wyroczni:",
+  "start": 553.0
+ },
+ {
+  "i": 41,
+  "pl": "— Świetne. Bardzo charakterystyczne, na wskroś typowe.",
+  "start": 564.87
+ },
+ {
+  "i": 42,
+  "pl": "— Co jest świetne? — bąknął pytająco pan Verloc, usadowiwszy się ponownie w rogu kanapy.",
+  "start": 569.76
+ },
+ {
+  "i": 43,
+  "pl": "Ossipon wyjaśnił niedbale z odcieniem wyższości, kiwnąwszy głową w stronę kuchni:",
+  "start": 576.16
+ },
+ {
+  "i": 44,
+  "pl": "— Typowe dla tego rodzaju zwyrodnienia; mówię o rysunkach.",
+  "start": 582.2
+ },
+ {
+  "i": 45,
+  "pl": "— Uważacie tego chłopca za degenerata, co? — mruknął pan Verloc.",
+  "start": 586.7
+ },
+ {
+  "i": 46,
+  "pl": "Towarzysz Aleksander Ossipon zwany Doktorem, były student bez dyplomu, a potem wędrowny prelegent przemawiający na temat higieny z socjalistycznego punktu widzenia;",
+  "start": 591.96
+ },
+ {
+  "i": 47,
+  "pl": "autor popularnej pseudomedycznej pracy (marnej broszury skonfiskowanej szybko przez policję) pod tytułem Demoralizujące nałogi klas średnich;",
+  "start": 602.04
+ },
+ {
+  "i": 48,
+  "pl": "specjalny delegat mniej czy więcej tajemniczego Czerwonego Komitetu, wespół z Karlem Yundtem i Michaelisem, do spraw propagandy literackiej, zwrócił na ukrytego zausznika co najmniej dwóch ambasad wzrok pełen tej nieznośnej, beznadziejnie tępej zarozumiałości, której przeciętnie głupi ludzie nabierają tylko przez obcowanie z nauką.",
+  "start": 610.92
+ },
+ {
+  "i": 49,
+  "pl": "— Nazwałbym go tak z naukowego punktu widzenia. On jest w ogóle świetnym okazem tego rodzaju degenerata. Dość spojrzeć na końce jego uszu. Gdybyście czytali Lombrosa³⁵….",
+  "start": 633.6
+ },
+ {
+  "i": 50,
+  "pl": "Pan Verloc, rozparty na kanapie, wciąż patrzył markotnie na guziki swej kamizelki, a jego policzki zabarwiły się lekkim rumieńcem.",
+  "start": 646.1
+ },
+ {
+  "i": 51,
+  "pl": "Od niedawna każde słowo pokrewne choćby w najlżejszym stopniu słowu „nauka” (który to wyraz jest terminem niewinnym i nie posiada określonego znaczenia) miało dziwną właściwość: oto wywoływało w umyśle Verloca, z prawie nadnaturalną plastycznością, wizję pana Władimira we własnej osobie.",
+  "start": 654.44
+ },
+ {
+  "i": 52,
+  "pl": "Ten niezmiernie przykry objaw, należący bezwzględnie do zjawisk niezwykłych, wprawiał pana Verloca w stan lęku oraz wściekłości, skłonnej do ujawniania się w gwałtownych przekleństwach. Lecz pan Verloc milczał. Przemówił natomiast Karl Yundt, nieubłagany do ostatniego tchnienia.",
+  "start": 673.84
+ },
+ {
+  "i": 53,
+  "pl": "— Lombroso jest osioł.",
+  "start": 692.4
+ },
+ {
+  "i": 54,
+  "pl": "Towarzysz Ossipon odparł cios tego bluźnierstwa strasznym, bezmyślnym spojrzeniem. Oczy Yundta, wygasłe i matowe, pogłębiały cienie pod jego wielkim, kościstym czołem; mamrotał, chwytając raz po raz wargami koniec języka, jakby go żuł ze złością:",
+  "start": 695.94
+ },
+ {
+  "i": 55,
+  "pl": "— Idiota, jakiego świat nie widział. Według niego więzień jest przestępcą. To takie proste! A kim są ci, co go zamknęli — wpakowali do więzienia przemocą? Tak, przemocą! I czymże jest zbrodnia?",
+  "start": 713.19
+ },
+ {
+  "i": 56,
+  "pl": "Czy wie coś o tym głupiec Lombroso, który zrobił karierę na tym świecie sytych kpów, przyglądając się uszom i zębom różnych pechowych nieboraków? Więc zęby i uszy piętnują przestępców — tak uważacie?",
+  "start": 727.46
+ },
+ {
+  "i": 57,
+  "pl": "A co powiemy o prawie, które piętnuje ich jeszcze skuteczniej — o tym świetnie działającym narzędziu, wymyślonym przez ludzi sytych po dziurki od nosa, po to, żeby zabezpieczyć się przed głodnymi? Dalejże z rozpalonym żelazem do nikczemnych skór nędzarzy!",
+  "start": 740.48
+ },
+ {
+  "i": 58,
+  "pl": "Czujecie swąd, słyszycie, jak skwierczy i syczy gruba skóra tych ludzi? Tak się przygotowuje zbrodniarzy dla waszych Lombrosów, aby mogli wypisywać o nich swe brednie.",
+  "start": 755.78
+ },
+ {
+  "i": 59,
+  "pl": "Nogi i gałka laski trzęsły mu się z gniewu, a tors owinięty połami haweloka trwał w słynnej pozie Yundta, pełnej wyzwania. Zdawało się, że terrorysta wciąga powietrze skażone społecznym okrucieństwem, że chwyta wytężonym uchem jego ohydne odgłosy. W postawie Yundta była nadzwyczajna siła sugestii.",
+  "start": 766.07
+ },
+ {
+  "i": 60,
+  "pl": "Ledwie zipiący weteran wojen dynamitowych był swego czasu wielkim aktorem — na estradach, na tajnych zebraniach, podczas prywatnych wywiadów. Słynny terrorysta w ciągu całego życia nigdy nie podniósł ręki na ustrój społeczny. Nie był człowiekiem czynu;",
+  "start": 785.21
+ },
+ {
+  "i": 61,
+  "pl": "nie był nawet mówcą o ognistej wymowie porywającej tłumy wśród zgiełku i wrzenia wielkiego zapału. Zamysły jego były o wiele chytrzejsze;",
+  "start": 801.29
+ },
+ {
+  "i": 62,
+  "pl": "wziął na siebie rolę bezczelnego, jadowitego budziciela złowrogich porywów, które czają się w ślepej zawiści i rozjątrzonej pysze ignorancji, w cierpieniu i nędzy biedoty, we wszystkich ufnych i szlachetnych złudzeniach sprawiedliwego gniewu, współczucia, buntu.",
+  "start": 809.29
+ },
+ {
+  "i": 63,
+  "pl": "Cień jego złowrogich zdolności wlókł się za nim dotychczas, niby zapach śmiertelnego narkotyku trzymający się starej flaszeczki z trucizną, opróżnionej, bezużytecznej, nadającej się tylko do wyrzucenia na śmietnik jako rzecz, która swoje zrobiła.",
+  "start": 825.49
+ },
+ {
+  "i": 64,
+  "pl": "Niewyraźny uśmiech przewinął się po zlepionych wargach Michaelisa, apostoła na urlopie; jego nalana twarz podobna do księżyca w pełni opadła na pierś ruchem melancholijnego potwierdzenia. Przecież sam był więźniem. Wyszeptał cicho, że jego skóra także syczała pod dotknięciem rozpalonego żelaza.",
+  "start": 841.25
+ },
+ {
+  "i": 65,
+  "pl": "Tymczasem Ossipon, zwany Doktorem, uporał się już z ciosem zadanym mu przez Yundta.",
+  "start": 860.79
+ },
+ {
+  "i": 66,
+  "pl": "— Co wy tam rozumiecie — zaczął pogardliwie i urwał, zmieszany śmiertelną czernią zapadłych oczu, które zwracały ku niemu z wolna jakby ślepe spojrzenie, kierujące się samym dźwiękiem. Ossipon zaniechał dyskusji, wzruszając lekko ramionami.",
+  "start": 867.06
+ },
+ {
+  "i": 67,
+  "pl": "Stevie, przyzwyczajony do tego, że nikt nie zwraca na niego uwagi, wstał od kuchennego stołu, zabierając swój rysunek do łóżka. Przechodził właśnie obok drzwi do saloniku i przystanął, porażony obrazową elokwencją Karla Yundta.",
+  "start": 882.98
+ },
+ {
+  "i": 68,
+  "pl": "Upuścił papier pokryty kręgami i wlepił oczy w starego terrorystę, przykuty do miejsca chorobliwą zgrozą i strachem, który odczuwał zawsze na myśl o bólu fizycznym. Stevie wiedział doskonale, że to bardzo boli, jeśli przytknąć do skóry rozpalone żelazo.",
+  "start": 897.1
+ },
+ {
+  "i": 69,
+  "pl": "Jego przerażone oczy zabłysły gniewem, usta mu się otworzyły; to musi być straszny ból.",
+  "start": 913.4
+ },
+ {
+  "i": 70,
+  "pl": "Michaelis, patrząc w ogień nieruchomym wzrokiem, odzyskał poczucie odosobnienia niezbędne dla ciągłości swych myśli. Z jego ust znowu zaczął płynąć optymizm. Widział kapitalizm skazany na zagładę już w kołysce, urodzony z jadem konkurencji zawartym w swoim systemie.",
+  "start": 920.44
+ },
+ {
+  "i": 71,
+  "pl": "Widział, jak wielcy kapitaliści pożerają małych, jak gromadzą siłę i narzędzia produkcji w wielkich ilościach, jak doskonalą wytwórczość przemysłową i w szale pomnażania swych bogactw tylko przygotowują, organizują, wzbogacają prawne dziedzictwo cierpiącego proletariatu.",
+  "start": 937.86
+ },
+ {
+  "i": 72,
+  "pl": "Wreszcie Michaelis wyrzekł wielkie słowa: „Miejcie cierpliwość” — a jego jasnoniebieskie spojrzenie, wzniesione ku niskiemu sufitowi saloniku, wyrażało ufność zaiste anielską. U drzwi stał Stevie, uspokojony i jakby ogłupiały.",
+  "start": 954.87
+ },
+ {
+  "i": 73,
+  "pl": "Twarz towarzysza Ossipona zadrgała gniewem.",
+  "start": 973.03
+ },
+ {
+  "i": 74,
+  "pl": "— Więc najlepiej nic nie robić… bo i po co.",
+  "start": 976.66
+ },
+ {
+  "i": 75,
+  "pl": "— Tego nie mówię — zaprzeczył łagodnie Michaelis. Jego wizja prawdy stała się tak potężna, że dźwięk obcego głosu nie zdołał jej spłoszyć. Apostoł patrzył ciągle w głąb kominka na czerwone węgle. Torowanie dróg dla przyszłości jest konieczne;",
+  "start": 981.46
+ },
+ {
+  "i": 76,
+  "pl": "Michaelis nie przeczył temu, że wielka zmiana może przyjść wśród zamętu rewolucji. Ale dowodził, iż propaganda rewolucyjna jest subtelną pracą bardzo wrażliwego sumienia. Toż to urabianie władców świata. Taka propaganda powinna być równie staranna jak wychowywanie królów.",
+  "start": 997.46
+ },
+ {
+  "i": 77,
+  "pl": "Trzeba, aby rozpowszechniała swe zasady ostrożnie, nawet lękliwie, gdyż nie wiemy, jaki wpływ może wywrzeć taka lub inna zmiana ekonomiczna na szczęście, moralność, intelekt, na historię rodu ludzkiego.",
+  "start": 1016.55
+ },
+ {
+  "i": 78,
+  "pl": "Albowiem historię tworzą narzędzia nie zaś idee, a warunki ekonomiczne zmieniają wszystko — sztukę, filozofię, miłość, cnotę… nawet prawdę!",
+  "start": 1029.57
+ },
+ {
+  "i": 79,
+  "pl": "Węgle na palenisku osunęły się z lekkim trzaskiem; Michaelis, pustelnik żyjący wizjami w więziennej samotni, powstał gwałtownie z miejsca.",
+  "start": 1042.62
+ },
+ {
+  "i": 80,
+  "pl": "Okrągły na kształt balonu, rozwarł krótkie, grube ramiona, jakby usiłując we wzruszającym i beznadziejnym porywie objąć i przycisnąć do piersi wszechświat, który się sam przez się odrodził. Zadyszał się od entuzjazmu.",
+  "start": 1052.6
+ },
+ {
+  "i": 81,
+  "pl": "— Przyszłość jest równie pewna jak przeszłość: niewolnictwo, feudalizm, indywidualizm, kolektywizm. To jest stwierdzenie prawa, a nie czcze proroctwo.",
+  "start": 1067.96
+ },
+ {
+  "i": 82,
+  "pl": "Wydęte lekceważąco grube wargi towarzysza Ossipona uwydatniły murzyński typ jego twarzy.",
+  "start": 1081.36
+ },
+ {
+  "i": 83,
+  "pl": "— Bzdury — rzekł dość spokojnie. — Nie ma żadnych praw i nie ma pewności. Do licha z propagandą pedagogiczną. To, co ludzie wiedzą, nie ma żadnego znaczenia, choćby ta wiedza była jak najściślejsza. Jedyna rzecz, która ma dla nas znaczenie, to stan uczuciowy mas. Bez uczuć nie ma czynu.",
+  "start": 1088.06
+ },
+ {
+  "i": 84,
+  "pl": "Zamilkł, po czym dodał ze skromną stanowczością:",
+  "start": 1109.2
+ },
+ {
+  "i": 85,
+  "pl": "— Mówię to z punktu widzenia nauki… nauki… Co? Coście powiedzieli, Verloc?",
+  "start": 1112.66
+ },
+ {
+  "i": 86,
+  "pl": "— Nic — burknął z kanapy pan Verloc, którego znienawidzone słowo pobudziło tylko do mruknięcia: „Cholera”.",
+  "start": 1122.38
+ },
+ {
+  "i": 87,
+  "pl": "Jadowity bełkot bezzębnego terrorysty rozległ się znowu.",
+  "start": 1130.26
+ },
+ {
+  "i": 88,
+  "pl": "— Wiecie, jak bym nazwał współczesne stosunki ekonomiczne? Ludożerstwem. Ni mniej, ni więcej! Wyzyskiwacze po prostu sycą swoją chciwość drgającym mięsem i ciepłą krwią ludu.",
+  "start": 1135.79
+ },
+ {
+  "i": 89,
+  "pl": "Stevie przełknął głośno to przerażające twierdzenie i naraz, jakby pod wpływem szybkiej trucizny, osunął się, siadając bezwładnie na schodkach prowadzących do kuchni.",
+  "start": 1148.87
+ },
+ {
+  "i": 90,
+  "pl": "Po Michaelisie nie było znać, czy coś słyszał. Jego wargi wyglądały jakby sklejone na zawsze; obwisłe policzki ani drgnęły. Rozejrzał się mętnymi oczami za swym melonikiem i włożył go na okrągłą głowę.",
+  "start": 1158.81
+ },
+ {
+  "i": 91,
+  "pl": "Jego kuliste, opasłe ciało, rzekłbyś, płynęło nisko między krzesłami, pod ostrym łokciem Karla Yundta. Stary terrorysta podniósł rękę drżącą, szponiastą i przesunął zawadiacko na bok czarny pilśniowy kapelusz o szerokim rondzie rzucającym cień na kości i zagłębienia zniszczonej twarzy.",
+  "start": 1172.67
+ },
+ {
+  "i": 92,
+  "pl": "Ruszył powoli z miejsca, stukając kijem o podłogę za każdym krokiem. Trudno było go wyprowadzić, bo od czasu do czasu przystawał jakby w zadumie i ani myślał się ruszyć, póki Michaelis nie pociągnął go naprzód.",
+  "start": 1191.27
+ },
+ {
+  "i": 93,
+  "pl": "Łagodny apostoł wziął Yundta pod ramię z braterską troskliwością, a za nimi krzepki Ossipon ziewnął z lekka, trzymając ręce w kieszeniach.",
+  "start": 1203.43
+ },
+ {
+  "i": 94,
+  "pl": "Zsunięta na tył głowy granatowa czapka o lakierowanym daszku odsłaniała jego gęstą czuprynę, nadając mu wygląd norweskiego marynarza znudzonego światem po wściekłej pijatyce. Verloc wyprowadził gości na ulicę; towarzyszył im bez kapelusza, w otwartym palcie, nie odrywając oczu od ziemi.",
+  "start": 1212.81
+ },
+ {
+  "i": 95,
+  "pl": "Zamknął drzwi za ich plecami z hamowaną gwałtownością, obrócił klucz w zamku, zasunął rygiel. Nie był zadowolony ze swych przyjaciół. Wobec filozofii rzucania bomb wyłożonej przez pana Władimira wydawali się beznadziejnie jałowi.",
+  "start": 1231.85
+ },
+ {
+  "i": 96,
+  "pl": "Ponieważ rola Verloca w polityce rewolucyjnej polegała na obserwacji, nie mógł podjąć zaraz inicjatywy czynu, czy to we własnym domu, czy na większych zebraniach. Musiał być ostrożny.",
+  "start": 1246.27
+ },
+ {
+  "i": 97,
+  "pl": "Przejęty słusznym oburzeniem czterdziestokilkoletniego mężczyzny, zagrożonego w tym, co mu jest najdroższe — w swym spokoju i bezpieczeństwie — zapytywał siebie z pogardą, czego się właściwie mógł po tej bandzie spodziewać, po takim Karlu Yundtcie, takim Michaelisie… takim Ossiponie.",
+  "start": 1258.13
+ },
+ {
+  "i": 98,
+  "pl": "Chcąc zakręcić gaz na środku sklepu, pan Verloc przystanął i zapadł natychmiast w otchłań filozoficznych rozmyślań. Wydał sąd o tych ludziach wiedziony intuicją, której źródłem było pokrewne im usposobienie.",
+  "start": 1276.32
+ },
+ {
+  "i": 99,
+  "pl": "Cóż to za leniwa zgraja — na przykład ten Karl Yundt, zdany na opiekę staruszki o kaprawych oczach, kobiety, którą odebrał kiedyś przyjacielowi i której potem nieraz usiłował się pozbyć, spychając ją do rynsztoka.",
+  "start": 1289.72
+ },
+ {
+  "i": 100,
+  "pl": "Na szczęście dla Yundta za każdym razem powracała do niego wytrwale, bo inaczej któż by pomagał temu upiorowi wysiadać z omnibusu u bramy Green Parku, dokąd jeździł każdego pięknego ranka, aby zażywać zdrowotnej przechadzki, wlokąc się noga za nogą.",
+  "start": 1302.98
+ },
+ {
+  "i": 101,
+  "pl": "Gdy burkliwa, nieposkromiona stara wiedźma przeniesie się do wieczności, zadzierzysty upiór też będzie musiał zniknąć — przyjdzie koniec na ognistego Karla Yundta.",
+  "start": 1319.22
+ },
+ {
+  "i": 102,
+  "pl": "Pan Verloc czuł się także urażony w swej etyce optymizmem Michaelisa. Łagodny apostoł został przygarnięty przez bogatą starą damę, która ostatnimi czasy posyłała go do swej wilii na wsi.",
+  "start": 1331.44
+ },
+ {
+  "i": 103,
+  "pl": "Były więzień mógł tam wałęsać się całymi dniami po cienistych dróżkach wśród rozkosznej, prawdziwie humanitarnej bezczynności. Co się zaś tyczyło Ossipona, temu drągalowi z pewnością nie zbraknie niczego, póki są na świecie głupie dziewczęta posiadające książeczki oszczędnościowe.",
+  "start": 1343.88
+ },
+ {
+  "i": 104,
+  "pl": "I pan Verloc, mając usposobienie identycznie takie samo jak jego koledzy, wynajdywał między sobą a nimi głębokie różnice na podstawie nieznacznych odchyleń.",
+  "start": 1360.76
+ },
+ {
+  "i": 105,
+  "pl": "Wynajdywał je z pewnym upodobaniem, ponieważ instynkt konwencjonalnej przyzwoitości był silnie w nim rozwinięty i ustępował tylko niechęci do wszelkiego rodzaju istotnej pracy. Ową negatywną cechę dzielił pan Verloc z wielką liczbą rewolucjonistów, reformatorów pewnego społecznego porządku.",
+  "start": 1370.65
+ },
+ {
+  "i": 106,
+  "pl": "Albowiem człowiek nie buntuje się przeciw korzystnym dla niego stronom danego porządku, lecz przeciw cenie, którą trzeba zań płacić monetą ogólnie przyjętej moralności, ciężkiej pracy i panowania nad sobą. Rewolucjoniści są przeważnie wrogami dyscypliny i trudu.",
+  "start": 1388.05
+ },
+ {
+  "i": 107,
+  "pl": "Trafiają się między nimi ludzie, którzy w swym poczuciu sprawiedliwości sądzą, że cena wymagana za pewien ład społeczny jest potwornie wielka, ohydna, gniotąca, uciążliwa, haniebna, że jest zdzierstwem niemożliwym do zniesienia. Ci są fanatykami.",
+  "start": 1405.14
+ },
+ {
+  "i": 108,
+  "pl": "Za resztę buntowników społecznych odpowiedzialna jest próżność, matka wszystkich szlachetnych i wszystkich niskich złudzeń, towarzyszka poetów, reformatorów, szarlatanów, proroków i podpalaczy.",
+  "start": 1420.24
+ },
+ {
+  "i": 109,
+  "pl": "Pan Verloc, który zapadł na całą minutę w otchłań zadumy, nie dotarł jednak do dna swych abstrakcyjnych rozważań. Może nie był do tego zdolny. W każdym razie brakowało mu czasu.",
+  "start": 1433.24
+ },
+ {
+  "i": 110,
+  "pl": "Ocknął się w przykry sposób, pomyślawszy nagle o panu Władimirze, jeszcze jednym towarzyszu, którego również mógł trafnie ocenić ze względu na subtelne powinowactwa moralne. Uważał go za niebezpiecznego. Cień zawiści wśliznął się do rozmyślań pana Verloca.",
+  "start": 1445.0
+ },
+ {
+  "i": 111,
+  "pl": "Wolno się było wałkonić tamtym ludziom, którzy nie znali pana Władimira i mogli znaleźć oparcie w kobietach; tymczasem on, Verloc, musiał łożyć na utrzymanie swojej kobiety…",
+  "start": 1461.05
+ },
+ {
+  "i": 112,
+  "pl": "Tu zwykłe skojarzenie myśli stawiło pana Verloca wobec konieczności udania się wcześniej lub później na spoczynek. Czemu więc nie położyć się zaraz — natychmiast? Westchnął.",
+  "start": 1472.55
+ },
+ {
+  "i": 113,
+  "pl": "Ta perspektywa nie wzniecała w nim przyjemnego uczucia, jakiego normalnie powinien był doznać mężczyzna w jego wieku i o jego temperamencie. Bał się okropnie demona bezsenności, który się zawziął na niego. Podniósłszy rękę, Verloc zakręcił płomień gazu migocący mu nad głową.",
+  "start": 1484.41
+ },
+ {
+  "i": 114,
+  "pl": "Jasne pasmo światła padało za ladę przez drzwi od saloniku. Pozwoliło to panu Verlocowi ustalić od jednego spojrzenia liczbę srebrnych monet w podręcznej kasie. Było ich bardzo mało; po raz pierwszy od chwili otwarcia sklepu Verloc spojrzał nań z handlowego punktu widzenia.",
+  "start": 1502.0
+ },
+ {
+  "i": 115,
+  "pl": "Wynik tego spojrzenia był niekorzystny. Pan Verloc został kupcem bynajmniej nie w celach handlowych. A wybrał tę właśnie gałąź handlu wskutek instynktownego zamiłowania do mętnych interesów dających łatwy zarobek.",
+  "start": 1519.12
+ },
+ {
+  "i": 116,
+  "pl": "Przy tym dzięki swemu sklepowi mógł pozostać w sferze, do której należał i na którą ma oko policja, co więcej, mógł zajmować w tej sferze jawne stanowisko; sytuacja kupca owej branży bardzo mu dogadzała, gdyż będąc w tajnych stosunkach z policją, spoufalił się z nią i nic z niej sobie nie robił.",
+  "start": 1532.26
+ },
+ {
+  "i": 117,
+  "pl": "Lecz jako środek utrzymania jego interes handlowy był sam przez się niewystarczający.",
+  "start": 1550.94
+ },
+ {
+  "i": 118,
+  "pl": "Wyjął z szuflady skrzynkę z pieniędzmi i opuszczając sklep, przekonał się, że Stevie jest jeszcze w kuchni.",
+  "start": 1556.36
+ },
+ {
+  "i": 119,
+  "pl": "Cóż on tam robi u licha, zapytał siebie. Co znaczą te błazeństwa? Spojrzał niepewnie na szwagra, ale nie zażądał od niego wyjaśnień.",
+  "start": 1563.44
+ },
+ {
+  "i": 120,
+  "pl": "Rozmowy Verloca ze Steviem ograniczały się do niedbałego mruknięcia po rannym śniadaniu: „Trzewiki”, a nawet i to było raczej rzuconym w przestrzeń życzeniem niż wyraźnym rozkazem lub prośbą. Pan Verloc spostrzegł, nieco zdziwiony, że właściwie nie wie, co Steviemu powiedzieć.",
+  "start": 1572.92
+ },
+ {
+  "i": 121,
+  "pl": "Zatrzymał się na środku saloniku i milcząc, zajrzał do kuchni. Nie wiedział także, jaki skutek miałoby jego odezwanie się. Wydało mu się to bardzo dziwne wobec świadomości, która błysnęła mu nagle, że i ten chłopiec był na jego utrzymaniu. Nigdy jeszcze na Steviego pod tym kątem nie patrzył.",
+  "start": 1590.26
+ },
+ {
+  "i": 122,
+  "pl": "Nie miał pojęcia, jak do chłopca się zwrócić. Przypatrywał się Steviemu, który machał rękami i mruczał coś do siebie. Krążył naokoło stołu jak podniecone zwierzę w klatce. Pan Verloc zaproponował:",
+  "start": 1607.49
+ },
+ {
+  "i": 123,
+  "pl": "— Może byś tak poszedł spać?",
+  "start": 1619.93
+ },
+ {
+  "i": 124,
+  "pl": "Nie wywarło to żadnego skutku; Verloc przestał wpatrywać się w szwagra kamiennym wzrokiem i przeszedł ciężkimi krokami przez salonik, trzymając w ręku kasę. Idąc po schodach, poczuł zmęczenie płynące ze źródeł czysto psychicznych i stąd zupełnie dla niego niezrozumiałe. Zaniepokoił się.",
+  "start": 1622.4
+ },
+ {
+  "i": 125,
+  "pl": "Miał nadzieję, że to nie jest początek jakiejś choroby, przystanął jednak na ciemnej platformie schodów, aby zdać sobie sprawę ze swych wrażeń. Zamącił je lekki, nieustanny odgłos chrapania przenikający ciemność. Odgłos ten dochodził z pokoju teściowej.",
+  "start": 1642.08
+ },
+ {
+  "i": 126,
+  "pl": "Jeszcze jedna gęba do wyżywienia, pomyślał, wchodząc do sypialni.",
+  "start": 1657.88
+ },
+ {
+  "i": 127,
+  "pl": "Gazu na górze nie było; pani Verloc zasnęła przy lampie palącej się jasno na stole obok łóżka. Światło spod abażuru padało jaskrawym blaskiem na wgłębienie białej poduszki, gdzie spoczywała głowa o zamkniętych oczach i ciemnych włosach splecionych na noc w kilka warkoczy.",
+  "start": 1662.91
+ },
+ {
+  "i": 128,
+  "pl": "Winnie ocknęła się z dźwiękiem swego imienia w uszach i zobaczyła męża stojącego nad sobą.",
+  "start": 1679.89
+ },
+ {
+  "i": 129,
+  "pl": "— Winnie! Winnie!",
+  "start": 1686.85
+ },
+ {
+  "i": 130,
+  "pl": "Nie poruszyła się z początku; leżała bardzo spokojnie, patrząc na skrzynkę z pieniędzmi w rękach męża. Ale gdy zrozumiała, że jej brat „rozbija się po kuchni”, spuściła nogi z łóżka nagłym ruchem.",
+  "start": 1690.67
+ },
+ {
+  "i": 131,
+  "pl": "Jej nagie stopy, jakby przebiwszy dno prostego perkalowego³⁶ worka zaopatrzonego w rękawy i zapiętego szczelnie u szyi oraz rąk, szukały po dywanie pantofli; oczy były podniesione ku twarzy męża.",
+  "start": 1704.43
+ },
+ {
+  "i": 132,
+  "pl": "— Nie umiem sobie z nim poradzić — wyjaśnił opryskliwie pan Verloc. — Nie można go zostawiać na dole samego z zapalonym gazem.",
+  "start": 1718.89
+ },
+ {
+  "i": 133,
+  "pl": "Nie odpowiedziała nic, przesunęła się szybko przez pokój i drzwi zamknęły się za jej białą postacią.",
+  "start": 1727.39
+ },
+ {
+  "i": 134,
+  "pl": "Pan Verloc postawił skrzynkę z pieniędzmi na nocnym stoliku i zaczął czynność rozbierania się od ciśnięcia palta na oddalone krzesło. W ślad za paltem poszły surdut i kamizelka. Chodził w skarpetkach po pokoju;",
+  "start": 1732.98
+ },
+ {
+  "i": 135,
+  "pl": "jego otyła postać odbijała się raz po raz w długiej tafli lustra umieszczonego w żoninej szafie, gdy mijał ją tam i z powrotem, manewrując nerwowo rękami u szyi.",
+  "start": 1747.59
+ },
+ {
+  "i": 136,
+  "pl": "Spuścił szelki z ramion, podniósł gwałtownie żaluzję i oparł czoło o zimną szybę — wątłą błonę szkła tkwiącą między nim a olbrzymim zbiorowiskiem zimnych, czarnych, mokrych, oślizłych, niegościnnych cegieł, dachówek i kamieni, rzeczy, które są z natury niemiłe i nieprzychylne człowiekowi.",
+  "start": 1757.81
+ },
+ {
+  "i": 137,
+  "pl": "Pan Verloc odczuwał skrytą nieżyczliwość wszystkiego, co było na dworze, odczuwał ją tak silnie, że zakrawało to na ból fizyczny. Myślał o tym, że wśród ludzi wysadzonych z siodła nikt nie czuje się równie bezradny jak tajny agent policji.",
+  "start": 1777.03
+ },
+ {
+  "i": 138,
+  "pl": "„Zupełnie jakby koń padł pod człowiekiem wśród bezludnej, jałowej równiny”. Porównanie to nasunęło się panu Verlocowi, ponieważ swego czasu jeździł na różnych koniach wojskowych i miał teraz wrażenie, że grozi mu upadek. Ta perspektywa była równie mroczna jak szyba, o którą wsparł czoło.",
+  "start": 1793.65
+ },
+ {
+  "i": 139,
+  "pl": "Nagle ukazała się przed nim twarz pana Władimira, wygolona i pełna dowcipu, otoczona aureolą bijącą z rumianej cery niby różowa pieczęć wyciśnięta na złowieszczej ciemności.",
+  "start": 1811.05
+ },
+ {
+  "i": 140,
+  "pl": "Owa jasna fragmentaryczna wizja wywarła na panu Verlocu tak strasznie realne wrażenie, że odskoczył od okna, spuszczając żaluzję z głośnym trzaskiem. Znękany, oniemiały ze strachu przed dalszą możliwością podobnych wizji, zobaczył żonę wchodzącą do pokoju; położyła się do łóżka spokojnie i szybko.",
+  "start": 1823.47
+ },
+ {
+  "i": 141,
+  "pl": "Pan Verloc poczuł się beznadziejnie samotny. Winnie wyraziła zdziwienie, że mąż jest jeszcze na nogach.",
+  "start": 1844.51
+ },
+ {
+  "i": 142,
+  "pl": "— Jakoś nieszczególnie się czuję — mruknął, przesuwając ręką po wilgotnym czole.",
+  "start": 1851.67
+ },
+ {
+  "i": 143,
+  "pl": "— Masz zawrót głowy?",
+  "start": 1857.8
+ },
+ {
+  "i": 144,
+  "pl": "— Tak. Bardzo mi niedobrze.",
+  "start": 1859.76
+ },
+ {
+  "i": 145,
+  "pl": "Pani Verloc z niewzruszonym spokojem doświadczonej małżonki wyraziła swoje zdanie o przyczynach tego złego samopoczucia i zaproponowała zwykłe na to lekarstwo, lecz jej mąż, który stał wciąż jak wryty na środku pokoju, pokręcił głową ze smutkiem.",
+  "start": 1863.29
+ },
+ {
+  "i": 146,
+  "pl": "— Zaziębisz się, jeśli tak będziesz stał nieubrany — zauważyła.",
+  "start": 1880.02
+ },
+ {
+  "i": 147,
+  "pl": "Pan Verloc z wysiłkiem skończył się rozbierać i położył się. Na wąskiej, spokojnej ulicy miarowe kroki zbliżyły się i stopniowo zamarły w oddali, nieśpieszne i stanowcze, jakby przechodzień mijający dom zamierzał maszerować przez całą wieczność od jednej latarni do drugiej, wśród nocy bez końca;",
+  "start": 1884.24
+ },
+ {
+  "i": 148,
+  "pl": "senne tykanie starego zegara wiszącego na klatce schodowej dotarło wyraźnie aż do sypialni.",
+  "start": 1903.51
+ },
+ {
+  "i": 149,
+  "pl": "Pani Verloc zauważyła, leżąc na wznak i patrząc w sufit:",
+  "start": 1910.03
+ },
+ {
+  "i": 150,
+  "pl": "— Bardzo mało dziś wpłynęło do kasy.",
+  "start": 1914.65
+ },
+ {
+  "i": 151,
+  "pl": "Verloc, leżąc w tej samej pozycji, odchrząknął, jakby chciał powiedzieć coś ważnego, lecz zapytał po prostu:",
+  "start": 1917.77
+ },
+ {
+  "i": 152,
+  "pl": "— Zgasiłaś gaz na dole?",
+  "start": 1924.64
+ },
+ {
+  "i": 153,
+  "pl": "— Owszem, zgasiłam — odrzekła sumiennie pani Verloc. — Biedny chłopiec jest dziś strasznie podniecony — szepnęła po pauzie trwającej trzy tyknięcia zegara.",
+  "start": 1928.26
+ },
+ {
+  "i": 154,
+  "pl": "Podniecenie Steviego wcale Verloca nie obchodziło, ale był wybity ze snu i lękał się strasznie mroku i ciszy, które miały nastąpić po zgaszeniu lampy. Ten lęk skłonił go do wypowiedzenia uwagi, że Stevie puścił mimo uszu jego radę, aby pójść się położyć. Pani Verloc połknęła haczyk;",
+  "start": 1939.23
+ },
+ {
+  "i": 155,
+  "pl": "zaczęła dowodzić długo i szeroko, iż to nie była wcale „zuchwałość” ze strony Stephena, tylko „podniecenie”.",
+  "start": 1957.39
+ },
+ {
+  "i": 156,
+  "pl": "W całym Londynie nie znajdzie się chłopca, który by był bardziej uległy i chętny do wszystkiego, bardziej kochający i gotów do usług, i nawet pożyteczny, jeśli ludzie nie mącą mu w biednej głowinie. Obróciła się ku spoczywającemu małżonkowi;",
+  "start": 1963.83
+ },
+ {
+  "i": 157,
+  "pl": "wsparta na łokciu, pochyliła się nad nim, pragnąc gorąco, aby uwierzył, że Stevie może być użytecznym członkiem rodziny.",
+  "start": 1979.51
+ },
+ {
+  "i": 158,
+  "pl": "Pod wpływem tej żarliwej opiekuńczej litości, wybujałej przesadnie już w dzieciństwie i wzbudzonej nieszczęściem drugiego dziecka, blade policzki Winnie pokrył ciemny rumieniec, a wielkie jej oczy błyszczały spod ciemnych powiek.",
+  "start": 1986.47
+ },
+ {
+  "i": 159,
+  "pl": "Pani Verloc wydawała się młodsza, równie młoda jak przed kilku laty i znacznie bardziej ożywiona; dawna Winnie, mieszkająca w dzielnicy Belgravia, nie pozwalała sobie nigdy na takie ożywienie w obecności lokatorów. Niepokój Verloca przeszkodził mu zdać sobie sprawę z tego, co mówiła.",
+  "start": 2001.59
+ },
+ {
+  "i": 160,
+  "pl": "Było to tak, jakby jej głos rozlegał się z drugiej strony bardzo grubej ściany. Dopiero wygląd Winnie przywołał go do przytomności.",
+  "start": 2019.42
+ },
+ {
+  "i": 161,
+  "pl": "Podobała mu się ta kobieta; uświadomił to sobie, widząc na jej twarzy jakby wzruszenie, co zwiększyło jeszcze jego udrękę. Gdy głos Winnie ucichł, pan Verloc poruszył się niespokojnie i rzekł:",
+  "start": 2027.76
+ },
+ {
+  "i": 162,
+  "pl": "— Już od kilku dni czuję się niedobrze.",
+  "start": 2041.67
+ },
+ {
+  "i": 163,
+  "pl": "Może uważał to za wstęp do zwierzeń bardziej zasadniczych, ale pani Verloc położyła znów głowę na poduszce i ciągnęła dalej, patrząc w sufit:",
+  "start": 2044.57
+ },
+ {
+  "i": 164,
+  "pl": "— Chłopiec za dużo się nasłuchał wszystkiego, co się tu mówi. Gdybym wiedziała, że oni przyjdą dziś wieczór, byłabym dopilnowała, żeby poszedł spać razem ze mną. Posłyszał coś o jedzeniu ludzkiego mięsa i piciu krwi, i to go wyprowadziło z równowagi. Po cóż to gadać takie rzeczy?",
+  "start": 2055.07
+ },
+ {
+  "i": 165,
+  "pl": "Nuta oburzenia i pogardy dźwięczała w jej głosie. Pan Verloc podzielał teraz jej uczucia w całej pełni.",
+  "start": 2074.07
+ },
+ {
+  "i": 166,
+  "pl": "— Spytaj Karola Yundta — warknął dziko.",
+  "start": 2082.58
+ },
+ {
+  "i": 167,
+  "pl": "Pani Verloc orzekła z wielką stanowczością, że Karl Yundt jest „wstrętnym starym grzybem”. Wyznała otwarcie swoją sympatię dla Michaelisa. Nie nadmieniła jednak nic o Ossiponie, w którego obecności odczuwała zawsze niepokój maskowany niewzruszoną powściągliwością.",
+  "start": 2086.67
+ },
+ {
+  "i": 168,
+  "pl": "I znów zaczęła mówić o bracie, który był od tylu lat przedmiotem jej opieki i niepokoju:",
+  "start": 2103.13
+ },
+ {
+  "i": 169,
+  "pl": "— To, co się tu opowiada, nie jest dla niego odpowiednie. On myśli, że to wszystko prawda. Nic z tego nie rozumie i wpada w straszny gniew, kiedy coś podobnego usłyszy.",
+  "start": 2109.27
+ },
+ {
+  "i": 170,
+  "pl": "Pan Verloc nic na to nie odpowiedział.",
+  "start": 2120.21
+ },
+ {
+  "i": 171,
+  "pl": "— Kiedy zeszłam na dół, patrzył na mnie, jakby mnie nie poznawał. Serce mu biło jak młotem. Cóż on na to poradzi, że jest taki wrażliwy. Obudziłam matkę i poprosiłam, żeby siedziała przy nim, póki nie zaśnie. On nie jest temu winien. Nie ma z nim żadnego kłopotu, jeśli mu dać spokój.",
+  "start": 2123.77
+ },
+ {
+  "i": 172,
+  "pl": "Pan Verloc milczał w dalszym ciągu.",
+  "start": 2143.76
+ },
+ {
+  "i": 173,
+  "pl": "— Żałuję, że się go posyłało do szkoły — podjęła nagle pani Verloc. — Zabiera zawsze do czytania te gazety z wystawy. Ślęczy nad nimi i dostaje wypieków. Nie sprzedaje się tego nawet dwunastu sztuk na miesiąc. Zabierają tylko miejsce na wystawie.",
+  "start": 2148.49
+ },
+ {
+  "i": 174,
+  "pl": "A Ossipon przynosi co tydzień cały stos tych ulotek P. P., żeby je sprzedawać po pół pensa³⁷. Nie dałabym pół pensa za to wszystko. To po prostu bzdury i nic więcej. Nie mają żadnego zbytu. Któregoś dnia Stevie złapał taką ulotkę;",
+  "start": 2165.6
+ },
+ {
+  "i": 175,
+  "pl": "było tam opowiadanie o niemieckim oficerze, który o mało co nie oderwał rekrutowi ucha i wcale go za to nie ukarano. Co za bydlę! Tego popołudnia nie mogłam sobie ze Steviem dać rady. Nic dziwnego, że na takie rzeczy krew się burzy w człowieku. Ale po co to drukować?",
+  "start": 2180.28
+ },
+ {
+  "i": 176,
+  "pl": "Dzięki Bogu nie jesteśmy niewolnikami jak Niemcy. Co to nas obchodzi… nieprawdaż?",
+  "start": 2197.55
+ },
+ {
+  "i": 177,
+  "pl": "Pan Verloc nic nie odrzekł.",
+  "start": 2203.18
+ },
+ {
+  "i": 178,
+  "pl": "— Musiałam odebrać chłopcu nóż do krajania mięsa — ciągnęła pani Verloc trochę już sennie. — Krzyczał i tupał, i szlochał. Nie może znieść myśli o okrucieństwie. Byłby zadźgał tego oficera jak świnię, gdyby go wtedy zobaczył. Naprawdę. Niektórzy ludzie wcale na litość nie zasługują.",
+  "start": 2206.48
+ },
+ {
+  "i": 179,
+  "pl": "— Głos pani Verloc zamilkł, a wyraz nieruchomych jej oczu robił się coraz bardziej zamyślony i mglisty podczas długiego milczenia. — Wygodnie ci, kochanie? — spytała cichym, dalekim głosem. — Czy mogę już zgasić światło?",
+  "start": 2224.14
+ },
+ {
+  "i": 180,
+  "pl": "Ponure przeświadczenie, że nie ma dla niego snu, opanowało Verloca; leżał beznadziejnie, niemy i bezwładny w strachu przed ciemnością. Uczynił wielki wysiłek.",
+  "start": 2238.68
+ },
+ {
+  "i": 181,
+  "pl": "— Dobrze. Zgaś — rzekł w końcu głucho.",
+  "start": 2250.6
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

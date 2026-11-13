@@ -1,0 +1,883 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to conrad-tajny-agent_014_xiii.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-13.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tajny agent · Rozdział XIII — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Tajny agent · Rozdział XIII · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="conrad-tajny-agent_014_xiii.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Olbrzymia żelazna kłódka na drzwiach schowka była w tym pokoju jedynym przedmiotem, na którym oczy mogły spocząć bez odrazy, jaką budziły wszystkie inne znajdujące się tam sprzęty, dziwnie brzydkie w kształcie i wykonane z lichego materiału.",
+  "start": 2.15
+ },
+ {
+  "i": 1,
+  "pl": "Kłódki tej nikt nie chciał kupić z powodu jej okazałych rozmiarów i właściciel sklepu dla marynarzy we wschodniej części Londynu odstąpił ją Profesorowi za parę pensów.",
+  "start": 16.89
+ },
+ {
+  "i": 2,
+  "pl": "Pokój był duży, czysty, przyzwoity i biedny tym rodzajem biedy, który ze wszystkich ludzkich głodów zaspokaja tylko jeden: głód chleba.",
+  "start": 27.85
+ },
+ {
+  "i": 3,
+  "pl": "Na ścianach nie było nic oprócz tapet, płacht arsenowej zieleni⁹², pokrytych gdzieniegdzie nieokreślonymi smugami i plamami, co przypominało spłowiałe mapy niezamieszkanych kontynentów.",
+  "start": 37.03
+ },
+ {
+  "i": 4,
+  "pl": "Przy sosnowym stole blisko okna siedział towarzysz Ossipon z głową wspartą na piersiach. Profesor, odziany w swoje jedyne ubranie, z tandetnego samodziału, kłapał tam i sam po gołych deskach parą niewiarygodnie zniszczonych pantofli, trzymając ręce głęboko w wypchanych kieszeniach kurtki.",
+  "start": 49.08
+ },
+ {
+  "i": 5,
+  "pl": "Opowiadał gościowi o swoich niedawnych odwiedzinach u apostoła Michaelisa. Wzorowy anarchista trochę się nawet rozkrochmalił.",
+  "start": 67.76
+ },
+ {
+  "i": 6,
+  "pl": "— Ten człowiek nie wiedział nic a nic o śmierci Verloca. Naturalnie. Przecież na dzienniki nawet nie spojrzy. Mówi, że zanadto go przygnębiają. Ale mniejsza z tym. Wszedłem do domku. Ani żywej duszy. Musiałem wołać ze sześć razy, zanim mi odpowiedział. Myślałem, że jeszcze leży w łóżku i śpi.",
+  "start": 76.85
+ },
+ {
+  "i": 7,
+  "pl": "Ale nic podobnego. Pisał swoją książkę już od czterech godzin. Siedział w tej małej klatce wśród całych fur rękopisu. Na stole leżała obok niego niedojedzona marchew. Jest teraz na diecie złożonej z surowej marchwi i odrobiny mleka.",
+  "start": 98.53
+ },
+ {
+  "i": 8,
+  "pl": "— No i jak on przy tym wygląda? — spytał obojętnie towarzysz Ossipon.",
+  "start": 114.37
+ },
+ {
+  "i": 9,
+  "pl": "— Niebiańsko… Podniosłem garść kartek z podłogi. Ubóstwo jego rozumowania jest zdumiewające. Żadnej logiki. Nie umie myśleć konsekwentnie. Ale to jeszcze nic. Podzielił swą biografię na trzy części, zatytułowane: Wiara, Nadzieja, Miłość⁹³.",
+  "start": 120.97
+ },
+ {
+  "i": 10,
+  "pl": "Opracowuje teraz plan świata pomyślanego jako olbrzymi, przyjemny szpital wśród kwiatów i ogrodów, w którym to szpitalu silni mają się oddawać pielęgnowaniu słabych.",
+  "start": 138.08
+ },
+ {
+  "i": 11,
+  "pl": "Profesor umilkł na chwilę.",
+  "start": 148.9
+ },
+ {
+  "i": 12,
+  "pl": "— Czy wy, Ossipon, możecie sobie wyobrazić ten absurd? Poświęcać się pielęgnowaniu słabych! Słabi to źródło wszystkiego zła na tej ziemi — ciągnął z ponurą pewnością siebie.",
+  "start": 152.34
+ },
+ {
+  "i": 13,
+  "pl": "— Powiedziałem mu na to, że ja marzę o świecie podobnym do jatek, o świecie, gdzie wszystkich słabych wzięłoby się za łeb, aby ich wytępić. Rozumiecie mnie, Ossipon? To oni są źródłem wszystkiego zła!",
+  "start": 164.59
+ },
+ {
+  "i": 14,
+  "pl": "Narzucają nam swoją złowrogą władzę — słabi, niedołężni, głupi, tchórzliwi, ludzie o wątłych sercach i niewolniczym duchu. Ale przedstawiają wielką siłę. Z nich składa się tłum. Ich jest królestwo ziemi⁹⁴. Tępić, tępić! to jedyna droga postępu. Jedyna! Słyszycie, Ossipon?",
+  "start": 176.25
+ },
+ {
+  "i": 15,
+  "pl": "Najpierw musi zginąć mrowie słabych, a potem ci, co są tylko względnie silni. Rozumiecie? Najpierw ślepi, potem głusi i niemi, potem chromi i kulawi — i tak dalej. Każde zepsucie, każdy występek, każdy przesąd, każda tradycja musi znaleźć swój kres.",
+  "start": 196.45
+ },
+ {
+  "i": 16,
+  "pl": "— A co zostanie? — zapytał Ossipon stłumionym głosem.",
+  "start": 213.06
+ },
+ {
+  "i": 17,
+  "pl": "— Ja zostanę… jeśli jestem na to dość silny — oświadczył malutki, wybladły Profesor, którego wielkie uszy, cienkie jak błona i odstające od małej czaszki, zabarwiły się nagle ciemną czerwienią. — Nacierpiałem się już dość przez tyranię słabych — ciągnął gwałtownie.",
+  "start": 218.73
+ },
+ {
+  "i": 18,
+  "pl": "Dotknął bocznej kieszeni i mówił dalej: — A jednak jestem siłą. Tylko muszę mieć czas! Czas! Dajcie mi czasu! Ach, to ludzkie mrowie, zbyt głupie, aby czuć litość lub strach. Niekiedy zdaje mi się, że wszystko jest po ich stronie. Wszystko… nawet śmierć — moja własna broń.",
+  "start": 237.97
+ },
+ {
+  "i": 19,
+  "pl": "— Chodźcie i napijcie się ze mną piwa w „Sylenie” — rzekł krzepki Ossipon po chwili ciszy, przerywanej tylko szybkim kłapaniem pantofli Wzorowego Anarchisty. Profesor zgodził się. Był tego dnia na swój sposób wesoły. Uderzył Ossipona po ramieniu.",
+  "start": 259.03
+ },
+ {
+  "i": 20,
+  "pl": "— Piwa? Dobrze! Pijmy i weselmy się, bo jesteśmy silni, a jutro umrzemy.",
+  "start": 276.01
+ },
+ {
+  "i": 21,
+  "pl": "Zaczął wkładać trzewiki, nie przestając mówić właściwym sobie urywanym, stanowczym tonem.",
+  "start": 281.25
+ },
+ {
+  "i": 22,
+  "pl": "— Co wam jest, Ossipon? Wyglądacie markotnie i poszukujecie nawet mojego towarzystwa. Słyszę, że widują was ciągle tam, gdzie się gada głupstwa przy kieliszku. Co się stało? Czyżbyście już porzucili kolekcję waszych kobiet? One są tymi słabymi, którzy karmią silnych — co?",
+  "start": 287.41
+ },
+ {
+  "i": 23,
+  "pl": "Tupnął obutą nogą i wziął z podłogi drugi sznurowany but, ciężki, o grubej podeszwie, niewyczyszczony i pokryty łatami. Uśmiechnął się do siebie złośliwie.",
+  "start": 306.38
+ },
+ {
+  "i": 24,
+  "pl": "— Powiedzcie mi, Ossipon, straszny człowieku, czy też któraś z waszych ofiar odebrała sobie kiedyś życie? A może wasze tryumfy są jeszcze niekompletne? Albowiem wielkość pieczętuje się tylko krwią. Krwią. Śmiercią. Spójrzcie na historię.",
+  "start": 316.64
+ },
+ {
+  "i": 25,
+  "pl": "— Żebyście z piekła nie wyszli — rzekł Ossipon z głową wciąż odwróconą.",
+  "start": 333.18
+ },
+ {
+  "i": 26,
+  "pl": "— Terefere! Zostawcie piekło słabym, którzy je wymyślili dla silnych. Ossipon, czuję do was życzliwą pogardę. Nie potrafilibyście zabić i muchy.",
+  "start": 338.7
+ },
+ {
+  "i": 27,
+  "pl": "Ale tocząc się na szczycie omnibusu w stronę piwiarni „Sylen”, Profesor stracił na humorze.",
+  "start": 350.44
+ },
+ {
+  "i": 28,
+  "pl": "Widok tłumów rojących się po chodnikach przygniótł jego pewność siebie ciężarem wątpliwości i niepokoju; ciężaru tego pozbywał się tylko wówczas, gdy przesiedział czas jakiś samotnie w izbie o wielkim schowku zamkniętym na olbrzymią kłódkę.",
+  "start": 356.34
+ },
+ {
+  "i": 29,
+  "pl": "— A więc — doszedł go z tyłu głos Ossipona, który siedział w omnibusie tuż za nim — a więc Michaelis marzy o świecie wyglądającym jak wspaniały, wesoły szpital?",
+  "start": 372.71
+ },
+ {
+  "i": 30,
+  "pl": "— Właśnie. Jak olbrzymi zakład dobroczynny do leczenia słabych — potwierdził szyderczo Profesor.",
+  "start": 383.83
+ },
+ {
+  "i": 31,
+  "pl": "— Cóż za absurd — przyznał Ossipon. — Słabości uleczyć nie można. Ale w gruncie rzeczy Michaelis może się tak bardzo nie myli. Za dwieście lat światem będą władali lekarze. Nauka rządzi światem już teraz. Rządzi z ukrycia, lecz rządzi.",
+  "start": 390.61
+ },
+ {
+  "i": 32,
+  "pl": "A cała nauka musi ześrodkować się w końcu na nauce leczenia — i to nie słabych, lecz silnych. Ludzkość pragnie żyć… żyć.",
+  "start": 406.49
+ },
+ {
+  "i": 33,
+  "pl": "— Ludzkość sama nie wie, czego chce — oświadczył Profesor, błyskając zarozumiale okularami oprawnymi w żelazo.",
+  "start": 416.84
+ },
+ {
+  "i": 34,
+  "pl": "— Ale wy wiecie — burknął Ossipon. — Dopiero co żądaliście czasu… czasu. No więc doktorzy dostarczą wam czasu pod dostatkiem, jeśli na to zasłużycie.",
+  "start": 425.79
+ },
+ {
+  "i": 35,
+  "pl": "Uważacie się za silnego, ponieważ macie w kieszeni dość prochu, aby przenieść się do wieczności i zabrać z sobą jeszcze — powiedzmy — ze dwadzieścia osób. Ale wieczność jest próżnią, psiakrew. Czego wam potrzeba, to właśnie czasu.",
+  "start": 435.87
+ },
+ {
+  "i": 36,
+  "pl": "Gdybyście spotkali człowieka, który by mógł wam zapewnić dziesięć lat życia, uznalibyście go za pana.",
+  "start": 451.78
+ },
+ {
+  "i": 37,
+  "pl": "— Dewizą moją jest: ani Boga, ani pana — rzekł Profesor sentencjonalnie i wstał, aby wysiąść.",
+  "start": 459.55
+ },
+ {
+  "i": 38,
+  "pl": "Ossipon szedł za nim.",
+  "start": 467.27
+ },
+ {
+  "i": 39,
+  "pl": "— Poczekajcie aż przyjdzie wasza godzina i będziecie żegnać się z życiem — odparł, zeskakując za Profesorem — z waszym marnym, nędznym, parszywym życiem — ciągnął, mijając jezdnię i dając susa na chodnik.",
+  "start": 470.52
+ },
+ {
+  "i": 40,
+  "pl": "— Ossipon, blagier z was i tyle — rzekł Profesor, otwierając władczą dłonią drzwi sławnego „Sylena”. A gdy już zasiedli przy stoliku, zaczął uzupełniać swą łaskawą opinię. — Nie jesteście nawet doktorem. Natomiast jesteście śmieszni.",
+  "start": 485.14
+ },
+ {
+  "i": 41,
+  "pl": "Wasze wyobrażenia o ludzkości, która na całej ziemi, od bieguna do bieguna, będzie pokazywała język i zażywała pigułki na rozkaz kilku nadętych pajaców, oto proroctwo godne tego, co je wypowiedział. Proroctwo! Po kiego licha myśleć o tym, co będzie! — Podniósł kufel.",
+  "start": 502.04
+ },
+ {
+  "i": 42,
+  "pl": "— Za zagładę tego, co jest — rzekł spokojnie.",
+  "start": 519.2
+ },
+ {
+  "i": 43,
+  "pl": "Wypił i zapadł z powrotem w zwykłe sobie, osobliwie znaczące milczenie. Gnębiła go myśl o ludzkości nieprzeliczonej jak piasek na morskim brzegu, równie jak piasek niezniszczalnej i trudnej do opanowania. Wśród bezmiaru jej biernych ziarenek huk pękających bomb zatraca się bez echa.",
+  "start": 522.56
+ },
+ {
+  "i": 44,
+  "pl": "Na przykład ta sprawa Verloca. Kto już dziś o niej myśli?",
+  "start": 539.88
+ },
+ {
+  "i": 45,
+  "pl": "Ossipon, niby przynaglony tajemniczą siłą, wyjął z kieszeni kilkakrotnie złożony dziennik. Profesor podniósł głowę, słysząc szelest.",
+  "start": 544.8
+ },
+ {
+  "i": 46,
+  "pl": "— Co to za gazeta? Jest tam co ciekawego? — spytał.",
+  "start": 554.99
+ },
+ {
+  "i": 47,
+  "pl": "Ossipon drgnął jak nastraszony lunatyk:",
+  "start": 559.39
+ },
+ {
+  "i": 48,
+  "pl": "— Nie. Nie ma tu nic. To gazeta sprzed dziesięciu dni. Zapomniałem, że mam ją w kieszeni.",
+  "start": 563.03
+ },
+ {
+  "i": 49,
+  "pl": "Ale nie wyrzucił tej starej gazety. Zanim ją schował z powrotem, zerknął na ostatnie zdanie pewnej notatki. Brzmiało, jak następuje: „Nieprzenikniona tajemnica zawiśnie chyba na wieki nad tym czynem szaleństwa lub rozpaczy”.",
+  "start": 568.1
+ },
+ {
+  "i": 50,
+  "pl": "Były to końcowe słowa notatki pod tytułem: Samobójstwo pasażerki na statku kursującym po Kanale Angielskim. Towarzysz Ossipon był już obeznany z pięknym dziennikarskim stylem tej notatki. „Nieprzenikniona tajemnica zawiśnie chyba na wieki…” Umiał każde słowo na pamięć. „Nieprzenikniona tajemnica…”",
+  "start": 583.2
+ },
+ {
+  "i": 51,
+  "pl": "Krzepki anarchista, zwiesiwszy głowę, pogrążył się w głębokiej zadumie.",
+  "start": 606.08
+ },
+ {
+  "i": 52,
+  "pl": "Ta sprawa zagrażała podstawom jego istnienia. Kiedy się wybierał na randki z kobietami, którym zawrócił głowę — zalecał się do nich zwykle na ławkach w Kensington Gardens albo u ogrodzeń przed domami — obawiał się wciąż, że zacznie mówić o „nieprzeniknionej tajemnicy, która”…",
+  "start": 610.5
+ },
+ {
+  "i": 53,
+  "pl": "Ponieważ był spoufalony z wiedzą, jął się lękać obłędu czyhającego nań wśród tych wierszy. „Zawiśnie chyba na wieki”… To było opętanie, to była tortura.",
+  "start": 628.08
+ },
+ {
+  "i": 54,
+  "pl": "W ostatnich czasach zaniedbał się stawić na kilka takich spotkań, podczas których zdobywał bezwzględną ufność obejściem pełnym uczucia i męskiej tkliwości. Łatwowierność kobiet z różnych środowisk zadowalała potrzeby jego miłości własnej i zaopatrywała go w środki materialne.",
+  "start": 641.42
+ },
+ {
+  "i": 55,
+  "pl": "Potrzebował jej do życia. Miał ją na zawołanie. Ale jeśli nie będzie mógł nadal jej wyzyskiwać, śmierć z głodu zagrozi i jego ideałom, i jego ciału… „Nad tym czynem szaleństwa lub rozpaczy”.",
+  "start": 659.6
+ },
+ {
+  "i": 56,
+  "pl": "Dla całej ludzkości „nieprzenikniona tajemnica” miała na pewno „zawisnąć na wieki” nad ową sprawą. Ale co on, Ossipon, pocznie, jeśli sam jeden ze wszystkich ludzi na świecie nie zdoła nigdy zapomnieć o tej przeklętej historii?",
+  "start": 673.22
+ },
+ {
+  "i": 57,
+  "pl": "A wiedział najdokładniej wszystko to, co dziennikarz podawał do wiadomości czytelników, zatrzymując się na samym progu „tajemnicy”, która „zawiśnie na wieki”…",
+  "start": 686.96
+ },
+ {
+  "i": 58,
+  "pl": "Towarzysz Ossipon był dobrze poinformowany. Marynarz pilnujący pokładu zauważył, co następuje: „Pani w czarnej sukni i czarnej woalce spacerowała o północy po bulwarze wzdłuż statku. — Czy pani płynie naszym statkiem? — spytał zachęcająco. — O, tędy, proszę pani.",
+  "start": 696.46
+ },
+ {
+  "i": 59,
+  "pl": "— Robiła wrażenie, że nie wie, co począć. Pomógł jej wejść na pokład. Wydawała się bardzo osłabiona”.",
+  "start": 714.66
+ },
+ {
+  "i": 60,
+  "pl": "Ossipon wiedział również, co zauważyła stewardessa. Czarno ubrana pasażerka o bladej twarzy stała w środku pustej kajuty dla pań. Za namową stewardessy położyła się w końcu. Zdawało się, że nie jest zdolna wymówić ani słowa, jakby była czymś okropnie zgnębiona.",
+  "start": 721.56
+ },
+ {
+  "i": 61,
+  "pl": "Potem stewardessa spostrzegła, że nie ma jej w kajucie. Poszła więc na pokład jej szukać. Dalej Ossipon dowiedział się, że zacna kobieta znalazła nieszczęśliwą panią wyciągniętą na jednym z leżaków osłoniętych daszkami. Pasażerka miała oczy otwarte, ale nie chciała odpowiadać na żadne pytania.",
+  "start": 737.52
+ },
+ {
+  "i": 62,
+  "pl": "Wyglądała jak ciężko chora. Stewardessa sprowadziła głównego stewarda i oboje przystanęli obok leżaka, naradzając się, co począć z tą niezwykłą, tragiczną pasażerką. Rozmawiali głośnym szeptem (zdawało się, że pasażerka nie jest w stanie nic usłyszeć), mówili, że w St.",
+  "start": 755.1
+ },
+ {
+  "i": 63,
+  "pl": "Malo jest konsul i że trzeba się porozumieć z rodziną tej pani w Anglii. Potem odeszli, aby zarządzić przeniesienie jej do kabiny, bo sądząc z wyglądu, wydała im się po prostu konająca.",
+  "start": 771.64
+ },
+ {
+  "i": 64,
+  "pl": "Lecz towarzysz Ossipon wiedział, że pod tą białą maską toczyła się walka między zgrozą i rozpaczą a potężną żywotnością, przywiązaniem do życia tak silnym, iż mogło przezwyciężyć straszliwą mękę prącą do zabójstwa i ślepy, obłędny strach przed szubienicą. Wiedział to.",
+  "start": 783.16
+ },
+ {
+  "i": 65,
+  "pl": "Ale stewardessa i główny steward nie wiedzieli nic poza tym, że gdy wrócili w niespełna pięć minut potem, czarno ubranej pani nie było już na leżaku. Nie było jej nigdzie. Znikła. Stało się to o piątej rano i nie był to wcale wypadek.",
+  "start": 801.4
+ },
+ {
+  "i": 66,
+  "pl": "W godzinę później ktoś z załogi znalazł na leżaku ślubną obrączkę, która przylgnęła do mokrego drzewa i swym połyskiem zwróciła uwagę marynarza. Wewnątrz obrączki była wyryta data 24 lipca 1879 r. „Nieprzenikniona tajemnica zawiśnie chyba na wieki”…",
+  "start": 816.26
+ },
+ {
+  "i": 67,
+  "pl": "Towarzysz Ossipon podniósł zwieszoną głowę, ubóstwianą przez różne skromne kobiety Wysp Brytyjskich, głowę promienistym gąszczem włosów przypominającą Apolla⁹⁵.",
+  "start": 837.12
+ },
+ {
+  "i": 68,
+  "pl": "Tymczasem Profesor uczuł niepokój. Wstał z miejsca.",
+  "start": 847.52
+ },
+ {
+  "i": 69,
+  "pl": "— Czekajcie no — rzekł spiesznie Ossipon. — Powiedzcie mi, co wy myślicie o szaleństwie i rozpaczy.",
+  "start": 851.74
+ },
+ {
+  "i": 70,
+  "pl": "Profesor przesunął końcem języka po suchych, cienkich wargach i rzekł pouczająco:",
+  "start": 858.46
+ },
+ {
+  "i": 71,
+  "pl": "— Te rzeczy już nie istnieją. Wszystkie potężne uczucia zatraciły się. Świat jest przeciętny, sflaczały, bezsilny. A szaleństwo i rozpacz stanowią siłę. Siła jest zbrodnią w oczach durniów, ludzi słabych i ludzi naiwnych, którzy rządzą kurnikiem. Wy jesteście przeciętni.",
+  "start": 863.24
+ },
+ {
+  "i": 72,
+  "pl": "Verloc, którego sprawie policja ukręciła łeb tak gładko, był przeciętny. No i policja go zamordowała. Był przeciętny. Każdy jest przeciętny. Szaleństwo i rozpacz! Dajcie mi je za dźwignię, a poruszę świat⁹⁶. Ossipon, wyrażam wam swoją szczerą pogardę.",
+  "start": 883.73
+ },
+ {
+  "i": 73,
+  "pl": "Wy nie jesteście w stanie nawet zamierzyć tego, co przeciętny zapasiony obywatel nazwałby zbrodnią. Nie ma w was siły.",
+  "start": 903.44
+ },
+ {
+  "i": 74,
+  "pl": "Zamilkł, uśmiechając się szyderczo pod srogim połyskiem grubych okularów.",
+  "start": 911.32
+ },
+ {
+  "i": 75,
+  "pl": "— I pozwólcie sobie powiedzieć, że nie przybyło wam oleju w głowie od tego małego spadku, co to mówią, żeście się go dochrapali. Siedzicie nad piwem jak mumia. Do widzenia.",
+  "start": 916.33
+ },
+ {
+  "i": 76,
+  "pl": "— Chcecie go wziąć? — rzekł Ossipon, spoglądając na Profesora z idiotycznym uśmiechem.",
+  "start": 929.87
+ },
+ {
+  "i": 77,
+  "pl": "— Co wziąć?",
+  "start": 936.59
+ },
+ {
+  "i": 78,
+  "pl": "— Spadek. Co do grosza.",
+  "start": 938.27
+ },
+ {
+  "i": 79,
+  "pl": "Nieprzekupny Profesor tylko się uśmiechnął. Odzienie jego było prawie w strzępach, buty, bezkształtne od łat, ciężkie jak ołów, nasiąkały wodą za każdym krokiem. Rzekł:",
+  "start": 940.43
+ },
+ {
+  "i": 80,
+  "pl": "— Poślę wam wkrótce mały rachunek za chemikalia, które jutro obstaluję⁹⁷. Potrzebuję ich na gwałt. Zgoda?",
+  "start": 952.28
+ },
+ {
+  "i": 81,
+  "pl": "Ossipon skłonił powoli głowę. Był sam. „Nieprzenikniona tajemnica”… Wydało mu się, że widzi zawieszony w powietrzu własny mózg, drgający w rytm pewnej nieprzeniknionej tajemnicy. Mózg najwyraźniej chory… „Nad tym czynem szaleństwa lub rozpaczy”.",
+  "start": 959.88
+ },
+ {
+  "i": 82,
+  "pl": "Pianola u drzwi zagrała walca z bezczelnym zacięciem i nagle umilkła jakby rozzłoszczona.",
+  "start": 978.16
+ },
+ {
+  "i": 83,
+  "pl": "Towarzysz Ossipon, zwany Doktorem, wyszedł z piwiarni. U drzwi zawahał się, mrużąc oczy w słońcu, które nie świeciło nazbyt wspaniale. Dziennik z notatką o samobójstwie kobiety spoczywał w kieszeni Ossipona; serce jego biło, uderzając o ten dziennik.",
+  "start": 984.48
+ },
+ {
+  "i": 84,
+  "pl": "Samobójstwo kobiety — „czyn szaleństwa lub rozpaczy”.",
+  "start": 1000.74
+ },
+ {
+  "i": 85,
+  "pl": "Szedł ulicą, nie patrząc, gdzie stawia nogi, i nie zdążając na miejsce spotkania z pewną kobietą — podstarzałą wychowawczynią, która pokładała ufność w boskiej głowie przypominającej Apolla. Szedł w kierunku przeciwnym. Nie chciał mieć do czynienia z żadną kobietą.",
+  "start": 1005.32
+ },
+ {
+  "i": 86,
+  "pl": "Był zgubiony. Nie mógł ani myśleć, ani pracować, ani spać, ani jeść. Natomiast zaczynał pić z przyjemnością, z wyczekiwaniem, z nadzieją. Był zgubiony.",
+  "start": 1021.34
+ },
+ {
+  "i": 87,
+  "pl": "Jego kariera rewolucyjna, wspierana uczuciami i zaufaniem wielu kobiet, zachwiała się z powodu niedocieczonej tajemnicy — tajemnicy ludzkiego mózgu pulsującego nienormalnie w takt dziennikarskich frazesów… „Zawiśnie chyba na wieki…” zwiesił głowę nad rynsztokiem… „szaleństwa lub rozpaczy…”",
+  "start": 1032.02
+ },
+ {
+  "i": 88,
+  "pl": "— Jestem poważnie chory — mruknął do siebie z wnikliwością człowieka nauki.",
+  "start": 1052.32
+ },
+ {
+  "i": 89,
+  "pl": "Jego krzepka postać, z kieszeniami wypchanymi pieniędzmi odziedziczonymi po panu Verlocu (dostarczył ich tajny fundusz pewnej ambasady), kroczyła środkiem rynsztoka, jak gdyby Ossipon już się zaprawiał do zadań nieuniknionej przyszłości.",
+  "start": 1057.7
+ },
+ {
+  "i": 90,
+  "pl": "Pochylał szerokie ramiona i głowę o boskich kędziorach, niby przygotowując się do dźwignięcia skórzanego jarzma tablicy reklamowej⁹⁸.",
+  "start": 1072.38
+ },
+ {
+  "i": 91,
+  "pl": "Podobnie jak owej nocy, przeszło tydzień temu, towarzysz Ossipon szedł, nie zważając, gdzie stawia nogi, nie czując zmęczenia, nie czując w ogóle nic, nie widząc nic, głuchy na wszystko. „Nieprzenikniona tajemnica…” Szedł wśród ludzi mijających go obojętnie… „Nad tym czynem szaleństwa lub rozpaczy”.",
+  "start": 1080.26
+ },
+ {
+  "i": 92,
+  "pl": "A nieugięty Profesor szedł również przed siebie, odwracając wzrok od ohydnych, nieprzeliczonych tłumów. Nie istniała dla niego przyszłość. Lekceważył ją. Był potęgą. Pieścił się w myśli obrazami zniszczenia i zagłady.",
+  "start": 1101.5
+ },
+ {
+  "i": 93,
+  "pl": "Szedł drobny, niepozorny, obszarpany, nędzny — i straszliwy w prostocie swej idei, przywołującej szaleństwo i rozpacz dla odrodzenia świata. Nikt na niego nie patrzył. Śmiercionośny jak zaraza, sunął, nie budząc podejrzeń, ulicą pełną ludzi.",
+  "start": 1116.93
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

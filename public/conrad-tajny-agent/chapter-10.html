@@ -1,0 +1,2529 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-10.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-10.md audio/chapter-10.webm
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-10.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-10.md
+     It reads chapter-10.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path audio/chapter-10.webm, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Tajny agent · Rozdział X</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative;
+    cursor: help;
+    color: var(--accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    top: 12px;
+    width: min(360px, calc(100vw - 36px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans);
+    text-align: left;
+    white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-pl { display: block; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* EN / UA toggles + blocks */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .en p {
+    font-family: var(--sans);
+    font-size: .93rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Tajny agent · Rozdział X</h1>
+      <p class="chapter-name"></p>
+      <p>Joseph Conrad · trilingual study edition: EN → PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleEn" class="ctl" type="button" aria-pressed="false">Reveal all EN</button>
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>audio/chapter-10.webm</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>E</kbd> toggle EN · <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (EN → PL → UA, in reading order)  */
+/*    Generated from chapter-10.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "en": "The Assistant Commissioner, driven rapidly in a hansom from the neighbourhood of Soho in the direction of Westminster, got out at the very centre of the Empire on which the sun never sets. Some stalwart constables, who did not seem particularly impressed by the duty of watching the august spot, saluted him.",
+  "pl": "Nadinspektor, jadący szybko dorożką od Soho w stronę Westminsteru, wysiadł w samym środku imperium, nad którym słońce nigdy nie zachodzi⁷⁵. Salutowało mu kilku dzielnych policjantów; nie wydawali się szczególnie przejęci obowiązkiem czuwania nad tym dostojnym terenem.",
+  "ua": "Помічник комісара, який швидко їхав у кареті з околиць Сохо в напрямку Вестмінстера, вийшов у самому центрі імперії, над якою ніколи не заходить сонце⁷⁵. Його привітали кілька кремезних поліцейських; вони не здавалися особливо перейнятими обов’язком охороняти це поважне місце.",
+  "para": 0,
+  "start": 2.25
+ },
+ {
+  "en": "Penetrating through a portal by no means lofty into the precincts of the House which is the House, par excellence in the minds of many millions of men, he was met at last by the volatile and revolutionary Toodles.",
+  "pl": "Nadinspektor dostał się przez portal bynajmniej nie wysoki w obręb parlamentu — przedmiotu czci wielu milionów ludzi — i tam spotkał się wreszcie z płochym rewolucjonistą Toodlesem.",
+  "ua": "Помічник комісара пройшов крізь не надто високий портал на територію парламенту — предмета пошани для багатьох мільйонів людей — і там нарешті зустрівся з мінливим революціонером Тудлзом.",
+  "para": 0,
+  "start": 19.67
+ },
+ {
+  "en": "That neat and nice young man concealed his astonishment at the early appearance of the Assistant Commissioner, whom he had been told to look out for some time about midnight. His turning up so early he concluded to be the sign that things, whatever they were, had gone wrong.",
+  "pl": "Ów schludny, miły młodzian ukrył zdziwienie, ujrzawszy tak prędko nadinspektora, którego polecono mu oczekiwać mniej więcej około północy. Uznał jego przedwczesne ukazanie się za niechybną oznakę tego, że sprawa, jakąkolwiek była, nie została załatwiona pomyślnie.",
+  "ua": "Цей охайний, милий юнак приховав здивування, побачивши помічника комісара так рано; йому доручили чекати його приблизно опівночі. Він вирішив, що такий ранній прихід означає: що б там не сталося, справа завершилася невдало.",
+  "para": 1,
+  "start": 31.17
+ },
+ {
+  "en": "With an extremely ready sympathy, which in nice youngsters goes often with a joyous temperament, he felt sorry for the great Presence he called “The Chief,” and also for the Assistant Commissioner, whose face appeared to him more ominously wooden than ever before, and quite wonderfully long. “What a queer, foreign-looking chap he is,” he thought to himself, smiling from a distance with friendly buoyancy.",
+  "pl": "Z natychmiastową gotowością do współczucia, która u sympatycznych młodzieńców kojarzy się często z wesołym usposobieniem, zmartwił się ze względu na Wielkiego Dostojnika — nazywał go „szefem” —",
+  "ua": "З готовим співчуттям, яке в приємних юнаків часто поєднується з веселою вдачею, він засмутився заради Великого Достойника — він називав його «шефом» —",
+  "para": 1,
+  "start": 47.27
+ },
+ {
+  "en": "And directly they came together he began to talk with the kind intention of burying the awkwardness of failure under a heap of words.",
+  "pl": "a także i ze względu na nadinspektora, którego twarz wydała mu się złowróżbnie drewniana, bardziej niż kiedykolwiek — i niepomiernie długa.",
+  "ua": "а також заради помічника комісара, чиє обличчя здалося йому ще зловісніше дерев’яним, ніж будь-коли, і неймовірно довгим.",
+  "para": 1,
+  "start": 59.21
+ },
+ {
+  "en": "It looked as if the great assault threatened for that night were going to fizzle out.",
+  "pl": "„Jakąż on ma cudaczną powierzchowność, wygląda zupełnie na cudzoziemca” — pomyślał, uśmiechając się doń już z daleka wesoło i życzliwie. Kiedy znaleźli się obok siebie, zaczął natychmiast mówić w dobrodusznej intencji, aby ukryć w powodzi słów kłopotliwą porażkę nadinspektora.",
+  "ua": "«Який у нього чудернацький вигляд, зовсім схожий на іноземця», — подумав він, здалеку весело й привітно всміхаючись до нього. Щойно вони опинилися поруч, Тудлз заговорив із доброзичливим наміром поховати незручність невдачі під купою слів.",
+  "para": 2,
+  "start": 69.93
+ },
+ {
+  "en": "An inferior henchman of “that brute Cheeseman” was up boring mercilessly a very thin House with some shamelessly cooked statistics.",
+  "pl": "Oświadczył, że jego zdaniem wielki atak, który groził wieczorem, spali na panewce. Jakiś podrzędny stronnik „tego bydlęcia Cheesemanna” zanudza niemiłosiernie bardzo nielicznych posłów bezwstydnie sfałszowaną statystyką.",
+  "ua": "Він заявив, що, на його думку, великий напад, яким погрожували на цей вечір, провалиться. Якийсь дрібний прибічник «того звіра Чізмена» безжально набридає дуже нечисленній палаті безсоромно сфальсифікованою статистикою.",
+  "para": 2,
+  "start": 88.19
+ },
+ {
+  "en": "He, Toodles, hoped he would bore them into a count out every minute. But then he might be only marking time to let that guzzling Cheeseman dine at his leisure.",
+  "pl": "Toodles ma nadzieję, że posłowie będą się z nudów wymykać i lada chwila posiedzenie zostanie odroczone ze względu na brak quorum⁷⁶. Ale może ów poseł umyślnie tak mowę przeciąga, aby żarłok Cheesemann mógł swobodnie zjeść obiad.",
+  "ua": "Тудлз сподівається, що депутати нудьгуватимуть і щохвилини тікатимуть, аж засідання доведеться відкласти через відсутність кворуму⁷⁶. А може, той депутат навмисне затягує промову, щоб ненажера Чізмен міг спокійно пообідати.",
+  "para": 2,
+  "start": 103.63
+ },
+ {
+  "en": "Anyway, the Chief could not be persuaded to go home.",
+  "pl": "W każdym razie jemu, Toodlesowi, nie udało się namówić szefa, żeby poszedł do domu.",
+  "ua": "У будь-якому разі йому, Тудлзу, не вдалося вмовити шефа піти додому.",
+  "para": 2,
+  "start": 118.19
+ },
+ {
+  "en": "“He will see you at once, I think. He’s sitting all alone in his room thinking of all the fishes of the sea,” concluded Toodles airily. “Come along.”",
+  "pl": "— Z pewnością zaraz pana przyjmie. Siedzi sam w gabinecie i myśli o rybach ze wszystkich mórz — zakończył Toodles lekkim tonem. — Chodźmy.",
+  "ua": "— Він, безперечно, прийме вас одразу. Сидить сам у кабінеті й думає про риб з усіх морів, — легковажно закінчив Тудлз. — Ходімо.",
+  "para": 3,
+  "start": 123.33
+ },
+ {
+  "en": "Notwithstanding the kindness of his disposition, the young private secretary (unpaid) was accessible to the common failings of humanity. He did not wish to harrow the feelings of the Assistant Commissioner, who looked to him uncommonly like a man who has made a mess of his job.",
+  "pl": "Mimo swej życzliwej natury młody prywatny sekretarz (pracujący honorowo) podlegał zwykłym ludzkim słabościom. Nie chciał zadrasnąć nadinspektora, który według niego wyglądał zupełnie jak człowiek mający na sumieniu jakąś wielką niezręczność.",
+  "ua": "Попри доброзичливу вдачу, молодий приватний секретар (який працював без платні) мав звичайні людські слабкості. Він не хотів зачепити почуттів помічника комісара, який, на його думку, мав вигляд людини, що зробила велику халепу у своїй роботі.",
+  "para": 4,
+  "start": 132.77
+ },
+ {
+  "en": "But his curiosity was too strong to be restrained by mere compassion. He could not help, as they went along, to throw over his shoulder lightly:",
+  "pl": "Ale ciekawość sekretarza była zbyt silna, aby się poddać współczuciu. Kiedy szli razem, Toodles nie mógł się powstrzymać i rzucił lekko przez ramię:",
+  "ua": "Але цікавість секретаря була надто сильною, щоб поступитися співчуттю. Йдучи поруч, Тудлз не втримався й легковажно кинув через плече:",
+  "para": 4,
+  "start": 147.67
+ },
+ {
+  "en": "“And your sprat?”",
+  "pl": "— A jakże tam pańska szprotka?",
+  "ua": "— А як там ваша шпротина?",
+  "para": 5,
+  "start": 157.79
+ },
+ {
+  "en": "“Got him,” answered the Assistant Commissioner with a concision which did not mean to be repellent in the least.",
+  "pl": "— Schwytana — odrzekł nadinspektor zwięźle, lecz tonem bynajmniej nie odpychającym.",
+  "ua": "— Спіймана, — коротко, але зовсім не відштовхливо відповів помічник комісара.",
+  "para": 6,
+  "start": 162.34
+ },
+ {
+  "en": "“Good. You’ve no idea how these great men dislike to be disappointed in small things.”",
+  "pl": "— Świetnie. Nie ma pan pojęcia, jak dalece ci wielcy ludzie nie znoszą małych rozczarowań.",
+  "ua": "— Чудово. Ви й не уявляєте, як ці великі люди не терплять дрібних розчарувань.",
+  "para": 7,
+  "start": 167.98
+ },
+ {
+  "en": "After this profound observation the experienced Toodles seemed to reflect. At any rate he said nothing for quite two seconds. Then:",
+  "pl": "Wypowiedziawszy tę głęboką uwagę, doświadczony Toodles zdawał się namyślać. W każdym razie nie powiedział nic przez całe dwie sekundy. Wreszcie rzekł:",
+  "ua": "Висловивши це глибоке спостереження, досвідчений Тудлз, здавалося, замислився. Принаймні цілих дві секунди він нічого не казав. Нарешті промовив:",
+  "para": 8,
+  "start": 173.84
+ },
+ {
+  "en": "“I’m glad. But﻿—I say﻿—is it really such a very small thing as you make it out?”",
+  "pl": "— Bardzo się cieszę. Ale, proszę pana, czy to naprawdę taka drobnostka, jak pan twierdzi?",
+  "ua": "— Я радий. Але, послухайте, це справді така дрібниця, як ви кажете?",
+  "para": 9,
+  "start": 183.9
+ },
+ {
+  "en": "“Do you know what may be done with a sprat?” the Assistant Commissioner asked in his turn.",
+  "pl": "— Wie pan co można zrobić ze szprotką? — zapytał z kolei nadinspektor.",
+  "ua": "— Знаєте, що можна зробити зі шпротиною? — у свою чергу запитав помічник комісара.",
+  "para": 10,
+  "start": 190.24
+ },
+ {
+  "en": "“He’s sometimes put into a sardine box,” chuckled Toodles, whose erudition on the subject of the fishing industry was fresh and, in comparison with his ignorance of all other industrial matters, immense.",
+  "pl": "— Czasem kładzie się ją do pudełka od sardynek — zachichotał Toodles, którego erudycja w zakresie przemysłu rybnego była świeża i — w porównaniu z jego absolutną ignorancją we wszelkich innych sprawach przemysłu — olbrzymia.",
+  "ua": "— Іноді її кладуть у коробку з сардинами, — хихикнув Тудлз, чиї знання рибної промисловості були свіжими й, порівняно з цілковитим незнанням усіх інших галузей, величезними.",
+  "para": 11,
+  "start": 195.1
+ },
+ {
+  "en": "“There are sardine canneries on the Spanish coast which﻿—”",
+  "pl": "— Na hiszpańskim wybrzeżu są fabryki, gdzie się pakuje sardynki do pudełek, i…",
+  "ua": "— На іспанському узбережжі є фабрики, де консервують сардини, і…",
+  "para": 11,
+  "start": 208.38
+ },
+ {
+  "en": "The Assistant Commissioner interrupted the apprentice statesman.",
+  "pl": "Nadinspektor przerwał początkującemu statyście.",
+  "ua": "Помічник комісара перебив державного діяча-початківця.",
+  "para": 12,
+  "start": 214.04
+ },
+ {
+  "en": "“Yes. Yes. But a sprat is also thrown away sometimes in order to catch a whale.”",
+  "pl": "— Tak, tak. Ale czasem rzuca się z powrotem szprotkę do wody, aby złowić wieloryba.",
+  "ua": "— Так, так. Але іноді шпротину кидають назад у воду, щоб упіймати кита.",
+  "para": 13,
+  "start": 218.26
+ },
+ {
+  "en": "“A whale. Phew!” exclaimed Toodles, with bated breath. “You’re after a whale, then?”",
+  "pl": "— Wieloryba? Fiu! — gwizdnął Toodles z zapartym oddechem. — Więc pan poluje na wieloryba?",
+  "ua": "— Кита? Ф’ю! — захоплено вигукнув Тудлз. — То ви полюєте на кита?",
+  "para": 14,
+  "start": 224.92
+ },
+ {
+  "en": "“Not exactly. What I am after is more like a dogfish. You don’t know perhaps what a dogfish is like.”",
+  "pl": "— Właściwie to nie. Zwierzyna, którą ścigam, podobniejsza jest do psa morskiego⁷⁷. Ale może pan nie wie, jak wygląda pies morski?",
+  "ua": "— Не зовсім. Звір, за яким я полюю, більше схожий на морського пса⁷⁷. Але, може, ви не знаєте, який вигляд має морський пес?",
+  "para": 15,
+  "start": 234.24
+ },
+ {
+  "en": "“Yes; I do. We’re buried in special books up to our necks﻿—whole shelves full of them﻿—with plates.﻿ ﻿… It’s a noxious, rascally-looking, altogether detestable beast, with a sort of smooth face and moustaches.”",
+  "pl": "— Owszem, wiem. Toniemy po szyję w specjalnych książkach… półki są nimi zapchane… dużo tam drzeworytów… To taka szkodliwa, obmierzła bestia o łotrowskim wyglądzie i gładkim pysku ozdobionym wąsami.",
+  "ua": "— Знаю. Ми по шию завалені спеціальними книжками… цілими полицями… там безліч гравюр… Це шкідлива, паскудна тварюка з розбійницькою пикою та гладенькою мордою, прикрашеною вусами.",
+  "para": 16,
+  "start": 244.15
+ },
+ {
+  "en": "“Described to a T,” commended the Assistant Commissioner. “Only mine is clean-shaven altogether. You’ve seen him. It’s a witty fish.”",
+  "pl": "— Jakbym go widział — potwierdził nadinspektor. — Tylko ten mój jest zupełnie wygolony. Pan go zna. Sprytna bestia.",
+  "ua": "— Наче бачив його, — підтвердив помічник комісара. — Тільки мій зовсім поголений. Ви його знаєте. Кмітлива тварина.",
+  "para": 17,
+  "start": 259.12
+ },
+ {
+  "en": "“I have seen him!” said Toodles incredulously. “I can’t conceive where I could have seen him.”",
+  "pl": "— Znam go? — rzekł Toodles z niedowierzaniem. — Nie mam pojęcia, gdzie mogłem z nim się spotkać.",
+  "ua": "— Я його знаю? — недовірливо сказав Тудлз. — Не уявляю, де міг із ним зустрітися.",
+  "para": 18,
+  "start": 268.78
+ },
+ {
+  "en": "“At the Explorers, I should say,” dropped the Assistant Commissioner calmly. At the name of that extremely exclusive club Toodles looked scared, and stopped short.",
+  "pl": "— W Klubie Podróżników — rzekł spokojnie nadinspektor. Usłyszawszy nazwę tak bardzo ekskluzywnego klubu, Toodles przystanął, jak gdyby się zląkł.",
+  "ua": "— У Клубі мандрівників, — спокійно сказав помічник комісара. Почувши назву такого ексклюзивного клубу, Тудлз зупинився, ніби злякався.",
+  "para": 19,
+  "start": 276.11
+ },
+ {
+  "en": "“Nonsense,” he protested, but in an awestruck tone. “What do you mean? A member?”",
+  "pl": "— To niemożliwe — oświadczył, lecz w głosie jego zabrzmiała zgroza. — Co pan chce przez to powiedzieć? Członek klubu?",
+  "ua": "— Неможливо, — заявив він, але в голосі його бринів жах. — Що ви хочете цим сказати? Член клубу?",
+  "para": 20,
+  "start": 286.5
+ },
+ {
+  "en": "“Honorary,” muttered the Assistant Commissioner through his teeth.",
+  "pl": "— Honorowy — mruknął przez zęby nadinspektor.",
+  "ua": "— Почесний, — крізь зуби пробурмотів помічник комісара.",
+  "para": 21,
+  "start": 294.88
+ },
+ {
+  "en": "“Heavens!”",
+  "pl": "— Wielki Boże!",
+  "ua": "— Боже милостивий!",
+  "para": 22,
+  "start": 298.12
+ },
+ {
+  "en": "Toodles looked so thunderstruck that the Assistant Commissioner smiled faintly.",
+  "pl": "Toodles był tak przerażony, że nadinspektor uśmiechnął się z lekka.",
+  "ua": "Тудлз був такий приголомшений, що помічник комісара ледь усміхнувся.",
+  "para": 23,
+  "start": 299.69
+ },
+ {
+  "en": "“That’s between ourselves strictly,” he said.",
+  "pl": "— To wszystko ściśle między nami — dodał.",
+  "ua": "— Це суто між нами, — додав він.",
+  "para": 24,
+  "start": 304.18
+ },
+ {
+  "en": "“That’s the beastliest thing I’ve ever heard in my life,” declared Toodles feebly, as if astonishment had robbed him of all his buoyant strength in a second.",
+  "pl": "— Potworne! Pierwszy raz w życiu słyszę coś podobnego — rzekł Toodles słabym głosem, jakby zdumienie odjęło mu nagle całą siłę i rześkość.",
+  "ua": "— Жахливо! Уперше в житті чую щось подібне, — слабким голосом сказав Тудлз, ніби подив миттю відібрав у нього всю силу й бадьорість.",
+  "para": 25,
+  "start": 307.76
+ },
+ {
+  "en": "The Assistant Commissioner gave him an unsmiling glance. Till they came to the door of the great man’s room, Toodles preserved a scandalised and solemn silence, as though he were offended with the Assistant Commissioner for exposing such an unsavoury and disturbing fact.",
+  "pl": "Nadinspektor spojrzał nań z powagą. Póki się nie znaleźli u drzwi wielkiego człowieka, Toodles zachowywał zgorszone i uroczyste milczenie; rzekłbyś, obraził się na nadinspektora za odkrycie tak niesmacznego i niepokojącego faktu.",
+  "ua": "Помічник комісара глянув на нього серйозно. Поки вони не дійшли до дверей кабінету Великої Людини, Тудлз зберігав обурене й урочисте мовчання; здавалося, він образився на помічника комісара за викриття такого непристойного й тривожного факту.",
+  "para": 26,
+  "start": 318.5
+ },
+ {
+  "en": "It revolutionised his idea of the Explorers’ Club’s extreme selectness, of its social purity.",
+  "pl": "Ten fakt zrewolucjonizował wyobrażenie Toodlesa o krańcowej ekskluzywności Klubu Podróżników, o jego towarzyskiej nieskazitelności.",
+  "ua": "Цей факт перевернув уявлення Тудлза про крайню вибірковість Клубу мандрівників і його суспільну бездоганність.",
+  "para": 26,
+  "start": 333.16
+ },
+ {
+  "en": "Toodles was revolutionary only in politics; his social beliefs and personal feelings he wished to preserve unchanged through all the years allotted to him on this earth which, upon the whole, he believed to be a nice place to live on.",
+  "pl": "Toodles był rewolucjonistą tylko w zakresie polityki; swoje zasady społeczne i osobiste przekonania pragnął zachować nietknięte w ciągu wszystkich dni wyznaczonych mu na tej ziemi, którą uważał na ogół za całkiem miłe miejsce pobytu.",
+  "ua": "Тудлз був революціонером лише в політиці; свої суспільні переконання й особисті почуття він хотів зберегти незмінними всі відведені йому роки на цій землі, яку загалом вважав цілком приємним місцем для життя.",
+  "para": 26,
+  "start": 342.74
+ },
+ {
+  "en": "He stood aside.",
+  "pl": "Usunął się na bok.",
+  "ua": "Він відійшов убік.",
+  "para": 27,
+  "start": 356.98
+ },
+ {
+  "en": "“Go in without knocking,” he said.",
+  "pl": "— Niech pan wejdzie bez pukania — powiedział.",
+  "ua": "— Заходьте не стукаючи, — сказав він.",
+  "para": 28,
+  "start": 359.08
+ },
+ {
+  "en": "Shades of green silk fitted low over all the lights imparted to the room something of a forest’s deep gloom. The haughty eyes were physically the great man’s weak point. This point was wrapped up in secrecy. When an opportunity offered, he rested them conscientiously.",
+  "pl": "Dzięki abażurom z zielonego jedwabiu, tkwiącym nisko na wszystkich lampach, w gabinecie panował półmrok głęboki i jakby leśny. Dumne oczy dygnitarza były słabą stroną jego organizmu. Utrzymywano to w tajemnicy. Ale gdy się tylko nasuwała sposobność, wielki człowiek dawał swym oczom wypoczynek.",
+  "ua": "Низько встановлені на всіх лампах зелені шовкові абажури надавали кабінету глибокого, майже лісового сутінку. Горді очі були фізичною слабкістю Великої Людини. Це тримали в таємниці. Та за першої нагоди він сумлінно давав очам відпочити.",
+  "para": 29,
+  "start": 361.9
+ },
+ {
+  "en": "The Assistant Commissioner entering saw at first only a big pale hand supporting a big head, and concealing the upper part of a big pale face. An open despatch-box stood on the writing-table near a few oblong sheets of paper and a scattered handful of quill pens.",
+  "pl": "Nadinspektor zobaczył najpierw tylko dużą, białą rękę podpierającą dużą głowę i zasłaniającą górną część dużej bladej twarzy. Otwarte pudełko z depeszami stało na biurku obok kilku podłużnych arkuszy papieru i rozrzuconej wiązki gęsich piór.",
+  "ua": "Увійшовши, помічник комісара спершу побачив лише велику білу руку, що підпирала велику голову й затуляла верхню частину великого блідого обличчя. На письмовому столі біля кількох довгастих аркушів і розкиданої жмені гусячих пер стояла відкрита скринька для депеш.",
+  "para": 30,
+  "start": 381.64
+ },
+ {
+  "en": "There was absolutely nothing else on the large flat surface except a little bronze statuette draped in a toga, mysteriously watchful in its shadowy immobility. The Assistant Commissioner, invited to take a chair, sat down.",
+  "pl": "Na obszernym, poziomym blacie nie było już nic więcej poza małą brązową statuetką w udrapowanej todze, zagadkową i czujną w swym tajemniczym bezruchu. Nadinspektor usiadł, zaproszony skinieniem ręki.",
+  "ua": "На великій пласкій поверхні більше нічого не було, крім маленької бронзової статуетки в драпірованій тозі, загадково настороженої у своїй тінявій нерухомості. Помічник комісара, запрошений жестом сісти, сів.",
+  "para": 30,
+  "start": 397.7
+ },
+ {
+  "en": "In the dim light, the salient points of his personality, the long face, the black hair, his lankness, made him look more foreign than ever.",
+  "pl": "W przyćmionym świetle wyglądał bardziej niż kiedykolwiek na cudzoziemca dzięki swym cechom charakterystycznym — długiej twarzy, czarnym włosom i chudości.",
+  "ua": "У тьмяному світлі його характерні риси — видовжене обличчя, чорне волосся, худорлявість — робили його ще більше схожим на іноземця.",
+  "para": 30,
+  "start": 411.64
+ },
+ {
+  "en": "The great man manifested no surprise, no eagerness, no sentiment whatever. The attitude in which he rested his menaced eyes was profoundly meditative. He did not alter it the least bit. But his tone was not dreamy.",
+  "pl": "Wielki człowiek nie zdradził ani zdziwienia, ani zapału, ani w ogóle żadnego uczucia. Jakby zatopiony w głębokiej zadumie, pozwalał wypoczywać swym zagrożonym oczom. Po wejściu nadinspektora wcale nie zmienił pozy. Ale ton jego głosu był trzeźwy.",
+  "ua": "Велика Людина не виявила ані подиву, ані запалу, ані взагалі якихось почуттів. У позі глибокої задуми вона давала відпочити своїм утомленим очам. Коли ввійшов помічник комісара, вона анітрохи не змінила пози. Але голос її був тверезий.",
+  "para": 31,
+  "start": 421.1
+ },
+ {
+  "en": "“Well! What is it that you’ve found out already? You came upon something unexpected on the first step.”",
+  "pl": "— No! Co tam pan wynalazł? Więc natknął się pan od razu na coś, czego pan nie oczekiwał.",
+  "ua": "— Ну! Що ви там виявили? Отже, одразу натрапили на щось несподіване.",
+  "para": 32,
+  "start": 436.28
+ },
+ {
+  "en": "“Not exactly unexpected, Sir Ethelred. What I mainly came upon was a psychological state.”",
+  "pl": "— Niekoniecznie, sir Ethelredzie. Natknąłem się przede wszystkim na pewien stan psychiczny.",
+  "ua": "— Не зовсім, сере Етелреде. Передусім я натрапив на певний психологічний стан.",
+  "para": 33,
+  "start": 445.45
+ },
+ {
+  "en": "The Great Presence made a slight movement.",
+  "pl": "Wielki człowiek poruszył się nieznacznie.",
+  "ua": "Велика Людина ледь поворухнулася.",
+  "para": 34,
+  "start": 450.85
+ },
+ {
+  "en": "“You must be lucid, please.”",
+  "pl": "— Niech pan mówi wyraźniej.",
+  "ua": "— Прошу ясніше.",
+  "para": 35,
+  "start": 453.87
+ },
+ {
+  "en": "“Yes, Sir Ethelred. You know no doubt that most criminals at some time or other feel an irresistible need of confessing﻿—of making a clean breast of it to somebody﻿—to anybody. And they do it often to the police. In that Verloc whom Heat wished so much to screen I’ve found a man in that particular psychological state.",
+  "pl": "— Dobrze, sir Ethelredzie. Zapewne pan wie, że większość przestępców czuje w pewnych chwilach nieodpartą potrzebę spowiedzi — wyznania komuś wszystkiego… byle komu. I nieraz czyni te wyznania policji. Ów Verloc, którego Heat chciał koniecznie osłonić, znajdował się właśnie w owym stanie psychicznym.",
+  "ua": "— Гаразд, сере Етелреде. Ви, мабуть, знаєте, що більшість злочинців у певні миті відчувають непереборну потребу сповідатися — виговорити комусь усе… будь-кому. І часто сповідаються поліції. У тому Верлоку, якого Хіт так хотів прикрити, я й знайшов людину в такому психологічному стані.",
+  "para": 36,
+  "start": 456.89
+ },
+ {
+  "en": "The man, figuratively speaking, flung himself on my breast. It was enough on my part to whisper to him who I was and to add: ‘I know that you are at the bottom of this affair.’ It must have seemed miraculous to him that we should know already, but he took it all in the stride. The wonderfulness of it never checked him for a moment.",
+  "pl": "Mówiąc w przenośni, rzucił mi się po prostu na szyję. Dość było szepnąć, kim jestem i dodać: „Wiem, że pan jest wmieszany w tę sprawę”. Musiało wydać mu się cudem, że już o wszystkim wiemy, ale prędko się z tym oswoił. Nadzwyczajność faktu nie zastanowiła go ani przez chwilę.",
+  "ua": "Він, образно кажучи, просто кинувся мені на груди. Досить було прошепотіти, хто я, і додати: «Я знаю, що ви замішані в цій справі». Йому, мабуть, здалося дивом, що ми вже все знаємо, але він швидко це прийняв. Надзвичайність цього факту ані на мить його не зупинила.",
+  "para": 36,
+  "start": 477.97
+ },
+ {
+  "en": "There remained for me only to put to him the two questions: Who put you up to it? and Who was the man who did it? He answered the first with remarkable emphasis. As to the second question, I gather that the fellow with the bomb was his brother-in-law﻿—quite a lad﻿—a weak-minded creature.﻿ ﻿…",
+  "pl": "Pozostawało mi tylko zadać mu dwa pytania: „Kto pana do tego nakłonił?” i: „Kto to wykonał?”. Na pierwsze pytanie odpowiedział bardzo dobitnie. Co się zaś tyczy drugiego pytania, domyślam się, że człowiekiem, który rzucił bombę, był jego szwagier — niemal wyrostek — słaby na umyśle…",
+  "ua": "Мені залишалося поставити йому лише два запитання: «Хто вас до цього підмовив?» і «Хто це зробив?». На перше він відповів дуже виразно. Щодо другого, то, гадаю, бомбу кинув його шурин — майже підліток, розумово слабкий…",
+  "para": 36,
+  "start": 494.19
+ },
+ {
+  "en": "It is rather a curious affair﻿—too long perhaps to state fully just now.”",
+  "pl": "To dość ciekawa historia… może za długa, aby ją szczegółowo opowiadać.",
+  "ua": "Це доволі цікава історія… мабуть, надто довга, щоб зараз докладно її переповідати.",
+  "para": 36,
+  "start": 512.23
+ },
+ {
+  "en": "“What then have you learned?” asked the great man.",
+  "pl": "— Więc czego się pan dowiedział? — spytał wielki człowiek.",
+  "ua": "— То що ви дізналися? — запитала Велика Людина.",
+  "para": 37,
+  "start": 517.84
+ },
+ {
+  "en": "“First, I’ve learned that the ex-convict Michaelis had nothing to do with it, though indeed the lad had been living with him temporarily in the country up to eight o’clock this morning. It is more than likely that Michaelis knows nothing of it to this moment.”",
+  "pl": "— Przede wszystkim dowiedziałem się, że były więzień Michaelis nie ma z tym nic wspólnego, choć istotnie chłopiec przebywał chwilowo razem z nim na wsi aż do dzisiaj, do ósmej rano. Jest więcej niż prawdopodobne, że Michaelis nie wie nic o wszystkim aż do tej chwili.",
+  "ua": "— Насамперед я дізнався, що колишній в’язень Міхаеліс не має до цього жодного стосунку, хоч хлопець і справді до сьогоднішньої восьмої ранку тимчасово жив у нього за містом. Більш ніж імовірно, що Міхаеліс досі нічого про це не знає.",
+  "para": 38,
+  "start": 521.36
+ },
+ {
+  "en": "“You are positive as to that?” asked the great man.",
+  "pl": "— Pan jest tego pewien? — zapytał wielki człowiek.",
+  "ua": "— Ви в цьому певні? — запитала Велика Людина.",
+  "para": 39,
+  "start": 537.44
+ },
+ {
+  "en": "“Quite certain, Sir Ethelred. This fellow Verloc went there this morning, and took away the lad on the pretence of going out for a walk in the lanes. As it was not the first time that he did this, Michaelis could not have the slightest suspicion of anything unusual. For the rest, Sir Ethelred, the indignation of this man Verloc had left nothing in doubt﻿—nothing whatever.",
+  "pl": "— Zupełnie pewien, sir Ethelredzie. Ten Verloc pojechał tam dziś rano i zabrał chłopca niby to na przechadzkę. Ponieważ działo się to nie po raz pierwszy, Michaelis nie mógł w tym widzieć nic niezwykłego. Zresztą Verloc, oburzony do żywego, wyjawił mi wszystko bez wyjątku.",
+  "ua": "— Цілком певен, сере Етелреде. Цей Верлок приїхав туди сьогодні вранці й забрав хлопця нібито на прогулянку стежками. Оскільки це сталося не вперше, Міхаеліс не міг запідозрити нічого незвичайного. А втім, обурення Верлока не залишило нічого непроясненим — анітрохи.",
+  "para": 40,
+  "start": 541.91
+ },
+ {
+  "en": "He had been driven out of his mind almost by an extraordinary performance, which for you or me it would be difficult to take as seriously meant, but which produced a great impression obviously on him.”",
+  "pl": "Okazało się, że po prostu stracił głowę, zastraszony niesłychaną sceną, której ani pan, ani ja nie wzięlibyśmy na serio; na nim zrobiła jednak wielkie wrażenie.",
+  "ua": "Виявилося, що він просто втратив голову, наляканий неймовірною сценою, яку ні ви, ні я не сприйняли б серйозно, але яка справила на нього величезне враження.",
+  "para": 40,
+  "start": 556.81
+ },
+ {
+  "en": "The Assistant Commissioner then imparted briefly to the great man, who sat still, resting his eyes under the screen of his hand, Mr. Verloc’s appreciation of Mr. Vladimir’s proceedings and character. The Assistant Commissioner did not seem to refuse it a certain amount of competency. But the great personage remarked:",
+  "pl": "Nadinspektor wyłożył zwięźle wielkiemu człowiekowi, który siedział bez ruchu i osłaniał dłonią oczy zażywające wypoczynku, jak pan Verloc ocenił postępowanie i charakter pana Władimira. Zdawało się, że nadinspektor nie odmawia tej ocenie pewnej słuszności. Lecz wielka osobistość wypowiedziała uwagę:",
+  "ua": "Тоді помічник комісара коротко виклав Великій Людині, що сиділа нерухомо, затуляючи долонею очі, які відпочивали, оцінку паном Верлоком учинків і характеру пана Владіміра. Здавалося, помічник комісара не заперечував певної слушності цієї оцінки. Але Велика Особа зауважила:",
+  "para": 41,
+  "start": 568.15
+ },
+ {
+  "en": "“All this seems very fantastic.”",
+  "pl": "— To wszystko wygląda mi bardzo fantastycznie.",
+  "ua": "— Усе це здається мені дуже фантастичним.",
+  "para": 42,
+  "start": 586.83
+ },
+ {
+  "en": "“Doesn’t it? One would think a ferocious joke. But our man took it seriously, it appears. He felt himself threatened. In the time, you know, he was in direct communication with old Stott-Wartenheim himself, and had come to regard his services as indispensable. It was an extremely rude awakening.",
+  "pl": "— Prawda? Niby jakiś okrutny żart. Ale nasz Verloc wziął to zdaje się na serio. Poczuł się zagrożony. Przedtem, jak pan wie, porozumiewał się bezpośrednio z samym Stott- -Wartenheimem i nabrał przekonania, że usługi jego, Verloca, są niezbędne. Otrzeźwiono go w sposób niezmiernie brutalny.",
+  "ua": "— Авжеж? Наче якийсь жорстокий жарт. Але наш Верлок, здається, сприйняв це серйозно. Відчув загрозу. Раніше, як ви знаєте, він безпосередньо спілкувався із самим старим Стоттом-Вартенгеймом і вважав свої послуги незамінними. Його протверезили надзвичайно брутально.",
+  "para": 43,
+  "start": 591.62
+ },
+ {
+  "en": "I imagine that he lost his head. He became angry and frightened. Upon my word, my impression is that he thought these Embassy people quite capable not only to throw him out but, to give him away too in some manner or other﻿—”",
+  "pl": "Najwidoczniej stracił głowę. Rozgniewał się i przestraszył. Według mego przekonania wyobraził sobie, że ci ludzie z ambasady mogą go nie tylko wyrzucić, ale i wydać w taki lub inny sposób…",
+  "ua": "Очевидно, він утратив голову. Розлютився й злякався. На мою думку, він уявив, що ці люди з посольства здатні не лише викинути його, а й якимось чином видати…",
+  "para": 43,
+  "start": 610.64
+ },
+ {
+  "en": "“How long were you with him,” interrupted the Presence from behind his big hand.",
+  "pl": "— Jak długo pan z nim rozmawiał? — rozległ się nagle zza ręki głos wielkiego dygnitarza.",
+  "ua": "— Як довго ви з ним розмовляли? — раптом пролунав з-за руки голос Великого Достойника.",
+  "para": 44,
+  "start": 623.43
+ },
+ {
+  "en": "“Some forty minutes, Sir Ethelred, in a house of bad repute called Continental Hotel, closeted in a room which by the by I took for the night. I found him under the influence of that reaction which follows the effort of crime. The man cannot be defined as a hardened criminal.",
+  "pl": "— Jakieś czterdzieści minut, sir Ethelredzie, w mocno podejrzanym hotelu Continental; siedzieliśmy zamknięci w pokoju, który wziąłem na noc. Okazało się, że Verloc jest pod wpływem reakcji następującej po zbrodniczym wysiłku. Nie można nazwać tego człowieka zatwardziałym przestępcą.",
+  "ua": "— Десь сорок хвилин, сере Етелреде, у сумнівному готелі «Континенталь»; ми замкнулися в кімнаті, яку я винайняв на ніч. Верлок був під впливом реакції, що настає після злочинного зусилля. Цю людину не назвеш загартованим злочинцем.",
+  "para": 45,
+  "start": 630.17
+ },
+ {
+  "en": "It is obvious that he did not plan the death of that wretched lad﻿—his brother-in-law. That was a shock to him﻿—I could see that. Perhaps he is a man of strong sensibilities. Perhaps he was even fond of the lad﻿—who knows?",
+  "pl": "Najwidoczniej nie przewidywał śmierci owego nieszczęsnego chłopca — swojego szwagra. Jego śmierć zrobiła na Verlocu wstrząsające wrażenie — widziałem to wyraźnie. Może jest bardzo wrażliwy. Może nawet lubił chłopca… któż to wie?",
+  "ua": "Очевидно, він не передбачав смерті того нещасного хлопця — свого шурина. Його смерть приголомшила Верлока — я це чітко бачив. Може, він дуже чутливий. Може, навіть любив хлопця… хто знає?",
+  "para": 45,
+  "start": 647.55
+ },
+ {
+  "en": "He might have hoped that the fellow would get clear away; in which case it would have been almost impossible to bring this thing home to anyone. At any rate he risked consciously nothing more but arrest for him.”",
+  "pl": "Spodziewał się zapewne, że chłopiec ucieknie, a wówczas byłoby prawie niemożliwe ustalić, kto jest winowajcą. W najgorszym wypadku przewidywał co najwyżej aresztowanie szwagra.",
+  "ua": "Він, мабуть, сподівався, що хлопець утече, і тоді майже неможливо було б установити винуватця. У найгіршому разі він передбачав хіба арешт шурина.",
+  "para": 45,
+  "start": 662.49
+ },
+ {
+  "en": "The Assistant Commissioner paused in his speculations to reflect for a moment.",
+  "pl": "Nadinspektor przerwał swe dociekania i przez chwilę rozmyślał.",
+  "ua": "Помічник комісара урвав свої роздуми й на мить замислився.",
+  "para": 46,
+  "start": 673.2
+ },
+ {
+  "en": "“Though how, in that last case, he could hope to have his own share in the business concealed is more than I can tell,” he continued, in his ignorance of poor Stevie’s devotion to Mr. Verloc (who was good), and of his truly peculiar dumbness, which in the old affair of fireworks on the stairs had for many years resisted entreaties, coaxing, anger, and other means of investigation used by his beloved sister.",
+  "pl": "— Ale jak mógł się w takim razie spodziewać, że jego udział w tej historii pozostanie ukryty, to jest dla mnie niezrozumiale — podjął znowu, gdyż nie wiedział o uwielbieniu Steviego dla pana Verloca (który był dobry) ani o niezłomności, z jaką chłopiec potrafił milczeć.",
+  "ua": "— Але як він міг сподіватися, що його участь у цій історії залишиться прихованою, мені незрозуміло, — вів він далі, не знаючи про відданість бідного Стіві панові Верлоку (який був добрий) і про незвичайну мовчазність хлопця.",
+  "para": 47,
+  "start": 676.55
+ },
+ {
+  "en": "For Stevie was loyal.﻿ ﻿… “No, I can’t imagine. It’s possible that he never thought of that at all.",
+  "pl": "Dowiodła tego jeszcze owa dawna historia z fajerwerkami na schodach; Stevie opierał się wówczas przez całe lata prośbom i pieszczotom, i gniewowi, i wszelkim innym środkom badania stosowanym przez ukochaną siostrę. Bo Steviemu można było zaufać… — Nie mam pojęcia — ciągnął dalej nadinspektor.",
+  "ua": "Це довів і давній випадок із феєрверками на сходах: тоді Стіві роками опирався благанням, умовлянням, гніву й усім іншим способам розпитування, до яких удавалася його улюблена сестра. Стіві був вірний… — Не знаю, — продовжив помічник комісара.",
+  "para": 47,
+  "start": 693.29
+ },
+ {
+  "en": "It sounds an extravagant way of putting it, Sir Ethelred, but his state of dismay suggested to me an impulsive man who, after committing suicide with the notion that it would end all his troubles, had discovered that it did nothing of the kind.”",
+  "pl": "— Może wcale o tym nie myślał? A teraz powiem coś, co wyda się dziwaczne, sir Ethelredzie: oto widok przerażonego Verloca przywiódł mi na myśl kogoś, kto odebrał sobie życie, aby położyć kres swym udręczeniom, i nagle przekonuje się, że samobójstwo wcale mu nie pomogło.",
+  "ua": "— Може, він і зовсім про це не думав? А тепер скажу щось дивне, сере Етелреде: переляканий Верлок нагадав мені людину, яка вчинила самогубство, щоб покласти край своїм мукам, а тоді раптом збагнула, що самогубство їй зовсім не допомогло.",
+  "para": 47,
+  "start": 712.75
+ },
+ {
+  "en": "The Assistant Commissioner gave this definition in an apologetic voice. But in truth there is a sort of lucidity proper to extravagant language, and the great man was not offended.",
+  "pl": "Nadinspektor wypowiedział to porównanie takim tonem, jakby za nie przepraszał. Ale pewna przesada stylu ma to do siebie, że uwydatnia treść wypowiadanej myśli i wielki człowiek nie poczuł się urażony.",
+  "ua": "Помічник комісара висловив це порівняння так, ніби перепрошував за нього. Але певне перебільшення стилю має властивість увиразнювати думку, і Велика Людина не образилася.",
+  "para": 48,
+  "start": 730.63
+ },
+ {
+  "en": "A slight jerky movement of the big body half lost in the gloom of the green silk shades, of the big head leaning on the big hand, accompanied an intermittent stifled but powerful sound. The great man had laughed.",
+  "pl": "Lekki skurcz targnął jego dużym ciałem, mało widocznym w półmroku zielonych jedwabnych abażurów, i dużą głową wspartą na dużej dłoni, a temu skurczowi towarzyszył przerywany, zduszony, lecz potężny odgłos: wielki człowiek roześmiał się.",
+  "ua": "Легкий судомний рух охопив його велике тіло, ледь помітне в сутінку зелених шовкових абажурів, і велику голову, що спиралася на велику руку; цьому рухові відповідав уривчастий, приглушений, але могутній звук: Велика Людина засміялася.",
+  "para": 48,
+  "start": 743.39
+ },
+ {
+  "en": "“What have you done with him?”",
+  "pl": "— Co pan z nim zrobił?",
+  "ua": "— Що ви з ним зробили?",
+  "para": 49,
+  "start": 760.24
+ },
+ {
+  "en": "The Assistant Commissioner answered very readily:",
+  "pl": "Nadinspektor odrzekł natychmiast:",
+  "ua": "Помічник комісара відразу відповів:",
+  "para": 50,
+  "start": 762.84
+ },
+ {
+  "en": "“As he seemed very anxious to get back to his wife in the shop, I let him go, Sir Ethelred.”",
+  "pl": "— Ponieważ śpieszyło mu się widać bardzo do żony, która została w sklepie, pozwoliłem mu odejść, sir Ethelredzie.",
+  "ua": "— Оскільки він, здається, дуже поспішав до дружини, що залишилася в крамниці, я дозволив йому піти, сере Етелреде.",
+  "para": 51,
+  "start": 765.28
+ },
+ {
+  "en": "“You did? But the fellow will disappear.”",
+  "pl": "— Jak to? Przecież on ucieknie.",
+  "ua": "— Як це? Та він же втече.",
+  "para": 52,
+  "start": 772.52
+ },
+ {
+  "en": "“Pardon me. I don’t think so. Where could he go to? Moreover, you must remember that he has got to think of the danger from his comrades too. He’s there at his post. How could he explain leaving it?",
+  "pl": "— Pozwolę sobie być innego zdania. Dokąd by mógł uciec? A przy tym trzeba pamiętać, że Verloc musi także się strzec niebezpieczeństwa grożącego mu ze strony kolegów. Tam w sklepie jest na swym stanowisku. Jak by mógł wyjaśnić opuszczenie tego stanowiska?",
+  "ua": "— Дозволю собі не погодитися. Куди йому тікати? До того ж пам’ятайте: Верлок має остерігатися й небезпеки з боку товаришів. Там, у крамниці, він на своєму посту. Як він пояснить, що залишив його?",
+  "para": 53,
+  "start": 775.32
+ },
+ {
+  "en": "But even if there were no obstacles to his freedom of action he would do nothing. At present he hasn’t enough moral energy to take a resolution of any sort.",
+  "pl": "Ale nawet gdyby miał zupełną swobodę ruchów, nic by teraz nie zrobił. Brak mu dostatecznej energii, aby powziąć jakiekolwiek postanowienie.",
+  "ua": "Але навіть якби він мав цілковиту свободу дій, то тепер нічого б не зробив. Йому бракує моральної сили, щоб ухвалити будь-яке рішення.",
+  "para": 53,
+  "start": 792.32
+ },
+ {
+  "en": "Permit me also to point out that if I had detained him we would have been committed to a course of action on which I wished to know your precise intentions first.”",
+  "pl": "Niech mi też będzie wolno zaznaczyć, że gdybym go był uwięził, musielibyśmy trzymać się pewnej linii postępowania, co do której pragnę najpierw usłyszeć pana zdanie.",
+  "ua": "Дозвольте також зауважити: якби я його затримав, ми мусили б дотримуватися певної лінії дій, щодо якої я спершу хотів би почути вашу думку.",
+  "para": 53,
+  "start": 800.22
+ },
+ {
+  "en": "The great personage rose heavily, an imposing shadowy form in the greenish gloom of the room.",
+  "pl": "Wielka osobistość dźwignęła się z krzesła — imponująca, niewyraźna w zielonawym mroku pokoju.",
+  "ua": "Велика Особа важко підвелася зі стільця — велична, невиразна постать у зеленкуватих сутінках кімнати.",
+  "para": 54,
+  "start": 810.37
+ },
+ {
+  "en": "“I’ll see the Attorney-General tonight, and will send for you tomorrow morning. Is there anything more you’d wish to tell me now?”",
+  "pl": "— Zobaczę się dziś z prokuratorem i poślę po pana jutro rano. Czy pan ma jeszcze coś do powiedzenia?",
+  "ua": "— Сьогодні ввечері я побачуся з генеральним прокурором, а завтра вранці пошлю за вами. Чи маєте ще щось сказати?",
+  "para": 55,
+  "start": 817.33
+ },
+ {
+  "en": "The Assistant Commissioner had stood up also, slender and flexible.",
+  "pl": "Nadinspektor podniósł się także, smukły i giętki.",
+  "ua": "Помічник комісара також підвівся — стрункий і гнучкий.",
+  "para": 56,
+  "start": 824.53
+ },
+ {
+  "en": "“I think not, Sir Ethelred, unless I were to enter into details which﻿—”",
+  "pl": "— Sądzę, że nie, sir Ethelredzie, mógłbym tylko wejść w szczegóły, które…",
+  "ua": "— Гадаю, ні, сере Етелреде. Хіба що вдатися до подробиць, які…",
+  "para": 57,
+  "start": 829.56
+ },
+ {
+  "en": "“No. No details, please.”",
+  "pl": "— Nie, nie. Żadnych szczegółów.",
+  "ua": "— Ні, ні. Жодних подробиць, прошу.",
+  "para": 58,
+  "start": 835.34
+ },
+ {
+  "en": "The great shadowy form seemed to shrink away as if in physical dread of details; then came forward, expanded, enormous, and weighty, offering a large hand.",
+  "pl": "Wielka, niewyraźna postać, rzekłbyś, cofnęła się, jakby w fizycznym lęku przed szczegółami, lecz zaraz potem podeszła do inspektora, rozdęta, olbrzymia, imponująca, wyciągając dużą rękę.",
+  "ua": "Велика невиразна постать ніби відсахнулася, наче фізично боялася подробиць, але відразу рушила до інспектора, розпросторившись, величезна й вагома, і простягла велику руку.",
+  "para": 59,
+  "start": 838.75
+ },
+ {
+  "en": "“And you say that this man has got a wife?”",
+  "pl": "— I pan mówi, że ten człowiek ma żonę?",
+  "ua": "— І ви кажете, що цей чоловік має дружину?",
+  "para": 60,
+  "start": 852.39
+ },
+ {
+  "en": "“Yes, Sir Ethelred,” said the Assistant Commissioner, pressing deferentially the extended hand. “A genuine wife and a genuinely, respectably, marital relation.",
+  "pl": "— Tak, sir Ethelredzie — rzekł nadinspektor, ściskając z szacunkiem wyciągniętą dłoń. — Ma naprawdę żonę, z którą żyje w poprawnym małżeńskim stosunku.",
+  "ua": "— Так, сере Етелреде, — сказав помічник комісара, шанобливо потискаючи простягнуту руку. — Справжню дружину й справжні, добропристойні подружні стосунки.",
+  "para": 61,
+  "start": 856.59
+ },
+ {
+  "en": "He told me that after his interview at the Embassy he would have thrown everything up, would have tried to sell his shop, and leave the country, only he felt certain that his wife would not even hear of going abroad.",
+  "pl": "Powiedział mi, że po rozmowie w ambasadzie byłby wszystko rzucił, byłby usiłował sprzedać sklep i wyjechać z kraju, ale był pewien, że jego żona nie zechce nawet słyszeć o wyjeździe za granicę.",
+  "ua": "Він сказав мені, що після розмови в посольстві кинув би все, спробував би продати крамницю й виїхати з країни, але був певен: дружина й чути не захоче про виїзд за кордон.",
+  "para": 61,
+  "start": 867.09
+ },
+ {
+  "en": "Nothing could be more characteristic of the respectable bond than that,” went on, with a touch of grimness, the Assistant Commissioner, whose own wife too had refused to hear of going abroad. “Yes, a genuine wife. And the victim was a genuine brother-in-law. From a certain point of view we are here in the presence of a domestic drama.”",
+  "pl": "To bardzo charakterystyczne dla małżeńskich stosunków — ciągnął nieco chmurnie nadinspektor, którego żona również nie chciała słyszeć o wyjeździe za granicę. — Tak, to jest autentyczna żona. A delikwent był autentycznym szwagrem. Mamy tu pewnego rodzaju dramat rodzinny.",
+  "ua": "Це дуже характерно для шлюбних стосунків, — похмуро вів далі помічник комісара, чия власна дружина також не хотіла й чути про виїзд за кордон. — Так, справжня дружина. А жертва була справжнім шурином. Певною мірою перед нами родинна драма.",
+  "para": 61,
+  "start": 877.39
+ },
+ {
+  "en": "The Assistant Commissioner laughed a little; but the great man’s thoughts seemed to have wandered far away, perhaps to the questions of his country’s domestic policy, the battleground of his crusading valour against the paynim Cheeseman.",
+  "pl": "Nadinspektor roześmiał się z lekka, ale myśli wielkiego człowieka powędrowały już daleko, może do spraw polityki wewnętrznej kraju; był to teren jego mężnej krucjaty przeciw poganinowi zwanemu Cheesemannem.",
+  "ua": "Помічник комісара тихо засміявся, але думки Великої Людини вже помандрували далеко, можливо, до питань внутрішньої політики країни — поля битви її доблесного хрестового походу проти язичника на ім’я Чізмен.",
+  "para": 62,
+  "start": 897.18
+ },
+ {
+  "en": "The Assistant Commissioner withdrew quietly, unnoticed, as if already forgotten.",
+  "pl": "Nadinspektor wyszedł cicho z pokoju; uszło to uwadze dygnitarza, który poniekąd zapomniał już o swym urzędniku.",
+  "ua": "Помічник комісара тихо вийшов із кімнати; сановник цього не помітив, бо, здавалося, вже забув про свого підлеглого.",
+  "para": 62,
+  "start": 911.82
+ },
+ {
+  "en": "He had his own crusading instincts. This affair, which, in one way or another, disgusted Chief Inspector Heat, seemed to him a providentially given starting-point for a crusade. He had it much at heart to begin.",
+  "pl": "W nadinspektorze także grały instynkty krzyżowca. Sprawa, która z tych lub innych względów zniechęciła do siebie komisarza Heata, wydała mu się opatrznościowym punktem wyjścia dla własnej krucjaty. Rozpoczęcie jej leżało mu bardzo na sercu.",
+  "ua": "У помічника комісара також були хрестові інстинкти. Справа, яка з тих чи інших причин викликала огиду в головного інспектора Хіта, здалася йому провіденційним початком власного хрестового походу. Йому дуже кортіло його розпочати.",
+  "para": 63,
+  "start": 919.0
+ },
+ {
+  "en": "He walked slowly home, meditating that enterprise on the way, and thinking over Mr. Verloc’s psychology in a composite mood of repugnance and satisfaction. He walked all the way home.",
+  "pl": "Szedł z wolna ku domowi, rozmyślając po drodze o swym przedsięwzięciu i analizując psychologię pana Verloca z odrazą nie pozbawioną zadowolenia. Całą drogę odbył pieszo.",
+  "ua": "Він повільно йшов додому, дорогою обмірковуючи своє починання й аналізуючи психологію пана Верлока з відразою, змішаною із задоволенням. Усю дорогу пройшов пішки.",
+  "para": 63,
+  "start": 934.52
+ },
+ {
+  "en": "Finding the drawing-room dark, he went upstairs, and spent some time between the bedroom and the dressing-room, changing his clothes, going to and fro with the air of a thoughtful somnambulist. But he shook it off before going out again to join his wife at the house of the great lady patroness of Michaelis.",
+  "pl": "Przekonawszy się, że w salonie jest ciemno, poszedł na górę i spędził czas jakiś między ubieralnią a pokojem sypialnym, przebierając się i chodząc tu i tam niby zamyślony lunatyk. Ale otrząsnął się z zadumy i wyszedł znów na ulicę, aby się udać do wielkiej pani, która opiekowała się Michaelisem.",
+  "ua": "Побачивши, що вітальня темна, він піднявся нагору й якийсь час переходив між спальнею та гардеробною, переодягаючись і походжаючи туди-сюди, мов замислений сновида. Але він стрепенувся й знову вийшов, щоб приєднатися до дружини в домі великої пані, покровительки Міхаеліса.",
+  "para": 63,
+  "start": 945.58
+ },
+ {
+  "en": "He knew he would be welcomed there. On entering the smaller of the two drawing-rooms he saw his wife in a small group near the piano.",
+  "pl": "Wiedział, że będzie tam życzliwie przyjęty. Wchodząc do mniejszego z dwóch salonów, spostrzegł żonę w małej grupce gości obok fortepianu.",
+  "ua": "Він знав, що його там радо зустрінуть. Увійшовши до меншої з двох віталень, він побачив дружину в невеликому гурті гостей біля піаніно.",
+  "para": 64,
+  "start": 964.48
+ },
+ {
+  "en": "A youngish composer in pass of becoming famous was discoursing from a music stool to two thick men whose backs looked old, and three slender women whose backs looked young.",
+  "pl": "Młodociany kompozytor, będący na drodze do sławy, siedział na taborecie, rozmawiając z dwoma tęgimi panami, których plecy wyglądały staro, i z trzema smukłymi kobietami, których plecy wyglądały młodo.",
+  "ua": "Молодий композитор, що вже прямував до слави, сидів на музичному табуреті й розмовляв із двома огрядними панами, чиї спини здавалися старими, та трьома стрункими жінками, чиї спини здавалися молодими.",
+  "para": 64,
+  "start": 973.59
+ },
+ {
+  "en": "Behind the screen the great lady had only two persons with her: a man and a woman, who sat side by side on armchairs at the foot of her couch. She extended her hand to the Assistant Commissioner.",
+  "pl": "Za niebieskim parawanem tylko dwie osoby towarzyszyły opiekunce Michaelisa: mężczyzna i kobieta; siedzieli obok siebie na fotelach u końca szezlongu⁷⁸. Wielka pani wyciągnęła rękę do nadinspektora.",
+  "ua": "За ширмою покровительку Міхаеліса супроводжували лише двоє: чоловік і жінка; вони сиділи поруч у кріслах біля краю канапи⁷⁸. Велика пані простягнула руку помічникові комісара.",
+  "para": 64,
+  "start": 985.81
+ },
+ {
+  "en": "“I never hoped to see you here tonight. Annie told me﻿—”",
+  "pl": "— Nie spodziewałam się wcale, że zobaczę pana dziś wieczór. Annie mówiła mi…",
+  "ua": "— Я й не сподівалася побачити вас сьогодні ввечері. Енні казала мені…",
+  "para": 65,
+  "start": 998.23
+ },
+ {
+  "en": "“Yes. I had no idea myself that my work would be over so soon.”",
+  "pl": "— Tak. Sam nie miałem pojęcia, że uporam się tak prędko z robotą.",
+  "ua": "— Так. І сам не знав, що впораюся так швидко.",
+  "para": 66,
+  "start": 1004.16
+ },
+ {
+  "en": "The Assistant Commissioner added in a low tone:",
+  "pl": "Nadinspektor dodał ściszonym głosem:",
+  "ua": "Помічник комісара додав стишеним голосом:",
+  "para": 67,
+  "start": 1008.43
+ },
+ {
+  "en": "“I am glad to tell you that Michaelis is altogether clear of this﻿—”",
+  "pl": "— Miło mi panią zawiadomić, że Michaelis jest zupełnie wyłączony z tej sprawy…",
+  "ua": "— Радий повідомити вам, що Міхаеліс зовсім не причетний до цієї справи…",
+  "para": 68,
+  "start": 1011.56
+ },
+ {
+  "en": "The patroness of the ex-convict received this assurance indignantly.",
+  "pl": "Protektorka byłego więźnia przyjęła to z oburzeniem.",
+  "ua": "Покровителька колишнього в’язня обурено сприйняла цю звістку.",
+  "para": 69,
+  "start": 1016.84
+ },
+ {
+  "en": "“Why? Were your people stupid enough to connect him with﻿—”",
+  "pl": "— Jak to? Czyżby byli u nas idioci, podejrzewający go o związek z…",
+  "ua": "— Як це? Невже серед ваших є ідіоти, які підозрювали його у зв’язку з…",
+  "para": 70,
+  "start": 1020.68
+ },
+ {
+  "en": "“Not stupid,” interrupted the Assistant Commissioner, contradicting deferentially. “Clever enough﻿—quite clever enough for that.”",
+  "pl": "— Bynajmniej nie idioci — przerwał z szacunkiem nadinspektor. — Nawet całkiem zręczni ludzie… zupełnie wystarczająco jak na swoje potrzeby.",
+  "ua": "— Аж ніяк не ідіоти, — шанобливо перебив помічник комісара. — Навіть досить спритні люди… цілком здібні у своїй справі.",
+  "para": 71,
+  "start": 1026.04
+ },
+ {
+  "en": "A silence fell. The man at the foot of the couch had stopped speaking to the lady, and looked on with a faint smile.",
+  "pl": "Zapadło milczenie. Mężczyzna u końca szezlongu przestał rozmawiać z sąsiadką i przyglądał się nadinspektorowi z niewyraźnym uśmiechem.",
+  "ua": "Запала тиша. Чоловік біля краю канапи перестав розмовляти із сусідкою й поглянув на помічника комісара з ледь помітною усмішкою.",
+  "para": 72,
+  "start": 1035.34
+ },
+ {
+  "en": "“I don’t know whether you ever met before,” said the great lady.",
+  "pl": "— Nie pamiętam, czy panowie już się spotkali — rzekła wielka pani.",
+  "ua": "— Не пам’ятаю, чи ви вже знайомі, — сказала Велика Пані.",
+  "para": 73,
+  "start": 1043.84
+ },
+ {
+  "en": "Mr. Vladimir and the Assistant Commissioner, introduced, acknowledged each other’s existence with punctilious and guarded courtesy.",
+  "pl": "Pan Władimir i nadinspektor, przedstawieni sobie, stwierdzili nawzajem swoje istnienie z drobiazgową i czujną uprzejmością.",
+  "ua": "Пана Владіміра й помічника комісара представили одне одному; вони ретельно й обачно засвідчили взаємне знайомство.",
+  "para": 74,
+  "start": 1048.9
+ },
+ {
+  "en": "“He’s been frightening me,” declared suddenly the lady who sat by the side of Mr. Vladimir, with an inclination of the head towards that gentleman. The Assistant Commissioner knew the lady.",
+  "pl": "— Ten człowiek mnie nastraszył — oświadczyła nagle dama siedząca obok pana Władimira i kiwnęła głową w jego stronę. Nadinspektor znał ową damę.",
+  "ua": "— Він мене налякав, — раптом заявила пані, що сиділа поруч із паном Владіміром, і кивнула на нього. Помічник комісара знав цю даму.",
+  "para": 75,
+  "start": 1058.04
+ },
+ {
+  "en": "“You do not look frightened,” he pronounced, after surveying her conscientiously with his tired and equable gaze. He was thinking meantime to himself that in this house one met everybody sooner or later.",
+  "pl": "— Nie wygląda pani na przestraszoną — wyrzekł, przyjrzawszy się jej sumiennie swym zmęczonym, spokojnym wzrokiem. A jednocześnie pomyślał, że w tym domu wcześniej lub później można było się zetknąć z każdym.",
+  "ua": "— Ви не схожі на налякану, — промовив він, сумлінно оглянувши її своїм утомленим, спокійним поглядом. Тим часом він подумав, що в цьому домі рано чи пізно можна зустріти будь-кого.",
+  "para": 76,
+  "start": 1069.96
+ },
+ {
+  "en": "Mr. Vladimir’s rosy countenance was wreathed in smiles, because he was witty, but his eyes remained serious, like the eyes of convinced man.",
+  "pl": "Różowa twarz pana Władimira mieniła się uśmiechem, albowiem był dowcipny, lecz oczy jego zachowały powagę, jak u człowieka, który wie, o co mu chodzi.",
+  "ua": "Рожеве обличчя пана Владіміра сяяло усмішкою, бо він був дотепний, але очі залишалися серйозними, як у людини, що знає, чого хоче.",
+  "para": 76,
+  "start": 1083.38
+ },
+ {
+  "en": "“Well, he tried to at least,” amended the lady.",
+  "pl": "— W każdym razie usiłował mnie nastraszyć — poprawiła się znajoma nadinspektora.",
+  "ua": "— У всякому разі він намагався мене налякати, — уточнила знайома помічника комісара.",
+  "para": 77,
+  "start": 1094.09
+ },
+ {
+  "en": "“Force of habit perhaps,” said the Assistant Commissioner, moved by an irresistible inspiration.",
+  "pl": "— Może to jego zwyczaj — rzekł nadinspektor pod wpływem nieodpartego natchnienia.",
+  "ua": "— Може, така вже звичка, — сказав помічник комісара під владою непереборного натхнення.",
+  "para": 78,
+  "start": 1100.08
+ },
+ {
+  "en": "“He has been threatening society with all sorts of horrors,” continued the lady, whose enunciation was caressing and slow, “apropos of this explosion in Greenwich Park.",
+  "pl": "— Pan Władimir groził społeczeństwu przeróżnymi okropnościami — ciągnęła dama, wymawiając słowa z wolna i jakby pieszczotliwie — a wszystko z powodu tego wybuchu w Greenwich Park.",
+  "ua": "— Пан Владімір погрожував суспільству всілякими жахіттями, — повільно й ніби ніжно вимовляючи слова, вела далі дама, — і все через той вибух у Гринвічському парку.",
+  "para": 79,
+  "start": 1106.46
+ },
+ {
+  "en": "It appears we all ought to quake in our shoes at what’s coming if those people are not suppressed all over the world. I had no idea this was such a grave affair.”",
+  "pl": "Okazuje się, że powinniśmy wszyscy drżeć ze strachu przed tym, co nastąpi, jeśli ci ludzie nie zostaną wytępieni na całym świecie. Nie miałam pojęcia, że to taka ważna sprawa.",
+  "ua": "Виявляється, ми всі маємо тремтіти від страху перед тим, що станеться, якщо цих людей не винищать по всьому світу. Я й не знала, що це така важлива справа.",
+  "para": 79,
+  "start": 1119.0
+ },
+ {
+  "en": "Mr. Vladimir, affecting not to listen, leaned towards the couch, talking amiably in subdued tones, but he heard the Assistant Commissioner say:",
+  "pl": "Pan Władimir, udając, że nie zwraca na te słowa uwagi, pochylił się ku szezlongowi, mówiąc coś miłym, ściszonym głosem, ale usłyszał, jak nadinspektor rzekł:",
+  "ua": "Пан Владімір, удаючи, що не слухає, нахилився до канапи й щось люб’язно говорив стишеним голосом, але почув, як помічник комісара сказав:",
+  "para": 80,
+  "start": 1129.84
+ },
+ {
+  "en": "“I’ve no doubt that Mr. Vladimir has a very precise notion of the true importance of this affair.”",
+  "pl": "— Jestem przekonany, że pan Władimir ma bardzo dokładne pojęcie o istotnym znaczeniu tej sprawy.",
+  "ua": "— Не сумніваюся, що пан Владімір має дуже точне уявлення про справжнє значення цієї справи.",
+  "para": 81,
+  "start": 1139.22
+ },
+ {
+  "en": "Mr. Vladimir asked himself what that confounded and intrusive policeman was driving at. Descended from generations victimised by the instruments of an arbitrary power, he was racially, nationally, and individually afraid of the police.",
+  "pl": "Pan Władimir zadał sobie pytanie, do czego zmierza ten przeklęty, natrętny policjant. Jako potomek pokoleń, które były ofiarą narzędzi służących samowładczej potędze, bał się policji rasowo i narodowo, a poza tym bał się jej indywidualnie.",
+  "ua": "Пан Владімір запитав себе, до чого веде цей клятий настирливий поліцейський. Походячи з поколінь, які ставали жертвами знарядь свавільної влади, він боявся поліції через походження, через національність і особисто.",
+  "para": 82,
+  "start": 1145.96
+ },
+ {
+  "en": "It was an inherited weakness, altogether independent of his judgment, of his reason, of his experience. He was born to it.",
+  "pl": "Była to słabość dziedziczna, zupełnie niezależna od jego rozsądku, czy rozumu, czy doświadczenia. Taki już się urodził.",
+  "ua": "Це була спадкова слабкість, цілком незалежна від його суджень, розуму чи досвіду. Таким він народився.",
+  "para": 82,
+  "start": 1162.06
+ },
+ {
+  "en": "But that sentiment, which resembled the irrational horror some people have of cats, did not stand in the way of his immense contempt for the English police. He finished the sentence addressed to the great lady, and turned slightly in his chair.",
+  "pl": "A uczucie to, przypominające irracjonalny wstręt, jaki niektórzy mają do kotów, bynajmniej się nie sprzeciwiało niezmiernej pogardzie, którą pan Władimir żywił dla policji angielskiej. Skończył zdanie skierowane do pani domu i obrócił się trochę na krześle.",
+  "ua": "Та це почуття, схоже на ірраціональну відразу, яку дехто відчуває до котів, аж ніяк не заважало його безмірній зневазі до англійської поліції. Він завершив фразу, звернену до господині, й трохи повернувся на стільці.",
+  "para": 82,
+  "start": 1169.04
+ },
+ {
+  "en": "“You mean that we have a great experience of these people.",
+  "pl": "— Pan chce zapewne powiedzieć, że my mamy duże doświadczenie, jeśli chodzi o tych ludzi.",
+  "ua": "— Ви, мабуть, хочете сказати, що ми добре знаємо цих людей.",
+  "para": 83,
+  "start": 1186.61
+ },
+ {
+  "en": "Yes; indeed, we suffer greatly from their activity, while you”﻿—Mr. Vladimir hesitated for a moment, in smiling perplexity﻿—“while you suffer their presence gladly in your midst,” he finished, displaying a dimple on each clean-shaven cheek.",
+  "pl": "Tak jest istotnie; cierpimy wiele od ich działalności, podczas gdy państwo tutaj — pan Władimir zawahał się chwilę, uśmiechnięty i jakby zakłopotany — podczas gdy państwo cierpicie z zadowoleniem obecność ich między sobą — zakończył, ukazując dołki w świeżo wygolonych policzkach.",
+  "ua": "— Так і є; ми багато страждаємо від їхньої діяльності, тоді як ви тут… — пан Владімір на мить замовк, усміхнений і ніби збентежений, — тоді як ви радо терпите їхню присутність серед себе, — закінчив він, показавши ямочки на щойно поголених щоках.",
+  "para": 83,
+  "start": 1193.37
+ },
+ {
+  "en": "Then he added more gravely: “I may even say﻿—because you do.”",
+  "pl": "Potem dodał poważniej: — Powiedziałbym nawet, że cierpimy przez nich tyle właśnie dlatego, że państwo cierpicie ich między sobą.",
+  "ua": "Потім він додав серйозніше: — Я б навіть сказав, що ми страждаємо від них саме тому, що ви терпите їх серед себе.",
+  "para": 83,
+  "start": 1216.58
+ },
+ {
+  "en": "When Mr. Vladimir ceased speaking the Assistant Commissioner lowered his glance, and the conversation dropped. Almost immediately afterwards Mr. Vladimir took leave. Directly his back was turned on the couch the Assistant Commissioner rose too.",
+  "pl": "Gdy pan Władimir przestał mówić, nadinspektor spuścił oczy i rozmowa się urwała. Prawie bezpośrednio potem pan Władimir pożegnał się z gospodynią. Skoro się tylko odwrócił od szezlongu, nadinspektor wstał również.",
+  "ua": "Коли пан Владімір замовк, помічник комісара опустив погляд, і розмова урвалася. Майже відразу пан Владімір попрощався з господинею. Щойно він повернувся спиною до канапи, помічник комісара також підвівся.",
+  "para": 84,
+  "start": 1225.94
+ },
+ {
+  "en": "“I thought you were going to stay and take Annie home,” said the lady patroness of Michaelis.",
+  "pl": "— Myślałam, że pan zostanie z nami i zabierze Annie do domu — rzekła opiekunka Michaelisa.",
+  "ua": "— Я думала, ви залишитеся з нами й проведете Енні додому, — сказала покровителька Міхаеліса.",
+  "para": 85,
+  "start": 1240.19
+ },
+ {
+  "en": "“I find that I’ve yet a little work to do tonight.”",
+  "pl": "— Przypomniałem sobie, że muszę dziś jeszcze trochę popracować.",
+  "ua": "— Згадав, що сьогодні ввечері мені ще треба трохи попрацювати.",
+  "para": 86,
+  "start": 1246.55
+ },
+ {
+  "en": "“In connection﻿—?”",
+  "pl": "— W związku z…?",
+  "ua": "— У зв’язку з…?",
+  "para": 87,
+  "start": 1250.98
+ },
+ {
+  "en": "“Well, yes﻿—in a way.”",
+  "pl": "— No tak, do pewnego stopnia.",
+  "ua": "— Так, певною мірою.",
+  "para": 88,
+  "start": 1253.26
+ },
+ {
+  "en": "“Tell me, what is it really﻿—this horror?”",
+  "pl": "— Niechże mi pan powie, co to jest właściwie, ta okropna historia?",
+  "ua": "— Скажіть-но, що це все-таки за жахлива історія?",
+  "para": 89,
+  "start": 1256.96
+ },
+ {
+  "en": "“It’s difficult to say what it is, but it may yet be a cause célèbre,” said the Assistant Commissioner.",
+  "pl": "— Trudno powiedzieć, co to jest, ale może wyniknie z tego une cause célebre⁷⁹ — rzekł nadinspektor.",
+  "ua": "— Важко сказати, що це таке, але, можливо, з цього вийде une cause célèbre⁷⁹, — сказав помічник комісара.",
+  "para": 90,
+  "start": 1262.1
+ },
+ {
+  "en": "He left the drawing-room hurriedly, and found Mr. Vladimir still in the hall, wrapping up his throat carefully in a large silk handkerchief. Behind him a footman waited, holding his overcoat. Another stood ready to open the door.",
+  "pl": "Wyszedł spiesznie z salonu i zastał jeszcze w hallu pana Władimira, otulającego starannie szyję dużym szalikiem. Za nim stał lokaj, trzymając palto. Drugi lokaj czekał u drzwi, aby je w odpowiedniej chwili otworzyć. Nadinspektorowi podano płaszcz; wyszedł natychmiast.",
+  "ua": "Він поспішно вийшов із вітальні й застав пана Владіміра в холі: той ретельно закутував шию великим шовковим шарфом. За ним стояв лакей із пальтом. Інший лакей чекав біля дверей, щоб відчинити їх у потрібну мить.",
+  "para": 91,
+  "start": 1268.02
+ },
+ {
+  "en": "The Assistant Commissioner was duly helped into his coat, and let out at once. After descending the front steps he stopped, as if to consider the way he should take.",
+  "pl": "Zstąpiwszy z kilku frontowych schodów przystanął, jakby się namyślając, w którą by stronę się udać. Pan Władimir dostrzegł to przez drzwi, które pozostały otwarte i zatrzymał się jeszcze w sieni, aby wyjąć cygaro i poprosić o ogień.",
+  "ua": "Помічникові комісара допомогли вдягнути пальто, і його відразу випровадили. Спустившись передніми сходами, він зупинився, ніби міркуючи, куди йти.",
+  "para": 91,
+  "start": 1285.4
+ },
+ {
+  "en": "On seeing this through the door held open, Mr. Vladimir lingered in the hall to get out a cigar and asked for a light. It was furnished to him by an elderly man out of livery with an air of calm solicitude.",
+  "pl": "Starszy mężczyzna we fraku podał mu zapałkę z miną pełną spokojnej troskliwości. Ale zapałka zgasła; wówczas lokaj zamknął drzwi i pan Władimir zapalił powoli i starannie duże hawańskie cygaro.",
+  "ua": "Побачивши це крізь відчинені двері, пан Владімір затримався в холі, дістав сигару й попросив вогню. Її подав літній чоловік без лівреї, з виглядом спокійної турботливості.",
+  "para": 91,
+  "start": 1298.88
+ },
+ {
+  "en": "But the match went out; the footman then closed the door, and Mr. Vladimir lighted his large Havana with leisurely care.",
+  "pl": "Gdy nareszcie wydostał się z domu, spostrzegł z odruchem wstrętu, że ten „przeklęty policjant” sterczy jeszcze wciąż na chodniku.",
+  "ua": "Та сірник згас; тоді лакей зачинив двері, а пан Владімір повільно й дбайливо запалив велику гаванську сигару.",
+  "para": 91,
+  "start": 1313.22
+ },
+ {
+  "en": "When at last he got out of the house, he saw with disgust the “confounded policeman” still standing on the pavement. “Can he be waiting for me?” thought Mr. Vladimir, looking up and down for some signs of a hansom. He saw none.",
+  "pl": "„Czyżby na mnie czekał?” — pomyślał pan Władimir, rozglądając się za dorożką. Nie było żadnej. Parę prywatnych wehikułów czekało tuż przy chodniku.",
+  "ua": "Коли він нарешті вийшов із дому, то з огидою побачив, що «клятий поліцейський» і досі стоїть на тротуарі. «Невже він чекає на мене?» — подумав пан Владімір, виглядаючи вільну карету. Жодної не було.",
+  "para": 92,
+  "start": 1322.37
+ },
+ {
+  "en": "A couple of carriages waited by the curbstone, their lamps blazing steadily, the horses standing perfectly still, as if carved in stone, the coachmen sitting motionless under the big fur capes, without as much as a quiver stirring the white thongs of their big whips.",
+  "pl": "Latarnie ich paliły się równo, konie stały w zupełnym spokoju jak wyrzeźbione z kamienia, stangreci siedzieli bez najlżejszego ruchu w obszernych futrzanych pelerynach; białe, skórzane końce wielkich batów wisiały nieporuszenie.",
+  "ua": "Біля тротуару чекали кілька екіпажів: ліхтарі горіли рівно, коні стояли зовсім нерухомо, наче кам’яні, кучери сиділи без найменшого поруху у великих хутряних накидках, а білі шкіряні кінці великих батогів звисали нерухомо.",
+  "para": 92,
+  "start": 1332.51
+ },
+ {
+  "en": "Mr. Vladimir walked on, and the “confounded policeman” fell into step at his elbow. He said nothing. At the end of the fourth stride Mr. Vladimir felt infuriated and uneasy. This could not last.",
+  "pl": "Pan Władimir zaczął iść, a „przeklęty policjant” szedł krok w krok obok niego, nie mówiąc ani słowa. Za czwartym krokiem pan Władimir poczuł wściekłość i niepokój. Dłużej tak trwać nie mogło.",
+  "ua": "Пан Владімір рушив, і «клятий поліцейський» ішов поруч, крок у крок. Він не промовив ані слова. На четвертому кроці пан Владімір відчув лють і тривогу. Так далі тривати не могло.",
+  "para": 92,
+  "start": 1346.69
+ },
+ {
+  "en": "“Rotten weather,” he growled savagely.",
+  "pl": "— Wstrętny czas — warknął dziko.",
+  "ua": "— Погана погода, — люто гаркнув він.",
+  "para": 93,
+  "start": 1360.07
+ },
+ {
+  "en": "“Mild,” said the Assistant Commissioner without passion. He remained silent for a little while. “We’ve got hold of a man called Verloc,” he announced casually.",
+  "pl": "— Ciepło — rzekł beznamiętnie nadinspektor. Przez chwilę milczał. — Schwytaliśmy człowieka nazwiskiem Verloc — stwierdził niedbale.",
+  "ua": "— Тепло, — безпристрасно відповів помічник комісара. Якусь мить він помовчав. — Ми затримали чоловіка на прізвище Верлок, — недбало повідомив він.",
+  "para": 94,
+  "start": 1363.69
+ },
+ {
+  "en": "Mr. Vladimir did not stumble, did not stagger back, did not change his stride. But he could not prevent himself from exclaiming:",
+  "pl": "Pan Władimir nie potknął się, nie zatoczył, nie zmienił kroku. Ale wyrwał mu się okrzyk:",
+  "ua": "Пан Владімір не спіткнувся, не похитнувся й не змінив ходи. Але не зміг стримати вигуку:",
+  "para": 95,
+  "start": 1374.86
+ },
+ {
+  "en": "“What?”",
+  "pl": "— Co takiego?",
+  "ua": "— Що?",
+  "para": 96,
+  "start": 1380.9
+ },
+ {
+  "en": "The Assistant Commissioner did not repeat his statement.",
+  "pl": "Nadinspektor nie powtórzył swego oświadczenia.",
+  "ua": "Помічник комісара не повторив свого повідомлення.",
+  "para": 97,
+  "start": 1382.65
+ },
+ {
+  "en": "“You know him,” he went on in the same tone.",
+  "pl": "— Pan go zna — ciągnął tym samym tonem.",
+  "ua": "— Ви його знаєте, — провадив він тим самим тоном.",
+  "para": 98,
+  "start": 1386.16
+ },
+ {
+  "en": "Mr. Vladimir stopped, and became guttural.",
+  "pl": "Pan Władimir zatrzymał się i rzekł gardłowym głosem:",
+  "ua": "Пан Владімір зупинився й сказав хрипко:",
+  "para": 99,
+  "start": 1389.47
+ },
+ {
+  "en": "“What makes you say that?”",
+  "pl": "— Na jakiej podstawie pan to mówi?",
+  "ua": "— На якій підставі ви це стверджуєте?",
+  "para": 100,
+  "start": 1393.7
+ },
+ {
+  "en": "“I don’t. It’s Verloc who says that.”",
+  "pl": "— To nie ja mówię, tylko Verloc.",
+  "ua": "— Не я. Це Верлок так каже.",
+  "para": 101,
+  "start": 1396.48
+ },
+ {
+  "en": "“A lying dog of some sort,” said Mr. Vladimir in somewhat Oriental phraseology. But in his heart he was almost awed by the miraculous cleverness of the English police. The change of his opinion on the subject was so violent that it made him for a moment feel slightly sick.",
+  "pl": "— Łże jak pies — rzekł pan Władimir, wyrażając się w sposób nieco wschodni. Ale w głębi ducha był wręcz przerażony zakrawającą na cud zręcznością angielskiej policji. W jego zapatrywaniach na ten temat nastąpiła zmiana tak gwałtowna, że zrobiło mu się trochę słabo.",
+  "ua": "— Бреше, як собака, — сказав пан Владімір, висловившись дещо по-східному. Та в глибині душі він був майже приголомшений дивовижною вправністю англійської поліції. Його погляд на це питання змінився так різко, що на мить йому стало трохи млосно.",
+  "para": 102,
+  "start": 1399.24
+ },
+ {
+  "en": "He threw away his cigar, and moved on.",
+  "pl": "Odrzucił cygaro i ruszył znów naprzód.",
+  "ua": "Він жбурнув сигару й рушив далі.",
+  "para": 102,
+  "start": 1416.9
+ },
+ {
+  "en": "“What pleased me most in this affair,” the Assistant went on, talking slowly, “is that it makes such an excellent starting-point for a piece of work which I’ve felt must be taken in hand﻿—that is,",
+  "pl": "— Cała ta sprawa dogadza mi z tego względu — ciągnął powoli nadinspektor —",
+  "ua": "— Найбільше в цій справі мене тішить, — повільно вів далі помічник комісара, — що вона стала чудовим початком роботи, за яку я давно хотів узятися —",
+  "para": 103,
+  "start": 1420.14
+ },
+ {
+  "en": "the clearing out of this country of all the foreign political spies, police, and that sort of﻿—of﻿—dogs.",
+  "pl": "że jest takim doskonałym punktem wyjścia dla pewnego zadania, które mi leży na sercu, mianowicie dla pozbycia się z kraju wszystkich tych cudzoziemskich szpiegów politycznych, policjantów i w ogóle tego rodzaju… tego rodzaju… psów.",
+  "ua": "а саме: очищення країни від усіх цих чужоземних політичних шпигунів, поліцейських і всяких таких… таких… псів.",
+  "para": 103,
+  "start": 1425.5
+ },
+ {
+  "en": "In my opinion they are a ghastly nuisance; also an element of danger. But we can’t very well seek them out individually. The only way is to make their employment unpleasant to their employers. The thing’s becoming indecent.",
+  "pl": "Moim zdaniem są okropnie szkodliwi, a przy tym stanowią czynnik niebezpieczny. Ale wyszukiwanie każdego z nich oddzielnie przedstawia pewne trudności. Jedyny sposób, jaki nam pozostaje, to obrzydzić posługiwanie się nimi tym, którzy ich zatrudniają. Obecny stan rzeczy staje się wprost nieprzyzwoity.",
+  "ua": "На мою думку, вони страшенно надокучливі, до того ж становлять небезпеку. Але ми не можемо розшукувати їх поодинці. Єдиний спосіб — зробити їхнє використання неприємним для тих, хто їх наймає. Усе це стає непристойним.",
+  "para": 103,
+  "start": 1442.2
+ },
+ {
+  "en": "And dangerous too, for us, here.”",
+  "pl": "A przy tym niebezpieczny dla nas, Anglików.",
+  "ua": "І небезпечним для нас тут.",
+  "para": 103,
+  "start": 1462.54
+ },
+ {
+  "en": "Mr. Vladimir stopped again for a moment.",
+  "pl": "Pan Władimir przystanął znów na chwilę.",
+  "ua": "Пан Владімір знову на мить зупинився.",
+  "para": 104,
+  "start": 1466.21
+ },
+ {
+  "en": "“What do you mean?”",
+  "pl": "— Co pan chce przez to powiedzieć?",
+  "ua": "— Що ви хочете цим сказати?",
+  "para": 105,
+  "start": 1469.9
+ },
+ {
+  "en": "“The prosecution of this Verloc will demonstrate to the public both the danger and the indecency.”",
+  "pl": "— Śledztwo wytoczone przeciwko Verlocowi wykaże publiczności niebezpieczeństwo i nieprzyzwoitość praktyk tego rodzaju.",
+  "ua": "— Суд над цим Верлоком покаже публіці і небезпеку, і непристойність таких практик.",
+  "para": 106,
+  "start": 1472.42
+ },
+ {
+  "en": "“Nobody will believe what a man of that sort says,” said Mr. Vladimir contemptuously.",
+  "pl": "— Nikt nie uwierzy temu, co taki człowiek będzie opowiadał — rzekł pogardliwie pan Władimir.",
+  "ua": "— Ніхто не повірить тому, що розповідатиме такий чоловік, — зневажливо сказав пан Владімір.",
+  "para": 107,
+  "start": 1481.17
+ },
+ {
+  "en": "“The wealth and precision of detail will carry conviction to the great mass of the public,” advanced the Assistant Commissioner gently.",
+  "pl": "— Obfitość i dokładność szczegółów przekonają szeroką publiczność — odpowiedział łagodnie nadinspektor.",
+  "ua": "— Широку публіку переконають численні й докладні свідчення, — лагідно відповів помічник комісара.",
+  "para": 108,
+  "start": 1487.56
+ },
+ {
+  "en": "“So that is seriously what you mean to do.”",
+  "pl": "— Więc naprawdę zamierza pan to uczynić?",
+  "ua": "— То ви справді маєте намір це зробити?",
+  "para": 109,
+  "start": 1495.42
+ },
+ {
+  "en": "“We’ve got the man; we have no choice.”",
+  "pl": "— Schwytaliśmy człowieka; nie mamy żadnego wyboru.",
+  "ua": "— Ми затримали цього чоловіка; вибору в нас немає.",
+  "para": 110,
+  "start": 1499.0
+ },
+ {
+  "en": "“You will be only feeding up the lying spirit of these revolutionary scoundrels,” Mr. Vladimir protested. “What do you want to make a scandal for?﻿—from morality﻿—or what?”",
+  "pl": "— To będzie tylko żer dla łotrowskiej hipokryzji rewolucjonistów — zapewnił pan Władimir. — Po co robić taki skandal? Chodzi panu o moralność, czy jak tam?",
+  "ua": "— Ви лише підживите брехливе лицемірство цих революційних мерзотників, — заперечив пан Владімір. — Навіщо здіймати такий скандал? Заради моралі, чи як?",
+  "para": 111,
+  "start": 1502.38
+ },
+ {
+  "en": "Mr. Vladimir’s anxiety was obvious. The Assistant Commissioner having ascertained in this way that there must be some truth in the summary statements of Mr. Verloc, said indifferently:",
+  "pl": "Niepokój pana Władimira był oczywisty. Nadinspektor upewnił się dzięki temu, że musi być trochę prawdy w zeznaniach Verloca, i rzekł obojętnie:",
+  "ua": "Тривога пана Владіміра була очевидною. Переконавшись завдяки цьому, що в стислому викладі Верлока мусить бути дещиця правди, помічник комісара байдуже сказав:",
+  "para": 112,
+  "start": 1514.62
+ },
+ {
+  "en": "“There’s a practical side too. We have really enough to do to look after the genuine article. You can’t say we are not effective. But we don’t intend to let ourselves be bothered by shams under any pretext whatever.”",
+  "pl": "— W tej sprawie obchodzi nas także i strona praktyczna. Mamy naprawdę już dosyć roboty z pilnowaniem prawdziwych anarchistów. Nie może pan nam zarzucić braku sprawności. Ale pod żadnym pretekstem nie pozwolimy na to, aby nam dokuczali prowokatorzy.",
+  "ua": "— Тут є й практичний бік. Нам і так вистачає роботи зі справжніми анархістами. Не можете дорікнути нам браком ефективності. Але ми за жодних обставин не дозволимо фальшивим діячам докучати нам.",
+  "para": 113,
+  "start": 1523.46
+ },
+ {
+  "en": "Mr. Vladimir’s tone became lofty.",
+  "pl": "Ton pana Władimira stał się wyniosły.",
+  "ua": "Тон пана Владіміра став піднесеним.",
+  "para": 114,
+  "start": 1541.38
+ },
+ {
+  "en": "“For my part, I can’t share your view. It is selfish. My sentiments for my own country cannot be doubted; but I’ve always felt that we ought to be good Europeans besides﻿—I mean governments and men.”",
+  "pl": "— Jeśli chodzi o mnie, nie podzielam pana zapatrywań. Są bardzo egoistyczne. O uczuciach, jakie żywię dla swego kraju, wątpić nie można; a jednak czułem zawsze, że poza patriotyzmem winniśmy być także dobrymi Europejczykami — stosuje się to i do rządów, i do poszczególnych ludzi.",
+  "ua": "— Особисто я не поділяю вашої думки. Вона егоїстична. У моїй відданості батьківщині не можна сумніватися, та я завжди вважав, що маємо бути ще й добрими європейцями — і уряди, і окремі люди.",
+  "para": 115,
+  "start": 1544.81
+ },
+ {
+  "en": "“Yes,” said the Assistant Commissioner simply. “Only you look at Europe from its other end. But,” he went on in a good-natured tone, “the foreign governments cannot complain of the inefficiency of our police. Look at this outrage; a case specially difficult to trace inasmuch as it was a sham.",
+  "pl": "— Tak — odrzekł nadinspektor z prostotą. — Tylko że wy patrzycie na Europę od drugiego jej końca. Jednakże — ciągnął dobrodusznym tonem — obce rządy nie mogą się skarżyć na niedołęstwo naszej policji. Na przykład ten zamach; wypadek szczególnie trudny do wyśledzenia, ponieważ chodziło o prowokację.",
+  "ua": "— Так, — просто відповів помічник комісара. — Тільки ви дивитеся на Європу з її іншого краю. Але, — добродушно вів він далі, — іноземні уряди не можуть скаржитися на неефективність нашої поліції. Візьмімо цей замах: його було особливо важко розкрити, бо йшлося про провокацію.",
+  "para": 116,
+  "start": 1562.93
+ },
+ {
+  "en": "In less than twelve hours we have established the identity of a man literally blown to shreds, have found the organiser of the attempt, and have had a glimpse of the inciter behind him. And we could have gone further; only we stopped at the limits of our territory.”",
+  "pl": "W niecałych dwanaście godzin ustaliliśmy tożsamość człowieka literalnie rozerwanego na strzępy, odnaleźliśmy organizatora zamachu i uzyskaliśmy pojęcie, kto jest podżegaczem. A mogliśmy się posunąć jeszcze dalej; tylko zatrzymaliśmy się u granic naszego terytorium.",
+  "ua": "Менш ніж за дванадцять годин ми встановили особу чоловіка, буквально розірваного на шматки, знайшли організатора замаху й з’ясували, хто стояв за ним як підбурювач. Могли б просунутися й далі, але зупинилися на кордонах своєї території.",
+  "para": 116,
+  "start": 1584.94
+ },
+ {
+  "en": "“So this instructive crime was planned abroad,” Mr. Vladimir said quickly. “You admit it was planned abroad?”",
+  "pl": "— A więc ta pouczająca zbrodnia została uknuta za granicą — rzekł szybko pan Władimir. — Pan jest zdania, że uknuto ją za granicą?",
+  "ua": "— Отже, цей повчальний злочин спланували за кордоном, — швидко сказав пан Владімір. — Ви визнаєте, що його спланували за кордоном?",
+  "para": 117,
+  "start": 1602.61
+ },
+ {
+  "en": "“Theoretically. Theoretically only, on foreign territory; abroad only by a fiction,” said the Assistant Commissioner, alluding to the character of Embassies, which are supposed to be part and parcel of the country to which they belong. “But that’s a detail.",
+  "pl": "— W teorii. Tylko w teorii powstała na obcym terytorium, za granicą zaś jedynie w przenośni — rzekł nadinspektor, robiąc aluzję do eksterytorialnego charakteru ambasad, które się uważa za części poszczególnych krajów reprezentowanych przez te ambasady. — Ale to szczegół.",
+  "ua": "— Теоретично. Лише теоретично — на чужій території; за кордоном — тільки умовно, — сказав помічник комісара, натякаючи на екстериторіальний статус посольств, які вважають частинами країн, що вони представляють. — Але це дрібниця.",
+  "para": 118,
+  "start": 1613.28
+ },
+ {
+  "en": "I talked to you of this business because it’s your government that grumbles most at our police. You see that we are not so bad. I wanted particularly to tell you of our success.”",
+  "pl": "Mówiłem z panem o tej sprawie, ponieważ właśnie pana rząd skarży się najczęściej na naszą policję. Więc widzi pan, że tak źle z nami nie jest. Zależało mi specjalnie na tym, aby powiadomić pana o naszym powodzeniu.",
+  "ua": "Я розповів вам про цю справу, бо саме ваш уряд найчастіше нарікає на нашу поліцію. Тепер бачите, що ми не такі вже й погані. Мені особливо хотілося повідомити вас про наш успіх.",
+  "para": 118,
+  "start": 1631.14
+ },
+ {
+  "en": "“I’m sure I’m very grateful,” muttered Mr. Vladimir through his teeth.",
+  "pl": "— Bardzo panu jestem obowiązany — mruknął przez zęby pan Władimir.",
+  "ua": "— Я вам дуже вдячний, — крізь зуби пробурмотів пан Владімір.",
+  "para": 119,
+  "start": 1646.48
+ },
+ {
+  "en": "“We can put our finger on every anarchist here,” went on the Assistant Commissioner, as though he were quoting Chief Inspector Heat. “All that’s wanted now is to do away with the agent provocateur to make everything safe.”",
+  "pl": "— Każdej chwili możemy położyć rękę na wszystkich tutejszych anarchistach — ciągnął nadinspektor, jak gdyby przytaczając słowa komisarza Heata. — Teraz pozostaje nam tylko skończyć raz na zawsze z prowokatorami, aby osiągnąć pełne bezpieczeństwo.",
+  "ua": "— Ми можемо будь-якої миті накрити всіх анархістів тут, — продовжив помічник комісара, ніби цитуючи головного інспектора Хіта. — Тепер лишилося раз і назавжди покінчити з агентом-провокатором, щоб забезпечити цілковиту безпеку.",
+  "para": 120,
+  "start": 1652.38
+ },
+ {
+  "en": "Mr. Vladimir held up his hand to a passing hansom.",
+  "pl": "Pan Władimir kiwnął ręką na przejeżdżającą dorożkę.",
+  "ua": "Пан Владімір підняв руку, зупиняючи карету, що проїжджала повз.",
+  "para": 121,
+  "start": 1667.28
+ },
+ {
+  "en": "“You’re not going in here?” remarked the Assistant Commissioner, looking at a building of noble proportions and hospitable aspect, with the light of a great hall falling through its glass doors on a broad flight of steps.",
+  "pl": "— Nie wstąpi pan tutaj? — zapytał nadinspektor, spoglądając na budynek o szlachetnych wymiarach i gościnnym wyglądzie; przez oszklone drzwi wejściowe padało z wielkiej sieni światło na szerokie schody prowadzące do wnętrza.",
+  "ua": "— То ви не зайдете сюди? — зауважив помічник комісара, поглянувши на будівлю шляхетних пропорцій і гостинного вигляду; крізь скляні двері з великої зали лилося світло на широкі сходи.",
+  "para": 122,
+  "start": 1671.69
+ },
+ {
+  "en": "But Mr. Vladimir, sitting, stony-eyed, inside the hansom, drove off without a word.",
+  "pl": "Ale pan Władimir siedział już w dorożce i patrząc przed siebie kamiennym wzrokiem, odjechał bez słowa.",
+  "ua": "Та пан Владімір уже сидів у кареті й, дивлячись перед собою кам’яним поглядом, поїхав без слова.",
+  "para": 123,
+  "start": 1685.45
+ },
+ {
+  "en": "The Assistant Commissioner himself did not turn into the noble building. It was the Explorers’ Club. The thought passed through his mind that Mr. Vladimir, honorary member, would not be seen very often there in the future. He looked at his watch. It was only half-past ten. He had had a very full evening.",
+  "pl": "Nadinspektor również nie wstąpił do wspaniałego gmachu. Był to Klub Podróżników. Mignęła nadinspektorowi myśl, że pana Władimira, honorowego członka klubu, nie będzie się tam w przyszłości często widywało. Popatrzył na zegarek. Dopiero pół do jedenastej. Spędził wieczór pełen wrażeń.",
+  "ua": "Помічник комісара також не зайшов до величної будівлі. Це був Клуб мандрівників. Йому майнуло на думку, що пана Владіміра, почесного члена клубу, надалі там бачитимуть нечасто. Він глянув на годинник. Було лише пів на одинадцяту. Вечір видався насиченим.",
+  "para": 124,
+  "start": 1693.45
+ }
+];
+const ANNOTATIONS = {"75": {"term": "imperium, nad którym słońce nigdy nie zachodzi", "definition": "*imperium, nad którym słońce nigdy nie zachodzi* — określenie globalnego mocarstwa tak rozległego, że zawsze w jakiejś jego części trwa dzień; w XIX w. używane w odniesieniu do brytyjskiego imperium kolonialnego, którego terytorium osiągnęło wówczas rozmiar większy niż jakiegokolwiek innego imperium w historii świata. [przypis edytorski]", "translation": "вислів на позначення глобальної держави настільки великої, що в якійсь її частині завжди день; у XIX столітті його вживали щодо Британської колоніальної імперії, територія якої тоді була більшою, ніж у будь-якої іншої імперії в історії. [редакторська примітка]"}, "76": {"term": "quorum", "definition": "*quorum* (łac.) — kworum, czyli minimalna liczba osób niezbędna do prowadzenia obrad i podjęcia wiążących decyzji. [przypis edytorski]", "translation": "(лат.) — кворум, мінімальна кількість присутніх, необхідна для проведення засідання й ухвалення чинних рішень. [редакторська примітка]"}, "77": {"term": "pies morski", "definition": "*pies morski* — w oryg.: *dogfish* (dosł.: psia ryba), określenie różnych gatunków ryb z rodziny rekinkowatych. Psem morskim (*sea dog*) nazywano dawniej rekina, ale także fokę pospolitą. [przypis edytorski]", "translation": "в оригіналі *dogfish* (буквально «собача риба») — назва різних видів родини катранових акул. «Морським псом» (*sea dog*) колись називали акулу, а також звичайного тюленя. [редакторська примітка]"}, "78": {"term": "szezlong", "definition": "*szezlong* — kanapa w kształcie wydłużonego fotela, na której można odpoczywać w pozycji półleżącej. [przypis edytorski]", "translation": "канапа у формі видовженого крісла, на якій можна відпочивати напівлежачи. [редакторська примітка]"}, "79": {"term": "cause célebre", "definition": "*cause célebre* (fr.) — głośna sprawa, słynny proces sądowy. [przypis edytorski]", "translation": "(фр.) — гучна справа, відомий судовий процес. [редакторська примітка]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into audio/chapter-10.webm, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  2.25,    // [  0] conf 0.97  "Nadinspektor, jadący szybko dorożką od So…"
+  19.67,   // [  1] conf 0.88  "Nadinspektor dostał się przez portal byna…"
+  31.17,   // [  2] conf 0.94  "Ów schludny, miły młodzian ukrył zdziwien…"   // Manual start correction: ASR fused “ów schludny” as “Uwschludny”; use fused-word onset at 31.17s.
+  47.27,   // [  3] conf 1.00  "Z natychmiastową gotowością do współczuci…"
+  59.21,   // [  4] conf 0.90  "a także i ze względu na nadinspektora, kt…"
+  69.93,   // [  5] conf 0.97  "„Jakąż on ma cudaczną powierzchowność, wy…"
+  88.19,   // [  6] conf 0.96  "Oświadczył, że jego zdaniem wielki atak,…"
+  103.63,  // [  7] conf 0.94  "Toodles ma nadzieję, że posłowie będą się…"
+  118.19,  // [  8] conf 1.00  "W każdym razie jemu, Toodlesowi, nie udał…"
+  123.33,  // [  9] conf 0.95  "— Z pewnością zaraz pana przyjmie. Siedzi…"
+  132.77,  // [ 10] conf 1.00  "Mimo swej życzliwej natury młody prywatny…"
+  147.67,  // [ 11] conf 1.00  "Ale ciekawość sekretarza była zbyt silna,…"
+  157.79,  // [ 12] conf 1.00  "— A jakże tam pańska szprotka?"
+  162.34,  // [ 13] conf 0.67  "— Schwytana — odrzekł nadinspektor zwięźl…"
+  167.98,  // [ 14] conf 1.00  "— Świetnie. Nie ma pan pojęcia, jak dalec…"
+  173.84,  // [ 15] conf 1.00  "Wypowiedziawszy tę głęboką uwagę, doświad…"
+  183.90,  // [ 16] conf 1.00  "— Bardzo się cieszę. Ale, proszę pana, cz…"
+  190.24,  // [ 17] conf 1.00  "— Wie pan co można zrobić ze szprotką? —…"
+  195.10,  // [ 18] conf 0.97  "— Czasem kładzie się ją do pudełka od sar…"
+  208.38,  // [ 19] conf 0.92  "— Na hiszpańskim wybrzeżu są fabryki, gdz…"
+  214.04,  // [ 20] conf 1.00  "Nadinspektor przerwał początkującemu stat…"
+  218.26,  // [ 21] conf 1.00  "— Tak, tak. Ale czasem rzuca się z powrot…"
+  224.92,  // [ 22] conf 0.83  "— Wieloryba? Fiu! — gwizdnął Toodles z za…"
+  234.24,  // [ 23] conf 0.95  "— Właściwie to nie. Zwierzyna, którą ścig…"
+  244.15,  // [ 24] conf 0.82  "— Owszem, wiem. Toniemy po szyję w specja…"
+  259.12,  // [ 25] conf 1.00  "— Jakbym go widział — potwierdził nadinsp…"
+  268.78,  // [ 26] conf 0.87  "— Znam go? — rzekł Toodles z niedowierzan…"
+  276.11,  // [ 27] conf 0.94  "— W Klubie Podróżników — rzekł spokojnie…"
+  286.50,  // [ 28] conf 1.00  "— To niemożliwe — oświadczył, lecz w głos…"
+  294.88,  // [ 29] conf 1.00  "— Honorowy — mruknął przez zęby nadinspek…"
+  298.12,  // [ 30] conf 1.00  "— Wielki Boże!"
+  299.69,  // [ 31] conf 0.90  "Toodles był tak przerażony, że nadinspekt…"   // start word fuzzy-corrected
+  304.18,  // [ 32] conf 1.00  "— To wszystko ściśle między nami — dodał."
+  307.76,  // [ 33] conf 0.91  "— Potworne! Pierwszy raz w życiu słyszę c…"
+  318.50,  // [ 34] conf 0.90  "Nadinspektor spojrzał nań z powagą. Póki…"
+  333.16,  // [ 35] conf 0.93  "Ten fakt zrewolucjonizował wyobrażenie To…"
+  342.74,  // [ 36] conf 0.94  "Toodles był rewolucjonistą tylko w zakres…"   // start word fuzzy-corrected
+  356.98,  // [ 37] conf 1.00  "Usunął się na bok."
+  359.08,  // [ 38] conf 1.00  "— Niech pan wejdzie bez pukania — powiedz…"
+  361.90,  // [ 39] conf 1.00  "Dzięki abażurom z zielonego jedwabiu, tkw…"
+  381.64,  // [ 40] conf 0.97  "Nadinspektor zobaczył najpierw tylko dużą…"   // start word fuzzy-corrected
+  397.70,  // [ 41] conf 0.93  "Na obszernym, poziomym blacie nie było ju…"
+  411.64,  // [ 42] conf 0.90  "W przyćmionym świetle wyglądał bardziej n…"
+  421.10,  // [ 43] conf 1.00  "Wielki człowiek nie zdradził ani zdziwien…"
+  436.28,  // [ 44] conf 1.00  "— No! Co tam pan wynalazł? Więc natknął s…"
+  445.45,  // [ 45] conf 0.82  "— Niekoniecznie, sir Ethelredzie. Natknął…"
+  450.85,  // [ 46] conf 1.00  "Wielki człowiek poruszył się nieznacznie."
+  453.87,  // [ 47] conf 0.75  "— Niech pan mówi wyraźniej."
+  456.89,  // [ 48] conf 0.88  "— Dobrze, sir Ethelredzie. Zapewne pan wi…"
+  477.97,  // [ 49] conf 1.00  "Mówiąc w przenośni, rzucił mi się po pros…"
+  494.19,  // [ 50] conf 0.98  "Pozostawało mi tylko zadać mu dwa pytania…"
+  512.23,  // [ 51] conf 1.00  "To dość ciekawa historia… może za długa,…"
+  517.84,  // [ 52] conf 1.00  "— Więc czego się pan dowiedział? — spytał…"
+  521.36,  // [ 53] conf 1.00  "— Przede wszystkim dowiedziałem się, że b…"
+  537.44,  // [ 54] conf 1.00  "— Pan jest tego pewien? — zapytał wielki…"
+  541.91,  // [ 55] conf 0.91  "— Zupełnie pewien, sir Ethelredzie. Ten V…"
+  556.81,  // [ 56] conf 1.00  "Okazało się, że po prostu stracił głowę,…"
+  568.15,  // [ 57] conf 0.97  "Nadinspektor wyłożył zwięźle wielkiemu cz…"
+  586.83,  // [ 58] conf 1.00  "— To wszystko wygląda mi bardzo fantastyc…"
+  591.62,  // [ 59] conf 0.93  "— Prawda? Niby jakiś okrutny żart. Ale na…"
+  610.64,  // [ 60] conf 1.00  "Najwidoczniej stracił głowę. Rozgniewał s…"
+  623.43,  // [ 61] conf 1.00  "— Jak długo pan z nim rozmawiał? — rozleg…"
+  630.17,  // [ 62] conf 0.92  "— Jakieś czterdzieści minut, sir Ethelred…"
+  647.55,  // [ 63] conf 0.97  "Najwidoczniej nie przewidywał śmierci owe…"
+  662.49,  // [ 64] conf 1.00  "Spodziewał się zapewne, że chłopiec uciek…"
+  673.20,  // [ 65] conf 1.00  "Nadinspektor przerwał swe dociekania i pr…"
+  676.55,  // [ 66] conf 0.93  "— Ale jak mógł się w takim razie spodziew…"
+  693.29,  // [ 67] conf 0.93  "Dowiodła tego jeszcze owa dawna historia…"
+  712.75,  // [ 68] conf 0.93  "— Może wcale o tym nie myślał? A teraz po…"
+  730.63,  // [ 69] conf 1.00  "Nadinspektor wypowiedział to porównanie t…"
+  743.39,  // [ 70] conf 0.91  "Lekki skurcz targnął jego dużym ciałem, m…"
+  760.24,  // [ 71] conf 1.00  "— Co pan z nim zrobił?"
+  762.84,  // [ 72] conf 1.00  "Nadinspektor odrzekł natychmiast:"
+  765.28,  // [ 73] conf 0.88  "— Ponieważ śpieszyło mu się widać bardzo…"
+  772.52,  // [ 74] conf 1.00  "— Jak to? Przecież on ucieknie."
+  775.32,  // [ 75] conf 0.93  "— Pozwolę sobie być innego zdania. Dokąd…"
+  792.32,  // [ 76] conf 1.00  "Ale nawet gdyby miał zupełną swobodę ruch…"
+  800.22,  // [ 77] conf 1.00  "Niech mi też będzie wolno zaznaczyć, że g…"
+  810.37,  // [ 78] conf 1.00  "Wielka osobistość dźwignęła się z krzesła…"
+  817.33,  // [ 79] conf 0.94  "— Zobaczę się dziś z prokuratorem i poślę…"
+  824.53,  // [ 80] conf 1.00  "Nadinspektor podniósł się także, smukły i…"
+  829.56,  // [ 81] conf 0.82  "— Sądzę, że nie, sir Ethelredzie, mógłbym…"
+  835.34,  // [ 82] conf 1.00  "— Nie, nie. Żadnych szczegółów."
+  838.75,  // [ 83] conf 0.96  "Wielka, niewyraźna postać, rzekłbyś, cofn…"
+  852.39,  // [ 84] conf 1.00  "— I pan mówi, że ten człowiek ma żonę?"
+  856.59,  // [ 85] conf 0.90  "— Tak, sir Ethelredzie — rzekł nadinspekt…"
+  867.09,  // [ 86] conf 1.00  "Powiedział mi, że po rozmowie w ambasadzi…"
+  877.39,  // [ 87] conf 1.00  "To bardzo charakterystyczne dla małżeński…"
+  897.18,  // [ 88] conf 0.96  "Nadinspektor roześmiał się z lekka, ale m…"
+  911.82,  // [ 89] conf 1.00  "Nadinspektor wyszedł cicho z pokoju; uszł…"
+  919.00,  // [ 90] conf 0.97  "W nadinspektorze także grały instynkty kr…"
+  934.52,  // [ 91] conf 0.80  "Szedł z wolna ku domowi, rozmyślając po d…"
+  945.58,  // [ 92] conf 0.94  "Przekonawszy się, że w salonie jest ciemn…"
+  964.48,  // [ 93] conf 1.00  "Wiedział, że będzie tam życzliwie przyjęt…"
+  973.59,  // [ 94] conf 1.00  "Młodociany kompozytor, będący na drodze d…"
+  985.81,  // [ 95] conf 0.92  "Za niebieskim parawanem tylko dwie osoby…"
+  998.23,  // [ 96] conf 1.00  "— Nie spodziewałam się wcale, że zobaczę…"
+  1004.16, // [ 97] conf 1.00  "— Tak. Sam nie miałem pojęcia, że uporam…"
+  1008.43, // [ 98] conf 1.00  "Nadinspektor dodał ściszonym głosem:"
+  1011.56, // [ 99] conf 1.00  "— Miło mi panią zawiadomić, że Michaelis…"
+  1016.84, // [100] conf 1.00  "Protektorka byłego więźnia przyjęła to z…"
+  1020.68, // [101] conf 0.92  "— Jak to? Czyżby byli u nas idioci, podej…"
+  1026.04, // [102] conf 1.00  "— Bynajmniej nie idioci — przerwał z szac…"
+  1035.34, // [103] conf 0.94  "Zapadło milczenie. Mężczyzna u końca szez…"
+  1043.84, // [104] conf 1.00  "— Nie pamiętam, czy panowie już się spotk…"
+  1048.90, // [105] conf 0.87  "Pan Władimir i nadinspektor, przedstawien…"
+  1058.04, // [106] conf 1.00  "— Ten człowiek mnie nastraszył — oświadcz…"
+  1069.96, // [107] conf 1.00  "— Nie wygląda pani na przestraszoną — wyr…"
+  1083.38, // [108] conf 1.00  "Różowa twarz pana Władimira mieniła się u…"
+  1094.09, // [109] conf 1.00  "— W każdym razie usiłował mnie nastraszyć…"
+  1100.08, // [110] conf 1.00  "— Może to jego zwyczaj — rzekł nadinspekt…"
+  1106.46, // [111] conf 0.92  "— Pan Władimir groził społeczeństwu przer…"
+  1119.00, // [112] conf 1.00  "Okazuje się, że powinniśmy wszyscy drżeć…"
+  1129.84, // [113] conf 0.92  "Pan Władimir, udając, że nie zwraca na te…"
+  1139.22, // [114] conf 1.00  "— Jestem przekonany, że pan Władimir ma b…"
+  1145.96, // [115] conf 0.97  "Pan Władimir zadał sobie pytanie, do czeg…"
+  1162.06, // [116] conf 1.00  "Była to słabość dziedziczna, zupełnie nie…"
+  1169.04, // [117] conf 0.92  "A uczucie to, przypominające irracjonalny…"
+  1186.61, // [118] conf 1.00  "— Pan chce zapewne powiedzieć, że my mamy…"
+  1193.37, // [119] conf 0.97  "Tak jest istotnie; cierpimy wiele od ich…"
+  1216.58, // [120] conf 0.94  "Potem dodał poważniej: — Powiedziałbym na…"
+  1225.94, // [121] conf 0.97  "Gdy pan Władimir przestał mówić, nadinspe…"
+  1240.19, // [122] conf 1.00  "— Myślałam, że pan zostanie z nami i zabi…"
+  1246.55, // [123] conf 1.00  "— Przypomniałem sobie, że muszę dziś jesz…"
+  1250.98, // [124] conf 1.00  "— W związku z…?"
+  1253.26, // [125] conf 1.00  "— No tak, do pewnego stopnia."
+  1256.96, // [126] conf 1.00  "— Niechże mi pan powie, co to jest właści…"
+  1262.10, // [127] conf 0.80  "— Trudno powiedzieć, co to jest, ale może…"
+  1268.02, // [128] conf 0.92  "Wyszedł spiesznie z salonu i zastał jeszc…"
+  1285.40, // [129] conf 1.00  "Zstąpiwszy z kilku frontowych schodów prz…"
+  1298.88, // [130] conf 0.97  "Starszy mężczyzna we fraku podał mu zapał…"
+  1313.22, // [131] conf 1.00  "Gdy nareszcie wydostał się z domu, spostr…"
+  1322.37, // [132] conf 0.95  "„Czyżby na mnie czekał?” — pomyślał pan W…"
+  1332.51, // [133] conf 0.93  "Latarnie ich paliły się równo, konie stał…"
+  1346.69, // [134] conf 1.00  "Pan Władimir zaczął iść, a „przeklęty pol…"
+  1360.07, // [135] conf 0.75  "— Wstrętny czas — warknął dziko."   // start word fuzzy-corrected
+  1363.69, // [136] conf 0.92  "— Ciepło — rzekł beznamiętnie nadinspekto…"
+  1374.86, // [137] conf 1.00  "Pan Władimir nie potknął się, nie zatoczy…"
+  1380.90, // [138] conf 1.00  "— Co takiego?"
+  1382.65, // [139] conf 1.00  "Nadinspektor nie powtórzył swego oświadcz…"
+  1386.16, // [140] conf 1.00  "— Pan go zna — ciągnął tym samym tonem."
+  1389.47, // [141] conf 1.00  "Pan Władimir zatrzymał się i rzekł gardło…"
+  1393.70, // [142] conf 1.00  "— Na jakiej podstawie pan to mówi?"
+  1396.48, // [143] conf 0.83  "— To nie ja mówię, tylko Verloc."
+  1399.24, // [144] conf 1.00  "— Łże jak pies — rzekł pan Władimir, wyra…"
+  1416.90, // [145] conf 1.00  "Odrzucił cygaro i ruszył znów naprzód."
+  1420.14, // [146] conf 1.00  "— Cała ta sprawa dogadza mi z tego względ…"
+  1425.50, // [147] conf 1.00  "że jest takim doskonałym punktem wyjścia…"
+  1442.20, // [148] conf 1.00  "Moim zdaniem są okropnie szkodliwi, a prz…"
+  1462.54, // [149] conf 1.00  "A przy tym niebezpieczny dla nas, Anglikó…"
+  1466.21, // [150] conf 1.00  "Pan Władimir przystanął znów na chwilę."
+  1469.90, // [151] conf 1.00  "— Co pan chce przez to powiedzieć?"
+  1472.42, // [152] conf 0.92  "— Śledztwo wytoczone przeciwko Verlocowi…"
+  1481.17, // [153] conf 1.00  "— Nikt nie uwierzy temu, co taki człowiek…"
+  1487.56, // [154] conf 1.00  "— Obfitość i dokładność szczegółów przeko…"
+  1495.42, // [155] conf 1.00  "— Więc naprawdę zamierza pan to uczynić?"
+  1499.00, // [156] conf 1.00  "— Schwytaliśmy człowieka; nie mamy żadneg…"
+  1502.38, // [157] conf 1.00  "— To będzie tylko żer dla łotrowskiej hip…"
+  1514.62, // [158] conf 0.95  "Niepokój pana Władimira był oczywisty. Na…"
+  1523.46, // [159] conf 1.00  "— W tej sprawie obchodzi nas także i stro…"
+  1541.38, // [160] conf 1.00  "Ton pana Władimira stał się wyniosły."
+  1544.81, // [161] conf 1.00  "— Jeśli chodzi o mnie, nie podzielam pana…"
+  1562.93, // [162] conf 1.00  "— Tak — odrzekł nadinspektor z prostotą.…"
+  1584.94, // [163] conf 0.97  "W niecałych dwanaście godzin ustaliliśmy…"
+  1602.61, // [164] conf 1.00  "— A więc ta pouczająca zbrodnia została u…"
+  1613.28, // [165] conf 1.00  "— W teorii. Tylko w teorii powstała na ob…"
+  1631.14, // [166] conf 1.00  "Mówiłem z panem o tej sprawie, ponieważ w…"
+  1646.48, // [167] conf 1.00  "— Bardzo panu jestem obowiązany — mruknął…"
+  1652.38, // [168] conf 0.97  "— Każdej chwili możemy położyć rękę na ws…"
+  1667.28, // [169] conf 1.00  "Pan Władimir kiwnął ręką na przejeżdżając…"
+  1671.69, // [170] conf 1.00  "— Nie wstąpi pan tutaj? — zapytał nadinsp…"
+  1685.45, // [171] conf 1.00  "Ale pan Władimir siedział już w dorożce i…"
+  1693.45, // [172] conf 1.00  "Nadinspektor również nie wstąpił do wspan…"
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const AUDIO_URL = "audio/chapter-10.webm";
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+let audioObjectUrl = null;
+async function loadAudio(url) {
+  // Browsers block fetch() from file:// pages; direct media loading still works there.
+  if (location.protocol === "file:") {
+    audio.src = url;
+    audio.load();
+    return;
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Audio request failed (${response.status})`);
+    const blob = await response.blob();
+    audioObjectUrl = URL.createObjectURL(blob);
+    audio.src = audioObjectUrl;
+    audio.load();
+  } catch (error) {
+    console.error("Could not load chapter audio:", error);
+    showBanner();
+  }
+}
+loadAudio(AUDIO_URL);
+window.addEventListener("pagehide", () => {
+  if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+}, { once: true });
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  enOpen: false,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function appendTooltipText(parent, text) {
+  // Render table emphasis safely; never interpret annotation cells as HTML.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function setStudyText(element, text) {
+  // Preserve unsupported superscripts literally, and decorate known note numbers.
+  const footnote = /<sup>(\d+)<\/sup>|([⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g;
+  const superscriptDigits = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const numberValue = match[1] || Array.from(match[2], digit => String(superscriptDigits.indexOf(digit))).join("");
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[numberValue];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${numberValue}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = numberValue;
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      const definition = document.createElement("span");
+      definition.className = "note-pl";
+      appendTooltipText(definition, note.definition);
+      tooltip.appendChild(definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = numberValue;
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- EN / UA toggle chips --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const enChip = document.createElement("button");
+    enChip.type = "button";
+    enChip.className = "chip";
+    enChip.textContent = "EN ▾";
+    enChip.setAttribute("aria-expanded", "false");
+    enChip.setAttribute("aria-controls", "en-" + i);
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+
+    toggles.append(enChip, uaChip);
+
+    /* --- hidden EN block --- */
+    const enBox = document.createElement("div");
+    enBox.className = "stack en";
+    enBox.id = "en-" + i;
+    enBox.hidden = true;
+    const enLbl = document.createElement("span");
+    enLbl.className = "lbl";
+    enLbl.textContent = "English";
+    const enP = document.createElement("p");
+    enP.lang = "en";
+    setStudyText(enP, unit.en);
+    enBox.append(enLbl, enP);
+
+    /* --- hidden UA block --- */
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, enBox, uaBox, pbar);
+
+    enChip.addEventListener("click", () => setEn(i, enBox.hidden));
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, enChip, uaChip, enBox, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: ${AUDIO_URL}`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = (box.classList.contains("en") ? "EN " : "UA ") + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setEn(i, open) { setChip(els[i].enChip, els[i].enBox, open); }
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleEnEl = document.getElementById("toggleEn");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(kind, open) {
+  const key = kind === "en" ? "enOpen" : "uaOpen";
+  state[key] = open;
+  els.forEach((e, i) => (kind === "en" ? setEn(i, open) : setUa(i, open)));
+  const btn = kind === "en" ? toggleEnEl : toggleUaEl;
+  btn.textContent = (open ? "Hide all " : "Reveal all ") + kind.toUpperCase();
+  btn.setAttribute("aria-pressed", String(open));
+  btn.classList.toggle("is-on", open);
+}
+
+toggleEnEl.addEventListener("click", () => setAll("en", !state.enOpen));
+toggleUaEl.addEventListener("click", () => setAll("ua", !state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+// If metadata never arrives (missing file / unsupported codec), tell the user.
+setTimeout(() => { if (audio.readyState < 1) showBanner(); }, 2500);
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "e" || ev.key === "E") {
+    setAll("en", !state.enOpen);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll("ua", !state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

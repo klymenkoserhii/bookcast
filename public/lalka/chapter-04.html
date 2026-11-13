@@ -5,7 +5,7 @@
   ··········································································
   1. Edit the Polish sentences (**PL:** lines) in chapter-04.md.
   2. Re-run the aligner from this folder:
-         ./.venv-asr/bin/python align_audio.py chapter-04.md mp3/lalka_004_lalka-tom-pierwszy_tom-i-rozdzial-iv.mp3
+         ./.venv-asr/bin/python align_audio.py chapter-04.md audio/chapter-04.webm
      The AUDIO_TIMES block is printed to stdout; the js-out option also saves
      it to chapter-04.audio-times.js.
   3. Regenerate this page so CHAPTER matches the edited text:
@@ -18,7 +18,7 @@
   5. Listen to a couple of sections, then repeat for chapter-02 with the same
      two scripts (no code changes needed).
 
-  The audio file is referenced by the RELATIVE path mp3/lalka_004_lalka-tom-pierwszy_tom-i-rozdzial-iv.mp3, so keep
+  The audio file is referenced by the RELATIVE path audio/chapter-04.webm, so keep
   this page and the MP3 in the same folder. No network, no build step, no
   server: it runs from file://.
   ==========================================================================
@@ -421,7 +421,7 @@
 
 <div id="audioBanner" class="banner" hidden role="status">
   <span aria-hidden="true">⚠</span>
-  <span><strong>Audio not loaded.</strong> Keep <code>mp3/lalka_004_lalka-tom-pierwszy_tom-i-rozdzial-iv.mp3</code> in the same folder as this
+  <span><strong>Audio not loaded.</strong> Keep <code>audio/chapter-04.webm</code> in the same folder as this
   page (it is referenced as a relative path). Timestamps and text still work.</span>
   <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
 </div>
@@ -439,7 +439,7 @@
   <p id="stats"></p>
 </footer>
 
-<audio id="audio" src="audio/chapter-04.webm" preload="metadata"></audio>
+<audio id="audio" preload="metadata"></audio>
 
 <script>
 "use strict";
@@ -1691,7 +1691,7 @@ const ANNOTATIONS = {"103": {"term": "zabrać Bośnię i Hercegowinę", "defini
 let footnoteTooltipIndex = 0;
 
 /* ===================================================================== */
-/* 2. TIMESTAMPS — seconds into mp3/lalka_004_lalka-tom-pierwszy_tom-i-rozdzial-iv.mp3, one per unit              */
+/* 2. TIMESTAMPS — seconds into audio/chapter-04.webm, one per unit              */
 /*    null = no timestamp: the unit's audio is merged into the previous  */
 /*    section (the play button is disabled).                             */
 /*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
@@ -1909,10 +1909,36 @@ const AUDIO_TIMES = [
 /* 3. STATE + HELPERS                                                    */
 /* ===================================================================== */
 const audio = document.getElementById("audio");
+const AUDIO_URL = "audio/chapter-04.webm";
 const cardsEl = document.getElementById("cards");
 const banner = document.getElementById("audioBanner");
 const clockEl = document.getElementById("clock");
 const statsEl = document.getElementById("stats");
+
+let audioObjectUrl = null;
+async function loadAudio(url) {
+  // Browsers block fetch() from file:// pages; direct media loading still works there.
+  if (location.protocol === "file:") {
+    audio.src = url;
+    audio.load();
+    return;
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Audio request failed (${response.status})`);
+    const blob = await response.blob();
+    audioObjectUrl = URL.createObjectURL(blob);
+    audio.src = audioObjectUrl;
+    audio.load();
+  } catch (error) {
+    console.error("Could not load chapter audio:", error);
+    showBanner();
+  }
+}
+loadAudio(AUDIO_URL);
+window.addEventListener("pagehide", () => {
+  if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+}, { once: true });
 
 // Theme, volume and speed are shared by every chapter. The reading position is NOT:
 // "selected" and "last" are scoped to this page, otherwise a new chapter would open with
@@ -2162,7 +2188,7 @@ function render() {
 
   const timed = CHAPTER.filter((u) => u.start != null).length;
   statsEl.textContent =
-    `${CHAPTER.length} units · ${timed} timed sections · audio: audio/chapter-04.webm`;
+    `${CHAPTER.length} units · ${timed} timed sections · audio: ${AUDIO_URL}`;
 }
 
 /* ===================================================================== */

@@ -1,0 +1,2178 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to conrad-tajny-agent_010_ix.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-09.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tajny agent · Rozdział IX — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Tajny agent · Rozdział IX · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="conrad-tajny-agent_010_ix.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Pan Verloc wrócił z kontynentu po upływie dziesięciu dni, niepokrzepiony na duchu cudami oglądanymi w czasie podróży, a powrót do domowych pieleszy nie rozweselił mu oblicza. Wszedł do sklepu wśród grzechotu dzwonka, ponury, zdrożony i gniewny.",
+  "start": 2.5
+ },
+ {
+  "i": 1,
+  "pl": "Z torbą w ręku, ze spuszczoną głową, udał się zaraz wielkimi krokami za ladę i opadł na krzesło, jakby przebył pieszo całą drogę, poczynając od Dover. Był wczesny ranek.",
+  "start": 19.42
+ },
+ {
+  "i": 2,
+  "pl": "Stevie, który odkurzał różne przedmioty rozłożone na wystawie, odwrócił się i wpatrzył w niego z otwartymi ustami, pełen czci i lęku.",
+  "start": 31.4
+ },
+ {
+  "i": 3,
+  "pl": "— Weź to — rzekł pan Verloc, kopnąwszy z lekka torbę leżącą na podłodze. Stevie rzucił się na torbę, porwał ją i uniósł z miną pełną tryumfu i uwielbienia. Uwinął się tak szybko, że pan Verloc był tym wyraźnie zaskoczony.",
+  "start": 40.97
+ },
+ {
+  "i": 4,
+  "pl": "Na grzechot dzwonka pani Neale, która czyściła grafitem palenisko kominka, zajrzała przez drzwi i dźwignąwszy się z kolan, poszła w fartuchu, ubrudzona od ustawicznego znoju, powiedzieć w kuchni pani Verloc, że „pan właśnie wrócił”.",
+  "start": 56.16
+ },
+ {
+  "i": 5,
+  "pl": "Winnie podeszła tylko do drzwi łączących salonik ze sklepem.",
+  "start": 73.26
+ },
+ {
+  "i": 6,
+  "pl": "— Zjesz pewno śniadanie — rzekła z daleka.",
+  "start": 77.47
+ },
+ {
+  "i": 7,
+  "pl": "Pan Verloc poruszył z lekka rękami, jakby mu narzucano coś niemożliwego. Lecz zwabiony do saloniku, nie odmówił ustawionego przed sobą śniadania. Jadł z kapeluszem zsuniętym na tył głowy, jakby siedział w publicznym lokalu, a poły grubego płaszcza zwisały trójkątnie po obu stronach krzesła.",
+  "start": 81.09
+ },
+ {
+  "i": 8,
+  "pl": "Oddalona o całą długość stołu pokrytego brunatną ceratą, Winnie, jego żona, ciągnęła zwyczajem żon swoją opowieść, z pewnością równie zręcznie przystosowaną do okoliczności jego powrotu, jak opowieść Penelopy⁷² do powrotu wędrownego Odysa.",
+  "start": 98.83
+ },
+ {
+  "i": 9,
+  "pl": "Lecz pani Verloc nie była zajęta tkaniem podczas nieobecności małżonka; dopilnowała natomiast, aby wszystkie pokoje na piętrze zostały porządnie sprzątnięte, sprzedała trochę towaru i kilka razy widziała się z Michaelisem.",
+  "start": 114.31
+ },
+ {
+  "i": 10,
+  "pl": "Powiedział jej ostatnim razem, że wyjeżdża na dłuższy pobyt do pewnej willi na wsi, gdzieś na linii Londyn–Chatham–Dover. Karl Yundt także raz przyszedł, prowadzony pod rękę przez tę swoją starą, złą gospodynię. Yundt jest „obrzydliwym starym dziadem”.",
+  "start": 127.69
+ },
+ {
+  "i": 11,
+  "pl": "O wizycie Ossipona, którego przyjęła chłodno zza szańca lady, z kamienną twarzą i wzrokiem jakby nieobecnym, nie powiedziała nic, a jej wspomnienie o krzepkim anarchiście zaznaczyło się krótką przerwą w opowiadaniu i prawie niedostrzegalnym rumieńcem.",
+  "start": 144.95
+ },
+ {
+  "i": 12,
+  "pl": "Przy pierwszej sposobności wprowadziła Steviego w tok domowych wydarzeń i powiedziała, że chłopiec bardzo był przygnębiony.",
+  "start": 160.85
+ },
+ {
+  "i": 13,
+  "pl": "— A wszystko to dlatego, że matka nas opuściła.",
+  "start": 168.9
+ },
+ {
+  "i": 14,
+  "pl": "Pan Verloc nie powiedział ani „Cholera!”, ani „Do diabła z tym Steviem!”. Pani Verloc zaś, niewtajemniczona w myśli męża, nie mogła ocenić szlachetności jego opanowania.",
+  "start": 172.0
+ },
+ {
+  "i": 15,
+  "pl": "— Ale pomimo to pracował równie dobrze jak zwykle — ciągnęła dalej. — Przydał mi się bardzo. Chyba nie ma rzeczy, której by dla nas nie zrobił.",
+  "start": 182.76
+ },
+ {
+  "i": 16,
+  "pl": "Pan Verloc rzucił na Steviego niedbałe, senne spojrzenie; chłopiec siedział na prawo od szwagra, delikatny, blady; jego różowe wargi były bezmyślnie rozchylone. Spojrzenie pana Verloca nie zawierało krytycyzmu. Rzucił je machinalnie.",
+  "start": 190.92
+ },
+ {
+  "i": 17,
+  "pl": "A jeśli mu przemknęło przez głowę, że brat jego żony wygląda na skończonego niedojdę, była to myśl niewyraźna i przelotna, pozbawiona tej siły oraz trwałości, które sprawiają, że myśl niekiedy zdolna jest dźwignąć świat z posad. Pan Verloc zdjął kapelusz i rozparł się na krześle.",
+  "start": 205.36
+ },
+ {
+  "i": 18,
+  "pl": "Zanim jego wyciągnięta ręka zdołała odłożyć kapelusz, Stevie rzucił się nań i z szacunkiem zaniósł go do kuchni. Pan Verloc poczuł się znów zaskoczony.",
+  "start": 222.54
+ },
+ {
+  "i": 19,
+  "pl": "— Ty mógłbyś zrobić wszystko z tym chłopcem, Adolfie — rzekła pani Verloc z wyrazem niezmąconego spokoju. — On by w ogień poszedł za ciebie, on….",
+  "start": 233.05
+ },
+ {
+  "i": 20,
+  "pl": "Urwała, nasłuchując bacznie z uchem zwróconym w stronę kuchni.",
+  "start": 243.29
+ },
+ {
+  "i": 21,
+  "pl": "Pani Neale szorowała tam podłogę. Na widok Steviego stęknęła żałośliwie, albowiem zauważyła już dawno, że łatwo go skłonić do ofiarowania na rzecz jej drobnych dzieci szylinga, którym siostra Winnie obdarzała go od czasu do czasu.",
+  "start": 246.77
+ },
+ {
+  "i": 22,
+  "pl": "Pani Neale zaczęła więc od zwykłego wstępu, pełzając na czworakach wśród kałuż rozlanych po podłodze, mokra i utytłana, niby jakieś ziemnowodne zwierzę domowe żyjące w popielniku i brudnej wodzie.",
+  "start": 260.71
+ },
+ {
+  "i": 23,
+  "pl": "— Tobie to dobrze na świecie, nic nie robisz jak jaki hrabia.",
+  "start": 275.04
+ },
+ {
+  "i": 24,
+  "pl": "I ciągnęła dalej w tym sensie odwieczną, wzruszająco kłamliwą skargę nędzarzy, skargę, która nabierała wiarygodności od okropnego zapachu mydlin i taniego rumu. Pani Neale szorowała z zawziętością, pociągając wciąż nosem i mówiąc bez przerwy. Była najzupełniej szczera.",
+  "start": 279.58
+ },
+ {
+  "i": 25,
+  "pl": "A z obu stron jej cienkiego, czerwonego nosa kaprawe i zamglone oczy tonęły we łzach, albowiem z rana dolegał jej zawsze brak jakiegoś podniecającego środka.",
+  "start": 297.5
+ },
+ {
+  "i": 26,
+  "pl": "W saloniku pani Verloc powiedziała ze znajomością rzeczy:",
+  "start": 307.83
+ },
+ {
+  "i": 27,
+  "pl": "— Pani Neale piłuje znów opowiadaniem o swoich drobnych dzieciach. To niemożliwe, żeby wszystkie były takie małe, jak twierdzi. Starsze musiały już powyrastać i powinny zabrać się do roboty. Ta gadanina tylko irytuje Steviego.",
+  "start": 312.17
+ },
+ {
+  "i": 28,
+  "pl": "Odgłos podobny do uderzenia pięścią w stół potwierdził te słowa. Serce Steviego jak zwykle wezbrało współczuciem i chłopiec wpadł w złość, nie znalazłszy w kieszeni szylinga. Nie mogąc ulżyć natychmiast losowi „drobiazgu” pani Neale, poczuł, że to się musi na kimś skrupić.",
+  "start": 327.35
+ },
+ {
+  "i": 29,
+  "pl": "Pani Verloc wstała i poszła do kuchni, aby położyć kres „tym głupstwom”. Zrobiła to stanowczo, lecz łagodnie. Wiedziała doskonale, że pani Neale natychmiast po dostaniu pieniędzy uda się za róg ulicy do nędznego, zatęchłego szynku — nieuniknionej stacji na via dolorosa⁷³ jej życia.",
+  "start": 345.37
+ },
+ {
+  "i": 30,
+  "pl": "— To nic dziwnego, cóż ona pocznie, musi się jakoś pokrzepić. Jestem pewna, że na jej miejscu robiłabym to samo.",
+  "start": 363.05
+ },
+ {
+  "i": 31,
+  "pl": "Ta uwaga pani Verloc uderzała niespodziewaną głębią, gdyż pochodziła od osoby wcale nie skłonnej do badania zjawisk życiowych.",
+  "start": 370.67
+ },
+ {
+  "i": 32,
+  "pl": "Tego samego dnia po południu pan Verloc długo drzemał przed kominkiem, budząc się od czasu do czasu; nagle ocknął się na dobre ze wstrząsem i oświadczył, że idzie na spacer. Winnie odezwała się do niego ze sklepu:",
+  "start": 378.23
+ },
+ {
+  "i": 33,
+  "pl": "— Chciałabym, żebyś zabrał z sobą chłopca, Adolfie.",
+  "start": 390.75
+ },
+ {
+  "i": 34,
+  "pl": "Po raz trzeci w tym dniu pan Verloc poczuł się zaskoczony. Wybałuszył idiotycznie oczy na żonę. A Winnie mówiła dalej spokojnie. Chłopiec, o ile nie jest czymś zajęty, gryzie się i nudzi w domu, a to ją niepokoi i denerwuje. Te słowa w ustach spokojnej Winnie wyglądały przesadnie.",
+  "start": 394.08
+ },
+ {
+  "i": 35,
+  "pl": "Ale Stevie czuł się naprawdę nieszczęśliwy — zupełnie w taki sam sposób, jak się to zdarza zwierzętom domowym. Wchodził na schody i w ciemności siadał tam u stóp wielkiego zegara, podciągnąwszy kolana i objąwszy głowę rękami.",
+  "start": 412.38
+ },
+ {
+  "i": 36,
+  "pl": "Przykro było spostrzec nagle jego wybladłą twarz i wielkie oczy połyskujące w mroku; myśl, że on tam siedzi na górze, nie dawała Winnie spokoju.",
+  "start": 425.82
+ },
+ {
+  "i": 37,
+  "pl": "Pan Verloc oswoił się z dziwacznym pomysłem żony. Kochał ją tak, jak mąż kochać powinien — to znaczy całym sercem. Ale przyszło mu do głowy ważne zastrzeżenie i zaraz je wypowiedział:",
+  "start": 435.22
+ },
+ {
+  "i": 38,
+  "pl": "— Jeszcze straci mnie z oczu i zgubi się na ulicy — rzekł.",
+  "start": 448.34
+ },
+ {
+  "i": 39,
+  "pl": "Pani Verloc pokręciła głową ze świadomością rzeczy.",
+  "start": 452.78
+ },
+ {
+  "i": 40,
+  "pl": "— Nie zgubi się. Ty go nie znasz. Ten chłopiec wprost cię ubóstwia. Ale gdyby się gdzieś zapodział…",
+  "start": 456.32
+ },
+ {
+  "i": 41,
+  "pl": "Pani Verloc zatrzymała się na chwilę, lecz tylko na chwilę.",
+  "start": 463.67
+ },
+ {
+  "i": 42,
+  "pl": "— Po prostu idź dalej i dokończ spaceru. Nie zaprzątaj sobie tym głowy. Nic mu się nie stanie. Zjawi się wkrótce z powrotem zdrów i cały.",
+  "start": 468.59
+ },
+ {
+  "i": 43,
+  "pl": "Ten optymizm sprawił panu Verlocowi czwartą w owym dniu niespodziankę.",
+  "start": 477.23
+ },
+ {
+  "i": 44,
+  "pl": "— Tak? — mruknął z powątpiewaniem. Lecz może jego szwagier nie był takim idiotą, na jakiego wyglądał. Żona musi przecież wiedzieć najlepiej.",
+  "start": 482.48
+ },
+ {
+  "i": 45,
+  "pl": "Odwrócił od niej ociężałe oczy, rzekł chrypliwie: — No więc niech idzie — i popadł znów we władzę ciężkiej zgryzoty, która może i woli tkwić za plecami jeźdźca⁷⁴, ale potrafi także następować na pięty ludziom niemogącym sobie pozwolić na trzymanie koni, jak na przykład pan Verloc.",
+  "start": 492.22
+ },
+ {
+  "i": 46,
+  "pl": "Winnie, stojąc u drzwi sklepu, nie widziała owej złowrogiej towarzyszki pana Verloca. Śledziła obu mężczyzn idących nędzną uliczką — jeden był wysoki i tęgi, drugi szczupły, drobny, o cienkiej szyi i chudych barkach nieco wzniesionych pod dużymi, na wpół przejrzystymi uszami.",
+  "start": 512.54
+ },
+ {
+  "i": 47,
+  "pl": "Palta ich obu były z tego samego materiału, a kapelusze czarne i okrągłe. Uderzona podobieństwem ich odzienia, pani Verloc puściła wodze wyobraźni:",
+  "start": 530.74
+ },
+ {
+  "i": 48,
+  "pl": "— Zupełnie jak ojciec z synem — powiedziała sobie. Przyszło jej także na myśl, iż jeśli biedny Stevie mógł kogo w życiu nazwać ojcem, to tylko pana Verloca. Zdawała sobie również sprawę, iż to było jej dziełem.",
+  "start": 542.45
+ },
+ {
+  "i": 49,
+  "pl": "Pełna spokojnej dumy, powinszowała sobie decyzji, którą powzięła przed kilku laty, decyzji okupionej dużym wysiłkiem i nawet łzami.",
+  "start": 557.18
+ },
+ {
+  "i": 50,
+  "pl": "Winszowała sobie jeszcze bardziej, gdy po pewnym czasie zauważyła, że pan Verloc zaczął się odnosić jakby łaskawie do towarzysza swych spacerów.",
+  "start": 565.78
+ },
+ {
+  "i": 51,
+  "pl": "Kiedy był gotów do wyjścia, wołał głośno na chłopca — mniej więcej takim tonem, jakim przyzywamy domowego psa, aby nam towarzyszył — choć oczywiście trochę inaczej. W domu można było nieraz zauważyć, że pan Verloc przypatrywał się Steviemu z ciekawością. W zachowaniu Verloca zaszła zmiana.",
+  "start": 573.36
+ },
+ {
+  "i": 52,
+  "pl": "Milczący był wciąż, ale mniej obojętny. Pani Verloc uważała, że chwilami jest dość zdenerwowany. Można to było uznać za postęp. Natomiast Stevie już się nie gryzł, przycupnąwszy pod zegarem, lecz mruczał do siebie po kątach groźnym tonem.",
+  "start": 591.8
+ },
+ {
+  "i": 53,
+  "pl": "Na zapytanie: „Co ty tam mówisz, Stevie?” otwierał usta i spoglądał na siostrę z ukosa.",
+  "start": 607.86
+ },
+ {
+  "i": 54,
+  "pl": "Czasem zaciskał pięści bez żadnej widocznej przyczyny; często zastawało się go, jak siedział samotnie, spoglądając groźnie na ścianę, a papier do rysowania kół był pusty i leżał na kuchennym stole obok bezczynnego ołówka. Była to również zmiana, ale nie na lepsze.",
+  "start": 614.44
+ },
+ {
+  "i": 55,
+  "pl": "Pani Verloc, określając te wszystkie dziwactwa ogólną nazwą podniecenia, zaczęła przypuszczać, że Stevie przysłuchuje się za często rozmowom męża z przyjaciółmi. W ciągu swych „przechadzek” pan Verloc oczywiście spotykał różnych ludzi i wiódł z nimi rozmowy. Inaczej być nie mogło.",
+  "start": 631.3
+ },
+ {
+  "i": 56,
+  "pl": "Spacery stanowiły niezbędną część jego działalności poza domem, działalności, w którą żona nigdy bliżej nie wglądała.",
+  "start": 650.41
+ },
+ {
+  "i": 57,
+  "pl": "Pani Verloc czuła, że sytuacja jest delikatna, lecz odnosiła się do niej z tym samym nieprzeniknionym spokojem, który uderzał, nawet zdumiewał klientów sklepu i sprawiał, że goście odwiedzający Verloców trzymali się trochę z daleka z pewnym zdziwieniem. Tak!",
+  "start": 658.09
+ },
+ {
+  "i": 58,
+  "pl": "Pani Verloc obawiała się, że Stevie słyszy różne rzeczy dla niego szkodliwe, i oświadczyła to mężowi. Dodała, iż takie rozmowy tylko rozdrażniają Steviego na próżno, bo przecież chłopiec nie może złemu zaradzić. Nikt złemu zaradzić nie może.",
+  "start": 674.99
+ },
+ {
+  "i": 59,
+  "pl": "Działo się to w sklepie. Pan Verloc nic nie odrzekł. Nie odrzekł nic, choć odpowiedź sama się nasuwała. Ale powstrzymał się od przypomnienia żonie, że pomysł, aby Stevie towarzyszył mu na spacerach, nie wyszedł od nikogo innego, tylko od niej.",
+  "start": 690.45
+ },
+ {
+  "i": 60,
+  "pl": "Bezstronnemu obserwatorowi byłby się pan Verloc wydał w owej chwili nadludzki w swej wspaniałomyślności. Zdjął z półki małe tekturowe pudełeczko, zajrzał doń, aby sprawdzić, czy jego zawartość jest w porządku, i położył je z wolna na ladzie.",
+  "start": 706.45
+ },
+ {
+  "i": 61,
+  "pl": "Dopiero wówczas przerwał milczenie, aby powiedzieć, że Steviemu na pewno by świetnie zrobiło, gdyby go wysłać na jakiś czas z miasta, tylko że Winnie pewno nie mogłaby bez niego się obejść.",
+  "start": 720.75
+ },
+ {
+  "i": 62,
+  "pl": "— Nie mogłabym bez niego się obejść — powtórzyła z wolna pani Verloc. — Nie mogłabym bez niego się obejść, kiedy chodzi o jego dobro! Cóż znowu! Naturalnie, że mogę bez niego się obejść. Ale on nie ma dokąd pojechać.",
+  "start": 731.98
+ },
+ {
+  "i": 63,
+  "pl": "Pan Verloc wydobył arkusz brunatnego papieru i kłębek sznurka, przy czym mruknął, że Michaelis przebywa na wsi w małej willi. Nie odmówiłby Steviemu pokoju, gdzie by chłopiec mógł nocować. Nikt tam nie przyjeżdża i żadnych rozmów nie będzie. Michaelis pisze książkę.",
+  "start": 747.33
+ },
+ {
+  "i": 64,
+  "pl": "Pani Verloc oświadczyła, że ma dla Michaelisa dużo sympatii, napomknęła, iż nie cierpi Karla Yundta, tego „wstrętnego starca”, Ossipona zaś pominęła milczeniem. Naturalnie, że to by zrobiło Steviemu wielką przyjemność. Michaelis był dla niego zawsze taki miły i serdeczny. Pewnie lubi chłopca.",
+  "start": 764.81
+ },
+ {
+  "i": 65,
+  "pl": "No bo też to taki dobry chłopiec.",
+  "start": 783.91
+ },
+ {
+  "i": 66,
+  "pl": "— Zdaje mi się, że w ostatnich czasach ty także go polubiłeś — dodała po chwili z niezłomną pewnością siebie.",
+  "start": 787.7
+ },
+ {
+  "i": 67,
+  "pl": "Pan Verloc, obwiązując tekturowe pudełko, które miał wysłać pocztą, zerwał sznurek wskutek nieostrożnego szarpnięcia i wymruczał pod nosem kilka przekleństw. Potem rzekł głośniej zwykłym ochrypłym tonem, że zabierze na wieś Steviego i zostawi go tam pod opieką Michaelisa.",
+  "start": 795.82
+ },
+ {
+  "i": 68,
+  "pl": "Wykonał swój projekt nazajutrz. Stevie nie miał nic przeciw wyjazdowi. Odniósł się do tego projektu nawet z pewnym zapałem, choć był jakby oszołomiony. Raz po raz zwracał badawczo naiwne oczy na duże oblicze pana Verloca, zwłaszcza, kiedy siostra na nich nie patrzyła.",
+  "start": 812.04
+ },
+ {
+  "i": 69,
+  "pl": "Wyraz jego twarzy był dumny, a zarazem lękliwy i skupiony, jak u małego dziecka, któremu pierwszy raz powierza się pudełko z zapałkami, pozwalając jedną zapalić. Pani Verloc, ucieszona powolnością Steviego, przykazała mu, aby na wsi nie zbrudził ubrania.",
+  "start": 828.18
+ },
+ {
+  "i": 70,
+  "pl": "Słysząc to, Stevie zwrócił na swoją siostrę i opiekunkę spojrzenie, któremu pierwszy raz w życiu zbywało na głębokiej dziecięcej ufności. Było wyniosłe i chmurne. Pani Verloc uśmiechnęła się.",
+  "start": 843.98
+ },
+ {
+  "i": 71,
+  "pl": "— Mój ty Boże, nie potrzebujesz się obrażać. Przecież wiesz, Stevie, jak się zawsze ubrudzisz, kiedy ci się zdarzy sposobność.",
+  "start": 858.14
+ },
+ {
+  "i": 72,
+  "pl": "Pan Verloc był już na ulicy i szedł naprzód.",
+  "start": 866.4
+ },
+ {
+  "i": 73,
+  "pl": "Tedy na skutek bohaterskiego postępku matki oraz wyjazdu na wieś brata, pani Verloc częściej niż zwykle przebywała samotnie nie tylko w sklepie, ale i w mieszkaniu. Albowiem pan Verloc musiał odbywać swoje spacery.",
+  "start": 869.7
+ },
+ {
+  "i": 74,
+  "pl": "W dniu, kiedy nastąpił zamach w Greenwich Parku, Winnie była samotna dłużej niż zwykle, bo pan Verloc wyszedł z rana bardzo wcześnie i wrócił dopiero o zmierzchu. Winnie nie miała nic przeciw samotności. Wychodzić jej się nie chciało. Pogoda była okropna i w sklepie było przyjemniej niż na ulicy.",
+  "start": 882.8
+ },
+ {
+  "i": 75,
+  "pl": "Winnie szyła coś, siedząc za ladą, i nie podniosła oczu, kiedy pan Verloc wszedł wśród napastliwego grzechotu dzwonka; poznała jego kroki rozlegające się po trotuarze.",
+  "start": 901.0
+ },
+ {
+  "i": 76,
+  "pl": "Nie podniosła oczu, ale gdy pan Verloc w kapeluszu nasuniętym na czoło skierował się, milcząc, wprost do drzwi saloniku, rzekła pogodnie:",
+  "start": 910.88
+ },
+ {
+  "i": 77,
+  "pl": "— Cóż za okropny czas. Byłeś może u Steviego?",
+  "start": 920.6
+ },
+ {
+  "i": 78,
+  "pl": "— Nie! nie byłem — rzekł cicho pan Verloc i zatrzasnął za sobą szklane drzwi z nadspodziewaną energią.",
+  "start": 925.24
+ },
+ {
+  "i": 79,
+  "pl": "Pani Verloc siedziała czas jakiś bezczynnie z robotą spoczywającą na kolanach, wreszcie schowawszy ją pod ladę, wstała z krzesła, aby zapalić gaz. Potem weszła do saloniku, kierując się do kuchni. Pan Verloc będzie zaraz chciał herbaty.",
+  "start": 932.6
+ },
+ {
+  "i": 80,
+  "pl": "Znając siłę swych wdzięków, Winnie w codziennym życiu nie wymagała od męża ceremonialnej uprzejmości i dwornego obejścia; były to formy co najmniej czcze i przestarzałe, zapewne nigdy ściśle nie przestrzegane, lekceważone dziś nawet w najwyższych sferach, a zawsze obce zwyczajom jej środowiska.",
+  "start": 947.32
+ },
+ {
+  "i": 81,
+  "pl": "Nie spodziewała się po mężu ugrzecznienia. Ale był dobrym mężem i lojalnie uznawała jego prawa.",
+  "start": 967.02
+ },
+ {
+  "i": 82,
+  "pl": "Byłaby przeszła przez salonik w drodze do kuchni, dokąd wzywały ją obowiązki gospodyni — byłaby przeszła z niezamąconą pogodą kobiety ufającej sile swych wdzięków, ale wpadł jej w ucho lekki, bardzo lekki i szybki odgłos jakby szczękania. Pochłonął jej uwagę, dziwny i niepojęty.",
+  "start": 973.47
+ },
+ {
+  "i": 83,
+  "pl": "Gdy zrozumiała wreszcie, co to za odgłos, stanęła jak wryta, zdumiona i zakłopotana.",
+  "start": 993.47
+ },
+ {
+  "i": 84,
+  "pl": "Potarłszy zapałkę o pudełko trzymane w ręku, odkręciła i zapaliła nad stołem jeden z dwóch palników gazowych, a że funkcjonował nieco wadliwie, gwizdnął jakby ze zdziwienia, a potem zaczął mruczeć niby zadowolony kot.",
+  "start": 999.67
+ },
+ {
+  "i": 85,
+  "pl": "Pan Verloc, wbrew zwyczajowi, zrzucił z siebie palto. Leżało na kanapie. Kapelusz, widać też odrzucony, spoczywał pod kanapą. Pan Verloc siedział na krześle przysuniętym tuż do kominka, pochylony nisko nad żarem, z głową w dłoniach i nogami zbliżonymi do ognia.",
+  "start": 1014.13
+ },
+ {
+  "i": 86,
+  "pl": "Zęby mu szczękały z niepohamowaną gwałtownością i cały jego ogromny grzbiet drgał w takt tego szczękania. Pani Verloc się zlękła.",
+  "start": 1030.85
+ },
+ {
+  "i": 87,
+  "pl": "— Przemokłeś — powiedziała.",
+  "start": 1040.81
+ },
+ {
+  "i": 88,
+  "pl": "— Nie bardzo — zdołał wyjąkać pan Verloc, wzdrygnąwszy się mocno. Zdobył się na wielki wysiłek i przestał szczękać zębami.",
+  "start": 1043.17
+ },
+ {
+  "i": 89,
+  "pl": "— Jeszcze mi się rozchorujesz — rzekła z prawdziwym niepokojem.",
+  "start": 1051.17
+ },
+ {
+  "i": 90,
+  "pl": "— Chyba nie — odrzekł pan Verloc, dysząc chrapliwie przez nos.",
+  "start": 1055.89
+ },
+ {
+  "i": 91,
+  "pl": "Widać zdołał się paskudnie zaziębić między siódmą rano i piątą po południu. Pani Verloc patrzyła na jego zgięte plecy.",
+  "start": 1060.09
+ },
+ {
+  "i": 92,
+  "pl": "— Gdzieżeś był dzisiaj? — spytała.",
+  "start": 1068.31
+ },
+ {
+  "i": 93,
+  "pl": "— Nigdzie — odrzekł przez nos cichym, zduszonym głosem. Jego poza zdradzała przygnębienie albo silny ból głowy. Wykrętność i nieszczerość tej odpowiedzi uwydatniła się w przykry sposób wśród głuchej ciszy pokoju. Odchrząknął, jakby chcąc się usprawiedliwić, i rzekł:",
+  "start": 1071.53
+ },
+ {
+  "i": 94,
+  "pl": "— Byłem w banku.",
+  "start": 1089.28
+ },
+ {
+  "i": 95,
+  "pl": "Pani Verloc nadstawiła ucha.",
+  "start": 1090.66
+ },
+ {
+  "i": 96,
+  "pl": "— Tak? — rzekła obojętnie. — A po co?",
+  "start": 1093.19
+ },
+ {
+  "i": 97,
+  "pl": "Pan Verloc mruknął z nosem zwieszonym nad paleniskiem, nie ukrywając niechęci;",
+  "start": 1097.01
+ },
+ {
+  "i": 98,
+  "pl": "— Podjąłem pieniądze.",
+  "start": 1102.43
+ },
+ {
+  "i": 99,
+  "pl": "— Jak to? Wszystkie?",
+  "start": 1104.37
+ },
+ {
+  "i": 100,
+  "pl": "— Tak. Wszystkie.",
+  "start": 1105.91
+ },
+ {
+  "i": 101,
+  "pl": "Pani Verloc rozłożyła starannie kusą ceratę, wyjęła z szuflady w stole dwa noże oraz dwa widelce i nagle przerwała te codzienne czynności.",
+  "start": 1107.39
+ },
+ {
+  "i": 102,
+  "pl": "— Po coś to zrobił?",
+  "start": 1116.34
+ },
+ {
+  "i": 103,
+  "pl": "— Może będą wkrótce potrzebne — sapnął ogólnikowo pan Verloc, znalazłszy się u kresu celowych zwierzeń.",
+  "start": 1118.9
+ },
+ {
+  "i": 104,
+  "pl": "— Co chcesz przez to powiedzieć? — spytała jego żona tonem zupełnie obojętnym, lecz stanęła jak wryta między stołem a kredensem.",
+  "start": 1126.06
+ },
+ {
+  "i": 105,
+  "pl": "— Wiesz, że możesz mi ufać — odezwał się pan Verloc do paleniska głosem ochrypłym i pełnym uczucia.",
+  "start": 1134.52
+ },
+ {
+  "i": 106,
+  "pl": "Pani Verloc zwróciła się powoli w stronę kredensu i rzekła po namyśle:",
+  "start": 1142.08
+ },
+ {
+  "i": 107,
+  "pl": "— O tak. Ufam ci.",
+  "start": 1146.7
+ },
+ {
+  "i": 108,
+  "pl": "I wzięła się z powrotem do swych metodycznych czynności. Postawiła dwa talerze, wyjęła chleb i masło, krzątając się spokojnie między stołem a kredensem wśród ciszy domowego ogniska.",
+  "start": 1148.8
+ },
+ {
+  "i": 109,
+  "pl": "W chwili gdy wyjmowała marmoladę, pomyślała rzeczowo: „Będzie głodny, cały dzień był poza domem” i wróciła jeszcze raz do kredensu po zimną pieczeń. Postawiła ją pod mruczącym płomykiem gazu; rzuciwszy przelotne spojrzenie na męża, który podsycał ogień, zeszła po dwóch schodkach do kuchni.",
+  "start": 1159.64
+ },
+ {
+  "i": 110,
+  "pl": "Dopiero gdy wróciła, trzymając nóż do krajania mięsa i widelec, odezwała się znowu:",
+  "start": 1178.44
+ },
+ {
+  "i": 111,
+  "pl": "— Gdybym ci nie ufała, nie byłabym za ciebie wyszła.",
+  "start": 1184.11
+ },
+ {
+  "i": 112,
+  "pl": "Zgięty pod gzymsem kominka, pan Verloc trzymał się za głowę oburącz i zdawał się spać. Winnie, przygotowawszy herbatę, wezwała go półgłosem: — Adolfie.",
+  "start": 1188.8
+ },
+ {
+  "i": 113,
+  "pl": "Pan Verloc wstał natychmiast i zatoczył się nieco, nim usiadł przy stole. Winnie obejrzała ostrze noża, położyła go na półmisku i poczęstowała męża pieczenią. Nie zareagował na to i siedział z głową opuszczoną na piersi.",
+  "start": 1200.06
+ },
+ {
+  "i": 114,
+  "pl": "— Zziąbłeś, więc powinieneś coś zjeść — zawyrokowała pani Verloc.",
+  "start": 1215.14
+ },
+ {
+  "i": 115,
+  "pl": "Spojrzał na nią i potrząsnął głową. Oczy nabiegły mu krwią, twarz była czerwona, a czupryna w swawolnym nieporządku. Jego podejrzany wygląd zdradzał niepokój, irytację i ponurość, jak po wyuzdanej rozpuście. Lecz pan Verloc nie był rozpustny. Prowadził się bez zarzutu.",
+  "start": 1220.38
+ },
+ {
+  "i": 116,
+  "pl": "Taki wygląd mógł być spowodowany atakiem febry. Wypił trzy filiżanki herbaty, ale nie tknął jedzenia. Wzdragał się chmurnie ze wstrętem, kiedy pani Verloc podsuwała mu potrawy. W końcu rzekła:",
+  "start": 1238.8
+ },
+ {
+  "i": 117,
+  "pl": "— Czy nie przemoczyłeś nóg? Włóż pantofle. Nie wyjdziesz już chyba dziś wieczór.",
+  "start": 1252.3
+ },
+ {
+  "i": 118,
+  "pl": "Pan Verloc dał do zrozumienia gestami i osowiałym pomrukiem, że nóg nie przemoczył i że w ogóle nic go to nie obchodzi. Propozycję włożenia pantofli pominął jako niezasługującą na uwagę. Ale na kwestię wyjścia z domu zareagował w sposób nieoczekiwany. Nie zamierzał wyjść teraz z domu.",
+  "start": 1258.92
+ },
+ {
+  "i": 119,
+  "pl": "Układał w myśli szersze plany. Z jego markotnych, urywanych zdań wynikło, że rozpatrywał możliwość emigracji. Trudno było wyrozumieć, czy ma na myśli Francję, czy też Kalifornię.",
+  "start": 1275.94
+ },
+ {
+  "i": 120,
+  "pl": "To mętne oświadczenie, w najwyższym stopniu nieprawdopodobne, ujawniło się tak niespodzianie i było do tego stopnia niepojęte, że nie sprawiło należytego wrażenia. Pani Verloc odpowiedziała z najzupełniejszym spokojem, jakby mąż groził jej końcem świata:",
+  "start": 1289.54
+ },
+ {
+  "i": 121,
+  "pl": "— Też pomysł!",
+  "start": 1304.04
+ },
+ {
+  "i": 122,
+  "pl": "Pan Verloc oświadczył, że jest chory, że wszystko go męczy, a w dodatku…",
+  "start": 1305.34
+ },
+ {
+  "i": 123,
+  "pl": "Przerwała mu:",
+  "start": 1310.69
+ },
+ {
+  "i": 124,
+  "pl": "— Zaziębiłeś się porządnie.",
+  "start": 1312.4
+ },
+ {
+  "i": 125,
+  "pl": "I rzeczywiście pan Verloc był w dziwnym stanie, i fizycznym, i nawet duchowym. Posępne niezdecydowanie odjęło mu głos na chwilę. Potem wymruczał kilka złowróżbnych ogólników o twardej konieczności.",
+  "start": 1314.5
+ },
+ {
+  "i": 126,
+  "pl": "— Będziesz musiał emigrować? — powtórzyła Winnie, siedząc spokojnie ze złożonymi rękami naprzeciw męża. — Chciałabym wiedzieć, kto cię do tego zmusi. Przecież nie jesteś niewolnikiem. Nikt tutaj nie jest niewolnikiem… i ty także nie potrzebujesz robić z siebie niewolnika.",
+  "start": 1328.84
+ },
+ {
+  "i": 127,
+  "pl": "— Zamilkła na chwilę i ciągnęła dalej z niewzruszonym spokojem: — Interes idzie nieźle. Dom masz wygodny.",
+  "start": 1345.64
+ },
+ {
+  "i": 128,
+  "pl": "Rozejrzała się po saloniku, od stojącego w rogu kredensu aż do ognia palącego się na kominku.",
+  "start": 1353.48
+ },
+ {
+  "i": 129,
+  "pl": "Mieszkanie Verloców, ukryte bezpiecznie i zacisznie za sklepem o podejrzanych towarach, o tajemniczo przyćmionym oknie i drzwiach uchylonych dwuznacznie na ciemną, wąską uliczkę, było bez zarzutu pod względem podstawowych zalet przyzwoitości i wygody.",
+  "start": 1360.09
+ },
+ {
+  "i": 130,
+  "pl": "W owej chwili Winnie odczuwała w nim brak ukochanego brata, który rozkoszował się pobytem na wilgotnej wsi wśród łąk Kentu, pod opieką pana Michaelisa. Brakowało jej Steviego dotkliwie, tęskniła za nim całą siłą opiekuńczej miłości.",
+  "start": 1376.45
+ },
+ {
+  "i": 131,
+  "pl": "Ten dom był również domem jej chłopca — ten dach i kredens, i ogień podsycany na kominku. Na tę myśl pani Verloc wstała, podeszła do przeciwległego końca stołu i rzekła z pełni serca:",
+  "start": 1393.29
+ },
+ {
+  "i": 132,
+  "pl": "— I znudzić ci się nie znudziłam.",
+  "start": 1405.3
+ },
+ {
+  "i": 133,
+  "pl": "Pan Verloc milczał. Winnie oparła się z tyłu o ramię męża i przycisnęła wargi do jego czoła. Trwała tak czas jakiś. Żaden szmer nie przenikał do nich z zewnętrznego świata. Odgłosy kroków na chodniku zamierały w dyskretnym półcieniu sklepu.",
+  "start": 1408.1
+ },
+ {
+  "i": 134,
+  "pl": "Tylko płomyk gazu nad stołem mruczał równo, jak kot, w ponurej ciszy saloniku.",
+  "start": 1423.28
+ },
+ {
+  "i": 135,
+  "pl": "Gdy wargi Winnie dotknęły niespodzianie czoła męża, pan Verloc chwycił się rękami brzegów krzesła, zachowując hieratyczny bezruch. Z chwilą gdy pocałunek się skończył, puścił krzesło, podniósł się i zbliżył do kominka. Nie odwracał się już od pokoju.",
+  "start": 1428.58
+ },
+ {
+  "i": 136,
+  "pl": "Wodził oczami za każdym ruchem żony; twarz miał opuchniętą i wyglądał jakby był pod wpływem narkotyku.",
+  "start": 1444.54
+ },
+ {
+  "i": 137,
+  "pl": "Pani Verloc krzątała się pogodnie, sprzątając ze stołu. Jej spokojny głos omawiał zwykłym tonem, rozsądnym i swojskim, myśl rzuconą przez męża. Ten projekt nie wytrzymywał krytyki. Potępiała go ze wszystkich względów — ale w gruncie rzeczy chodziło jej tylko o Steviego.",
+  "start": 1450.26
+ },
+ {
+  "i": 138,
+  "pl": "Zważywszy na pewną jego „dziwaczność”, sądziła, że nie jest wskazane wywozić go nagle za granicę. O to jej tylko chodziło. Omawiając tę kwestię, stała się niemal popędliwa. Jednocześnie szybkimi ruchami włożyła fartuch, aby zmyć filiżanki.",
+  "start": 1469.32
+ },
+ {
+  "i": 139,
+  "pl": "I jakby podniecona dźwiękiem własnego głosu, któremu nikt się nie przeciwstawiał, posunęła się tak daleko, że oświadczyła tonem prawie cierpkim:",
+  "start": 1484.66
+ },
+ {
+  "i": 140,
+  "pl": "— Jeśli się wybierasz za granicę, będziesz musiał jechać beze mnie.",
+  "start": 1493.18
+ },
+ {
+  "i": 141,
+  "pl": "— Ty wiesz, że bez ciebie bym nie pojechał — rzekł chrypliwie pan Verloc, a matowy głos, którego używał w życiu prywatnym, drżał od zagadkowego wzruszenia.",
+  "start": 1498.42
+ },
+ {
+  "i": 142,
+  "pl": "Pani Verloc już pożałowała wypowiedzianych słów. Zabrzmiały mniej uprzejmie, niż to leżało w jej zamiarze. Przy tym był w nich nierozsądek, jak i we wszystkim, co zbyteczne. W gruncie rzeczy nie chciała tego powiedzieć. Te słowa były jakby podszepnięte przez demona złych natchnień.",
+  "start": 1509.12
+ },
+ {
+  "i": 143,
+  "pl": "Lecz wiedziała, jak je wymazać z pamięci męża.",
+  "start": 1526.2
+ },
+ {
+  "i": 144,
+  "pl": "Odwróciła głowę i znad ramienia rzuciła mężczyźnie stojącemu ciężko przed kominkiem na wpół zalotne, na wpół okrutne spojrzenie wielkich oczu — spojrzenie, do którego nie byłaby nigdy zdolna dawna Winnie, z czasów gdy mieszkała jeszcze w Belgravii, albowiem cechowały ją wówczas skromność i naiwność.",
+  "start": 1529.72
+ },
+ {
+  "i": 145,
+  "pl": "Lecz ten mężczyzna był teraz jej mężem, a naiwną być już przestała. Nie zdejmując z niego oczu przez całą sekundę, patrzyła z twarzą poważną, nieruchomą jak maska i w końcu rzekła żartobliwie:",
+  "start": 1548.16
+ },
+ {
+  "i": 146,
+  "pl": "— Nie mógłbyś beze mnie wyjechać. Zanadto byś za mną tęsknił.",
+  "start": 1561.08
+ },
+ {
+  "i": 147,
+  "pl": "Pan Verloc ruszył naprzód.",
+  "start": 1565.46
+ },
+ {
+  "i": 148,
+  "pl": "— Otóż to właśnie — rzekł głośniej i szedł ku niej, wyciągnąwszy ramiona. Coś dzikiego i mętnego w jego twarzy nasuwało wątpliwość, czy chce udusić żonę, czy też ją objąć. Ale grzechot dzwonka wejściowego odwrócił uwagę pani Verloc od tego przejawu uczuć.",
+  "start": 1568.35
+ },
+ {
+  "i": 149,
+  "pl": "— Dzwonek, Adolfie. Idź do sklepu.",
+  "start": 1587.23
+ },
+ {
+  "i": 150,
+  "pl": "Przystanął; jego ramiona z wolna opadły.",
+  "start": 1589.47
+ },
+ {
+  "i": 151,
+  "pl": "— No idźże — powtórzyła pani Verloc. — Ja jestem w fartuchu.",
+  "start": 1593.55
+ },
+ {
+  "i": 152,
+  "pl": "Pan Verloc usłuchał i odwrócił się jak drewniany automat o kamiennym wzroku i twarzy pomalowanej na czerwono. A to podobieństwo do automatu było tak zupełne, że miał nawet idiotyczny wyraz twarzy, niby automat zdający sobie sprawę z tkwiącej w nim maszynerii.",
+  "start": 1598.72
+ },
+ {
+  "i": 153,
+  "pl": "Zamknął drzwi od saloniku, pani Verloc zaś poszła żwawo do kuchni, odnosząc tacę. Pomyła filiżanki i trochę innych naczyń, a potem przerwała pracę i zaczęła nasłuchiwać. Żaden dźwięk nie dosięgnął jej uszu. Widocznie któryś z klientów zasiedział się w sklepie.",
+  "start": 1615.18
+ },
+ {
+  "i": 154,
+  "pl": "Był to klient, bo pan Verloc nie wprowadził go do mieszkania. Rozwiązawszy szybkim ruchem tasiemki fartucha, cisnęła go na krzesło i wróciła powoli do saloniku.",
+  "start": 1631.46
+ },
+ {
+  "i": 155,
+  "pl": "W tej samej chwili ukazał się we drzwiach pan Verloc.",
+  "start": 1641.16
+ },
+ {
+  "i": 156,
+  "pl": "Wyszedł z saloniku czerwony. Wrócił dziwnie blady — jak papier. Jego twarz nie była już otępiała niby pod wpływem gorączki lub narkotyku; malowały się na niej pomieszanie i zgryzota. Podszedł wprost do kanapy i stanął, spoglądając na leżące tam swoje palto, jakby się bał go dotknąć.",
+  "start": 1644.55
+ },
+ {
+  "i": 157,
+  "pl": "— Co się stało? — zapytała pani Verloc stłumionym głosem. Przez uchylone drzwi dostrzegła, że klient jeszcze nie wyszedł.",
+  "start": 1665.21
+ },
+ {
+  "i": 158,
+  "pl": "— Okazuje się, że będę musiał wyjść — rzekł pan Verloc. Nie schylił się jednak po palto.",
+  "start": 1673.79
+ },
+ {
+  "i": 159,
+  "pl": "Bez słowa Winnie udała się do sklepu i zamknąwszy za sobą drzwi, poszła za ladę. Nie spojrzała otwarcie na klienta, póki nie usadowiła się wygodnie na krześle. Ale spostrzegła, że gość był wysoki i szczupły, a wąsy miał podkręcone. I właśnie w owej chwili poprawiał ich spiczaste końce.",
+  "start": 1681.45
+ },
+ {
+  "i": 160,
+  "pl": "Jego długa, koścista twarz wychylała się z podniesionego kołnierza. Był trochę obryzgany błotem, trochę mokry od deszczu. Śniady brunet; jego kości policzkowe rysowały się wyraźnie pod nieco zaklęśniętymi skroniami. Zupełnie obcy człowiek. Wcale nie klient. Pani Verloc przyglądała mu się spokojnie.",
+  "start": 1700.89
+ },
+ {
+  "i": 161,
+  "pl": "— Pan przyjeżdża z kontynentu? — odezwała się po chwili.",
+  "start": 1723.62
+ },
+ {
+  "i": 162,
+  "pl": "Wysoki, szczupły nieznajomy, nie patrząc właściwie na panią Verloc, odpowiedział tylko nikłym, dziwnym uśmiechem.",
+  "start": 1728.08
+ },
+ {
+  "i": 163,
+  "pl": "Spokojny i obojętny wzrok pani Verloc spoczywał na nim.",
+  "start": 1734.9
+ },
+ {
+  "i": 164,
+  "pl": "— Pan rozumie po angielsku, nieprawdaż?",
+  "start": 1739.55
+ },
+ {
+  "i": 165,
+  "pl": "— O tak. Rozumiem po angielsku.",
+  "start": 1742.8
+ },
+ {
+  "i": 166,
+  "pl": "W jego akcencie nie było nic cudzoziemskiego, tylko wymawiał słowa wolno, jakby mu to przychodziło z trudnością. Pani Verloc, opierając się na różnorodnych swych doświadczeniach, doszła do wniosku, że niektórzy cudzoziemcy mówią lepiej po angielsku niż sami Anglicy.",
+  "start": 1746.46
+ },
+ {
+  "i": 167,
+  "pl": "Powiedziała, nie odwracając oczu od drzwi saloniku:",
+  "start": 1762.02
+ },
+ {
+  "i": 168,
+  "pl": "— Chyba pan nie zamierza pozostać w Anglii na stałe?",
+  "start": 1765.96
+ },
+ {
+  "i": 169,
+  "pl": "Nieznajomy znów się uśmiechnął, milcząc. Miał miły wyraz ust i bystre oczy. Zaprzeczył głową jakby z pewnym smutkiem.",
+  "start": 1769.76
+ },
+ {
+  "i": 170,
+  "pl": "— Mój mąż pomoże panu i wszystko będzie dobrze. A tymczasem najlepiej pan zrobi, jeśli pan zamieszka na kilka dni u Guiglianiego, w hotelu Continental. To coś w rodzaju pensjonatu. Spokojnie tam. Mój mąż pana zaprowadzi.",
+  "start": 1778.37
+ },
+ {
+  "i": 171,
+  "pl": "— Dobra myśl — rzekł szczupły brunet, którego wzrok nagle stwardniał.",
+  "start": 1796.16
+ },
+ {
+  "i": 172,
+  "pl": "— Pan znał już przedtem mojego męża, co? Może we Francji?",
+  "start": 1801.43
+ },
+ {
+  "i": 173,
+  "pl": "— Słyszałem o nim — przyznał gość; mówił powoli, mozolnie, przy czym czuło się z jego tonu, że nie chce się wdawać w rozmowę.",
+  "start": 1806.54
+ },
+ {
+  "i": 174,
+  "pl": "Zapadło milczenie. Potem nieznajomy odezwał się znowu tonem znacznie naturalniejszym:",
+  "start": 1815.0
+ },
+ {
+  "i": 175,
+  "pl": "— Może pani mąż wyszedł już i czeka na mnie na ulicy?",
+  "start": 1820.63
+ },
+ {
+  "i": 176,
+  "pl": "— Na ulicy! — powtórzyła zaskoczona pani Verloc. — To niemożliwe. Nie ma tu innego wyjścia z mieszkania.",
+  "start": 1825.26
+ },
+ {
+  "i": 177,
+  "pl": "Przez chwilę siedziała obojętnie, potem wstała z krzesła i zajrzała do saloniku, uchyliwszy oszklonych drzwi. Nagle je otworzyła i znikła.",
+  "start": 1832.6
+ },
+ {
+  "i": 178,
+  "pl": "Pan Verloc przez cały ten czas tylko włożył palto. Ale dlaczego stanął potem przy stole, wsparty o niego oburącz, jakby czuł zawrót głowy lub mdłości? Winnie nie mogła nic z tego zrozumieć.",
+  "start": 1841.4
+ },
+ {
+  "i": 179,
+  "pl": "— Adolfie — zawołała półgłosem, a gdy się wyprostował, dodała szybko: — Czy znasz tego człowieka?",
+  "start": 1854.24
+ },
+ {
+  "i": 180,
+  "pl": "— Ze słyszenia — odszepnął niespokojnie pan Verloc, rzucając na drzwi wściekłym wzrokiem.",
+  "start": 1864.2
+ },
+ {
+  "i": 181,
+  "pl": "W pięknych, obojętnych oczach Winnie zapaliła się błyskawica wstrętu.",
+  "start": 1870.02
+ },
+ {
+  "i": 182,
+  "pl": "— To pewno jeden z przyjaciół Karla Yundta… tego przebrzydłego starego grzyba.",
+  "start": 1876.21
+ },
+ {
+  "i": 183,
+  "pl": "— Ach, nie — zaprzeczył pan Verloc, zajęty wydostawaniem kapelusza spod kanapy. Ale, wyprostowawszy się, trzymał go w ręku, jakby nie zdając sobie sprawy, do czego służy kapelusz.",
+  "start": 1885.34
+ },
+ {
+  "i": 184,
+  "pl": "— No więc… on czeka na ciebie — rzekła w końcu pani Verloc. — Słuchaj, Adolfie, czy to nie jest któryś z tych ludzi z ambasady, co to przyczynili ci ostatnio tyle kłopotu?",
+  "start": 1896.79
+ },
+ {
+  "i": 185,
+  "pl": "— Przyczynili mi ostatnio tyle kłopotu? — powtórzył pan Verloc, wstrząsnąwszy się ze zdumienia i strachu. — Kto ci mówił o ludziach z ambasady? — Ty sam.",
+  "start": 1909.88
+ },
+ {
+  "i": 186,
+  "pl": "— Ja? Ja? Mówiłem ci o ambasadzie?",
+  "start": 1921.61
+ },
+ {
+  "i": 187,
+  "pl": "Pan Verloc wydawał się zmieszany i przerażony bez granic. Żona mu wyjaśniła:",
+  "start": 1924.87
+ },
+ {
+  "i": 188,
+  "pl": "— W ostatnich czasach mówiłeś czasem przez sen, Adolfie.",
+  "start": 1930.29
+ },
+ {
+  "i": 189,
+  "pl": "— Co… co ja mówiłem? Co ty wiesz?",
+  "start": 1934.29
+ },
+ {
+  "i": 190,
+  "pl": "— Nic szczególnego. Przeważnie mówiłeś od rzeczy. Zrozumiałam tylko, że coś cię dręczy.",
+  "start": 1938.4
+ },
+ {
+  "i": 191,
+  "pl": "Pan Verloc włożył kapelusz. Purpurowa fala gniewu zalała mu twarz.",
+  "start": 1945.0
+ },
+ {
+  "i": 192,
+  "pl": "— Więc mówiłem od rzeczy? Och, ci z ambasady! Darłbym pasy z nich wszystkich. Ale niech się strzegą. Mam język w gębie.",
+  "start": 1950.28
+ },
+ {
+  "i": 193,
+  "pl": "Kipiał ze złości, chodząc tam i na powrót między stołem a kanapą; jego rozpięte palto zawadzało o wszystkie rogi. Czerwona fala gniewu odpłynęła i twarz zbielała mu znowu, a nozdrza wciąż drgały. Dla uproszczenia sytuacji pani Verloc przypisała te objawy zaziębieniu.",
+  "start": 1960.2
+ },
+ {
+  "i": 194,
+  "pl": "— No więc kimkolwiek jest ten człowiek, pozbądź się go możliwie najprędzej i wracaj — rzekła. — Muszę cię doglądać przez jakichś parę dni.",
+  "start": 1977.19
+ },
+ {
+  "i": 195,
+  "pl": "Pan Verloc uspokoił się i z wyrazem zdecydowania na bladej twarzy otworzył drzwi, lecz żona odwołała go szeptem:",
+  "start": 1988.96
+ },
+ {
+  "i": 196,
+  "pl": "— Adolfie! Adolfie! — Wrócił strwożony. — A co z tymi pieniędzmi, które wyjąłeś z banku? — spytała. — Masz je przy sobie? Czy nie byłoby lepiej…",
+  "start": 1996.5
+ },
+ {
+  "i": 197,
+  "pl": "Pan Verloc patrzył czas jakiś bezmyślnie na dłoń, którą żona wyciągnęła do niego i w końcu uderzył się w czoło.",
+  "start": 2008.76
+ },
+ {
+  "i": 198,
+  "pl": "— Pieniądze! Tak! Tak! Nie rozumiałem, o co ci chodzi.",
+  "start": 2015.48
+ },
+ {
+  "i": 199,
+  "pl": "Wyciągnął z kieszeni na piersiach nowy portfel ze świńskiej skóry. Pani Verloc wzięła go bez słowa i stała w miejscu, póki nie ucichł dzwonek grzechoczący po wyjściu pana Verloca i jego gościa. Dopiero wtedy wyciągnęła banknoty i rzuciła na nie okiem.",
+  "start": 2021.21
+ },
+ {
+  "i": 200,
+  "pl": "Po tej inspekcji rozejrzała się bacznie, rzekłbyś, nie dowierzając ciszy i samotności domu. Przybytek jej małżeńskiego życia wydał jej się taki odludny i niepewny, jakby się znajdował w lesie.",
+  "start": 2036.75
+ },
+ {
+  "i": 201,
+  "pl": "Rozglądała się po solidnych, ciężkich meblach, lecz każda skrytka, która przychodziła jej na myśl, robiła na niej wrażenie niepewnej i szczególnie ponętnej dla złodzieja. A włamywacz, którego sobie wyobrażała, był ideałem włamywacza, obdarzonym najwyższymi zdolnościami i cudotwórczą przenikliwością.",
+  "start": 2049.17
+ },
+ {
+  "i": 202,
+  "pl": "O szufladzie nie było co nawet myśleć. Każdy złodziej zajrzy tam przede wszystkim. Pani Verloc rozpięła śpiesznie parę haftek i wsunęła portfel za stanik. Rozporządziwszy w ten sposób kapitałem męża, usłyszała z pewnym zadowoleniem grzechot dzwonka oznajmiającego o czyimś przybyciu.",
+  "start": 2068.57
+ },
+ {
+  "i": 203,
+  "pl": "Poszła za ladę, przybierając niewzruszony wyraz twarzy i kamienne spojrzenie, którym zwykle witała klientów.",
+  "start": 2086.83
+ },
+ {
+  "i": 204,
+  "pl": "Mężczyzna stojący w środku sklepu rozglądał się szybko chłodnym, badawczym wzrokiem. Przebiegł spojrzeniem po ścianach, ogarnął nim sufit, podłogę — a wszystko to w mgnieniu oka. Końce długich, jasnych wąsów opadały mu poniżej szczęk.",
+  "start": 2093.3
+ },
+ {
+  "i": 205,
+  "pl": "Uśmiechnął się jak dawny, choć daleki znajomy i pani Verloc uprzytomniła sobie, że go już widywała. To nie był klient. Jej wzrok „od klientów” zmiękł i nabrał zwykłej obojętności; stała naprzeciw gościa, oddzielona od niego ladą.",
+  "start": 2108.98
+ },
+ {
+  "i": 206,
+  "pl": "Podszedł bliżej z pewną poufałością, której jednak nazbyt nie uwydatniał.",
+  "start": 2126.84
+ },
+ {
+  "i": 207,
+  "pl": "— Czy mąż pani jest w domu? — zapytał swobodnie.",
+  "start": 2131.56
+ },
+ {
+  "i": 208,
+  "pl": "— Nie. Wyszedł.",
+  "start": 2135.22
+ },
+ {
+  "i": 209,
+  "pl": "— Bardzo mi przykro. Wstąpiłem, aby zasięgnąć od niego pewnej poufnej informacji.",
+  "start": 2137.47
+ },
+ {
+  "i": 210,
+  "pl": "Była to ścisła prawda. Komisarz Heat wrócił do domu i nawet miał już zamiar włożyć pantofle, ponieważ — jak stwierdził przed samym sobą — usunięto go właściwie poza obręb tej sprawy.",
+  "start": 2143.59
+ },
+ {
+  "i": 211,
+  "pl": "Pozwolił sobie na kilka wzgardliwych i gniewnych myśli, uznał jednak tego rodzaju zajęcie za tak nieprzyjemne, że postanowił szukać wytchnienia poza domem. Nic mu nie przeszkadzało złożyć panu Verlocowi przyjazną wizytę — niby to przypadkiem.",
+  "start": 2155.01
+ },
+ {
+  "i": 212,
+  "pl": "Opuścił więc dom w charakterze prywatnego obywatela i użył tych samych środków lokomocji co zwykle. Prowadziły wszystkie do ogniska domowego pana Verloca.",
+  "start": 2171.81
+ },
+ {
+  "i": 213,
+  "pl": "Komisarz Heat przestrzegał tak pilnie prywatnego charakteru swej wyprawy, że zadał sobie specjalny trud, aby uniknąć policjantów stojących na swych stanowiskach lub obchodzących dzielnicę w sąsiedztwie Brett Street.",
+  "start": 2180.72
+ },
+ {
+  "i": 214,
+  "pl": "Ta ostrożność była znacznie bardziej wskazana dla niego niż dla nieznanego nikomu nadinspektora.",
+  "start": 2194.62
+ },
+ {
+  "i": 215,
+  "pl": "Prywatny obywatel Heat wszedł na Brett Street, manewrując w sposób, który by napiętnowano jako skradanie się, gdyby Heat należał do klasy przestępców. Kawałek sukna znaleziony w Greenwich spoczywał w jego kieszeni.",
+  "start": 2202.02
+ },
+ {
+  "i": 216,
+  "pl": "Nie zamierzał jednak bynajmniej wydobyć go z ukrycia, albowiem jego wyprawa miała charakter prywatny. Chciał się tylko przekonać, co pan Verloc będzie skłonny powiedzieć mu z własnej woli. Miał nadzieję, że to, co usłyszy, pozwoli mu obwinić Michaelisa.",
+  "start": 2215.68
+ },
+ {
+  "i": 217,
+  "pl": "Ta nadzieja łączyła się ściśle z jego fachem, ale posiadała także stronę etyczną. Albowiem komisarz Heat był sługą sprawiedliwości. Nie zastawszy pana Verloca, uczuł rozczarowanie.",
+  "start": 2230.36
+ },
+ {
+  "i": 218,
+  "pl": "— Poczekałbym trochę, gdybym był pewien, że niedługo wróci — powiedział.",
+  "start": 2243.83
+ },
+ {
+  "i": 219,
+  "pl": "Pani Verloc nie zdobyła się na żadne zapewnienie.",
+  "start": 2248.33
+ },
+ {
+  "i": 220,
+  "pl": "— Wiadomość, o którą mi chodzi, jest ściśle prywatna — powtórzył. — Rozumie pani, co mówię? Czy nie mogłaby mi pani wskazać, dokąd poszedł pani mąż?",
+  "start": 2252.22
+ },
+ {
+  "i": 221,
+  "pl": "Pani Verloc potrząsnęła głową.",
+  "start": 2262.12
+ },
+ {
+  "i": 222,
+  "pl": "— Nie umiem panu nic powiedzieć.",
+  "start": 2265.28
+ },
+ {
+  "i": 223,
+  "pl": "Odwróciła się i zaczęła porządkować pudełka stojące na półkach za ladą. Komisarz Heat patrzył na nią czas jakiś w zadumie.",
+  "start": 2267.88
+ },
+ {
+  "i": 224,
+  "pl": "— Chyba pani wie, kim jestem? — zapytał.",
+  "start": 2277.62
+ },
+ {
+  "i": 225,
+  "pl": "Pani Verloc spojrzała nań przez ramię. Komisarz Heat był zdumiony jej chłodem.",
+  "start": 2281.5
+ },
+ {
+  "i": 226,
+  "pl": "— Jak to! Przecież pani wie, że jestem z policji — rzekł ostro.",
+  "start": 2287.59
+ },
+ {
+  "i": 227,
+  "pl": "— Niewiele mnie to obchodzi — zauważyła pani Verloc, zabierając się znów do porządkowania pudełek.",
+  "start": 2292.83
+ },
+ {
+  "i": 228,
+  "pl": "— Nazywam się Heat. Komisarz Heat z Wydziału Przestępstw Specjalnych.",
+  "start": 2299.35
+ },
+ {
+  "i": 229,
+  "pl": "Pani Verloc ustawiła dokładnie na właściwym miejscu małe tekturowe pudełko i zwróciła się znów do Heata, spoglądając nań spod ociężałych powiek; jej ręce zwisały bezczynnie. Przez chwilę panowało milczenie.",
+  "start": 2303.79
+ },
+ {
+  "i": 230,
+  "pl": "— Więc mąż pani wyszedł przed kwadransem! A nie powiedział, kiedy wróci?",
+  "start": 2316.41
+ },
+ {
+  "i": 231,
+  "pl": "— Nie wyszedł sam — rzuciła obojętnie pani Verloc.",
+  "start": 2322.54
+ },
+ {
+  "i": 232,
+  "pl": "— Wyszedł ze znajomym?",
+  "start": 2327.04
+ },
+ {
+  "i": 233,
+  "pl": "Pani Verloc dotknęła z tyłu swych włosów. Były w najzupełniejszym porządku.",
+  "start": 2328.76
+ },
+ {
+  "i": 234,
+  "pl": "— Nie, z jakimś obcym panem.",
+  "start": 2333.86
+ },
+ {
+  "i": 235,
+  "pl": "— Aha. A jak ten obcy pan wyglądał? Może pani zechce mi powiedzieć?",
+  "start": 2336.86
+ },
+ {
+  "i": 236,
+  "pl": "Pani Verloc nie miała nic przeciwko temu. A Heat, usłyszawszy, że ów nieznajomy był wysokim, chudym brunetem o długiej twarzy i podkręconych wąsach, zaniepokoił się i wykrzyknął:",
+  "start": 2342.14
+ },
+ {
+  "i": 237,
+  "pl": "— A niech go diabli, domyślałem się tego! Ten człowiek nie tracił czasu.",
+  "start": 2353.3
+ },
+ {
+  "i": 238,
+  "pl": "W skrytości ducha komisarz bardzo był zgorszony nieformalnym postępkiem swego zwierzchnika. Lecz nie miał w sobie nic z Don Kichota; odeszła go chęć doczekania się pana Verloca. Nie wiedział, dlaczego wyszli, ale przypuszczał, że pewno wrócą razem.",
+  "start": 2358.26
+ },
+ {
+  "i": 239,
+  "pl": "Całą tę sprawę prowadzi się Bóg wie jak, partacka robota, pomyślał z goryczą.",
+  "start": 2374.02
+ },
+ {
+  "i": 240,
+  "pl": "— Chyba nie będę miał czasu doczekać się pani męża — powiedział.",
+  "start": 2380.06
+ },
+ {
+  "i": 241,
+  "pl": "Pani Verloc wysłuchała niedbale tego oświadczenia. Jej obojętność zastanawiała Heata od samego początku, a w tej chwili pobudziła szczególnie jego ciekawość. Heat nie wiedział, co o tym wszystkim myśleć; namiętności miotały nim, jakby był pierwszym lepszym z obywateli.",
+  "start": 2384.24
+ },
+ {
+  "i": 242,
+  "pl": "— Mam wrażenie — rzekł, patrząc spokojnie na Winnie — że gdyby pani zechciała, mogłaby mi pani dać całkiem dokładne informacje o tym, co zaszło.",
+  "start": 2402.52
+ },
+ {
+  "i": 243,
+  "pl": "Pani Verloc zmusiła swe piękne leniwe oczy do odwzajemnienia jego wzroku i szepnęła:",
+  "start": 2412.37
+ },
+ {
+  "i": 244,
+  "pl": "— O tym, co zaszło… A co takiego mogło zajść?",
+  "start": 2418.92
+ },
+ {
+  "i": 245,
+  "pl": "— Mam na myśli sprawę, o której chciałem porozmawiać z pani mężem.",
+  "start": 2423.81
+ },
+ {
+  "i": 246,
+  "pl": "Tego dnia pani Verloc jak zwykle rzuciła okiem na poranny dziennik. Ale nie wyszła ani na krok z domu. Roznosiciele gazet nie zapuszczali się nigdy na Brett Street. Ten teren nie nadawał się do ich handlu.",
+  "start": 2428.09
+ },
+ {
+  "i": 247,
+  "pl": "Echa ich okrzyków, rozlegających się wzdłuż ludnych ulic, zamierały wśród brudnych murów ceglanych, nie docierając do progu sklepu. Pan Verloc nie przyniósł z sobą wieczornej gazety. W każdym razie Winnie jej nie widziała.",
+  "start": 2441.56
+ },
+ {
+  "i": 248,
+  "pl": "Nie miała pojęcia o żadnej sprawie i powiedziała to spokojnym głosem, w którym brzmiało szczere zdziwienie.",
+  "start": 2455.7
+ },
+ {
+  "i": 249,
+  "pl": "Komisarz Heat ani przez chwilę nie dał wiary tak zupełnej nieświadomości. W krótkich, mało uprzejmych słowach streścił to, co zaszło.",
+  "start": 2461.94
+ },
+ {
+  "i": 250,
+  "pl": "Pani Verloc odwróciła od niego oczy.",
+  "start": 2469.98
+ },
+ {
+  "i": 251,
+  "pl": "— Uważam to za głupotę — wyrzekła z wolna i zamilkła. — My tutaj nie jesteśmy niewolnikami, którymi można poniewierać.",
+  "start": 2473.56
+ },
+ {
+  "i": 252,
+  "pl": "Komisarz słuchał bacznie. Nic więcej nie powiedziała.",
+  "start": 2482.1
+ },
+ {
+  "i": 253,
+  "pl": "— A mąż pani nie wspominał o niczym, kiedy wrócił do domu?",
+  "start": 2485.91
+ },
+ {
+  "i": 254,
+  "pl": "Pani Verloc tylko pokręciła głową na znak przeczenia. Przeciągłe, kłopotliwe milczenie zaległo w sklepie. Komisarz Heat pomyślał, że tego już naprawdę za wiele.",
+  "start": 2489.79
+ },
+ {
+  "i": 255,
+  "pl": "— Jest jeszcze pewna drobna sprawa — zaczął obojętnym tonem — o której chciałem z mężem pani pomówić. Doszło naszych rąk coś, co — jak przypuszczamy — jest skradzionym paltem.",
+  "start": 2500.97
+ },
+ {
+  "i": 256,
+  "pl": "Pani Verloc, szczególnie zaprzątnięta tego wieczoru myślami o złodziejach, dotknęła przelotnie stanika na piersi.",
+  "start": 2516.82
+ },
+ {
+  "i": 257,
+  "pl": "— Żadne palto nam nie zginęło — rzekła spokojnie.",
+  "start": 2524.07
+ },
+ {
+  "i": 258,
+  "pl": "— To dziwne — ciągnął prywatny obywatel Heat. — Widzę, że państwo trzymacie tu mnóstwo tuszu do znakowania…",
+  "start": 2529.02
+ },
+ {
+  "i": 259,
+  "pl": "Wziął do ręki małą buteleczkę i spojrzał na nią pod światło gazu palącego się w środku sklepu.",
+  "start": 2538.42
+ },
+ {
+  "i": 260,
+  "pl": "— Fioletowy… prawda? — zauważył, odstawiając buteleczkę. — Jak już wspomniałem, to jest naprawdę dziwne. Bo tamto skradzione palto ma pod spodem wszytą etykietę z waszym adresem wypisanym tuszem.",
+  "start": 2545.25
+ },
+ {
+  "i": 261,
+  "pl": "Pani Verloc pochyliła się nad ladą z cichym okrzykiem.",
+  "start": 2559.36
+ },
+ {
+  "i": 262,
+  "pl": "— To palto mojego brata!",
+  "start": 2563.43
+ },
+ {
+  "i": 263,
+  "pl": "— Gdzie jest pani brat? Czy mógłbym go zobaczyć? — spytał porywczo komisarz.",
+  "start": 2565.81
+ },
+ {
+  "i": 264,
+  "pl": "Pani Verloc pochyliła się trochę niżej nad ladą.",
+  "start": 2571.0
+ },
+ {
+  "i": 265,
+  "pl": "— Nie. Nie ma go tu. Ten adres napisałam ja sama.",
+  "start": 2574.04
+ },
+ {
+  "i": 266,
+  "pl": "— A gdzie jest obecnie pani brat?",
+  "start": 2578.64
+ },
+ {
+  "i": 267,
+  "pl": "— Pojechał na wieś do… do znajomego.",
+  "start": 2581.2
+ },
+ {
+  "i": 268,
+  "pl": "— To palto pochodzi ze wsi. A jak się nazywa ten znajomy?",
+  "start": 2585.66
+ },
+ {
+  "i": 269,
+  "pl": "— Michaelis — wyznała pani Verloc lękliwym szeptem.",
+  "start": 2591.17
+ },
+ {
+  "i": 270,
+  "pl": "Komisarz Heat gwizdnął. Oczy mu zabłysły.",
+  "start": 2594.89
+ },
+ {
+  "i": 271,
+  "pl": "— To, to, to. Świetnie. A teraz co do pani brata, jak on wygląda? Tęgi brunet, co?",
+  "start": 2598.52
+ },
+ {
+  "i": 272,
+  "pl": "— Ach, nie! — wykrzyknęła żarliwie pani Verloc. — To musiał być złodziej. Stevie jest szczupły i jasnowłosy.",
+  "start": 2607.42
+ },
+ {
+  "i": 273,
+  "pl": "— W porządku — rzekł komisarz potakująco. A gdy pani Verloc patrzyła w niego, wahając się między niepokojem i ciekawością, zaczął ją wypytywać. Dlaczego przyszyła ten adres do palta?",
+  "start": 2616.19
+ },
+ {
+  "i": 274,
+  "pl": "I dowiedział się, że zmiażdżone szczątki, które badał rano z niezmierną odrazą, są szczątkami młodego chłopca, roztargnionego nerwowca, trochę dziwaka i że rozmawiająca z nim, komisarzem, kobieta opiekowała się tym chłopcem od wczesnego dzieciństwa.",
+  "start": 2629.59
+ },
+ {
+  "i": 275,
+  "pl": "— Czy on daje się łatwo podniecić? — zapytał komisarz.",
+  "start": 2647.71
+ },
+ {
+  "i": 276,
+  "pl": "— O tak. Bardzo łatwo. Ale jak się to mogło stać, że zgubił palto…",
+  "start": 2653.19
+ },
+ {
+  "i": 277,
+  "pl": "Komisarz Heat wyciągnął nagle z kieszeni różową gazetę, którą kupił z pół godziny przedtem. Interesował się bardzo końmi.",
+  "start": 2659.33
+ },
+ {
+  "i": 278,
+  "pl": "Ponieważ jego zawód narzucał mu postawę nieufności i podejrzeń w stosunku do współobywateli, komisarz Heat musiał dać ujście instynktowi łatwowierności, gnieżdżącemu się w ludzkiej piersi i dawał je, pokładając nieograniczoną ufność w proroctwach sportowych tej właśnie gazety wieczornej.",
+  "start": 2667.01
+ },
+ {
+  "i": 279,
+  "pl": "Rzuciwszy nadzwyczajny dodatek na ladę, Heat zanurzył rękę w kieszeni i wyciągnął skrawek sukna, którym go los obdarzył, ściągając nań jego uwagę wśród stosu rzeczy, wyglądających jakby je kto pozbierał w jatkach i u gałganiarzy. Ten skrawek komisarz dał pani Verloc do obejrzenia.",
+  "start": 2685.32
+ },
+ {
+  "i": 280,
+  "pl": "— Pani to zapewne poznaje?",
+  "start": 2704.01
+ },
+ {
+  "i": 281,
+  "pl": "Wzięła machinalnie gałganek w obie ręce. Oczy jej zdawały się rosnąć, w miarę jak patrzyła.",
+  "start": 2706.61
+ },
+ {
+  "i": 282,
+  "pl": "— Tak — szepnęła. Podniosła głowę i zatoczyła się z lekka w tył.",
+  "start": 2714.89
+ },
+ {
+  "i": 283,
+  "pl": "— Dlaczego to jest oddarte?",
+  "start": 2720.4
+ },
+ {
+  "i": 284,
+  "pl": "Komisarz sięgnął szybko przez ladę i wyrwał szmatkę z rąk Winnie, która siadła ciężko na krześle. Pomyślał: „Identyfikacja nie pozostawia nic do życzenia”. W tej samej chwili błysnęła mu zdumiewająca prawda. Verloc był tamtym „drugim mężczyzną”.",
+  "start": 2722.78
+ },
+ {
+  "i": 285,
+  "pl": "— Proszę pani — rzekł — jestem przekonany, że pani wie o tej historii z bombą więcej, niż się pani zdaje.",
+  "start": 2740.42
+ },
+ {
+  "i": 286,
+  "pl": "Pani Verloc siedziała bez rucha, oszołomiona, ogarnięta bezgranicznym zdumieniem. Co to wszystko ma znaczyć? Zesztywniała na całym ciele i nie była w stanie odwrócić głowy, gdy zaterkotał dzwonek. Natomiast prywatny wywiadowca Heat obrócił się w mig na pięcie.",
+  "start": 2747.47
+ },
+ {
+  "i": 287,
+  "pl": "Pan Verloc zamknął drzwi i przez chwilę obaj mężczyźni stali naprzeciw siebie oko w oko.",
+  "start": 2764.8
+ },
+ {
+  "i": 288,
+  "pl": "Pan Verloc, nie spojrzawszy na żonę, podszedł do komisarza, który odetchnął z ulgą, widząc, że gospodarz domu powrócił sam.",
+  "start": 2770.62
+ },
+ {
+  "i": 289,
+  "pl": "— Pan tutaj! — mruknął Verloc niewyraźnie. — Kogo pan szuka?",
+  "start": 2779.55
+ },
+ {
+  "i": 290,
+  "pl": "— Nikogo — odpowiedział po cichu komisarz. — Chciałbym zamienić z panem parę słów.",
+  "start": 2786.12
+ },
+ {
+  "i": 291,
+  "pl": "Pan Verloc, wciąż blady, miał teraz oblicze pełne stanowczości. Nadal nie patrzył na żonę.",
+  "start": 2791.49
+ },
+ {
+  "i": 292,
+  "pl": "— Więc niech pan tu wejdzie — powiedział i zaprowadził Heata do saloniku.",
+  "start": 2798.44
+ },
+ {
+  "i": 293,
+  "pl": "Ledwie się drzwi zamknęły, pani Verloc zerwała się z krzesła, pobiegła do nich, jakby chciała je otworzyć szarpnięciem, lecz zamiast tego padła na kolana, przykładając ucho do dziurki od klucza.",
+  "start": 2804.54
+ },
+ {
+  "i": 294,
+  "pl": "Obaj mężczyźni zatrzymali się widać tuż za progiem, bo słyszała wyraźnie głos komisarza, choć nie mogła widzieć, że Heat przycisnął mocno palec do piersi jej męża.",
+  "start": 2815.84
+ },
+ {
+  "i": 295,
+  "pl": "— Pan jest tamtym drugim mężczyzną. Widziano dwóch ludzi wchodzących do parku.",
+  "start": 2826.12
+ },
+ {
+  "i": 296,
+  "pl": "A głos pana Verloca odrzekł:",
+  "start": 2832.7
+ },
+ {
+  "i": 297,
+  "pl": "— Więc niech mnie pan aresztuje. Cóż panu w tym może przeszkodzić? Pan jest w swoim prawie.",
+  "start": 2836.72
+ },
+ {
+  "i": 298,
+  "pl": "— O, nie! Wiem doskonale, komu pan się zwierzył. Niech on sam radzi sobie z tą sprawą. Ale wiedz pan, że to ja pana wykryłem.",
+  "start": 2843.54
+ },
+ {
+  "i": 299,
+  "pl": "Potem pani Verloc słyszała już tylko szepty. Komisarz Heat pokazał widać panu Verlocowi strzęp z palta Steviego, bo Winnie, jego siostra i opiekunka, usłyszała głos męża:",
+  "start": 2853.3
+ },
+ {
+  "i": 300,
+  "pl": "— Nie miałem pojęcia, że przyszło jej do głowy coś podobnego.",
+  "start": 2865.27
+ },
+ {
+  "i": 301,
+  "pl": "I znów przez jakiś czas pani Verloc słyszała tylko szepty, których tajemniczość mniej była dla niej koszmarna niż straszliwe insynuacje słów. Teraz z kolei głos komisarza Heata rozległ się po drugiej stronie drzwi:",
+  "start": 2867.79
+ },
+ {
+  "i": 302,
+  "pl": "— Pan musiał być chyba szalony.",
+  "start": 2882.32
+ },
+ {
+  "i": 303,
+  "pl": "A głos pana Verloca odrzekł jakby z mroczną wściekłością:",
+  "start": 2884.8
+ },
+ {
+  "i": 304,
+  "pl": "— Byłem szalony przez jakiś miesiąc, ale teraz już nie jestem szalony. To przeszło. Wyciągnę wszystko na jaw i niech się dzieje, co chce.",
+  "start": 2889.61
+ },
+ {
+  "i": 305,
+  "pl": "Zapadła krótka cisza, a potem prywatny obywatel Heat mruknął:",
+  "start": 2897.76
+ },
+ {
+  "i": 306,
+  "pl": "— Co pan wyciągnie na jaw?",
+  "start": 2902.16
+ },
+ {
+  "i": 307,
+  "pl": "— Wszystko — krzyknął pan Verloc i natychmiast zniżył głos do szeptu.",
+  "start": 2904.62
+ },
+ {
+  "i": 308,
+  "pl": "Po chwili znów mówił głośniej:",
+  "start": 2909.0
+ },
+ {
+  "i": 309,
+  "pl": "— Zna mnie pan od wielu lat i przekonał się pan, że jestem użyteczny. Pan wie, że byłem zawsze człowiekiem uczciwym. Tak, uczciwym.",
+  "start": 2911.69
+ },
+ {
+  "i": 310,
+  "pl": "Ten apel do dawnej znajomości musiał komisarz uznać za bardzo niesmaczny. W głosie jego zabrzmiała przestroga.",
+  "start": 2920.18
+ },
+ {
+  "i": 311,
+  "pl": "— Niech pan nie polega tak bardzo na tym, co panu obiecano. Gdybym był na pana miejscu, postarałbym się zwiać. Nie sądzę, abyśmy pana ścigali.",
+  "start": 2928.29
+ },
+ {
+  "i": 312,
+  "pl": "Rozległ się krótki śmiech pana Verloca.",
+  "start": 2937.53
+ },
+ {
+  "i": 313,
+  "pl": "— Ach, tak, pan ma nadzieję, że inni pana wyręczą i uporają się ze mną, co? Nie, nie, teraz się pan mnie nie pozbędzie. Zbyt długo postępowałem uczciwie z tamtymi ludźmi; teraz wszystko musi wyjść na jaw.",
+  "start": 2941.05
+ },
+ {
+  "i": 314,
+  "pl": "— Więc niech wszystko wychodzi na jaw — zgodził się obojętnie komisarz Heat. — Ale teraz proszę mi powiedzieć, jak się pan stamtąd wydostał?",
+  "start": 2954.77
+ },
+ {
+  "i": 315,
+  "pl": "— Szedłem w stronę Chesterfield Walk — posłyszała pani Verloc głos męża — kiedy rozległ się huk. Wtedy zacząłem biec. Była mgła. Nie widziałem nikogo, póki nie dobiegłem do końca George Street. Zdaje się, że nie spotkałem nikogo.",
+  "start": 2965.2
+ },
+ {
+  "i": 316,
+  "pl": "— Tak łatwo panu poszło! — zdumiał się głos komisarza Heata. — Huk musiał pana przestraszyć, co?",
+  "start": 2981.44
+ },
+ {
+  "i": 317,
+  "pl": "— Tak; rozległ się za wcześnie — wyznał mroczny, chrypliwy głos pana Verloca.",
+  "start": 2988.88
+ },
+ {
+  "i": 318,
+  "pl": "Pani Verloc przyciskała ucho do dziurki od klucza; wargi jej były sine, ręce zimne jak lód; dwoje oczu robiło wrażenie dwóch czarnych dziur na bladej twarzy, która piekła ją żywym ogniem.",
+  "start": 2994.76
+ },
+ {
+  "i": 319,
+  "pl": "Po drugiej stronie drzwi głosy ściszyły się bardzo. Pani Verloc chwytała od czasu do czasu jakieś słowo, to wypowiedziane głosem męża, to znów równym tonem komisarza. Dosłyszała, jak ten ostatni powiedział:",
+  "start": 3006.0
+ },
+ {
+  "i": 320,
+  "pl": "— Według naszego zdania musiał się potknąć o korzeń jakiegoś drzewa.",
+  "start": 3019.07
+ },
+ {
+  "i": 321,
+  "pl": "Nastąpił chrypliwy, potoczysty szept, który trwał czas jakiś, a potem komisarz rzekł z naciskiem, jakby odpowiadając na pytanie:",
+  "start": 3024.33
+ },
+ {
+  "i": 322,
+  "pl": "— Naturalnie. Rozsadziło go na drobne kawałeczki: ręce, nogi, żwir, odzienie, kości, drzazgi… wszystko się pomieszało. Mówię panu, że trzeba było szufli, aby go pozbierać.",
+  "start": 3033.58
+ },
+ {
+  "i": 323,
+  "pl": "Pani Verloc porwała się nagle z podłogi; zatknąwszy uszy, zatoczyła się między ladę i półki przy ścianie.",
+  "start": 3044.86
+ },
+ {
+  "i": 324,
+  "pl": "Jej oszalałe oczy dostrzegły dziennik sportowy zostawiony przez komisarza; obijając się o ladę, chwyciła dziennik, padła na krzesło, rozdarła przez środek różową, optymistyczną gazetę, usiłując ją otworzyć, a potem rzuciła na podłogę.",
+  "start": 3051.32
+ },
+ {
+  "i": 325,
+  "pl": "Z drugiej strony drzwi komisarz Heat mówił do pana Verloca, tajnego agenta:",
+  "start": 3065.66
+ },
+ {
+  "i": 326,
+  "pl": "— A więc pana obrona będzie właściwie przyznaniem się do wszystkiego?",
+  "start": 3070.68
+ },
+ {
+  "i": 327,
+  "pl": "— Tak. Mam zamiar opowiedzieć całą tę historię.",
+  "start": 3075.72
+ },
+ {
+  "i": 328,
+  "pl": "— Nie uwierzą panu tak, jak pan sobie wyobraża.",
+  "start": 3079.44
+ },
+ {
+  "i": 329,
+  "pl": "I komisarz Heat popadł w zamyślenie. Obrót, jaki przybierała ta sprawa, oznaczał wydobycie na światło dzienne wielu rzeczy — oznaczał zaprzepaszczenie rozległych pól informacji, które to pola, uprawiane przez zręcznego człowieka, miały wybitną wartość i dla poszczególnych ludzi, i dla społeczeństwa.",
+  "start": 3082.43
+ },
+ {
+  "i": 330,
+  "pl": "A wszystko to było rezultatem nieznośnego, opłakanego wścibstwa.",
+  "start": 3100.06
+ },
+ {
+  "i": 331,
+  "pl": "Za sprawą tego wścibstwa Michaelis pozostanie nietknięty; domowy przemysł Profesora będzie wywleczony na światło dzienne i cały system nadzoru się rozprzęgnie; podniesie się hałas w dziennikach, które w nagłej błyskawicy przenikliwości wydały się Heatowi pisane przez szaleńców ku zbudowaniu kpów.",
+  "start": 3104.16
+ },
+ {
+  "i": 332,
+  "pl": "Zgodził się w duchu ze słowami wyrzeczonymi przez pana Verloca, który odpowiedział na jego ostatnią uwagę:",
+  "start": 3123.28
+ },
+ {
+  "i": 333,
+  "pl": "— Może i nie uwierzą. Ale to utrąci wiele rzeczy. Byłem człowiekiem uczciwym i będę się trzymał uczciwie tego, co…",
+  "start": 3130.32
+ },
+ {
+  "i": 334,
+  "pl": "— Jeśli panu na to pozwolą — rzekł cynicznie komisarz. — Z całą pewnością pouczą pana, co mówić, zanim pan stanie przed sądem. I jeszcze w końcu może pan dostać wyrok, który pana zaskoczy. Nie ufałbym zbytnio człowiekowi, z którym pan mówił.",
+  "start": 3138.71
+ },
+ {
+  "i": 335,
+  "pl": "Pan Verloc słuchał ze zmarszczonymi brwiami.",
+  "start": 3155.23
+ },
+ {
+  "i": 336,
+  "pl": "— Moja rada brzmi, aby pan zwiał, póki to możliwe. To jest moje osobiste zdanie. Niektórzy spomiędzy nich — ciągnął komisarz Heat, kładąc szczególny nacisk na słowie „nich” — myślą, że pan już się przeniósł na tamten świat.",
+  "start": 3159.32
+ },
+ {
+  "i": 337,
+  "pl": "— Doprawdy! — wyrwało się panu Verlocowi. Choć od powrotu z Greenwich spędził większą część czasu w małym szynku, nie spodziewał się wcale tak korzystnych wiadomości.",
+  "start": 3175.31
+ },
+ {
+  "i": 338,
+  "pl": "— Takie mają przekonanie. — Komisarz kiwnął znacząco głową. — Niech pan zniknie. Niech pan zwieje.",
+  "start": 3187.55
+ },
+ {
+  "i": 339,
+  "pl": "— Dokąd? — warknął pan Verloc. Podniósł głowę i mruknął z przejęciem, patrząc na zamknięte drzwi prowadzące do sklepu: — Chciałbym bardzo, aby pan mnie zabrał jeszcze dziś. Poszedłbym za panem spokojnie.",
+  "start": 3196.2
+ },
+ {
+  "i": 340,
+  "pl": "— Ja myślę — rzekł szyderczo komisarz, spoglądając w tym samym kierunku.",
+  "start": 3210.37
+ },
+ {
+  "i": 341,
+  "pl": "Czoło pana Verloca zrosiło się drobnym potem. Zniżył głos i zaczął szeptać poufnie do niewzruszonego komisarza.",
+  "start": 3216.12
+ },
+ {
+  "i": 342,
+  "pl": "— Chłopiec był niepoczytalnym półgłówkiem. Każdy sąd byłby się o tym zaraz przekonał. Miejscem odpowiednim dla niego był tylko przytułek. I to najgorsza rzecz, która byłaby mu groziła, gdyby…",
+  "start": 3224.54
+ },
+ {
+  "i": 343,
+  "pl": "Komisarz, trzymając rękę na klamce, szepnął panu Verlocowi prosto w twarz:",
+  "start": 3235.7
+ },
+ {
+  "i": 344,
+  "pl": "— Może on i był półgłówkiem, ale pan był chyba szalony. Kto panu tak pomieszał w głowie?",
+  "start": 3241.75
+ },
+ {
+  "i": 345,
+  "pl": "Verloc nie przebierał w słowach, gdy chodziło o pana Władimira.",
+  "start": 3249.18
+ },
+ {
+  "i": 346,
+  "pl": "— Taka jedna świnia z północy — syknął z wściekłością. — Taki, jak to się mówi, dżentelmen.",
+  "start": 3253.76
+ },
+ {
+  "i": 347,
+  "pl": "Komisarz, nie zmieniając wyrazu twarzy, kiwnął głową na znak, że rozumie i otworzył drzwi. Pani Verloc słyszała zapewne jego kroki, lecz nie widziała, jak odchodził ścigany zaczepnym grzechotem dzwonka. Tkwiła za ladą na swym zwykłym posterunku.",
+  "start": 3261.3
+ },
+ {
+  "i": 348,
+  "pl": "Siedziała na krześle, sztywna, wyprostowana; u jej stóp leżały dwa kawałki brudnego, różowego papieru. Dłonie cisnęła konwulsyjnie do twarzy, a końce palców wparła kurczowo w czoło, jakby skóra była maską, którą chciała zedrzeć gwałtownie.",
+  "start": 3277.7
+ },
+ {
+  "i": 349,
+  "pl": "Kamienny bezruch jej postaci wyrażał wściekłość i rozpacz, całą potencjalną gwałtowność tragicznych namiętności — wyrażał te uczucia potężniej niż pospolity wybuch krzyków i bicie oszalałej głowy o ścianę.",
+  "start": 3292.92
+ },
+ {
+  "i": 350,
+  "pl": "Komisarz Heat, mijając sklep szybkim, elastycznym krokiem, rzucił na żonę Verloca tylko przelotne spojrzenie. A gdy pęknięty dzwonek przestał drżeć na wygiętej taśmie stalowej, wszystko zastygło w bezruchu wokół pani Verloc, jakby obezwładniająca moc czaru biła z jej postaci.",
+  "start": 3307.0
+ },
+ {
+  "i": 351,
+  "pl": "Nawet płomyki gazu, tkwiące na kształt motyli u końców wiszącego palnika podobnego do odwróconej litery „T”, nawet te płomyki paliły się bez drgnienia.",
+  "start": 3325.26
+ },
+ {
+  "i": 352,
+  "pl": "W sklepie pełnym podejrzanych towarów, rozmieszczonych na tanich półkach barwy ciemnobrunatnej, która zdawała się pożerać światło, złote kółko obrączki na lewej ręce pani Verloc świeciło jaskrawym blaskiem, niezamąconym, wspaniałym jak wyjęty ze skarbca klejnot, rzucony do skrzyni ze śmieciem.",
+  "start": 3335.02
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

@@ -1,0 +1,1883 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to conrad-tajny-agent_009_viii.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-08.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tajny agent · Rozdział VIII — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Tajny agent · Rozdział VIII · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="conrad-tajny-agent_009_viii.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Wytrwała natarczywość matki pani Verloc osiągnęła wreszcie swój cel;",
+  "start": 2.42
+ },
+ {
+  "i": 1,
+  "pl": "staruszka zdołała przezwyciężyć uprzejmy chłód kilku kupców (niegdyś przyjaciół jej świętej pamięci pechowego małżonka) i zapewniła sobie miejsce w przytułku dla podupadłych wdów stanu kupieckiego, ufundowanym przez bogatego oberżystę.",
+  "start": 8.42
+ },
+ {
+  "i": 2,
+  "pl": "Staruszka dążyła ze stanowczością do celu, który powzięła skrycie i przebiegle, nękana serdecznym niepokojem. W tym właśnie czasie córka jej nie mogła się powstrzymać od uwagi wypowiedzianej do pana Verloca:",
+  "start": 25.16
+ },
+ {
+  "i": 3,
+  "pl": "— Przez ostatni tydzień matka prawie co dzień wydawała na dorożki to pół korony⁶⁵, to pięć szylingów.",
+  "start": 39.62
+ },
+ {
+  "i": 4,
+  "pl": "Ale słowa te nie tchnęły niechęcią. Winnie odnosiła się z szacunkiem do słabych stron matki. Zdziwiła ją tylko ta nagła mania lokomocji. Pan Verloc, na swój sposób dość hojny, zbył słowa Winnie niecierpliwym mruknięciem, bo przeszkodziły mu w rozmyślaniach.",
+  "start": 46.22
+ },
+ {
+  "i": 5,
+  "pl": "A rozmyślania te były częste, długie, głębokie; dotyczyły sprawy ważniejszej niż pięć szylingów. O wiele ważniejszej i bez porównania trudniejszej do wszechstronnego rozważenia z filozoficzną pogodą ducha.",
+  "start": 64.64
+ },
+ {
+  "i": 6,
+  "pl": "Osiągnąwszy swój cel przebiegle i skrycie, bohaterska staruszka zwierzyła się ze wszystkiego pani Verloc. Tryumfowała w duchu, lecz serce jej z lęku zamierało.",
+  "start": 77.91
+ },
+ {
+  "i": 7,
+  "pl": "Matka Winnie podziwiała córkę, jej spokój, jej opanowanie, a zarazem czuła przed nią wielki respekt, bo niezadowolenie Winnie było groźne i przejawiało się różnymi rodzajami przykrego milczenia.",
+  "start": 88.51
+ },
+ {
+  "i": 8,
+  "pl": "Staruszka ukryła jednak trapiący ją lęk, aby zachować swoje atuty, płynące z czcigodnego spokoju, jakim tchnęła jej postać dzięki okazałej tuszy, potrójnemu podbródkowi i bezwładowi nóg.",
+  "start": 100.94
+ },
+ {
+  "i": 9,
+  "pl": "Wstrząs wywołany tą wiadomością był tak nagły, że pani Verloc przerwała swe zajęcie, choć rozmowa nigdy nie była dla niej przeszkodą w pracy. Winnie ścierała właśnie kurz w saloniku za sklepem. Zwróciła głowę ku matce.",
+  "start": 113.62
+ },
+ {
+  "i": 10,
+  "pl": "— Dlaczegóż mama to zrobiła? — wykrzyknęła ze zgorszeniem.",
+  "start": 128.9
+ },
+ {
+  "i": 11,
+  "pl": "Musiała być bardzo wstrząśnięta, jeśli odrzuciła to, co stanowiło w życiu jej siłę i jej ochronę, a mianowicie obojętność, brak dociekliwości i bierne poddanie się wypadkom.",
+  "start": 133.54
+ },
+ {
+  "i": 12,
+  "pl": "— Czy mamie było u nas nie dość wygodnie?",
+  "start": 145.97
+ },
+ {
+  "i": 13,
+  "pl": "Wyrwało się jej tych parę pytań, ale już w następnej chwili ocaliła linię swego postępowania, zabierając się do ścierania kurzu, podczas gdy staruszka siedziała zalękła i niema w przybrudzonym białym czepku i ciemnej matowej peruce.",
+  "start": 149.63
+ },
+ {
+  "i": 14,
+  "pl": "Winnie skończyła odkurzać fotel; przesuwała teraz ściereczką po mahoniowym oparciu wypełnionej końskim włosiem kanapy, na której pan Verloc bardzo lubił wypoczywać w palcie i kapeluszu. Zajęta była pilnie odkurzaniem, ale pozwoliła sobie na jeszcze jedno pytanie:",
+  "start": 163.93
+ },
+ {
+  "i": 15,
+  "pl": "— Jakże mama zdołała to przeprowadzić?",
+  "start": 181.12
+ },
+ {
+  "i": 16,
+  "pl": "Tego rodzaju ciekawość była wybaczalna, gdyż nie dotyczyła istoty rzeczy, z zasady przez panią Verloc pomijanej. Pytanie odnosiło się tylko do sposobów, jakich matka użyła. Staruszka powitała skwapliwie ów temat, jako coś, o czym można było rozmawiać z całą szczerością.",
+  "start": 184.4
+ },
+ {
+  "i": 17,
+  "pl": "Dostarczyła więc córce obszernej odpowiedzi naszpikowanej różnymi nazwiskami i obfitującej w uboczne komentarze o niszczycielskich wpływach czasu na ludzkie oblicza. Wymienione przez nią nazwiska były przeważnie nazwiskami kupców kolonialnych — „przyjaciół biednego tatusia, kochanie”.",
+  "start": 202.68
+ },
+ {
+  "i": 18,
+  "pl": "Rozwodziła się ze szczególnym uznaniem nad dobrocią i łaskawością bogatego piwowara, baroneta i członka parlamentu, przewodniczącego związku wszystkich instytucji dobroczynnych.",
+  "start": 222.42
+ },
+ {
+  "i": 19,
+  "pl": "Wyrażała się o nim tak gorąco, ponieważ dostąpiła zaszczytu rozmowy z jego sekretarzem — „bardzo grzecznym panem, całym w czerni; miał łagodny, smutny głos, taki cichutki i spokojny. Wyglądał zupełnie jak cień, moja droga”.",
+  "start": 234.5
+ },
+ {
+  "i": 20,
+  "pl": "Winnie przedłużyła czynność ścierania kurzu, chcąc wysłuchać opowiadania aż do końca, i przeszła z saloniku do kuchni (dwa schodki w dół) jak zwykle, nie rzekłszy ani słowa.",
+  "start": 250.74
+ },
+ {
+  "i": 21,
+  "pl": "Matka pani Verloc wylała kilka łez radości z powodu łagodnego zachowania się córki wobec tej groźnej sprawy i wysiliła całą swą przebiegłość przy podziale mebli, które były jej własnością; żałowała chwilami, że je posiada.",
+  "start": 262.16
+ },
+ {
+  "i": 22,
+  "pl": "Bohaterstwo bohaterstwem, ale zdarzają się okoliczności, kiedy rozporządzenie kilku stołami, krzesłami, mosiężnymi łóżkami i tak dalej może kryć w sobie skutki nieobliczalne i zgubne.",
+  "start": 276.24
+ },
+ {
+  "i": 23,
+  "pl": "Staruszka potrzebowała sama trochę mebli, ponieważ fundacja, która po wielu staraniach przygarnęła ją do miłosiernego łona, przeznaczyła dla przedmiotów swej troskliwości tylko gołe deski i cegły oklejone tanią tapetą.",
+  "start": 289.0
+ },
+ {
+  "i": 24,
+  "pl": "Matka pani Verloc wybrała przez delikatność najmniej cenne i najbardziej zniszczone meble, ale Winnie tego nie spostrzegła, ponieważ filozofią jej było pomijanie istoty faktów; uważała, że matka wzięła to, co jej najbardziej odpowiadało.",
+  "start": 302.82
+ },
+ {
+  "i": 25,
+  "pl": "Co zaś do pana Verloca, głęboka zaduma — niby coś na kształt chińskiego muru — odcinała go zupełnie od zjawisk tego świata, pełnego daremnych usiłowań i złudnych pozorów.",
+  "start": 317.76
+ },
+ {
+  "i": 26,
+  "pl": "Po dokonaniu wyboru podział reszty mebli stał się dla matki pani Verloc kwestią szczególnie kłopotliwą. Oczywiście chciała zostawić wszystko na Brett Street. Ale miała dwoje dzieci. Przyszłość Winnie była zabezpieczona przez rozsądny związek z jej idealnym mężem.",
+  "start": 329.83
+ },
+ {
+  "i": 27,
+  "pl": "Natomiast Stevie nie posiadał nic — i był trochę dziwaczny. Należało zastanowić się nad jego położeniem, nie licząc się z wymaganiami prawa, a nawet z podszeptami serca. Posiadanie tych mebli nie zabezpieczyłoby Steviego w żadnym wypadku. Nieborak powinien by właściwie je dostać.",
+  "start": 345.94
+ },
+ {
+  "i": 28,
+  "pl": "Ale gdyby mu je matka oddała, zupełna zależność chłopca zostałaby tym samym naruszona. Ta jego zależność była jakby osłoną, którą matka lękała się osłabić. A przy tym może by drażliwość pana Verloca nie zniosła poczucia, że zawdzięcza swemu szwagrowi krzesła, na których siedzi.",
+  "start": 365.72
+ },
+ {
+  "i": 29,
+  "pl": "Wskutek długoletnich doświadczeń z lokatorami matka pani Verloc wyrobiła sobie niekorzystne, choć pełne rezygnacji pojęcie o kapryśności ludzkiej natury. A gdyby panu Verlocowi przyszło nagle do głowy powiedzieć Steviemu, żeby zabrał się precz ze swymi przeklętymi gratami?",
+  "start": 385.03
+ },
+ {
+  "i": 30,
+  "pl": "Z drugiej strony podział mebli między rodzeństwo, choćby dokonany najostrożniej, mógłby się stać dla Winnie kamieniem obrazy. Tak! Stevie musi pozostać ubogi i zależny. Jego matka, opuszczając Brett Street, rzekła do Winnie:",
+  "start": 401.59
+ },
+ {
+  "i": 31,
+  "pl": "— Po co czekać na moją śmierć? Wszystko, co tu zostawiam, jest odtąd twoją własnością, moje dziecko.",
+  "start": 418.85
+ },
+ {
+  "i": 32,
+  "pl": "Winnie, już w kapeluszu, stała bez słowa za plecami matki, poprawiając kołnierz jej płaszcza. Wzięła torebkę, parasol; twarz jej była nieporuszona. Nadeszła chwila, kiedy trzeba było wydać trzy szylingi i sześć pensów na jazdę dorożką, zapewne ostatnią w życiu jazdę matki pani Verloc.",
+  "start": 426.67
+ },
+ {
+  "i": 33,
+  "pl": "Wyszły przez sklep na ulicę.",
+  "start": 445.85
+ },
+ {
+  "i": 34,
+  "pl": "Oczekujący ich wehikuł mógł być symbolem przysłowia: „Rzeczywistość bywa okrutniejsza od karykatury”, gdyby takie przysłowie istniało. Za cherlawym koniem pełzła na chwiejnych kołach stołeczna dorożka, a na jej koźle siedział dorożkarz kaleka. Ta ostatnia okoliczność wywołała pewien zamęt.",
+  "start": 448.57
+ },
+ {
+  "i": 35,
+  "pl": "Matka pani Verloc spostrzegła żelazne narzędzie w kształcie haka wystające z lewego rękawa dorożkarza i nagle straciła bohaterską odwagę, którą odznaczała się tymi dniami. Niepodobna przecież powierzyć się takiemu dorożkarzowi. „Jak myślisz, Winnie?” Zaczęła się wahać.",
+  "start": 469.95
+ },
+ {
+  "i": 36,
+  "pl": "Dorożkarz jął się gwałtownych wymówek, które brzmiały jakby je wyszarpywał ze zduszonego gardła. Pochylony na koźle, szeptał z tajemniczym oburzeniem: „O cóż pani chodzi? Jak można tak człowiekowi ubliżać?”. Jego ogromna, nieumyta twarz gorzała purpurą na błotnistym tle ulicznej perspektywy.",
+  "start": 488.26
+ },
+ {
+  "i": 37,
+  "pl": "„Czy bym miał pozwolenie na jazdę — pytał z gniewem — gdybym…”",
+  "start": 508.18
+ },
+ {
+  "i": 38,
+  "pl": "Miejscowy policjant uspokoił go przyjaznym spojrzeniem i zwracając się do obu kobiet, rzekł bez zbytniego szacunku:",
+  "start": 513.08
+ },
+ {
+  "i": 39,
+  "pl": "— On jest dorożkarzem już od dwudziestu lat. Nie słyszałem nigdy, aby mu się zdarzył jakiś wypadek.",
+  "start": 521.14
+ },
+ {
+  "i": 40,
+  "pl": "— Wypadek! — rozległ się donośny, pogardliwy szept dorożkarza.",
+  "start": 528.28
+ },
+ {
+  "i": 41,
+  "pl": "Zaświadczenie policjanta rozstrzygnęło kwestię. Skromne zbiegowisko siedmiu osób, przeważnie małoletnich, rozproszyło się. Winnie wsiadła za matką do dorożki. Stevie wdrapał się na kozioł. Jego otwarte usta i strapione spojrzenie świadczyły o głębokim przejęciu się tym, co się działo.",
+  "start": 532.96
+ },
+ {
+  "i": 42,
+  "pl": "Na wąskich ulicach Winnie i jej matka orientowały się w szybkości jazdy według bliskich domów, których fronty sunęły w tył powoli i chwiejnie przy akompaniamencie ogłuszającego grzechotu oraz brzęku szkła, jakby miały się zawalić natychmiast po przejeździe dorożki;",
+  "start": 551.56
+ },
+ {
+  "i": 43,
+  "pl": "a cherlawy koń, o uprzęży wiszącej na spiczastym grzbiecie i trzepocącej się luźno wkoło ud, drobił kroki, rzekłbyś, tańcząc niezmordowanie i cierpliwie na czubkach kopyt.",
+  "start": 567.66
+ },
+ {
+  "i": 44,
+  "pl": "Dalej, na szerszej przestrzeni Whitehall⁶⁶, wszelkie dowody wzrokowe, świadczące, że dorożka sunie naprzód, były niedostrzegalne. Grzechot i brzęk szkła trwał wciąż jednostajnie na wprost długiego budynku Ministerstwa Skarbu — i czas jak gdyby zatrzymał się w biegu.",
+  "start": 580.06
+ },
+ {
+  "i": 45,
+  "pl": "Wreszcie Winnie zauważyła:",
+  "start": 597.66
+ },
+ {
+  "i": 46,
+  "pl": "— Ten koń wydaje mi się nieszczególny.",
+  "start": 600.29
+ },
+ {
+  "i": 47,
+  "pl": "Oczy jej błyszczały w mroku dorożki; siedziała bez ruchu, patrząc naprzód. Na koźle Stevie najpierw zamknął usta, a potem wykrzyknął z przejęciem:",
+  "start": 603.46
+ },
+ {
+  "i": 48,
+  "pl": "— Nie wolno!",
+  "start": 612.98
+ },
+ {
+  "i": 49,
+  "pl": "Dorożkarz, trzymając wysoko lejce okręcone naokoło haka, nie zwrócił na to uwagi. Może nie słyszał. Pierś Steviego falowała.",
+  "start": 615.14
+ },
+ {
+  "i": 50,
+  "pl": "— Nie wolno bić!",
+  "start": 624.44
+ },
+ {
+  "i": 51,
+  "pl": "Dorożkarz zwrócił doń powoli obrzmiałą wilgotną twarz, wielobarwną i najeżoną białym zarostem. Czerwone jego oczka połyskiwały wilgocią. Grube wargi miały odcień fioletowy. Nie rozchylił ich. Brudnym wierzchem ręki trzymającej bat potarł szczecinę kiełkującą na ogromnych szczękach.",
+  "start": 626.56
+ },
+ {
+  "i": 52,
+  "pl": "— Nie wolno bić — wyjąkał Stevie gwałtownie — to boli.",
+  "start": 645.8
+ },
+ {
+  "i": 53,
+  "pl": "— Nie wolno bić? — wyszeptał tamten z zadumą i natychmiast zaciął konia. Uczynił to nie z powodu okrutnej duszy i złego serca, ale po prostu dlatego, że musiał zarabiać.",
+  "start": 651.01
+ },
+ {
+  "i": 54,
+  "pl": "Przez chwilę mury Świętego Szczepana⁶⁷ o licznych wieżach i wieżyczkach patrzyły nieruchomo w milczeniu na klekocącą dorożkę, która sunęła jednak naprzód. Lecz gdy jechali przez most, wszczęło się zamieszanie; Stevie zaczął nagle złazić z kozła.",
+  "start": 661.33
+ },
+ {
+  "i": 55,
+  "pl": "Rozległy się krzyki, podbiegli ludzie, dorożkarz ściągnął lejce, klnąc szeptem, gniewny i zdumiony. Winnie spuściła okno i wytknęła głowę, blada jak papier. W głębi dorożki matka jej wołała niespokojnie:",
+  "start": 677.49
+ },
+ {
+  "i": 56,
+  "pl": "— Czy się chłopcu coś stało? Czy się chłopcu coś stało?",
+  "start": 689.95
+ },
+ {
+  "i": 57,
+  "pl": "Steviemu nic się nie stało, nawet nie upadł, lecz jak zwykle wskutek podniecenia nie mógł mówić do rzeczy, tylko bełkotał, stojąc przy oknie dorożki:",
+  "start": 695.45
+ },
+ {
+  "i": 58,
+  "pl": "— Za ciężko. Za ciężko.",
+  "start": 704.35
+ },
+ {
+  "i": 59,
+  "pl": "Winnie położyła mu rękę na ramieniu.",
+  "start": 706.85
+ },
+ {
+  "i": 60,
+  "pl": "— Stevie! Wrócisz natychmiast na kozioł; żebyś mi się stamtąd nie ruszał!",
+  "start": 709.69
+ },
+ {
+  "i": 61,
+  "pl": "— Nie. Nie. Iść. Muszę iść.",
+  "start": 714.65
+ },
+ {
+  "i": 62,
+  "pl": "Usiłując wyjaśnić, co go do tego zmusza, bełkotał coraz mniej zrozumiale. Wykonanie jego kaprysu nie było wcale niepodobieństwem. Stevie mógł z łatwością dotrzymać kroku cherlawemu, pląsającemu koniowi i nawet by się nie zadyszał. Ale siostra stanowczo ponowiła zakaz.",
+  "start": 718.57
+ },
+ {
+  "i": 63,
+  "pl": "— Też pomysł! Czy kto kiedy słyszał o czymś podobnym? Biec za dorożką!",
+  "start": 736.91
+ },
+ {
+  "i": 64,
+  "pl": "Matka, wystraszona i bezradna w głębi wehikułu, błagała:",
+  "start": 742.05
+ },
+ {
+  "i": 65,
+  "pl": "— Nie pozwól mu, Winnie. Jeszcze by się zgubił. Nie pozwól.",
+  "start": 746.53
+ },
+ {
+  "i": 66,
+  "pl": "— Naturalnie, że nie pozwolę. Jeszcze czego! Stevie, pan Verloc zmartwi się, kiedy posłyszy o tym wybryku… już ja ci mówię. Zmartwi się bardzo.",
+  "start": 751.93
+ },
+ {
+  "i": 67,
+  "pl": "Myśl o zmartwieniu pana Verloca jak zwykle podziałała silnie na Steviego, który był zasadniczo posłuszny; zaniechał oporu i wspiął się znowu na kozioł z twarzą pełną rozpaczy.",
+  "start": 761.77
+ },
+ {
+  "i": 68,
+  "pl": "Dorożkarz zwrócił srogo ku niemu olbrzymie, rozpłomienione oblicze.",
+  "start": 773.13
+ },
+ {
+  "i": 69,
+  "pl": "— Tylko niech mi panicz znowu nie zacznie tych głupich kawałów.",
+  "start": 778.06
+ },
+ {
+  "i": 70,
+  "pl": "Wypowiedziawszy to groźnym szeptem, wysilonym do ostateczności, jechał dalej, poważny i zadumany. Całe zajście przedstawiało mu się dość zagadkowo.",
+  "start": 781.98
+ },
+ {
+  "i": 71,
+  "pl": "Ale jego umysł nie był pozbawiony niezależności ani rozsądku, choć utracił dawną żywotność wskutek długich, otępiających lat bezruchu i narażania się na niepogodę. Z powagą odrzucił hipotezę, że Stevie jest pijanym łobuzem.",
+  "start": 791.12
+ },
+ {
+  "i": 72,
+  "pl": "Milczenie, w jakim obie kobiety znosiły ramię w ramię wstrząsy, zgrzyty i brzęki dorożki, zostało naruszone przez wybryk Steviego. Winnie rzekła do matki:",
+  "start": 806.8
+ },
+ {
+  "i": 73,
+  "pl": "— Zrobiła mama to, co chciała. I tylko samej sobie mama podziękuje, jeśli nie będzie się czuła szczęśliwa. A wątpię, żeby mama mogła się czuć szczęśliwa. Bardzo wątpię. Czy mamie było u nas źle? I co też ludzie na to powiedzą, że mama tak się narzuciła dobroczynności?",
+  "start": 817.65
+ },
+ {
+  "i": 74,
+  "pl": "— Moje dziecko — zawołała żarliwie staruszka, przekrzykując hałas — byłaś dla mnie najlepszą z córek. A co do twojego męża, to…",
+  "start": 835.48
+ },
+ {
+  "i": 75,
+  "pl": "Zabrakło jej słów na określenie doskonałości pana Verloca i utkwiła starcze, załzawione oczy w dachu dorożki. Potem odwróciła głowę, udając, że wygląda przez okno, aby zobaczyć, jak prędko posuwają się naprzód. Jechali bardzo wolno, tuż przy chodniku.",
+  "start": 847.5
+ },
+ {
+  "i": 76,
+  "pl": "Noc, wczesna, mglista noc, posępna, zgiełkliwa, beznadziejna noc południowego Londynu zaskoczyła staruszkę podczas jej ostatniej jazdy dorożką. W gazowym świetle sklepów o niskich wystawach jej duże policzki gorzały ceglastym rumieńcem pod czarno-fioletową kapotką⁶⁸.",
+  "start": 863.62
+ },
+ {
+  "i": 77,
+  "pl": "Cera teściowej Verloca pożółkła z wiekiem wskutek skłonności do cierpień wątrobianych, którym sprzyjały utrapienia ciężkiego, udręczonego życia, najpierw w stanie małżeńskim, a potem wdowim. Pod wpływem rumieńca jej policzki nabierały barwy ceglastej.",
+  "start": 883.28
+ },
+ {
+  "i": 78,
+  "pl": "I oto ta kobieta, skromna, lecz zahartowana w ogniu przeciwności, zaczerwieniła się wobec córki, choć była w wieku, kiedy człowiek już się nie czerwieni.",
+  "start": 899.84
+ },
+ {
+  "i": 79,
+  "pl": "Rumieniec wstydu, wywołany przez wyrzuty sumienia, starała się ukryć przed własnym dzieckiem, jadąc dorożką do przytułku złożonego z długiego rzędu domków;",
+  "start": 910.32
+ },
+ {
+  "i": 80,
+  "pl": "zważywszy na drobne rozmiary tych domków i skromność ich urządzeń, obmyślono je chyba w tym dobrotliwym celu, aby ich mieszkanki mogły się przygotować zawczasu do pomieszczenia w rozmiarach jeszcze bardziej ograniczonych — do grobu.",
+  "start": 920.18
+ },
+ {
+  "i": 81,
+  "pl": "Co ludzie sobie pomyślą? Matka Winnie wiedziała dobrze, co pomyślą ludzie, o których napomknęła jej córka — dawni przyjaciele nieboszczyka męża, a także ci inni, do których współczucia odwołała się ze skutkiem tak pomyślnym. Nie zdawała sobie przedtem sprawy, jak dobrze potrafi żebrać.",
+  "start": 935.34
+ },
+ {
+  "i": 82,
+  "pl": "Ale odgadła doskonale, co za wnioski zostały wyciągnięte z jej próśb. Nie wglądano bliżej w warunki jej życia wskutek tej płochliwej delikatności, która współistnieje w męskim charakterze z zaczepną brutalnością.",
+  "start": 953.17
+ },
+ {
+  "i": 83,
+  "pl": "Staruszka zapobiegała wszelkim badaniom ostentacyjnym zaciśnięciem ust i wzruszeniem malującym się na twarzy wymownej, a niemej. Wówczas mężczyźni, jak to mężczyźni, przestawali nagle się dopytywać.",
+  "start": 967.37
+ },
+ {
+  "i": 84,
+  "pl": "Matka pani Verloc winszowała sobie nieraz, że nie ma do czynienia z kobietami, które, jako twardsze z natury i chciwe szczegółów, byłyby chciały dowiedzieć się dokładnie, co to za niegodziwe postępki córki i zięcia doprowadziły staruszkę do tak smutnej ostateczności.",
+  "start": 981.05
+ },
+ {
+  "i": 85,
+  "pl": "Tylko raz, w ciągu rozmowy z sekretarzem wielkiego piwowara, członka parlamentu i prezesa towarzystw dobroczynnych, matka pani Verloc rozpłakała się głośno, jakby zagnana w położenie bez wyjścia;",
+  "start": 996.87
+ },
+ {
+  "i": 86,
+  "pl": "a rozpłakała się dlatego, że ów sekretarz, działając w imieniu swego pracodawcy, poczuwał się do sumiennego wejrzenia w istotne warunki życia petentki.",
+  "start": 1010.25
+ },
+ {
+  "i": 87,
+  "pl": "Szczupły i uprzejmy pan spojrzał na matkę pani Verloc „jak rażony piorunem” i zrejterował ze swego stanowiska, zasypując staruszkę kojącymi uwagami. Nie trzeba się martwić. Statut dobroczynny nie żąda bynajmniej, aby wdowy były bezdzietne; jej kandydatura nie jest wykluczona.",
+  "start": 1019.95
+ },
+ {
+  "i": 88,
+  "pl": "Ale panowie z komitetu, których dyskrecji można ufać bezwzględnie, muszą być dokładnie poinformowani. Każdy rozumie doskonale, że ona (matka pani Verloc) nie chce się stać ciężarem, itd., itd. Tu staruszka zaczęła znów płakać jeszcze gwałtowniej, ku dotkliwej przykrości sekretarza.",
+  "start": 1038.41
+ },
+ {
+  "i": 89,
+  "pl": "Łzy tej otyłej kobiety w ciemnej, zakurzonej peruce i staromodnej jedwabnej sukni, przybranej festonami⁶⁹ z brudnej białej nicianej koronki, były łzami szczerego bólu. Płakała, ponieważ była bohaterska i pozbawiona skrupułów, i pełna miłości dla obojga swych dzieci.",
+  "start": 1056.77
+ },
+ {
+  "i": 90,
+  "pl": "Często poświęca się dziewczyny dla dobra chłopców. W tym wypadku poświęciła Winnie. Przemilczając prawdę, rzucała na córkę potwarz.",
+  "start": 1076.05
+ },
+ {
+  "i": 91,
+  "pl": "Winnie była oczywiście niezależna i nie potrzebowała dbać o opinię ludzi, z którymi nigdy nie miała się zetknąć, gdy tymczasem biedny Stevie nie posiadał na świecie nic prócz bohaterstwa swej matki — bohaterstwa wyzbytego ze skrupułów.",
+  "start": 1085.39
+ },
+ {
+  "i": 92,
+  "pl": "Uczucie bezpieczeństwa, jakie staruszka miała po ślubie Winnie, minęło z czasem (albowiem nic nie trwa wiecznie); matka pani Verloc, odosobniona w swym pokoju od strony podwórza, rozpamiętywała nauki płynące z doświadczenia, którego świat wdowom nie szczędzi.",
+  "start": 1101.02
+ },
+ {
+  "i": 93,
+  "pl": "Ale w tych rozpamiętywaniach nie było bezpłodnej goryczy; wielka rezygnacja staruszki sięgała niemal dostojeństwa.",
+  "start": 1118.32
+ },
+ {
+  "i": 94,
+  "pl": "Matka Winnie mówiła sobie ze stoicyzmem, że wszystko na tym świecie niszczeje i się zużywa; że należy ułatwiać ludziom życzliwym wyświadczanie dobroci; że jej córka Winnie jest najlepszą z sióstr i bardzo pewną siebie żoną. Sceptycyzm staruszki załamywał się tylko wobec miłości siostrzanej Winnie.",
+  "start": 1125.1
+ },
+ {
+  "i": 95,
+  "pl": "Wyłączała to uczucie spod ogólnego prawa zniszczenia, któremu podlegają wszystkie rzeczy ludzkie, a także i niektóre z boskich. Nie mogła myśleć inaczej; ogarnąłby ją zbyt wielki strach. Ale co do warunków pożycia małżeńskiego córki pozbyła się stanowczo wszelkich pochlebnych złudzeń.",
+  "start": 1144.56
+ },
+ {
+  "i": 96,
+  "pl": "Zajęła stanowisko trzeźwe i rozsądne, przekonana, że im mniej się wyzyska dobroć pana Verloca, tym dłużej będzie można na nią liczyć.",
+  "start": 1161.78
+ },
+ {
+  "i": 97,
+  "pl": "Naturalnie, że idealny ten człowiek kocha żonę, ale z pewnością wolałby łożyć na utrzymanie tylko tylu jej krewnych, ilu mu utrzymywać wypada ze względu na małżeńskie uczucia. Lepiej, aby z rezultatu tych uczuć korzystał tylko biedny Stevie.",
+  "start": 1169.76
+ },
+ {
+  "i": 98,
+  "pl": "Tedy bohaterska staruszka postanowiła odejść od swych dzieci, co było nie tylko aktem poświęcenia, ale i posunięciem głęboko politycznym.",
+  "start": 1185.5
+ },
+ {
+  "i": 99,
+  "pl": "Istota owej polityki polegała na tym (matka pani Verloc była na swój sposób przebiegła), że słuszne prawa Steviego zostaną w ten sposób wzmocnione. Nieborak — taki dobry, pożyteczny chłopiec, tyle tylko, że trochę oryginalny — nie miał wystarczająco mocnej pozycji.",
+  "start": 1195.93
+ },
+ {
+  "i": 100,
+  "pl": "Został zabrany razem ze swoją matką, mniej więcej w taki sam sposób jak meble z ich dawnego mieszkania i tylko na tej podstawie, że razem z meblami należał do staruszki. „Co się stanie” — zapytywała siebie matka pani Verloc (gdyż nie była pozbawiona wyobraźni) — co się stanie po mojej śmierci?”",
+  "start": 1214.27
+ },
+ {
+  "i": 101,
+  "pl": "To pytanie napełniało ją przerażeniem. Straszna również była myśl, że nie będzie miała wówczas możności wiedzieć, co się dzieje z biednym chłopcem. Ale odchodząc od syna i tym samym przekazując go siostrze, staruszka stwarzała dla niego korzystne warunki, polegające na zależności bezpośredniej.",
+  "start": 1235.32
+ },
+ {
+  "i": 102,
+  "pl": "Był to subtelniejszy motyw bohaterstwa i bezwzględności wykazanych przez matkę pani Verloc. Porzucając dzieci, chciała syna zabezpieczyć, zapewnić mu trwałą pozycję w życiu.",
+  "start": 1255.41
+ },
+ {
+  "i": 103,
+  "pl": "Inni ludzie ponosili w tym celu ofiary materialne, ona zaś chciała osiągnąć swój zamiar na tej drodze — bo inaczej tego zrobić nie mogła. A przy tym pragnęła widzieć na własne oczy, jak to pójdzie.",
+  "start": 1268.35
+ },
+ {
+  "i": 104,
+  "pl": "Czy pójdzie dobrze, czy źle, staruszka uniknie straszliwej niepewności na łożu śmierci — niepewności co do losu syna. Ale teraz ciężko jej było na duszy, bardzo ciężko, okrutnie ciężko.",
+  "start": 1280.35
+ },
+ {
+  "i": 105,
+  "pl": "Dorożka klekotała, zgrzytała, trzęsła — a trzęsła wręcz niewiarygodnie.",
+  "start": 1295.13
+ },
+ {
+  "i": 106,
+  "pl": "Niesamowita gwałtowność oraz częstotliwość tych wstrząsów zacierały uczucie posuwania się naprzód;",
+  "start": 1300.49
+ },
+ {
+  "i": 107,
+  "pl": "wskutek tego delikwent, który dostał się do środka dorożki, odnosił wrażenie, że jest podrzucany na miejscu w jakimś przyrządzie podobnym do średniowiecznych narzędzi tortur lub do nowomodnego aparatu dla leczenia leniwej wątroby.",
+  "start": 1306.73
+ },
+ {
+  "i": 108,
+  "pl": "Było to niezmiernie dokuczliwe i gdy matka pani Verloc zaczęła mówić podniesionym tonem, jej głos brzmiał niby jęk bólu.",
+  "start": 1320.81
+ },
+ {
+  "i": 109,
+  "pl": "— Ja wiem, kochanie, że będziesz mnie odwiedzała, kiedy ci tylko czas pozwoli. Prawda?",
+  "start": 1328.93
+ },
+ {
+  "i": 110,
+  "pl": "— Naturalnie — odrzekła krótko Winnie, patrząc prosto przed siebie.",
+  "start": 1336.33
+ },
+ {
+  "i": 111,
+  "pl": "Dorożka telepała się wzdłuż buchającego parą szynku, wśród blasku gazowego światła i zapachu smażonych ryb.",
+  "start": 1341.37
+ },
+ {
+  "i": 112,
+  "pl": "Staruszka jęknęła znowu:",
+  "start": 1349.13
+ },
+ {
+  "i": 113,
+  "pl": "— I pamiętaj, kochanie, co niedziela muszę się widzieć z naszym biednym chłopcem. Chyba zgodzi się spędzać ten dzień ze starą matką…",
+  "start": 1351.28
+ },
+ {
+  "i": 114,
+  "pl": "Winnie krzyknęła obojętnym głosem:",
+  "start": 1360.95
+ },
+ {
+  "i": 115,
+  "pl": "— Czy się zgodzi! Ja myślę! Jak on biedaczek bez matki wytrzyma? Szkoda, że mama o tym nie pomyślała.",
+  "start": 1364.55
+ },
+ {
+  "i": 116,
+  "pl": "Nie pomyślała o tym! Bohaterska staruszka przełknęła coś na kształt bilardowej kuli, figlarnej i kłopotliwej, która usiłowała wyskoczyć z jej gardła. Winnie nic nie mówiła przez chwilę, nadąsana, wpatrzona przed siebie, i wygarnęła w końcu niezwykłym u niej tonem:",
+  "start": 1371.81
+ },
+ {
+  "i": 117,
+  "pl": "— Nie mam pojęcia, jak na początku dam sobie z nim radę, taki będzie niespokojny…",
+  "start": 1390.49
+ },
+ {
+  "i": 118,
+  "pl": "— Tylko w żadnym razie nie pozwól, aby się naprzykrzał twemu mężowi, kochanie.",
+  "start": 1395.63
+ },
+ {
+  "i": 119,
+  "pl": "W taki to sposób rozprawiały poufnie o warunkach nowego położenia. A dorożka miotała się wciąż. Matka pani Verloc zaczęła znów wypowiadać swoje obawy. Czy można zaufać Steviemu i pozwolić, żeby sam odbywał całą tę drogę? Winnie utrzymywała, że jest teraz znacznie mniej „roztargniony”.",
+  "start": 1400.83
+ },
+ {
+  "i": 120,
+  "pl": "Zgadzały się na tym punkcie. Było to oczywiste. Znacznie mniej… prawie wcale. Wśród hałasu krzyczały jedna do drugiej z pewną otuchą. Lecz nagle niepokój matczyny wybuchł na nowo. Przecież Stevie będzie musiał przesiąść się z jednego omnibusu na drugi, a pomiędzy nimi iść kawałek pieszo.",
+  "start": 1419.09
+ },
+ {
+  "i": 121,
+  "pl": "To dla chłopca za trudne! Staruszka dała upust zmartwieniu i wątpliwościom.",
+  "start": 1439.54
+ },
+ {
+  "i": 122,
+  "pl": "Winnie patrzyła wciąż przed siebie.",
+  "start": 1445.74
+ },
+ {
+  "i": 123,
+  "pl": "— Niechże się mama nie denerwuje. Mama musi go naturalnie widywać.",
+  "start": 1448.39
+ },
+ {
+  "i": 124,
+  "pl": "— Nie, kochanie. Będę się starała wcale go nie widywać.",
+  "start": 1455.01
+ },
+ {
+  "i": 125,
+  "pl": "Otarła oczy tonące we łzach.",
+  "start": 1459.61
+ },
+ {
+  "i": 126,
+  "pl": "— Przecież ty nie masz czasu z nim jeździć. Stevie może się zagapić, zmylić drogę, a jeśli ktoś do niego ostro przemówi, chłopiec gotów zapomnieć swego nazwiska i adresu, i przez Bóg wie ile dni nie będzie można się go doszukać…",
+  "start": 1462.93
+ },
+ {
+  "i": 127,
+  "pl": "Stanął jej przed oczami Stevie umieszczony w przytułku, choćby tylko na czas przeprowadzenia dochodzeń, i serce jej się ścisnęło. Albowiem matka Winnie miała swoją dumę. Wzrok Winnie stwardniał, zaprzątnięty czymś, wynalazczy.",
+  "start": 1476.88
+ },
+ {
+  "i": 128,
+  "pl": "— Nie mogę odwozić go sama co tydzień — krzyknęła. — Ale niech się mama nie martwi. Już ja zadbam, że chłopiec nie zgubi się na długo.",
+  "start": 1493.5
+ },
+ {
+  "i": 129,
+  "pl": "Odczuły szczególne szarpnięcie; za rozklekotanymi oknami dorożki tkwiły ceglane słupy; okropne wstrząśnienia i hałaśliwe brzęki nagle ustały, zapadła głęboka cisza i oszołomiła obie kobiety. Co się stało?",
+  "start": 1503.79
+ },
+ {
+  "i": 130,
+  "pl": "Siedziały nieruchome i zalękłe, aż wreszcie drzwiczki się otworzyły i rozległ się szorstki, wytężony szept:",
+  "start": 1518.84
+ },
+ {
+  "i": 131,
+  "pl": "— No to i już!",
+  "start": 1526.96
+ },
+ {
+  "i": 132,
+  "pl": "Rząd małych domków o spiczastych dachach ciągnął się wzdłuż ciemnego, przestronnego gazonu⁷⁰ usianego krzewami; ogrodzenie dzieliło go od łataniny świateł i cieni na szerokiej ulicy, rozbrzmiewającej głuchym turkotem ruchu kołowego. Każdy domek miał na parterze ciemnożółte okno.",
+  "start": 1529.26
+ },
+ {
+  "i": 133,
+  "pl": "Dorożka zatrzymała się przed jednym z tych drobnych domków, takim, którego małe okienko na parterze nie było oświetlone. Matka pani Verloc pierwsza wysiadła tyłem z dorożki, trzymając klucz w ręku. Winnie przystanęła na ścieżce wyłożonej flizami, aby zapłacić dorożkarzowi.",
+  "start": 1548.7
+ },
+ {
+  "i": 134,
+  "pl": "Stevie, pomógłszy wnieść do domku mnóstwo drobnych paczek, wrócił i stanął w świetle gazowej latarni, stanowiącej własność fundacji dobroczynnej.",
+  "start": 1565.96
+ },
+ {
+  "i": 135,
+  "pl": "Dorożkarz przypatrywał się srebrnym monetom; wydawały się bardzo małe na jego wielkiej, brudnej dłoni i były niejako symbolem znikomych wyników nagradzających ambitną odwagę i znój ludzkości, której dni na tej ziemi są policzone.",
+  "start": 1576.32
+ },
+ {
+  "i": 136,
+  "pl": "Dorożkarz otrzymał przyzwoitą zapłatę — cztery pojedyncze szylingi — i przypatrywał im się w zupełnej ciszy, jakby były zdumiewającym rozwiązaniem melancholijnej zagadki. Powolne umieszczenie tego skarbu w jednej z wewnętrznych kieszeni wymagało wiele pilnego gmerania w głębiach zniszczonej odzieży.",
+  "start": 1592.53
+ },
+ {
+  "i": 137,
+  "pl": "Postać dorożkarza była krępa i pozbawiona giętkości. Smukły Stevie o barkach trochę podniesionych i rękach wciśniętych głęboko w kieszenie ciepłego palta, stał na skraju chodnika, odąwszy wargi.",
+  "start": 1611.05
+ },
+ {
+  "i": 138,
+  "pl": "Dorożkarz nagle przerwał swe powolne ruchy, jakby uderzony jakimś mglistym wspomnieniem.",
+  "start": 1624.46
+ },
+ {
+  "i": 139,
+  "pl": "— Aha! No to i już, paniczu — wyszeptał. — Poznałbyś tę szkapę od razu, co?",
+  "start": 1630.27
+ },
+ {
+  "i": 140,
+  "pl": "Stevie wpatrywał się w konia, którego tylne kłęby wydawały się niesamowicie wysokie z powodu jego niezmiernej chudości.",
+  "start": 1637.15
+ },
+ {
+  "i": 141,
+  "pl": "Mały, sztywny ogon był jakby wetknięty w ciało dla jakiegoś bezlitosnego żartu; na drugim końcu kadłuba chuda, płaska szyja, podobna do deski pokrytej zniszczoną końską skórą, opadała ku ziemi pod ciężarem olbrzymiego, kościstego łba.",
+  "start": 1644.11
+ },
+ {
+  "i": 142,
+  "pl": "Uszy zwisały niedbale każde pod innym kątem, a nad ponurą postacią tego niemego mieszkańca ziemi unosiła się para dymiąca z żeber i krzyża w mglistym, nieruchomym powietrzu.",
+  "start": 1659.93
+ },
+ {
+  "i": 143,
+  "pl": "Dorożkarz dotknął lekko piersi Steviego żelaznym hakiem wystającym z obszarpanego, wytłuszczonego rękawa.",
+  "start": 1672.11
+ },
+ {
+  "i": 144,
+  "pl": "— Słuchaj no, młody paniczu. Co byś powiedział, gdyby ci kazano sterczeć za tym oto koniem może i do drugiej nad ranem?",
+  "start": 1679.66
+ },
+ {
+  "i": 145,
+  "pl": "Stevie patrzył bezmyślnie w srogie małe oczka o powiekach obrzeżonych czerwienią.",
+  "start": 1688.81
+ },
+ {
+  "i": 146,
+  "pl": "— On wcale nie jest kulawy — szeptał dorożkarz z energią. — I nic mu nie dolega. On już taki jest. A co byś powiedział —",
+  "start": 1693.39
+ },
+ {
+  "i": 147,
+  "pl": "Jego wytężony, zagasły głos nadawał słowom cechę żarliwej tajemniczości. Bezmyślność w oczach Steviego zamieniała się powoli w strach.",
+  "start": 1703.63
+ },
+ {
+  "i": 148,
+  "pl": "— Cóż tak na mnie patrzysz, paniczu. Trzeba sterczeć na koźle do trzeciej, czwartej rano. Zimno. Głód. Czeka człowiek na tych pasażerów. Na pijaków.",
+  "start": 1714.77
+ },
+ {
+  "i": 149,
+  "pl": "Jowialne, fioletowe policzki dorożkarza jeżyły się białą szczecią;",
+  "start": 1725.87
+ },
+ {
+  "i": 150,
+  "pl": "podobny do Wirgiliuszowego Sylena⁷¹, co z twarzą umazaną sokiem jagód rozprawiał o bogach Olimpu wobec naiwnych sycylijskich pastuszków, opowiadał Steviemu o domowych sprawach i interesach ludzi, których cierpienia są wielkie, a nieśmiertelność bynajmniej nie zapewniona.",
+  "start": 1730.95
+ },
+ {
+  "i": 151,
+  "pl": "— Jestem nocny dorożkarz, tak — szeptał jakby z chełpliwym rozjątrzeniem. — Muszę brać takiego konia, jakiego mi, psiakrew, wetkną tam w stajni. Mam w domu swoją starą i czworo drobiazgu.",
+  "start": 1750.34
+ },
+ {
+  "i": 152,
+  "pl": "Świat jak gdyby oniemiał na potworne oświadczenie stwierdzające ojcostwo tego człowieka. Zapanowała cisza; boki starej szkapy, apokaliptycznego rumaka niedoli, dymiły w świetle dobroczynnej latarni.",
+  "start": 1763.75
+ },
+ {
+  "i": 153,
+  "pl": "Dorożkarz mruknął coś pod nosem, a potem dodał swym tajemniczym szeptem:",
+  "start": 1779.67
+ },
+ {
+  "i": 154,
+  "pl": "— Nie tak to łatwo żyć na świecie.",
+  "start": 1785.63
+ },
+ {
+  "i": 155,
+  "pl": "Twarz chłopca drgała czas jakiś i wreszcie uczucia jego wybuchły jak zwykle w zwięzłym okrzyku:",
+  "start": 1788.49
+ },
+ {
+  "i": 156,
+  "pl": "— Źle! Źle!",
+  "start": 1795.61
+ },
+ {
+  "i": 157,
+  "pl": "Oczy Steviego tkwiły w żebrach konia, świadome rzeczy i ponure, jakby lękał się rozejrzeć po złym świecie. A jego wiotkość, różowe wargi i blada, jasna cera nadawały mu wygląd delikatnego chłopczyny mimo puszystego, złotego zarostu na policzkach. Wydął lękliwie wargi jak dziecko.",
+  "start": 1797.79
+ },
+ {
+  "i": 158,
+  "pl": "Dorożkarz, krępy i szeroki, patrzył nań bacznie srogimi oczkami, które zdawały się go boleć od przejrzystego, gryzącego płynu.",
+  "start": 1819.29
+ },
+ {
+  "i": 159,
+  "pl": "— Ciężko koniom, ale jeszcze ciężej takim biedakom jak ja — wysapał ledwie dosłyszalnym szeptem.",
+  "start": 1828.69
+ },
+ {
+  "i": 160,
+  "pl": "— Biedny! Biedny! — wyjąkał Stevie z gwałtownym współczuciem, wpychając ręce jeszcze głębiej w kieszenie. Nie mógł powiedzieć nic więcej, bo jego wrażliwość na ból i nędzę oraz chęć, aby uszczęśliwić i konia, i dorożkarza, spotęgowały się aż do dziwacznej zachcianki: zapragnął wziąć obu do łóżka.",
+  "start": 1835.76
+ },
+ {
+  "i": 161,
+  "pl": "Ale wiedział, że to jest niemożliwe. Bo Stevie nie był wariatem. Pragnął tego niejako symbolicznie, a jednocześnie bardzo wyraźnie, gdyż pragnienie jego wywodziło się z doświadczenia, które jest matką mądrości.",
+  "start": 1856.05
+ },
+ {
+  "i": 162,
+  "pl": "Kiedy Stevie — jeszcze będąc dzieckiem — krył się w jakimś ciemnym kącie, zastrachany, nieszczęśliwy, obolały i przygnieciony beznadziejną zgryzotą, przychodziła siostra Winnie i zabierała go do swego łóżka, jak do nieba pełnego spokoju i ukojenia.",
+  "start": 1869.41
+ },
+ {
+  "i": 163,
+  "pl": "Chłopiec, skłonny zapominać fakty, na przykład takie jak własne nazwisko i adres, pamiętał dobrze swoje uczucia. Znaleźć się w łóżku kogoś współczującego był to lek najskuteczniejszy i miał tylko jedną złą stronę: trudność stosowania go na szeroką skalę.",
+  "start": 1884.98
+ },
+ {
+  "i": 164,
+  "pl": "Stevie przyglądał się dorożkarzowi i rozumiał to jasno, ponieważ był rozsądny.",
+  "start": 1903.99
+ },
+ {
+  "i": 165,
+  "pl": "Dorożkarz w dalszym ciągu przygotowywał się do odjazdu, jakby Stevie wcale nie istniał. Zabrał się do włażenia na kozioł, ale w ostatniej chwili zaniechał tego z jakiejś nieznanej przyczyny, może po prostu z niechęci do jazdy dorożką.",
+  "start": 1909.24
+ },
+ {
+  "i": 166,
+  "pl": "Natomiast podszedł do nieruchomego wspólnika swej pracy i pochyliwszy się, aby wziąć lejce, dźwignął na wysokość ramienia wielki, ciężki łeb jednym wysiłkiem prawej ręki, jakby popisywał się siłą.",
+  "start": 1922.32
+ },
+ {
+  "i": 167,
+  "pl": "— Jazda — szepnął tajemniczo.",
+  "start": 1935.67
+ },
+ {
+  "i": 168,
+  "pl": "Prowadził dorożkę i kulał.",
+  "start": 1938.07
+ },
+ {
+  "i": 169,
+  "pl": "Odjazdowi temu towarzyszyła pewna jak gdyby surowość;",
+  "start": 1940.31
+ },
+ {
+  "i": 170,
+  "pl": "żwir na jezdni skrzypiał ugniatany obracającymi się wolno kołami, ascetycznie chude końskie uda poruszały się z rozwagą, dążąc od światła ku mrokowi otwartej przestrzeni, otoczonej przez niewyraźnie zarysowane spiczaste dachy i słabo jaśniejące okna małych przytułków.",
+  "start": 1943.73
+ },
+ {
+  "i": 171,
+  "pl": "Skarga żwiru wędrowała powoli, zataczając krąg na jezdni.",
+  "start": 1961.17
+ },
+ {
+  "i": 172,
+  "pl": "Sunący z wolna orszak ukazał się znów na chwilę, oświetlony latarniami stojącymi u dobroczynnej bramy: krępy, tęgi mężczyzna kulał, zaaferowany, trzymając podniesioną wysoko głowę konia, wychudłe zwierzę kroczyło ze sztywną i bezsilną godnością, a ciemne,",
+  "start": 1965.89
+ },
+ {
+  "i": 173,
+  "pl": "niskie pudło na kołach sunęło zabawnie za nimi, jakby kiwając się z boku na bok.",
+  "start": 1983.29
+ },
+ {
+  "i": 174,
+  "pl": "Skręcili na lewo. Był tam niedaleko szynk, jakieś pięćdziesiąt jardów od bramy przytułku.",
+  "start": 1989.09
+ },
+ {
+  "i": 175,
+  "pl": "Obok prywatnej latarni fundacji pozostał Stevie z rękami wciśniętymi głęboko w kieszenie i patrzył przed siebie z posępną bezmyślnością. Jego niezdarne, słabe ręce zacisnęły się mocno na dnie kieszeni w gniewne pięści.",
+  "start": 1995.87
+ },
+ {
+  "i": 176,
+  "pl": "Wszystko, co budziło w nim — bezpośrednio albo pośrednio — chorobliwy lęk przed bólem, doprowadzało go w końcu do gniewu. Szlachetne oburzenie rozpierało mu wątłe piersi, że ledwie nie pękły, a szczere oczy wykrzywiał zez.",
+  "start": 2011.33
+ },
+ {
+  "i": 177,
+  "pl": "Stevie posiadał mądrość najwyższą, bo zdawał sobie sprawę ze swej bezsilności, ale nie był na tyle roztropny, by móc opanować swoje porywy. Czułość jego wszechogarniającego miłosierdzia miała dwie postacie, złączone z sobą tak nierozdzielnie jak dwie strony medalu.",
+  "start": 2024.15
+ },
+ {
+  "i": 178,
+  "pl": "Po męce bezgranicznego współczucia następował ból niewinnej, lecz srogiej wściekłości: oba te stany przejawiały się zupełnie tak samo niespokojnymi, bezcelowymi ruchami. Winnie oddziaływała kojąco na podniecenie brata, lecz nie odgadła nigdy tej podwójnej cechy jego zdenerwowania.",
+  "start": 2040.39
+ },
+ {
+  "i": 179,
+  "pl": "Pani Verloc nie marnowała ani krzty mijającego szybko życia na przezieranie rzeczy do dna. Była to pewnego rodzaju oszczędność, mająca wszystkie pozory przezorności i niektóre z jej dobrych stron. Nieraz lepiej jest dla człowieka, gdy nie rozumie zbyt wiele.",
+  "start": 2058.05
+ },
+ {
+  "i": 180,
+  "pl": "Taki pogląd na rzeczy odpowiada świetnie wrodzonej opieszałości.",
+  "start": 2074.07
+ },
+ {
+  "i": 181,
+  "pl": "Owego wieczoru, kiedy matka pani Verloc, odszedłszy od swych dzieci, rzekłbyś, odeszła od życia, Winnie nie badała ze szczególną uwagą stanu ducha Steviego. Nic dziwnego, że biedny chłopiec był podniecony.",
+  "start": 2078.51
+ },
+ {
+  "i": 182,
+  "pl": "Zapewniła raz jeszcze stojącą w progu staruszkę, że znajdzie sposób, aby Stevie nie gubił się na długo w ciągu pielgrzymek do matki i w końcu odeszła, wziąwszy brata pod ramię.",
+  "start": 2091.09
+ },
+ {
+  "i": 183,
+  "pl": "Stevie nawet do siebie nie pomrukiwał, ale pani Verloc czuła tym szczególnym zmysłem siostrzanej miłości, rozwiniętym w niej od najwcześniejszego dzieciństwa, że chłopiec był naprawdę bardzo podniecony.",
+  "start": 2100.45
+ },
+ {
+  "i": 184,
+  "pl": "Ujęła mocno jego ramię, udając, że się na nim opiera, i szukała w myśli słów odpowiednich do okoliczności.",
+  "start": 2112.35
+ },
+ {
+  "i": 185,
+  "pl": "— A teraz, Stevie, musisz bardzo na mnie uważać, kiedy będziemy przechodzili przez ulicę i wsiądziesz pierwszy do omnibusu, jak dobremu bratu przystoi.",
+  "start": 2118.43
+ },
+ {
+  "i": 186,
+  "pl": "Stevie przyjął ze zwykłą uległością ten apel do swej męskiej opieki. Pochlebiło mu to. Podniósł głowę i wyprostował się.",
+  "start": 2128.99
+ },
+ {
+  "i": 187,
+  "pl": "— Nie denerwuj się, Winnie. Nie trzeba się denerwować. Z omnibusem wszystko pójdzie dobrze — odpowiedział porywczym, niewyraźnym bełkotem, mającym coś z lękliwości dziecka i stanowczego tonu mężczyzny. Kroczył nieustraszenie obok kobiety wspierającej się na nim, ale jego dolna szczęka opadła.",
+  "start": 2137.64
+ },
+ {
+  "i": 188,
+  "pl": "Mimo to byli tak do siebie podobni, gdy szli ramię w ramię chodnikiem, że musiało to uderzać przechodniów mijających ich na szerokiej, brudnej ulicy, której ubóstwo i wyzucie ze wszystkich powabów życia były głupio wystawione na pokaz przez niezliczone gazowe latarnie.",
+  "start": 2156.26
+ },
+ {
+  "i": 189,
+  "pl": "Przed drzwiami szynku na rogu, gdzie obfitość światła zakrawała wprost na złośliwość, u samego skraju chodnika stała dorożka. Na koźle nie było nikogo; zdawało się, że ją porzucono w rynsztoku z powodu jej beznadziejnego zniszczenia. Pani Verloc poznała wehikuł.",
+  "start": 2171.78
+ },
+ {
+  "i": 190,
+  "pl": "Jego wygląd był tak rozpaczliwy, przedstawiał tak skończony obraz groteskowej nędzy o cudacznych, ponurych szczegółach, jakby to była dorożka samej Śmierci. Pani Verloc zawołała ze współczuciem, z tym pobudliwym współczuciem, jakie nieraz mają kobiety dla koni (zwłaszcza jeśli za nimi nie siedzą):",
+  "start": 2189.88
+ },
+ {
+  "i": 191,
+  "pl": "— Biedne zwierzę!",
+  "start": 2208.75
+ },
+ {
+  "i": 192,
+  "pl": "Stevie zatrzymał się nagle i szarpnął siostrę, pociągając ją wstecz.",
+  "start": 2210.05
+ },
+ {
+  "i": 193,
+  "pl": "— Biedne! Biedne! — wykrzyknął potakująco. — Dorożkarz także biedny. Sam mi powiedział.",
+  "start": 2215.57
+ },
+ {
+  "i": 194,
+  "pl": "Widok cherlawego, samotnego rumaka pochłonął chłopca całkowicie. Potrącany przez przechodniów, uparcie nie ruszał się z miejsca, usiłując wyrazić nowe myśli, pobudzone litością dla ludzkiej i końskiej niedoli, tak ściśle z sobą związanych. Ale to było bardzo trudne. „Biedne zwierzę, biedni ludzie!”",
+  "start": 2223.77
+ },
+ {
+  "i": 195,
+  "pl": "— powtarzał, nie mogąc wymyślić nic innego. Wydało mu się to zbyt słabe i zakończył gniewnym bełkotem: — Wstyd!",
+  "start": 2244.43
+ },
+ {
+  "i": 196,
+  "pl": "Stevie nie był mistrzem słowa i może właśnie dlatego jego myślom zbywało na jasności i precyzji. Ale jego uczuciom nie brakowało pełni i głębokości.",
+  "start": 2252.53
+ },
+ {
+  "i": 197,
+  "pl": "W owym krótkim słowie zawarł całe swe oburzenie i zgrozę wobec nędzy, która musi żerować na męce drugiej nędzy — wobec biednego dorożkarza, bijącego biednego konia, poniekąd w imię czekających w domu biednych swych dzieci. A Stevie wiedział, co to jest być bitym. Wiedział z doświadczenia.",
+  "start": 2262.25
+ },
+ {
+  "i": 198,
+  "pl": "Źle jest na świecie! Źle! Źle!",
+  "start": 2280.27
+ },
+ {
+  "i": 199,
+  "pl": "Pani Verloc, jedyna jego siostra i opiekunka, nie mogła rościć sobie praw do tak głębokiej wnikliwości. A przy tym nie doświadczyła na sobie czarodziejskiej wymowy dorożkarza. Nie umiała przeniknąć, co było powodem słowa: „Wstyd”. I rzekła spokojnie:",
+  "start": 2285.71
+ },
+ {
+  "i": 200,
+  "pl": "— Chodź, Stevie. Nic na to nie poradzisz.",
+  "start": 2302.23
+ },
+ {
+  "i": 201,
+  "pl": "Potulny Stevie ruszył z miejsca; ale nie kroczył już dumnie, tylko powłóczył nogami, szepcząc jakieś półsłówka, a nawet i całe słowa, które nie były jednak słowami, bo się składały z niepasujących do siebie połówek.",
+  "start": 2306.42
+ },
+ {
+  "i": 202,
+  "pl": "Stevie jak gdyby usiłował zestawić ze swymi uczuciami wszystkie wyrazy, które mógł sobie przypomnieć, chcąc uchwycić myśl odpowiadającą owym uczuciom. I rzeczywiście pochwycił ją w końcu. Przystanął, aby natychmiast się wypowiedzieć:",
+  "start": 2319.06
+ },
+ {
+  "i": 203,
+  "pl": "— Świat jest zły dla biednych ludzi.",
+  "start": 2334.8
+ },
+ {
+  "i": 204,
+  "pl": "Ledwie wyraził tę myśl, od razu zdał sobie sprawę, że już zna jej wszystkie następstwa. Umocniło to w nim poczucie słuszności, pogłębiając zarazem jego gniew. Czuł, że kogoś powinno się za to ukarać — i to bardzo surowo.",
+  "start": 2337.68
+ },
+ {
+  "i": 205,
+  "pl": "Ponieważ nie był sceptykiem, tylko istotą moralną, rządziły nim niejako wybuchy jego sprawiedliwego gniewu.",
+  "start": 2351.78
+ },
+ {
+  "i": 206,
+  "pl": "— Wstrętny! — dodał zwięźle.",
+  "start": 2359.34
+ },
+ {
+  "i": 207,
+  "pl": "Pani Verloc widziała teraz jasno, że Stevie bardzo jest podniecony,",
+  "start": 2361.74
+ },
+ {
+  "i": 208,
+  "pl": "— Nikt na to nie poradzi — rzekła. — No, chodźmy. To tak się mną opiekujesz?",
+  "start": 2367.79
+ },
+ {
+  "i": 209,
+  "pl": "Stevie przyśpieszył posłusznie kroku. Był dumny z tego, że jest dobrym bratem. Wymagała tego jego moralność, moralność doskonała. Ale zmartwił się, usłyszawszy odpowiedź swojej siostry Winnie — która była dobra. Nikt nie może temu zaradzić! Szedł posępnie, lecz nagle poweselał.",
+  "start": 2376.06
+ },
+ {
+  "i": 210,
+  "pl": "Jak i reszta ludzkości, bezradna wobec tajemnicy wszechświata, miał chwilę kojącej wiary w zorganizowane potęgi tej ziemi.",
+  "start": 2395.5
+ },
+ {
+  "i": 211,
+  "pl": "— Policja — podsunął ufnie.",
+  "start": 2404.37
+ },
+ {
+  "i": 212,
+  "pl": "— Policja nie jest od tego — oświadczyła niedbale pani Verloc, idąc spiesznym krokiem.",
+  "start": 2408.26
+ },
+ {
+  "i": 213,
+  "pl": "Twarz Steviego bardzo się wydłużyła. Rozmyślał. Im bardziej natężał umysł, tym luźniej zwisała jego dolna szczęka. Gdy wreszcie zaniechał intelektualnych dociekań, na twarzy jego malowała się zupełna bezmyślność.",
+  "start": 2414.9
+ },
+ {
+  "i": 214,
+  "pl": "— Nie jest od tego? — wymamrotał, zrezygnowany, lecz zaskoczony. — Nie jest od tego?",
+  "start": 2428.03
+ },
+ {
+  "i": 215,
+  "pl": "Wyrobił sobie o stołecznej policji idealne wyobrażenie, jako o dobrotliwej instytucji służącej do usunięcia zła. Pojęcie dobrotliwości kojarzyło się jak najściślej z jego przekonaniem o potędze granatowych mundurów. Lubił serdecznie wszystkich policjantów, czuł do niech szczere zaufanie.",
+  "start": 2435.88
+ },
+ {
+  "i": 216,
+  "pl": "Więc się zmartwił. A przy tym zaczął podejrzewać, że członkowie policji są dwulicowi i to go rozgniewało. Gdyż Stevie był szczery i otwarty bez granic. Więc dlaczego oni udają? W przeciwieństwie do siostry, która ufała pozorom, Stevie pragnął sięgnąć do dna każdej sprawy.",
+  "start": 2452.84
+ },
+ {
+  "i": 217,
+  "pl": "Prowadził dalej badania, pytając gniewnie i wyzywająco:",
+  "start": 2472.03
+ },
+ {
+  "i": 218,
+  "pl": "— Więc od czego oni są, Winnie? Od czego oni są? Powiedz.",
+  "start": 2475.51
+ },
+ {
+  "i": 219,
+  "pl": "Winnie nie lubiła dyskusji. Ale podjęła rozmowę, lękając się bardzo, aby Stevie z tęsknoty za matką nie poddał się zgnębieniu.",
+  "start": 2480.65
+ },
+ {
+  "i": 220,
+  "pl": "Odpowiedź Winnie, daleka od ironii, brzmiała jednak w sposób, który był dość naturalny u żony pana Verloca, delegata Czerwonego Komitetu Centralnego, osobistego przyjaciela pewnych anarchistów oraz gorliwego zwolennika rewolucji socjalnej.",
+  "start": 2488.17
+ },
+ {
+  "i": 221,
+  "pl": "— Nie wiesz, od czego są policjanci, Stevie? Są od tego, żeby ci, którzy nie mają nic, nie zabierali pieniędzy tym, którzy coś mają.",
+  "start": 2503.71
+ },
+ {
+  "i": 222,
+  "pl": "Wystrzegała się czasownika „kraść”, gdyż to słowo niepokoiło jej brata. Stevie bardzo był wrażliwy na punkcie uczciwości. Wpojono mu tak starannie pewne proste zasady (ze względu na jego „oryginalność”), że same nazwy niektórych przestępstw napełniały go zgrozą.",
+  "start": 2513.62
+ },
+ {
+  "i": 223,
+  "pl": "Żywe słowo robiło na nim zawsze wielkie wrażenie. Teraz również był pod wrażeniem słów Winnie; zdumiały go i pobudziły jego intelekt.",
+  "start": 2529.8
+ },
+ {
+  "i": 224,
+  "pl": "— Jak to? — spytał natychmiast niespokojnie. — Nawet jeśli są głodni? Nawet wtedy nie wolno im nic zabrać?",
+  "start": 2538.75
+ },
+ {
+  "i": 225,
+  "pl": "Zatrzymali się oboje.",
+  "start": 2547.28
+ },
+ {
+  "i": 226,
+  "pl": "— Nawet choćby byli nie wiem jak głodni — rzekła pani Verloc ze spokojem osoby, której nie obchodzi zagadnienie rozdziału bogactw, przy czym spojrzała w głąb ulicy, wypatrując omnibusu właściwej barwy. — Nawet wtedy. Ale po co o tym wszystkim mówić? Ty przecież nigdy nie jesteś głodny.",
+  "start": 2549.15
+ },
+ {
+  "i": 227,
+  "pl": "Rzuciła szybko wzrokiem na chłopca, który wyglądał u jej boku jak młodzieniec. Uważała, że jest miły, pociągający, serdeczny i tylko trochę, troszeczkę oryginalny.",
+  "start": 2570.01
+ },
+ {
+  "i": 228,
+  "pl": "Nie mogła widzieć go innym, gdyż to, co wiązało ją z bratem, było urokiem silnych uczuć w jej życiu pozbawionym wszelkiego powabu — uczuć oburzenia, męstwa, litości, nawet zaparcia się siebie. Nie dopowiedziała: „I nie będziesz głodny, póki ja żyję”.",
+  "start": 2579.97
+ },
+ {
+  "i": 229,
+  "pl": "Ale mogła była to dodać, gdyż poczyniła skuteczne kroki w tym celu. Pan Verloc był bardzo dobrym mężem. A Winnie wyobrażała sobie, że niepodobna Steviego nie lubić. Nagle zawołała:",
+  "start": 2596.68
+ },
+ {
+  "i": 230,
+  "pl": "— Prędko, Stevie. Zatrzymaj ten zielony omnibus.",
+  "start": 2609.28
+ },
+ {
+  "i": 231,
+  "pl": "Stevie, nieśmiały i pełen powagi u boku siostry wspartej o jego ramię, podniósł drugie ramię wysoko nad głową przed zbliżającym się omnibusem, co wywarło pożądany skutek.",
+  "start": 2613.74
+ },
+ {
+  "i": 232,
+  "pl": "W godzinę później pan Verloc podniósł oczy znad dziennika — czytał go lub w każdym razie patrzył nań, siedząc za ladą — i wśród zamierającego grzechotu dzwonka ujrzał Winnie, swą żonę — która przeszła przez sklep, kierując się na górę — oraz idącego za nią szwagra, Steviego.",
+  "start": 2624.64
+ },
+ {
+  "i": 233,
+  "pl": "Widok Winnie sprawiał panu Verlocowi przyjemność. Miał manię na punkcie żony. Postać szwagra nie przeniknęła do jego świadomości, albowiem w ostatnich czasach ponure zamyślenie Verloca odgradzało go jak zasłona od zjawisk zmysłowego świata. Wpatrzył się w żonę bez słowa, jakby była widziadłem.",
+  "start": 2643.56
+ },
+ {
+  "i": 234,
+  "pl": "Głos pana Verloca, ten od domowego użytku, chrypliwy i spokojny, nie rozległ się owego dnia ani razu. Nie rozległ się też przy kolacji, do której pan Verloc został wezwany przez Winnie w zwykły krótki sposób: „Adolfie”. Zasiadł bez przekonania, aby spożyć posiłek, zsunąwszy kapelusz na tył głowy.",
+  "start": 2662.93
+ },
+ {
+  "i": 235,
+  "pl": "Zwyczaj posilania się w kapeluszu, nadający cechę bezceremonialnej niestałości wiernemu przywiązaniu pana Verloca do domowego ogniska, nie wypływał z zamiłowania do życia poza domem, lecz z przyzwyczajenia do cudzoziemskich kawiarni.",
+  "start": 2683.65
+ },
+ {
+  "i": 236,
+  "pl": "Pan Verloc wstawał dwa razy na grzechot pękniętego dzwonka; bez słowa znikał w sklepie i wracał, milcząc.",
+  "start": 2698.13
+ },
+ {
+  "i": 237,
+  "pl": "Gdy wychodził, pani Verloc, którą nękało puste miejsce po prawej ręce, patrzyła przed siebie kamiennym wzrokiem, cierpiąc nad nieobecnością matki; Stevie zaś z tego samego powodu szurał wciąż nogami, jakby podłoga pod stołem stała się dokuczliwie gorąca.",
+  "start": 2705.57
+ },
+ {
+  "i": 238,
+  "pl": "Gdy pan Verloc wracał i zasiadał na swoim miejscu, niby wcielony symbol milczenia, wyraz oczu pani Verloc podlegał subtelnej zmianie, a Stevie przestawał wiercić nogami ze względu na wielki, lękliwy szacunek dla męża siostry. Spoglądał na szwagra raz po raz ze współczuciem i poważaniem.",
+  "start": 2720.67
+ },
+ {
+  "i": 239,
+  "pl": "Pan Verloc smucił się. Winnie wbiła chłopcu w głowę (jeszcze w omnibusie), że zastaną pana Verloca pogrążonego w wielkim smutku i że nie trzeba mu przeszkadzać.",
+  "start": 2740.01
+ },
+ {
+  "i": 240,
+  "pl": "Gniew ojca, drażliwość lokatorów i skłonność pana Verloca do bezgranicznych cierpień były głównymi źródłami, z których Stevie czerpał opanowanie.",
+  "start": 2751.29
+ },
+ {
+  "i": 241,
+  "pl": "Ze wszystkich tych uczuć, które tak łatwo było wywołać, ale nie zawsze łatwo zrozumieć, smutek pana Verloca wywierał największe wrażenie, albowiem pan Verloc był dobry. Matka i siostra Steviego oparły ten fakt etyczny na niewzruszonych podstawach.",
+  "start": 2760.45
+ },
+ {
+  "i": 242,
+  "pl": "Oparły go, ugruntowały i uświęciły bez wiedzy pana Verloca dla przyczyn niemających nic wspólnego z abstrakcyjną moralnością. Pan Verloc wcale sobie z tego sprawy nie zdawał. Sprawiedliwość każe stwierdzić, że nie wyobrażał sobie bynajmniej, aby Stevie go miał za dobrego. A jednak tak było.",
+  "start": 2776.61
+ },
+ {
+  "i": 243,
+  "pl": "Pan Verloc był nawet jedynym człowiekiem, którego chłopiec miał za dobrego, ponieważ lokatorzy zmieniali się często i mieli z chłopcem zbyt luźny kontakt, tak że w oczach Steviego różnili się chyba tylko obuwiem;",
+  "start": 2795.61
+ },
+ {
+  "i": 244,
+  "pl": "co się zaś tyczyło ojca, jego system pedagogiczny był tego rodzaju, że matka i siostra nie mogły się zdobyć na wpojenie chłopcu teorii o dobroci rodzica.",
+  "start": 2808.77
+ },
+ {
+  "i": 245,
+  "pl": "Byłoby to zanadto okrutne. I kto wie, czy by Stevie temu uwierzył. Natomiast jeśli chodziło o pana Verloca, nic nie stało na przeszkodzie, aby Stevie ufał jego dobroci. Pan Verloc był najoczywiściej, choć tajemniczo dobry. A cierpienie człowieka dobrego jest wzniosie.",
+  "start": 2818.15
+ },
+ {
+  "i": 246,
+  "pl": "Stevie rzucał na szwagra wzrokiem pełnym sympatii i szacunku. Pan Verloc był smutny. Brat Winnie nigdy jeszcze nie czuł się tak zespolony z tajemniczą dobrocią tego mężczyzny. Smutek pana Verloca był zrozumiały. Stevie był także smutny. Bardzo smutny. I z tego samego powodu.",
+  "start": 2836.86
+ },
+ {
+  "i": 247,
+  "pl": "Przypomniawszy sobie o swym zmartwieniu, szurgnął nogami. Uczucia Steviego przejawiały się zawsze ruchami nóg albo rąk.",
+  "start": 2856.38
+ },
+ {
+  "i": 248,
+  "pl": "— Spokojnie z nogami, kochanie — rzekła pani Verloc tkliwie i rozkazująco, po czym zwróciła się do męża i zapytała tonem obojętnym, który był mistrzowskim dziełem jej wrodzonego taktu:",
+  "start": 2865.25
+ },
+ {
+  "i": 249,
+  "pl": "— Czy wyjdziesz dziś wieczór?",
+  "start": 2876.72
+ },
+ {
+  "i": 250,
+  "pl": "Zdawało się, że sama myśl o wyjściu na miasto budzi wstręt w panu Verlocu. Potrząsnął markotnie głową i siedział bez ruchu ze spuszczonymi oczami, patrząc przez całą minutę w kawałek sera leżący na talerzu.",
+  "start": 2879.69
+ },
+ {
+  "i": 251,
+  "pl": "Po upływie zaś tej minuty wstał i wyszedł — po prostu wyszedł na ulicę wśród grzechotu wejściowego dzwonka. Postąpił tak niekonsekwentnie wcale nie w zamiarze, aby żonie dokuczyć; wynikło to z niepokoju, który go dręczył. Wyjście z domu nie miało żadnego sensu.",
+  "start": 2892.01
+ },
+ {
+  "i": 252,
+  "pl": "Tego, czego pragnął, nie mógł znaleźć w całym Londynie. Ale wyszedł.",
+  "start": 2909.69
+ },
+ {
+  "i": 253,
+  "pl": "Wlókł za sobą orszak ponurych myśli wzdłuż mrocznych ulic, w poprzek jasnych ulic, wchodził do dwóch barów, jakby zamierzał spędzić tam noc, i znów wychodził, aż w końcu wrócił do swego zagrożonego domu i siadł zmęczony za ladą,",
+  "start": 2916.15
+ },
+ {
+  "i": 254,
+  "pl": "a myśli skupiły się natarczywie wkoło niego jak sfora zgłodniałych czarnych ogarów.",
+  "start": 2930.73
+ },
+ {
+  "i": 255,
+  "pl": "Gdy po zamknięciu domu i zgaszeniu światła szedł na górę, zabrał je z sobą — straszliwą eskortę dla człowieka udającego się na spoczynek.",
+  "start": 2935.86
+ },
+ {
+  "i": 256,
+  "pl": "Żona wyprzedziła go już od pewnego czasu; roztargnione spojrzenie pana Verloca padło na jej okrągłe kształty rysujące się niewyraźnie pod kołdrą, na głowę wciśniętą w poduszkę i rękę podłożoną pod policzek; najwidoczniej była już śpiąca, co świadczyło o równowadze jej ducha.",
+  "start": 2944.94
+ },
+ {
+  "i": 257,
+  "pl": "Wielkie oczy pani Verloc patrzyły bez drgnienia w przestrzeń, ciemne na tle śnieżnie białej pościeli. Nie poruszała się wcale.",
+  "start": 2962.36
+ },
+ {
+  "i": 258,
+  "pl": "Winnie miała dużo równowagi ducha. Czuła wyraźnie, że życie nie znosi, aby zanadto je zgłębiać. Na tym instynkcie ugruntowała swą mądrość i siłę. Lecz milczenie pana Verloca ciążyło jej dotkliwie już od wielu dni. Denerwowało ją. Rzekła spokojnie, leżąc bez ruchu:",
+  "start": 2970.9
+ },
+ {
+  "i": 259,
+  "pl": "— Zaziębisz się, chodząc tak w samych skarpetkach.",
+  "start": 2990.61
+ },
+ {
+  "i": 260,
+  "pl": "Te słowa, naturalne w ustach troskliwej małżonki i przezornej kobiety, zaskoczyły pana Verloca. Zostawił trzewiki na dole, a że zapomniał włożyć pantofle, kręcił się teraz bezgłośnie po sypialni jak niedźwiedź w klatce.",
+  "start": 2993.84
+ },
+ {
+  "i": 261,
+  "pl": "Na głos Winnie przystanął i patrzył w nią tak długo bezmyślnym wzrokiem lunatyka, że przesunęła z lekka nogi pod kołdrą. Ale nie poruszyła ani czarną głową, spoczywającą na białej poduszce, ani dłonią wsuniętą pod policzek; wielkie, ciemne, nieruchome jej oczy nawet nie drgnęły.",
+  "start": 3007.93
+ },
+ {
+  "i": 262,
+  "pl": "Pod bezmyślnym wzrokiem męża Winnie poczuła dojmujący ucisk samotności, pamiętając wciąż o pustym pokoju z drugiej strony schodów. Nigdy przedtem nie rozstawała się z matką. Wspierały się obie nawzajem. Czuła to wyraźnie; a teraz mówiła sobie, że matka odeszła — odeszła na zawsze.",
+  "start": 3027.41
+ },
+ {
+  "i": 263,
+  "pl": "Pani Verloc nie miała złudzeń. Lecz pozostał Stevie. Rzekła do męża:",
+  "start": 3048.23
+ },
+ {
+  "i": 264,
+  "pl": "— Matka postawiła na swoim. Nie widzę w tym najmniejszego sensu. Nie mogła przypuszczać, abyś jej miał dosyć. To po prostu brzydko z jej strony, że nas tak porzuciła.",
+  "start": 3055.11
+ },
+ {
+  "i": 265,
+  "pl": "Pan Verloc nie był człowiekiem oczytanym; zakres jego literackich aluzji był ograniczony, ale ten szczególny zbieg okoliczności nasunął mu myśl o szczurach opuszczających statek skazany na zagładę. O mało co nie wyraził głośno tej myśli. Stał się podejrzliwy i rozgoryczony.",
+  "start": 3066.77
+ },
+ {
+  "i": 266,
+  "pl": "Czyżby ta stara miała taki dobry nos? Ale bezsens tego rodzaju podejrzeń był oczywisty i pan Verloc ugryzł się w język. Jednak nie poskutkowało to w całej pełni. Mruknął niewyraźnie:",
+  "start": 3084.27
+ },
+ {
+  "i": 267,
+  "pl": "— Może to i dobrze.",
+  "start": 3097.27
+ },
+ {
+  "i": 268,
+  "pl": "Zaczął się rozbierać. Pani Verloc leżała bez ruchu, zupełnie bez ruchu i patrzyła w przestrzeń sennym, spokojnym wzrokiem. Ale serce jej na cząstkę sekundy jakby także znieruchomiało.",
+  "start": 3099.8
+ },
+ {
+  "i": 269,
+  "pl": "Tego wieczoru nie była, jak to mówią, „w swojej skórze” i poczuła wyraźnie, że zwykłe zdanie może zawierać różne znaczenia — przeważnie nieprzyjemne. Dlaczego powiedział: może to i dobrze? Jak rozumieć te słowa? Nie pozwoliła sobie jednak pogrążyć się w płonnych i czczych dociekaniach.",
+  "start": 3112.44
+ },
+ {
+  "i": 270,
+  "pl": "Raczej utwierdziła się w przekonaniu, że życie nie znosi, aby zanadto je zgłębiać. Praktyczna i na swój sposób przebiegła, podjęła, nie tracąc czasu, temat Steviego, bo wyłączność, z jaką dążyła do celu, nabrała w niej nieomylnej siły instynktu.",
+  "start": 3131.78
+ },
+ {
+  "i": 271,
+  "pl": "— Naprawdę, nie mam pojęcia, co zrobię, żeby przez te pierwsze dni trochę Steviego rozweselić. Będzie się gryzł od rana do wieczora, zanim się przyzwyczai do tego, że matki nie ma. A to taki dobry chłopiec. Nie mogłabym sobie bez niego poradzić.",
+  "start": 3148.87
+ },
+ {
+  "i": 272,
+  "pl": "Pan Verloc pozbywał się w dalszym ciągu odzienia wśród zadumy tak skupionej i oderwanej, jakby się rozbierał samotnie w rozległej, beznadziejnej pustyni. Albowiem nadobna ziemia, nasze wspólne dziedzictwo, przedstawiała się umysłowi pana Verloca pod owym niegościnnym aspektem.",
+  "start": 3163.21
+ },
+ {
+  "i": 273,
+  "pl": "I w domu, i na dworze panowała tak wielka cisza, że samotne tykanie zegara wiszącego na klatce schodowej wkradło się do pokoju, jakby szukając towarzystwa.",
+  "start": 3181.47
+ },
+ {
+  "i": 274,
+  "pl": "Pan Verloc, ległszy na łóżku po swojej stronie, za plecami pani Verloc, obrócił się, milcząc, twarzą do poduszki. Jego grube ramiona leżały na kołdrze jak poniechana broń, jak porzucone narzędzia. W owej chwili był o włos od wyznania żonie wszystkiego. Chwila wydawała mu się sprzyjająca.",
+  "start": 3191.35
+ },
+ {
+  "i": 275,
+  "pl": "Zerkając bokiem, widział krągłe barki Winnie obleczone w biel, tył jej głowy z włosami zaplecionymi na noc w trzy warkocze związane u końców czarną tasiemką. Ale się powstrzymał.",
+  "start": 3210.79
+ },
+ {
+  "i": 276,
+  "pl": "Pan Verloc kochał żonę tak, jak żonę kochać należy, to znaczy ze wszystkimi względami, które mężczyzna powinien mieć dla swej najcenniejszej własności. Ta głowa uczesana na noc, te krągłe barki wyglądały jak rodzinna świętość — świętość domowego spokoju.",
+  "start": 3223.41
+ },
+ {
+  "i": 277,
+  "pl": "Winnie leżała bez ruchu, masywna, o kształtach zarysowanych niewyraźnie, jak szkic do leżącego posągu; pan Verloc przypomniał sobie jej szeroko rozwarte oczy patrzące w przestrzeń. Była w niej tajemniczość istot żywych.",
+  "start": 3240.65
+ },
+ {
+  "i": 278,
+  "pl": "Sławny tajny agent z alarmujących raportów świętej pamięci barona Stott-Wartenheima nie był człowiekiem, który by śmiał się porwać na tajemnicę tego rodzaju. Ulegał łatwo onieśmieleniu. A przy tym cechowało go lenistwo, które tak często jest ukrytym źródłem dobroduszności.",
+  "start": 3254.69
+ },
+ {
+  "i": 279,
+  "pl": "Zaniechał więc wdzierania się w tajemnicę żony, wiedziony miłością, nieśmiałością oraz lenistwem. Zawsze jeszcze będzie na to dość czasu. Przez kilka minut zmagał się, milcząc, ze swym cierpieniem wśród sennej ciszy i wreszcie zamącił ją stanowczymi słowami:",
+  "start": 3271.69
+ },
+ {
+  "i": 280,
+  "pl": "— Jadę jutro na kontynent.",
+  "start": 3288.82
+ },
+ {
+  "i": 281,
+  "pl": "Może żona już spała. Nie wiedział. Tymczasem pani Verloc usłyszała te słowa. Oczy jej były szeroko rozwarte; leżała w zupełnym bezruchu, umocniona w swym instynktownym przeświadczeniu, że życie nie znosi, aby zanadto je zgłębiać.",
+  "start": 3291.59
+ },
+ {
+  "i": 282,
+  "pl": "A jednak tego rodzaju wyjazd pana Verloca nie miał w sobie nic nadzwyczajnego. Pan Verloc zaopatrywał się w towary w Paryżu i Brukseli. Często udawał się na kontynent, aby osobiście poczynić zakupy.",
+  "start": 3306.35
+ },
+ {
+  "i": 283,
+  "pl": "Wokół sklepu przy Brett Street zaczynało się tworzyć niewielkie, dobrane kółko amatorów jego towaru, tajne kółko dostosowane świetnie do wszelkich interesów prowadzonych przez pana Verloca,",
+  "start": 3318.85
+ },
+ {
+  "i": 284,
+  "pl": "któremu mistyczna harmonia między jego charakterem a twardą koniecznością wyznaczyła funkcję tajnego agenta do końca życia.",
+  "start": 3330.01
+ },
+ {
+  "i": 285,
+  "pl": "Poczekał chwilę i dodał:",
+  "start": 3337.18
+ },
+ {
+  "i": 286,
+  "pl": "— Nie będzie mnie tydzień, może i dwa. Zawiadom panią Neale, żeby przychodziła sprzątać.",
+  "start": 3338.92
+ },
+ {
+  "i": 287,
+  "pl": "Pani Neale posługiwała na Brett Street. Była ofiarą małżeństwa ze stolarzem nadużywającym trunków i zapracowywała się, aby zadosyćuczynić potrzebom swych licznych drobnych dzieci.",
+  "start": 3346.17
+ },
+ {
+  "i": 288,
+  "pl": "Ta kobieta o czerwonych rękach, opięta po pachy w fartuch z workowego płótna, ziała udręką biedy, wydzielając zapach mydlin i rumu, szorując hałaśliwie, brząkając blaszanymi wiadrami.",
+  "start": 3357.49
+ },
+ {
+  "i": 289,
+  "pl": "Pani Verloc, pełna chytrych zamysłów, odezwała się tonem najzupełniej obojętnym:",
+  "start": 3371.25
+ },
+ {
+  "i": 290,
+  "pl": "— Nie potrzebuję brać posługaczki na cały dzień. Poradzę sobie bardzo dobrze z pomocą Steviego.",
+  "start": 3377.39
+ },
+ {
+  "i": 291,
+  "pl": "Pozwoliła samotnemu zegarowi na schodach rzucić piętnaście tyknięć w otchłań wieczności i rzekła:",
+  "start": 3382.71
+ },
+ {
+  "i": 292,
+  "pl": "— Czy zgasić światło?",
+  "start": 3388.91
+ },
+ {
+  "i": 293,
+  "pl": "Pan Verloc warknął na żonę ochrypłym głosem: — Zgaś.",
+  "start": 3391.53
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

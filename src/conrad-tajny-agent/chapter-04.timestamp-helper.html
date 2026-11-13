@@ -1,0 +1,1388 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to chapter-04.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-04.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tajny agent · Rozdział IV — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Tajny agent · Rozdział IV · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="chapter-04.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Z trzydziestu mniej więcej stolików, pokrytych czerwonymi obrusami w biały deseń, większość stała przysunięta pod kątem prostym do ciemnobrunatnych boazerii podziemnej sali.",
+  "start": 1.16
+ },
+ {
+  "i": 1,
+  "pl": "Brązowe świeczniki o licznych kloszach zwisały z niskiego, lekko sklepionego sufitu, a wokół ścian pozbawionych okien biegły płaskie, ciemne w kolorze freski przedstawiające sceny z polowań i uczt na świeżym powietrzu. Ludzie biorący w nich udział byli w średniowiecznych ubiorach;",
+  "start": 12.38
+ },
+ {
+  "i": 2,
+  "pl": "pachołkowie przybrani w zielone kaffany dzierżyli myśliwskie noże, podnosząc wysoko dzbany pieniącego się piwa.",
+  "start": 30.44
+ },
+ {
+  "i": 3,
+  "pl": "— Głowę bym dał, że wy wiecie, co tkwi w tej przeklętej sprawie — rzekł krzepki Ossipon, który siedział z nogami wciągniętymi pod krzesło, pochylony nad stołem i rozparty na łokciach. Oczy wyłaziły mu na wierzch z ciekawości.",
+  "start": 38.74
+ },
+ {
+  "i": 4,
+  "pl": "Duże pianino, stojące blisko drzwi między dwiema palmami, samo z siebie zagrało nagle walca z wyzywającą biegłością. Hałas, jaki wznieciło, był ogłuszający.",
+  "start": 52.82
+ },
+ {
+  "i": 5,
+  "pl": "Przestało grać równie nagle, jak zaczęło, a mały śniady człowieczek w okularach, siedzący naprzeciw Ossipona nad wielkim szklanym kuflem pełnym piwa, wypowiedział spokojnie coś na kształt ogólnego twierdzenia:",
+  "start": 63.5
+ },
+ {
+  "i": 6,
+  "pl": "— W zasadzie nikt nie ma prawa wtrącać się do tego, co inni wiedzą o jakimś fakcie albo czego nie wiedzą.",
+  "start": 76.1
+ },
+ {
+  "i": 7,
+  "pl": "— Naturalnie — potwierdził spokojnie towarzysz Ossipon ściszonym głosem. — W zasadzie.",
+  "start": 85.33
+ },
+ {
+  "i": 8,
+  "pl": "Obejmując dłońmi wielką, czerwoną twarz, patrzył w dalszym ciągu z wytężoną uwagą na śniadego człowieczka w okularach, który pociągnął spokojnie łyk piwa i postawił kufel z powrotem.",
+  "start": 92.51
+ },
+ {
+  "i": 9,
+  "pl": "Jego płaskie, wielkie uszy odstawały od czaszki, która wydawała się tak krucha, że Ossipon mógłby chyba ją zgnieść między kciukiem a palcem wskazującym. Wypukłe czoło człowieczka jakby opierało się o brzeg jego okularów;",
+  "start": 103.57
+ },
+ {
+  "i": 10,
+  "pl": "na płaskich policzkach o tłustej, niezdrowej cerze widać było smugi nędznych, rzadkich, ciemnych bokobrodów. Niewypowiedzianie marna kompleksja fizyczna tego osobnika stawała się pocieszna w zestawieniu z jego obejściem pełnym najwyższej pewności siebie.",
+  "start": 117.11
+ },
+ {
+  "i": 11,
+  "pl": "Wyrażał się zwięźle, a jego milczenie wydawało się szczególnie doniosłe.",
+  "start": 131.81
+ },
+ {
+  "i": 12,
+  "pl": "Ossipon mruknął znów poprzez palce:",
+  "start": 136.15
+ },
+ {
+  "i": 13,
+  "pl": "— Długo byliście dziś na mieście?",
+  "start": 139.03
+ },
+ {
+  "i": 14,
+  "pl": "— Nie. Całe rano leżałem w łóżku — odrzekł tamten. — A bo co?",
+  "start": 143.15
+ },
+ {
+  "i": 15,
+  "pl": "— Ach, nic — rzekł Ossipon, patrząc w niego z powagą; skręcał się w duchu z pragnienia, żeby coś wymyszkować, lecz był najwidoczniej onieśmielony wyrazem przygniatającej obojętności na twarzy człowieczka.",
+  "start": 150.2
+ },
+ {
+  "i": 16,
+  "pl": "Barczysty Ossipon cierpiał od poczucia moralnej, a nawet fizycznej niższości, gdy rozmawiał z tym towarzyszem, co zresztą zdarzało się rzadko. Jednak odważył się zadać jeszcze jedno pytanie: — Czyście przyszli pieszo?",
+  "start": 164.02
+ },
+ {
+  "i": 17,
+  "pl": "— Nie, przyjechałem omnibusem — odpowiedział człowieczek dość żwawo. Mieszkał daleko na przedmieściu Islington³⁸, w małym domku na niechlujnej ulicy usianej słomą i brudnymi papierami;",
+  "start": 178.31
+ },
+ {
+  "i": 18,
+  "pl": "w godzinach pozaszkolnych banda przeróżnych dzieci biegała tam i kłóciła się wśród ostrych wrzasków niemających nic wspólnego z wesołością. Pokój człowieczka wychodził na podwórze i odznaczał się bardzo wielkim kredensem;",
+  "start": 190.01
+ },
+ {
+  "i": 19,
+  "pl": "lokator wynajmował ten pokój z meblami od dwóch starych panien, które za skromnym wynagrodzeniem szyły suknie dla klienteli złożonej przeważnie ze służących. Zaopatrzył kredens w wielką kłódkę, poza tym był to lokator wzorowy, niesprawiający żadnego kłopotu i niewymagający właściwie żadnych posług.",
+  "start": 203.05
+ },
+ {
+  "i": 20,
+  "pl": "Jego dziwactwa polegały na tym, że musiał być zawsze obecny przy zamiataniu pokoju, a wychodząc, zamykał drzwi i brał klucz z sobą.",
+  "start": 221.89
+ },
+ {
+  "i": 21,
+  "pl": "Ossipon ujrzał w myśli na szczycie omnibusu te okulary w czarnej oprawie; oto suną wzdłuż ulic, a ich zarozumiałe błyski padają tu i ówdzie na ściany domów lub na głowy nieświadomego tłumu płynącego chodnikami.",
+  "start": 230.23
+ },
+ {
+  "i": 22,
+  "pl": "Cień bladego uśmiechu zmącił linię grubych warg Ossipona, który wyobraził sobie, że ściany domów się chwieją, a ludzie uciekają co sił na widok tych okularów. Gdybyż wiedzieli! Cóż by to była za panika! Mruknął pytająco:",
+  "start": 244.37
+ },
+ {
+  "i": 23,
+  "pl": "— Dawno tu siedzicie?",
+  "start": 258.94
+ },
+ {
+  "i": 24,
+  "pl": "— Coś około godziny — odrzekł tamten niedbale i znów pociągnął łyk czarnego piwa. Jego ruchy — sposób, w jaki ujmował kufel, sam akt picia, sposób, w jaki stawiał ciężkie naczynie i krzyżował ręce — wszystko zdradzało stanowczość i niezawodną precyzję;",
+  "start": 262.38
+ },
+ {
+  "i": 25,
+  "pl": "natomiast wielki, muskularny Ossipon, pochylony naprzód z wlepionymi w człowieczka oczyma i wysuniętymi wargami, w porównaniu do tamtego wyglądał jak wcielenie niepewności i zaciekawienia.",
+  "start": 279.14
+ },
+ {
+  "i": 26,
+  "pl": "— Około godziny — powtórzył. — Więc może jeszcze nie wiecie o nowinie, którą słyszałem przed chwilą na ulicy. Co?",
+  "start": 290.86
+ },
+ {
+  "i": 27,
+  "pl": "Człowieczek uczynił głową nieznaczny ruch przeczący. Ale ponieważ nie okazał żadnego zainteresowania, Ossipon ośmielił się dodać, że usłyszał ową nowinę akurat przed wejściem do kawiarni.",
+  "start": 299.46
+ },
+ {
+  "i": 28,
+  "pl": "Mały roznosiciel gazet wrzasnął mu ją w samo ucho, a że Ossipon nie był przygotowany na fakt tego rodzaju, bardzo nim to wstrząsnęło i wyprowadziło go z równowagi. Musiał tu zajść, bo zaschło mu w gardle.",
+  "start": 310.38
+ },
+ {
+  "i": 29,
+  "pl": "— Nie przypuszczałem nigdy, że was tu zastanę — dodał, wciąż szeptem, z łokciami opartymi o stół.",
+  "start": 323.88
+ },
+ {
+  "i": 30,
+  "pl": "— Zachodzę tu czasami — rzekł tamten, nie zmieniając ani na jotę wyzywającego chłodu obejścia.",
+  "start": 331.76
+ },
+ {
+  "i": 31,
+  "pl": "— To nadzwyczajne, że właśnie wy o tym nie słyszeliście — ciągnął barczysty Ossipon. Powieki jego roziskrzonych oczu zatrzepotały nerwowo. — Właśnie wy — powtórzył, ciągnąc tamtego za język.",
+  "start": 339.39
+ },
+ {
+  "i": 32,
+  "pl": "Ta widoczna powściągliwość Ossipona zdradzała niewiarygodną i zagadkową nieśmiałość wielkiego draba w stosunku do spokojnego człowieczka, który szorstkimi, pewnymi ruchami podniósł znów szklany kufel, napił się, postawił go z powrotem. I to było wszystko.",
+  "start": 353.27
+ },
+ {
+  "i": 33,
+  "pl": "Ossipon czekał chwilę na próżno na jakieś słowo lub gest, siląc się na sztuczną obojętność. Ściszył głos jeszcze bardziej i rzekł:",
+  "start": 369.63
+ },
+ {
+  "i": 34,
+  "pl": "— Czy wy dajecie ten wasz proch każdemu, kto was o to poprosi?",
+  "start": 378.02
+ },
+ {
+  "i": 35,
+  "pl": "— Moją niewzruszoną zasadą jest nie odmawiać nigdy nikomu… póki mam przy sobie choć szczyptę — odrzekł człowieczek stanowczym tonem.",
+  "start": 383.79
+ },
+ {
+  "i": 36,
+  "pl": "— To jest wasza zasada? — spytał Ossipon.",
+  "start": 393.24
+ },
+ {
+  "i": 37,
+  "pl": "— To jest moja zasada.",
+  "start": 396.86
+ },
+ {
+  "i": 38,
+  "pl": "— I uważacie to za rozsądne?",
+  "start": 399.19
+ },
+ {
+  "i": 39,
+  "pl": "Wielkie, okrągłe okulary, które nadawały wybladłej twarzy człowieczka wyraz niewzruszonej pewności siebie, tkwiły naprzeciw Ossipona niby bezsenne, nieruchome oczy błyskające zimnym ogniem.",
+  "start": 401.47
+ },
+ {
+  "i": 40,
+  "pl": "— Bezwzględnie. Zawsze. We wszystkich okolicznościach. Cóż by mnie mogło od tego powstrzymać? Dlaczego nie mam tego robić? Dlaczego mam się wahać?",
+  "start": 413.74
+ },
+ {
+  "i": 41,
+  "pl": "Ossipon jak gdyby sapnął dyskretnie.",
+  "start": 422.45
+ },
+ {
+  "i": 42,
+  "pl": "— Czy chcecie powiedzieć, że dalibyście waszego towaru nawet szpiclowi, gdyby przyszedł i poprosił?",
+  "start": 426.32
+ },
+ {
+  "i": 43,
+  "pl": "Człowieczek uśmiechnął się z lekka.",
+  "start": 431.88
+ },
+ {
+  "i": 44,
+  "pl": "— Niech któryś z nich spróbuje, a wtedy zobaczycie — odpowiedział. — Znają mnie, ale ja znam także każdego z nich. Nie zbliżą się do mnie, nie ma obawy.",
+  "start": 434.48
+ },
+ {
+  "i": 45,
+  "pl": "Jego cienkie, sine wargi zacisnęły się mocno. Ossipon podjął znowu:",
+  "start": 446.82
+ },
+ {
+  "i": 46,
+  "pl": "— Ale mogliby kogoś podesłać i nabić was w butelkę. Czy wy tego nie rozumiecie? Mogliby to w ten sposób od was wydostać, a potem was zaaresztować z dowodem w ręku.",
+  "start": 452.57
+ },
+ {
+  "i": 47,
+  "pl": "— Z dowodem czego? Chyba tego, że handluję materiałami wybuchowymi bez pozwolenia. — Miało to być pogardliwe szyderstwo, lecz wyraz szczupłej, chorowitej twarzy nie zmienił się, a ton głosu był niedbały. — Nie będą się kwapili mnie zaaresztować.",
+  "start": 462.78
+ },
+ {
+  "i": 48,
+  "pl": "Wątpię, aby któryś z nich zgłosił się po rozkaz aresztowania. Choćby i najdzielniejszy. Nikt się nie zgłosi.",
+  "start": 479.15
+ },
+ {
+  "i": 49,
+  "pl": "— Dlaczego? — zapytał Ossipon.",
+  "start": 486.93
+ },
+ {
+  "i": 50,
+  "pl": "— Bo wiedzą bardzo dobrze, że nigdy się nie rozstaję z ostatnią garścią swego towaru. Mam go zawsze przy sobie. — Dotknął lekko surduta na piersi. — W grubym szklanym flakonie — dodał.",
+  "start": 490.11
+ },
+ {
+  "i": 51,
+  "pl": "— Słyszałem o tym — rzekł Ossipon z odcieniem podziwu w głosie. — Ale nie wiedziałem, że…",
+  "start": 503.55
+ },
+ {
+  "i": 52,
+  "pl": "— Oni wiedzą — przerwał cierpko człowieczek, opierając się plecami o krzesło, które górowało oparciem nad jego małą głową. — Nie zaaresztują mnie nigdy. Ten kawał nie opłaciłby się żadnemu policjantowi.",
+  "start": 510.08
+ },
+ {
+  "i": 53,
+  "pl": "Uporanie się z takim człowiekiem jak ja wymaga bezinteresownego bohaterstwa, bohaterstwa bez sławy.",
+  "start": 524.49
+ },
+ {
+  "i": 54,
+  "pl": "Znowu zacisnął usta z miną bardzo pewną siebie. Ossipon powściągnął ruch zniecierpliwienia i odparł:",
+  "start": 531.64
+ },
+ {
+  "i": 55,
+  "pl": "— Albo zuchwałości… albo po prostu nieświadomości. Mogliby powierzyć to zadanie komuś, kto nie wie, że nosicie w kieszeni dość materiału wybuchowego, aby wysadzić w powietrze siebie i wszystko naokoło w promieniu sześćdziesięciu jardów.",
+  "start": 538.18
+ },
+ {
+  "i": 56,
+  "pl": "— Nie twierdziłem nigdy, że nie można mnie usunąć — odparł tamten. — Ale to by nie było aresztowanie. Przy tym nie takie to łatwe, jak się zdaje.",
+  "start": 552.47
+ },
+ {
+  "i": 57,
+  "pl": "— Et! — zaprzeczył Ossipon. — Nie bądźcie tacy pewni siebie. Któż zaręczy, że z pół tuzina policjantów nie skoczy na was z tyłu na ulicy? Gdyby wam przygwoździli ręce do boków, to byście nie mogli nic zrobić… no bo jakże?",
+  "start": 563.99
+ },
+ {
+  "i": 58,
+  "pl": "— Owszem, mógłbym. Wychodzę rzadko o zmroku — rzekł obojętnie człowieczek — i nigdy bardzo późno. Trzymam rękę na gumowej gruszce, którą noszę zawsze w lewej kieszeni spodni. Naciśnięcie tej gruszki oddziaływa na zapalnik w środku flakonu, znajdującego się w przedniej kieszeni marynarki.",
+  "start": 579.66
+ },
+ {
+  "i": 59,
+  "pl": "Na takiej samej zasadzie jest zbudowana migawka aparatu fotograficznego. Rurka prowadzi w górę do…",
+  "start": 600.66
+ },
+ {
+  "i": 60,
+  "pl": "Szybkim ruchem uchylił marynarkę i Ossipon zobaczył gumową rurkę podobną do cienkiej brunatnej glisty, wychodzącą z kamizelki, z otworu pachy, i zanurzoną w wewnętrznej przedniej kieszeni marynarki.",
+  "start": 607.16
+ },
+ {
+  "i": 61,
+  "pl": "Odzienie człowieczka, nieokreślonego brązowego koloru, było wytarte i poplamione, pełne kurzu w załamkach; dziurki od guzików były obszarpane.",
+  "start": 619.68
+ },
+ {
+  "i": 62,
+  "pl": "— Zapalnik jest częściowo mechaniczny, a częściowo chemiczny — wyjaśnił człowieczek z niedbałą łaskawością.",
+  "start": 630.3
+ },
+ {
+  "i": 63,
+  "pl": "— Działa oczywiście natychmiast? — szepnął Ossipon z lekkim dreszczem.",
+  "start": 638.56
+ },
+ {
+  "i": 64,
+  "pl": "— Ale gdzież tam — wyznał tamten z niechęcią, która wykrzywiła mu usta jakby skurczem bólu. — Całych dwadzieścia sekund musi upłynąć od chwili, gdy nacisnę gruszkę, aż do chwili wybuchu.",
+  "start": 643.48
+ },
+ {
+  "i": 65,
+  "pl": "— Fiu! — gwizdnął Ossipon, do reszty przerażony. — Dwadzieścia sekund! Okropność! I wy uważacie, że moglibyście to wytrzymać? Ja bym zwariował.",
+  "start": 656.84
+ },
+ {
+  "i": 66,
+  "pl": "— Dziura by się w niebie nie zrobiła. Oczywiście jest to słaba strona tego systemu, który przeznaczyłem tylko na własny użytek. Co gorsza, sposób, w jaki wybuch następuje, jest stale słabą stroną naszych bomb.",
+  "start": 670.37
+ },
+ {
+  "i": 67,
+  "pl": "Usiłuję wynaleźć zapalnik, który by się dostosowywał do wszystkich warunków akcji i nawet do nieoczekiwanych zmian tych warunków. Mechanizm giętki, a jednak idealnie precyzyjny. Zapalnik prawdziwie inteligentny.",
+  "start": 681.45
+ },
+ {
+  "i": 68,
+  "pl": "— Dwadzieścia sekund — mruknął znów Ossipon. — Brr! A potem…",
+  "start": 697.1
+ },
+ {
+  "i": 69,
+  "pl": "Człowieczek odwrócił z lekka głowę; połysk jego okularów zdawał się mierzyć objętość piwiarni mieszczącej się w podziemiach słynnej restauracji „Sylen”.",
+  "start": 702.7
+ },
+ {
+  "i": 70,
+  "pl": "— Nikt nie uszedłby cało z tej sali — zabrzmiał wyrok, który był wynikiem oględzin. — Nawet tych dwoje idących w górę po schodach.",
+  "start": 714.07
+ },
+ {
+  "i": 71,
+  "pl": "Pianino u stóp klatki schodowej huknęło mazura z bezczelną natarczywością. Klawisze zapadały się i podnosiły w tajemniczy sposób; wyglądało to na popis jakiegoś pospolitego i zuchwałego ducha. Potem wszystko ucichło.",
+  "start": 724.23
+ },
+ {
+  "i": 72,
+  "pl": "Przez chwilę Ossipon wyobrażał sobie tę rozgorzałą od świateł salę zamienioną w straszną, czarną jamę pełną kotłującego się wstrętnego dymu, zawaloną ohydnym rumowiskiem ceglanego gruzu i okaleczonymi ciałami. Ujrzał tak wyraźnie obraz zniszczenia i śmierci, że wstrząsnął się znowu.",
+  "start": 738.03
+ },
+ {
+  "i": 73,
+  "pl": "Jego towarzysz rzekł z miną spokojną i zarozumiałą:",
+  "start": 756.97
+ },
+ {
+  "i": 74,
+  "pl": "— W gruncie rzeczy bezpieczeństwo człowieka zależy tylko od jego charakteru. Bardzo jest mało na świecie ludzi o charakterze tak opanowanym jak mój.",
+  "start": 760.6
+ },
+ {
+  "i": 75,
+  "pl": "— Ciekawym, jakeście do tego doszli — burknął Ossipon.",
+  "start": 771.22
+ },
+ {
+  "i": 76,
+  "pl": "— Siła indywidualności — rzekł tamten, nie podnosząc głosu; krzepki Ossipon słysząc to zdanie z ust człowieka o tak nędznej postaci, przygryzł dolną wargę. — Siła indywidualności — powtórzył człowieczek z ostentacyjnym spokojem.",
+  "start": 777.33
+ },
+ {
+  "i": 77,
+  "pl": "— Mam środki po temu, aby być śmiercionośnym, ale rozumiecie, że ten fakt sam przez się nie jest dla mnie żadną ochroną. Broni mnie tylko przekonanie tych ludzi, że swoich środków użyję. Wierzą w to. Nieodparcie. I dlatego jestem śmiercionośny.",
+  "start": 795.05
+ },
+ {
+  "i": 78,
+  "pl": "— Wśród nich są także silne indywidualności — mruknął złowrogo Ossipon.",
+  "start": 813.47
+ },
+ {
+  "i": 79,
+  "pl": "— Możliwe. Ale widać chodzi o stopień siły, bo na przykład ja się ich nie boję. Na tym polega ich niższość. Oni nie mogą być inni. Ich charakter jest ugruntowany na konwencjonalnej moralności. Opiera się na społecznym porządku. Mój charakter wolny jest od wszystkiego, co sztuczne.",
+  "start": 819.96
+ },
+ {
+  "i": 80,
+  "pl": "Oni są skrępowani mnóstwem konwencjonalnych przepisów. Związani są z życiem, które w tym wypadku jest tworem historycznym, zależnym od różnych względów i ograniczeń, złożonym, zorganizowanym tworem wystawionym zewsząd na ataki;",
+  "start": 837.94
+ },
+ {
+  "i": 81,
+  "pl": "tymczasem ja związany jestem ze śmiercią, która nie zna żadnych ograniczeń i której atakować nie można. Moja wyższość jest oczywista.",
+  "start": 853.2
+ },
+ {
+  "i": 82,
+  "pl": "— Ujmujecie to w sposób transcendentalny — rzekł Ossipon, śledząc zimny połysk okularów. — Słyszałem niedawno, jak Karl Yundt mówił coś bardzo podobnego.",
+  "start": 864.61
+ },
+ {
+  "i": 83,
+  "pl": "— Karl Yundt — mruknął tamten pogardliwie — delegat Międzynarodowego Czerwonego Komitetu, był przez całe życie pozującym cieniem. Jest tu was trzech delegatów, prawda? Nie będę określał dwóch pozostałych, bo jednym z nich wy jesteście. To, co wszyscy trzej mówicie, nie ma w ogóle żadnego znaczenia.",
+  "start": 876.56
+ },
+ {
+  "i": 84,
+  "pl": "Jesteście szacownymi delegatami do spraw propagandy rewolucyjnej, ale w tym sęk, że nie tylko nie potraficie myśleć niezależnie, zupełnie jak pierwszy lepszy szanowany kupiec czy dziennikarz, lecz żaden z was nie ma siły charakteru.",
+  "start": 898.86
+ },
+ {
+  "i": 85,
+  "pl": "Ossipon nie mógł powstrzymać odruchu oburzenia.",
+  "start": 913.45
+ },
+ {
+  "i": 86,
+  "pl": "— Czegóż wy od nas chcecie? — wykrzyknął stłumionym głosem. — I nad czym pracujecie sami?",
+  "start": 917.84
+ },
+ {
+  "i": 87,
+  "pl": "— Nad udoskonaleniem zapalnika — brzmiała stanowcza odpowiedź. — Cóż znaczy ta krzywa mina? Widzicie, nie możecie znieść nawet wzmianki o czymś decydującym.",
+  "start": 924.54
+ },
+ {
+  "i": 88,
+  "pl": "— Ja się wcale nie krzywię — warknął brutalnie udręczony Ossipon.",
+  "start": 937.66
+ },
+ {
+  "i": 89,
+  "pl": "— Wy, rewolucjoniści — ciągnął tamten ze swobodną pewnością siebie — jesteście wszyscy w niewoli u porządku społecznego, który się was obawia; w niewoli zupełnie takiej samej, jak policja broniąca tego porządku.",
+  "start": 942.92
+ },
+ {
+  "i": 90,
+  "pl": "To jasne, że jesteście jego niewolnikami, ponieważ chcecie ten porządek zrewolucjonizować. On rządzi zarówno waszą myślą, jak waszymi czynami, i dlatego ani wasze myśli, ani wasze czyny nigdy do niczego nie doprowadzą.",
+  "start": 956.98
+ },
+ {
+  "i": 91,
+  "pl": "— Zamilkł spokojnie, rzekłbyś, ostatecznie, i prawie natychmiast podjął znów: — Nie jesteście ani o włos lepsi od sił przeciw wam zgrupowanych… na przykład od policji. Któregoś dnia zetknąłem się nagle z komisarzem Heatem na rogu Tottenham Court Road. Nie spuszczał ze mnie wzroku.",
+  "start": 970.46
+ },
+ {
+  "i": 92,
+  "pl": "Ale ja na niego nie patrzyłem. Wystarczył mi jeden rzut oka. On myślał o wielu rzeczach — o swych przełożonych, o swej reputacji, o sądach, o swej pensji, o dziennikach… o tysiącu rzeczy. Ale ja myślałem tylko o swym doskonałym zapalniku. Komisarz Heat był dla mnie niczym.",
+  "start": 988.42
+ },
+ {
+  "i": 93,
+  "pl": "Był dla mnie osobistością tak mało znaczącą jak… nic równie błahego nie mogę sobie przypomnieć — z wyjątkiem może Karla Yundta. Jeden wart drugiego. I terrorysta, i policjant — obaj z tej samej beczki.",
+  "start": 1007.99
+ },
+ {
+  "i": 94,
+  "pl": "Rewolucja, legalność — to przeciwne sobie posunięcia w tej samej grze, formy nieróbstwa w gruncie rzeczy identyczne. Oni prowadzą swoją grę — i wy, ideowcy, swoją. Ale ja w żadną grę się nie bawię; ja pracuję czternaście godzin na dobę i czasem przymieram głodem.",
+  "start": 1023.73
+ },
+ {
+  "i": 95,
+  "pl": "Moje doświadczenia wymagają niekiedy pieniędzy, a wtedy muszę się obejść parę dni bez jedzenia. Patrzycie na moje piwo. Tak. Wypiłem już dwa kufle i zaraz wypiję trzeci. Dziś urządziłem sobie święto i obchodzę je w samotności. Czemu nie?",
+  "start": 1042.43
+ },
+ {
+  "i": 96,
+  "pl": "Mam dość sił, aby pracować samotnie, zupełnie samotnie, w absolutnej samotności. Pracuję w samotności od lat.",
+  "start": 1057.27
+ },
+ {
+  "i": 97,
+  "pl": "Ciemny rumieniec pokrył twarz Ossipona.",
+  "start": 1065.81
+ },
+ {
+  "i": 98,
+  "pl": "— Nad idealnym zapalnikiem… co? — zadrwił bardzo cicho.",
+  "start": 1069.06
+ },
+ {
+  "i": 99,
+  "pl": "— Tak — odparł tamten. — Dobrzeście to określili. Nie znaleźlibyście nic nawet w części równie ścisłego na określenie waszej działalności, włączając w to wszystkie wasze komitety i delegacje. To ja jestem prawdziwym ideowcem.",
+  "start": 1074.64
+ },
+ {
+  "i": 100,
+  "pl": "— Nie będziemy się o to spierać — rzekł Ossipon, przybierając minę wznoszenia się ponad względy osobiste. — Przykro mi, że będę jednak musiał zepsuć wam święto. Dziś rano w Greenwich Park jakiś człowiek został wysadzony w powietrze.",
+  "start": 1091.4
+ },
+ {
+  "i": 101,
+  "pl": "— Skąd o tym wiecie?",
+  "start": 1109.87
+ },
+ {
+  "i": 102,
+  "pl": "— Już od drugiej wykrzykują tę wiadomość na ulicach. Kupiłem dziennik i wbiegłem tutaj. Potem zobaczyłem, że siedzicie przy tym stoliku. Mam dziennik w kieszeni.",
+  "start": 1111.8
+ },
+ {
+  "i": 103,
+  "pl": "Wyciągnął gazetę — duży różowy arkusz, jakby zarumieniony od żaru swych przekonań, które były optymistyczne. Przebiegł go wzrokiem.",
+  "start": 1122.02
+ },
+ {
+  "i": 104,
+  "pl": "— Aha! Mam. Bomba w Greenwich, w parku. Mało szczegółów na razie. Pół do jedenastej. Mglisty ranek. Skutki wybuchu odczuto aż na Romney Road i Park Place. Olbrzymia wyrwa w ziemi pod drzewem, pełna zmiażdżonych korzeni i połamanych gałęzi. Naokoło szczątki ludzkiego ciała rozerwanego na strzępy.",
+  "start": 1130.26
+ },
+ {
+  "i": 105,
+  "pl": "To już wszystko. Reszta same dziennikarskie bzdury. Piszą, że to z pewnością zbrodniczy zamach na obserwatorium. Hm. Trudno temu uwierzyć.",
+  "start": 1150.3
+ },
+ {
+  "i": 106,
+  "pl": "Przez chwilę patrzył jeszcze w milczeniu na gazetę, wreszcie podał ją człowieczkowi, który spojrzał z roztargnieniem na dziennik i odłożył go bez słowa.",
+  "start": 1160.35
+ },
+ {
+  "i": 107,
+  "pl": "Pierwszy odezwał się Ossipon tonem wciąż urażonym:",
+  "start": 1169.77
+ },
+ {
+  "i": 108,
+  "pl": "— Uważacie, szczątki tylko jednego człowieka. Ergo³⁹: sam siebie wysadził w powietrze. To popsuje wam chyba nastrój… co? Czyście się spodziewali tego rodzaju posunięcia? Nie miałem najlżejszego wyobrażenia…",
+  "start": 1174.11
+ },
+ {
+  "i": 109,
+  "pl": "nawet nie postało mi w głowie, że knują coś podobnego, że tego rodzaju historia ma się tu stać — tu, w Anglii. Zważywszy na obecne warunki jest to po prostu zbrodnia.",
+  "start": 1188.51
+ },
+ {
+  "i": 110,
+  "pl": "Człowieczek podniósł rzadkie czarne brwi z obojętną pogardą.",
+  "start": 1198.23
+ },
+ {
+  "i": 111,
+  "pl": "— Zbrodnia! Co przez to rozumiecie? Czym jest zbrodnia? Co chcecie przez to powiedzieć?",
+  "start": 1203.31
+ },
+ {
+  "i": 112,
+  "pl": "— A jakże mam się wyrazić? Muszę używać ogólnie przyjętych słów — rzekł niecierpliwie Ossipon. — Chcę przez to powiedzieć, że owa historia może wpłynąć bardzo niekorzystnie na nasze położenie w Anglii. Mało wam jeszcze tej zbrodni?",
+  "start": 1211.45
+ },
+ {
+  "i": 113,
+  "pl": "Jestem pewien, że w ostatnich czasach daliście komuś tego waszego towaru.",
+  "start": 1226.07
+ },
+ {
+  "i": 114,
+  "pl": "Ossipon patrzył bacznie w twarz człowieczka. Tamten z całym spokojem podniósł z wolna głowę i opuścił ją.",
+  "start": 1230.69
+ },
+ {
+  "i": 115,
+  "pl": "— Więc to wy! — wybuchnął dobitnym szeptem redaktor ulotek P. P. — Nie może być! Więc naprawdę rozdajecie to ot tak sobie, na żądanie, pierwszemu lepszemu durniowi, który się nawinie?",
+  "start": 1238.9
+ },
+ {
+  "i": 116,
+  "pl": "— Tak jest! Skazany na zagładę ustrój społeczny nie został zbudowany z papieru i atramentu i nie wyobrażam sobie, aby kombinacja papieru z atramentem mogła położyć mu koniec, bez względu na to, co wy sobie wyobrażacie.",
+  "start": 1252.7
+ },
+ {
+  "i": 117,
+  "pl": "Tak, rozdawałbym swój proch na wszystkie strony każdemu mężczyźnie, każdej kobiecie, każdemu durniowi, wszystkim, którym by się spodobało przyjść po to do mnie. Wiem, co myślicie. Ale ja się nie kieruję wskazówkami Czerwonego Komitetu.",
+  "start": 1266.44
+ },
+ {
+  "i": 118,
+  "pl": "Gdyby was stąd wszystkich wyszczuli, albo uwięzili, albo na przykład ucięli wam głowy — nawet bym palcem nie kiwnął. To, co nas spotyka indywidualnie, nie ma najmniejszego znaczenia.",
+  "start": 1280.25
+ },
+ {
+  "i": 119,
+  "pl": "Mówił niedbale, chłodno, prawie obojętnie i Ossipon, bardzo poruszony w skrytości ducha, starał się naśladować ten obojętny ton:",
+  "start": 1294.05
+ },
+ {
+  "i": 120,
+  "pl": "— Gdyby tutejsza policja stała na wysokości zadania, podziurawiliby was kulami jak sito albo w biały dzień przygnietliby was z tyłu worami z piaskiem.",
+  "start": 1302.47
+ },
+ {
+  "i": 121,
+  "pl": "Zdawało się, że człowieczek rozważył już ten punkt widzenia w swój zwykły, obojętny i pewny siebie sposób.",
+  "start": 1313.36
+ },
+ {
+  "i": 122,
+  "pl": "— Tak — potwierdził z błyskawiczną gotowością. — Ale wówczas zadarliby z własnymi ustawami. Rozumiecie? To wymaga niepośledniej siły charakteru. Siły charakteru zupełnie specjalnej.",
+  "start": 1319.51
+ },
+ {
+  "i": 123,
+  "pl": "Ossipon zmrużył oczy.",
+  "start": 1334.35
+ },
+ {
+  "i": 124,
+  "pl": "— Przypuszczam, że tak by się właśnie z wami obeszli, gdybyście założyli wasze laboratorium w Stanach. Oni się nie ceremoniują ze swymi ustawami.",
+  "start": 1336.79
+ },
+ {
+  "i": 125,
+  "pl": "— Nie mam zamiaru tam jechać, żeby się o tym przekonać. Zresztą wasza uwaga jest słuszna — przyznał człowieczek. — Tamci mają więcej charakteru i ten charakter jest na wskroś anarchistyczny. To urodzajny dla nas grunt. Stany Zjednoczone — bardzo dobry grunt.",
+  "start": 1345.53
+ },
+ {
+  "i": 126,
+  "pl": "W tej wielkiej republice tkwi zaród zniszczenia. Temperament zbiorowy jest nastawiony przeciw prawu. Doskonale! Mogą nas powystrzelać, ale…",
+  "start": 1361.25
+ },
+ {
+  "i": 127,
+  "pl": "— Jesteście dla mnie zbyt abstrakcyjni — burknął Ossipon, zatroskany i markotny.",
+  "start": 1374.23
+ },
+ {
+  "i": 128,
+  "pl": "— Jestem tylko logiczny — zaprzeczył człowieczek. — Istnieje kilka rodzajów logiki. Moja należy do kategorii właściwej ludziom oświeconym. Ameryka jest w porządku. To Anglia jest niebezpieczna ze względu na swe idealistyczne wyobrażenia o praworządności.",
+  "start": 1379.78
+ },
+ {
+  "i": 129,
+  "pl": "Duch społeczny tego narodu cechują skrupuły, uprzedzenia i to dla naszego dzieła jest zgubne. Mówicie, że Anglia jest jedynym naszym schronieniem. Tym gorzej. To nasza Kapua⁴⁰! Po co nam schronienie? Gadacie tu, drukujecie, knujecie i nic nie robicie.",
+  "start": 1397.92
+ },
+ {
+  "i": 130,
+  "pl": "Powiedziałbym, że to jest bardzo wygodne dla takich Karlów Yundtów.",
+  "start": 1417.46
+ },
+ {
+  "i": 131,
+  "pl": "Wzruszył lekko ramionami i dodał z tą samą swobodną pewnością siebie:",
+  "start": 1421.4
+ },
+ {
+  "i": 132,
+  "pl": "— Naszym celem powinno być skruszenie przesądów oraz czci dla prawa. Najbardziej by mi się spodobało, gdyby komisarz Heat i jego banda zaczęli w biały dzień do nas strzelać ku zadowoleniu publiczności. Wówczas nasza bitwa byłaby na wpół wygrana;",
+  "start": 1425.73
+ },
+ {
+  "i": 133,
+  "pl": "rozkład starej moralności zagnieździłby się u samego jej źródła. Oto cel, do którego powinniście dążyć. Ale wy, rewolucjoniści, nigdy tego nie zrozumiecie.",
+  "start": 1440.65
+ },
+ {
+  "i": 134,
+  "pl": "Snujecie plany na przyszłość, gubicie się w marzeniach o systemie ekonomicznym wywodzącym się z istniejącego porządku rzeczy, a tymczasem należy zmieść wszystko, co jest, i wywieść z nicości nowe pojęcie życia. Taka przyszłość sama da sobie radę, jeśli zrobi się dla niej miejsce.",
+  "start": 1451.25
+ },
+ {
+  "i": 135,
+  "pl": "I dlatego właśnie usypałbym na rogach wszystkich ulic kupy swego prochu, gdyby go tylko starczyło; a ponieważ go nie starczy, robię, co mogę, aby zbudować idealnie doskonały zapalnik.",
+  "start": 1468.29
+ },
+ {
+  "i": 136,
+  "pl": "Ossipon, który zatopił się w myślach, pochwycił to ostatnie słowo jak deskę ratunku.",
+  "start": 1480.24
+ },
+ {
+  "i": 137,
+  "pl": "— Aha. Wasz zapalnik. Nie zdziwię się wcale, jeśli to jeden z waszych zapalników zmiótł tego człowieka w parku.",
+  "start": 1485.72
+ },
+ {
+  "i": 138,
+  "pl": "Cień przykrości przesłonił stanowcze, blade oblicze tkwiące naprzeciw Ossipona.",
+  "start": 1493.33
+ },
+ {
+  "i": 139,
+  "pl": "— Trudność mojej pracy polega właśnie na tym, że muszę robić doświadczenia z różnego rodzaju zapalnikami. Przecież trzeba je wypróbować. Zresztą…",
+  "start": 1498.57
+ },
+ {
+  "i": 140,
+  "pl": "Ossipon przerwał.",
+  "start": 1508.57
+ },
+ {
+  "i": 141,
+  "pl": "— Kto to mógł być, ten człowiek? Ręczę wam, że nikt z nas w Londynie nie miał pojęcia… Czy możecie mi opisać człowieka, któremu daliście materiał wybuchowy?",
+  "start": 1510.27
+ },
+ {
+  "i": 142,
+  "pl": "Tamten zwrócił na Ossipona okulary jak podwójny reflektor.",
+  "start": 1519.49
+ },
+ {
+  "i": 143,
+  "pl": "— Opisać — powtórzył z wolna. — Teraz chyba nic temu nie przeszkadza. Opiszę go wam w jednym słowie: Verloc.",
+  "start": 1523.68
+ },
+ {
+  "i": 144,
+  "pl": "Ossipon, który z ciekawości uniósł się trochę na krześle, opadł, jakby go spoliczkowano.",
+  "start": 1534.72
+ },
+ {
+  "i": 145,
+  "pl": "— Verloc? Niemożliwe.",
+  "start": 1541.46
+ },
+ {
+  "i": 146,
+  "pl": "Opanowany człowieczek skinął lekko głową.",
+  "start": 1546.06
+ },
+ {
+  "i": 147,
+  "pl": "— Tak. To on. W tym wypadku nie możecie powiedzieć, że dałem swój materiał pierwszemu lepszemu durniowi, który się nawinął. O ile wiem, Verloc był wybitnym członkiem waszej grupy.",
+  "start": 1549.23
+ },
+ {
+  "i": 148,
+  "pl": "— Tak — odrzekł Ossipon. — Wybitnym. Choć nie, niekoniecznie. Był ośrodkiem naszego wywiadu i przyjmował zwykle kolegów, którzy tu przybywali. Umiał być pożyteczny, ale wybitny nie był. Umysł pozbawiony twórczości. Przed laty przemawiał na zebraniach… zdaje się, że we Francji. Ale nieszczególnie.",
+  "start": 1561.8
+ },
+ {
+  "i": 149,
+  "pl": "Ufali mu tacy ludzie jak Latorre, Moser i cała ta stara gwardia. Jedyny talent, jakim się naprawdę wykazał, to umiejętność odwracania w jakiś sposób uwagi policji. Na przykład w tym wypadku wcale nie wygląda mi na to, aby go specjalnie śledzono. Miał, uważacie, prawowitą żonę.",
+  "start": 1583.67
+ },
+ {
+  "i": 150,
+  "pl": "Zdaje się, że to za jej pieniądze założył ten sklep. Chyba mu się to opłacało.",
+  "start": 1601.49
+ },
+ {
+  "i": 151,
+  "pl": "Ossipon urwał nagle. Mruknął pod nosem: „Co też ta kobieta teraz zrobi?” i pogrążył się w myślach.",
+  "start": 1606.74
+ },
+ {
+  "i": 152,
+  "pl": "Tamten czekał z ostentacyjną obojętnością. Pochodził z niskiej sfery, a znano go ogólnie pod przezwiskiem Profesora. Jego prawo do tego określenia wynikało stąd, że był kiedyś laborantem chemikiem w jakimś instytucie technicznym. Pokłócił się ze zwierzchnikami o wyrządzoną mu niesprawiedliwość.",
+  "start": 1615.5
+ },
+ {
+  "i": 153,
+  "pl": "Potem dostał miejsce w laboratorium fabryki farb. Tam również potraktowano go z oburzającą niesprawiedliwością.",
+  "start": 1632.72
+ },
+ {
+  "i": 154,
+  "pl": "Jego zmagania się, jego niedostatek, jego zawzięte wysiłki, aby zdobyć wyższe miejsce na drabinie społecznej, napełniły go niezłomnym przeświadczeniem o własnych zasługach i dlatego bardzo było trudno obejść się z nim sprawiedliwie — gdyż pojęcie człowieka o sprawiedliwym traktowaniu zależy w wysokim stopniu od jego wytrzymałości.",
+  "start": 1639.28
+ },
+ {
+  "i": 155,
+  "pl": "Profesor był człowiekiem utalentowanym, lecz brakowało mu owej wielkiej cnoty społecznej, którą jest rezygnacja.",
+  "start": 1660.16
+ },
+ {
+  "i": 156,
+  "pl": "— Jako intelekt był niczym — wyrzekł głośno Ossipon, przestając nagle rozmyślać nad osobą i stanem interesów osieroconej pani Verloc. — Indywidualność na wskroś pospolita. To źle, Profesorze, że nie utrzymujecie bliższych stosunków z towarzyszami — dodał tonem nagany.",
+  "start": 1668.82
+ },
+ {
+  "i": 157,
+  "pl": "— Czy Verloc coś wam powiedział, czy zwierzył się ze swych zamiarów? Nie widziałem go od miesiąca. Wydaje mi się niemożliwe, aby już nie żył.",
+  "start": 1688.52
+ },
+ {
+  "i": 158,
+  "pl": "— Powiedział mi, że to ma być zamach na jakiś budynek — rzekł Profesor. — Musiałem to wiedzieć, aby przygotować odpowiednią bombę. Zwróciłem mu uwagę, że ilość materiału wybuchowego, jaką posiadam, nie wystarcza, aby wywołać zupełne zniszczenie, lecz prosił mnie usilnie, abym zrobił, co będę mógł.",
+  "start": 1699.33
+ },
+ {
+  "i": 159,
+  "pl": "Ponieważ chciał, żebym przygotował coś, co będzie można nieść w ręku, zaproponowałem, że użyję do tego starej jednogalonowej⁴¹ blaszanki od pokostu kopalowego⁴², którą miałem przypadkiem u siebie. Ta myśl mu się podobała.",
+  "start": 1719.4
+ },
+ {
+  "i": 160,
+  "pl": "Było to trochę kłopotliwe, bo musiałem najpierw wyciąć dno, a potem je znów przylutować. W blaszance znajdował się gruby szklany słoik o dużym otworze, szczelnie zakorkowany i otoczony wilgotną gliną;",
+  "start": 1735.62
+ },
+ {
+  "i": 161,
+  "pl": "słoik zawierał szesnaście uncji⁴³ zielonego prochu X₂. Zapalnik połączyłem z wkręconym wierzchem blaszanki. To było bardzo pomysłowe… kombinacja czasu i uderzenia. Wyjaśniłem Verlocowi ten system. Cienka rurka blaszana zawierająca…",
+  "start": 1747.68
+ },
+ {
+  "i": 162,
+  "pl": "Myśl Ossipona zwróciła się w inną stronę.",
+  "start": 1766.01
+ },
+ {
+  "i": 163,
+  "pl": "— Jak się to mogło stać? — przerwał.",
+  "start": 1769.67
+ },
+ {
+  "i": 164,
+  "pl": "— Czy ja wiem? Może przykręcił wierzch, co pociągnęło za sobą włączenie kontaktu, a potem zapomniał o terminie wybuchu, który obliczyłem na dwadzieścia minut. Ale mocny wstrząs mógł także spowodować wybuch natychmiast, ponieważ kontakt był włączony.",
+  "start": 1773.31
+ },
+ {
+  "i": 165,
+  "pl": "Pewno źle obliczył czas albo po prostu upuścił bombę. W każdym razie jedno jest dla mnie jasne: kontakt był w zupełnym porządku. System działał wzorowo. Zdawałoby się, że w pośpiechu przeciętny dureń zapomniałby raczej o włączeniu kontaktu. Tego rodzaju niebezpieczeństwo najbardziej mnie niepokoiło.",
+  "start": 1789.59
+ },
+ {
+  "i": 166,
+  "pl": "Ale tyle jest rodzajów głupoty, że nie można się jej ustrzec. Trudno wymagać od zapalnika, aby był zupełnie odporny na głupotę.",
+  "start": 1809.07
+ },
+ {
+  "i": 167,
+  "pl": "Kiwnął na kelnera. Ossipon siedział wyprostowany, a jego skupiony wzrok świadczył o pracy mózgu. Gdy kelner odszedł z pieniędzmi, Ossipon ocknął się z miną pełną głębokiego niezadowolenia.",
+  "start": 1818.2
+ },
+ {
+  "i": 168,
+  "pl": "— To dla mnie niezmiernie przykre — zaczął głośno rozważać. — Karl od tygodnia leży w łóżku na bronchit⁴⁴. Równie dobrze może wcale już nie wstać. Michaelis używa sobie gdzieś na wsi. Modny wydawca zaproponował mu pięćset funtów za książkę. To będzie straszna klapa.",
+  "start": 1831.57
+ },
+ {
+  "i": 169,
+  "pl": "Jak wiecie, odzwyczaił się w celi od logicznego myślenia.",
+  "start": 1852.19
+ },
+ {
+  "i": 170,
+  "pl": "Profesor stał, zapinając palto, i rozglądał się z niewzruszoną obojętnością.",
+  "start": 1856.06
+ },
+ {
+  "i": 171,
+  "pl": "— Co teraz zrobicie? — zapytał Ossipon znużonym głosem. Drżał przed naganą ze strony Centralnego Czerwonego Komitetu, który nigdzie stale nie przebywał i o którego składzie nie był dokładnie powiadomiony.",
+  "start": 1861.84
+ },
+ {
+  "i": 172,
+  "pl": "Niepojęte szaleństwo Verloca odbiłoby się dotkliwie na Ossiponie, gdyby cała ta sprawa pociągnęła za sobą zniesienie skromnego subsydium udzielanego na wydawanie ulotek P. P.",
+  "start": 1875.22
+ },
+ {
+  "i": 173,
+  "pl": "— Solidaryzowanie się z krańcową formą działania jest jedną rzeczą, a głupia lekkomyślność drugą — rzekł z pewnego rodzaju ponurą brutalnością. — Nie rozumiem, co Verloca napadło. Jest w tym jakaś tajemnica. A tymczasem on zginął.",
+  "start": 1887.98
+ },
+ {
+  "i": 174,
+  "pl": "Wolno wam się zapatrywać na to, jak chcecie, ale w tych okolicznościach jedynie właściwą polityką dla walczącej grupy rewolucyjnej jest odżegnanie się od wszelkiej łączności z tym waszym diabelskim wybrykiem. Teraz głowię się tylko nad tym, jak zrobić, żeby takie oświadczenie wydało się wiarygodne.",
+  "start": 1905.09
+ },
+ {
+  "i": 175,
+  "pl": "Człowieczek stał w zapiętym palcie, gotów do wyjścia, ani trochę nie wyższy od siedzącego Ossipona. Wycelował okulary prosto w jego twarz.",
+  "start": 1925.12
+ },
+ {
+  "i": 176,
+  "pl": "— Moglibyście poprosić policję o świadectwo dobrego prowadzenia. Oni wiedzą, gdzie który z was spał wczoraj w nocy. Gdybyście ich poprosili, zechcieliby może ogłosić coś w rodzaju urzędowego raportu.",
+  "start": 1934.12
+ },
+ {
+  "i": 177,
+  "pl": "— Na pewno wiedzą dokładnie, że nic z tym nie mamy wspólnego — mruknął gorzko Ossipon. — A co powiedzą, to inna sprawa. — Siedział zamyślony, nie zwracając uwagi na kusą, niechlujną, sowiooką postać stojącą u jego boku.",
+  "start": 1949.25
+ },
+ {
+  "i": 178,
+  "pl": "— Natychmiast muszę znaleźć Michaelisa i uprosić go, aby przemówił od serca na którymś z naszych zebrań. Publiczność ma coś na kształt sentymentalnego szacunku dla tego człowieka. Jego nazwisko jest znane, a ja pozostaję w kontakcie z kilku reporterami wielkich dzienników.",
+  "start": 1964.03
+ },
+ {
+  "i": 179,
+  "pl": "To, co powie Michaelis, będzie skończoną bzdurą, ale taki ma jakiś sposób mówienia, że można to przełknąć.",
+  "start": 1980.05
+ },
+ {
+  "i": 180,
+  "pl": "— Jak lukrecję⁴⁵ — wtrącił dość cicho Profesor z niewzruszonym wyrazem twarzy.",
+  "start": 1987.24
+ },
+ {
+  "i": 181,
+  "pl": "Zakłopotany Ossipon dalej prowadził ze sobą półgłośną rozmowę, niby człowiek rozmyślający w zupełnej samotności.",
+  "start": 1994.0
+ },
+ {
+  "i": 182,
+  "pl": "— Osioł, psiakrew! Żeby mi ściągnąć na łeb taką idiotyczną historię! I nawet nie wiem, czy…",
+  "start": 2001.31
+ },
+ {
+  "i": 183,
+  "pl": "Siedział, zaciąwszy usta. Nie uśmiechała mu się myśl, aby po prostu zasięgnąć języka w sklepie. Wyobrażał sobie, że policja zastawiła już tam pułapkę.",
+  "start": 2008.84
+ },
+ {
+  "i": 184,
+  "pl": "„Będą musieli kilka osób zaaresztować” — pomyślał i uczuł coś w rodzaju cnotliwego oburzenia, albowiem spokojny tryb jego rewolucyjnego życia został zagrożony wcale nie z jego winy. A znów jeśli do sklepu nie pójdzie, gotów się nie dowiedzieć o czymś bardzo ważnym.",
+  "start": 2019.3
+ },
+ {
+  "i": 185,
+  "pl": "Potem przyszło mu na myśl, że jeżeli ów człowiek w parku został rozszarpany na drobne strzępy, jak piszą w gazetach, to nie potrafili go zidentyfikować.",
+  "start": 2036.42
+ },
+ {
+  "i": 186,
+  "pl": "A w takim razie policja nie ma powodu do pilnowania sklepu Verloca staranniej niż każdego innego punktu zbornego wybitnych anarchistów — niż na przykład restauracji „Sylen”. Gdziekolwiek by się Ossipon udał, wszędzie natrafi na policję. Jednakże…",
+  "start": 2044.64
+ },
+ {
+  "i": 187,
+  "pl": "— Co tu teraz robić? — mruknął, radząc się siebie samego.",
+  "start": 2061.51
+ },
+ {
+  "i": 188,
+  "pl": "Chropawy głos u jego boku rzekł ze spokojną wzgardą:",
+  "start": 2067.1
+ },
+ {
+  "i": 189,
+  "pl": "— Uczepcie się tej kobiety, jeśli warta fatygi.",
+  "start": 2071.81
+ },
+ {
+  "i": 190,
+  "pl": "Wyrzekłszy te słowa, Profesor oddalił się od stolika. Ossipon, zaskoczony jego przenikliwością, targnął się na krześle, jakby się chciał zerwać, lecz w dalszym ciągu siedział nieruchomo, patrząc przed siebie bezsilnie, rzekłbyś, przybity gwoździem do siedzenia.",
+  "start": 2075.25
+ },
+ {
+  "i": 191,
+  "pl": "Samotne pianino, pozbawione nawet pomocy taboretu, uderzyło mężnie w struny i zacząwszy grać wybór narodowych pieśni, wypędziło wreszcie Ossipona melodią Błękitnych dzwonków Szkocji⁴⁶. Przykre, wyraźne tony słabły coraz bardziej za jego plecami, gdy szedł z wolna w górę po schodach, mijał hall i wydostał się na ulicę.",
+  "start": 2090.95
+ },
+ {
+  "i": 192,
+  "pl": "Naprzeciw wielkich drzwi sterczał tuż u chodnika ponury szereg gazeciarzy, którzy sprzedawali swój towar, stojąc w rynsztoku. Był zimny, posępny dzień wczesnej wiosny;",
+  "start": 2110.59
+ },
+ {
+  "i": 193,
+  "pl": "brudne niebo, błoto na ulicy, łachmany gazeciarzy harmonizowały świetnie z plikami wilgotnych szmat papieru zbrukanych farbą drukarską. Powalane błotem afisze ozdabiały jak dywany wygięty brzeg chodnika.",
+  "start": 2121.43
+ },
+ {
+  "i": 194,
+  "pl": "Sprzedaż wieczornych gazet odbywała się żwawo, lecz na tle szybkiego, nieustannego ruchu przechodniów robiła wrażenie rozdawnictwa dzienników przyjmowanych obojętnie, lekceważąco. Ossipon rozejrzał się spiesznie przed wejściem w krzyżujące się prądy, ale Profesora nigdzie nie było już widać.",
+  "start": 2133.97
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

@@ -1,0 +1,1263 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to chapter-07.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-07.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tajny agent · Rozdział VII — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Tajny agent · Rozdział VII · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="chapter-07.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Szedł krótką i wąską uliczką podobną do mokrego, błotnistego rowu, potem przeciął bardzo szeroką aleję, wszedł do rządowego budynku i nawiązał rozmowę z młodym (i bezpłatnym) sekretarzem wielkiego dygnitarza.",
+  "start": 1.81
+ },
+ {
+  "i": 1,
+  "pl": "Ów jasnowłosy młodzian o gładkiej twarzy i symetrycznym uczesaniu, które nadawało mu wygląd wielkiego, schludnego ucznia, wysłuchawszy prośby nadinspektora, spojrzał na niego niepewnie i rzekł ściszonym głosem:",
+  "start": 18.28
+ },
+ {
+  "i": 2,
+  "pl": "— Czy on zechce z panem się widzieć? Nic panu powiedzieć nie umiem. Przyszedł z parlamentu godzinę temu, aby pomówić z podsekretarzem stanu, a teraz właśnie ma tam wrócić. Przecież mógł podsekretarza stanu wezwać do siebie, ale przyszedł pewnie dlatego, żeby zażyć trochę spaceru.",
+  "start": 32.44
+ },
+ {
+  "i": 3,
+  "pl": "To jedyny spacer, na który mu brak czasu pozwala w ciągu tej sesji. Ja się na to nie skarżę; lubię dość te przechadzki. Opiera się na moim ramieniu i przez cały czas ust nie otworzy. Widzi pan, on jest bardzo zmęczony i… hm… nie powiem, aby był teraz w najlepszym humorze.",
+  "start": 50.16
+ },
+ {
+  "i": 4,
+  "pl": "— Przychodzę w sprawie tej historii w Greenwich.",
+  "start": 70.82
+ },
+ {
+  "i": 5,
+  "pl": "— Ou! Do licha! Strasznie jest na was rozgoryczony. Ale pójdę i zobaczę, jeśli panu na tym zależy.",
+  "start": 74.26
+ },
+ {
+  "i": 6,
+  "pl": "— Doskonale. To zacnie z pana strony — rzekł nadinspektor.",
+  "start": 83.1
+ },
+ {
+  "i": 7,
+  "pl": "Bezpłatny sekretarz był pełen podziwu dla jego męstwa. Przybrawszy niewinny wyraz twarzy, otworzył drzwi i wszedł do sąsiedniego pokoju z rezolutnością grzecznego dziecka pieszczocha.",
+  "start": 88.44
+ },
+ {
+  "i": 8,
+  "pl": "Ukazał się zaraz z powrotem i kiwnął głową ku nadinspektorowi, który przekroczył te same drzwi uchylone przed sobą i znalazł się sam na sam z dygnitarzem w obszernym pokoju.",
+  "start": 100.0
+ },
+ {
+  "i": 9,
+  "pl": "Dygnitarz był wysoki, pokaźnej tuszy; jego długa, blada twarz kształtu jaja, rozszerzona u dołu przez obfity podbródek, była otoczona frędzlą rzadkich siwawych bokobrodów, a cała postać miała taki wygląd, jakby mogła zwiększać swoją objętość.",
+  "start": 111.7
+ },
+ {
+  "i": 10,
+  "pl": "W pasie czarnego surduta tworzyły się poprzeczne fałdy, wzmacniając jeszcze wrażenie, że guziki ledwie mogą wytrzymać napór ciała; z krawieckiego punktu widzenia wyglądało to nieszczególnie. Głowa dygnitarza była odchylona w tył na grubej szyi;",
+  "start": 129.0
+ },
+ {
+  "i": 11,
+  "pl": "podpuchnięte oczy o na wpół przymkniętych powiekach patrzyły wyniośle z obu stron orlego nosa, rysującego się szlachetnie i wyzywająco na wielkim bladym obliczu.",
+  "start": 144.0
+ },
+ {
+  "i": 12,
+  "pl": "U końca długiego stołu błyszczący cylinder oraz para znoszonych rękawiczek leżały w pogotowiu i także robiły wrażenie rozdętych, olbrzymich.",
+  "start": 155.06
+ },
+ {
+  "i": 13,
+  "pl": "Dygnitarz stał w wielkich, wygodnych trzewikach na dywanie przed kominkiem; nie powitał nadinspektora ani słowem.",
+  "start": 165.4
+ },
+ {
+  "i": 14,
+  "pl": "— Chciałbym wiedzieć, czy to jest początek nowej dynamitowej kampanii — rzekł natychmiast głębokim, bardzo równym głosem. — Niech pan nie wchodzi w szczegóły. Nie mam na to czasu.",
+  "start": 173.91
+ },
+ {
+  "i": 15,
+  "pl": "W zestawieniu z tą wielką, toporną postacią nadinspektor miał kruchą wiotkość trzciny zwracającej się do dębu. I rzeczywiście dzieje rodu owego człowieka przewyższały liczbą stuleci wiek najstarszego dębu w kraju.",
+  "start": 184.57
+ },
+ {
+  "i": 16,
+  "pl": "— Nie. O ile w ogóle można coś twierdzić, zapewniam pana, że tak nie jest.",
+  "start": 199.46
+ },
+ {
+  "i": 17,
+  "pl": "— Aha. Ale zdaje mi się, że zapewnienia, które od was stamtąd wychodzą — rzekł wielki człowiek, wskazując pogardliwym ruchem ręki okno od strony szerokiej alei — dążą głównie do tego, aby wystrychnąć sekretarza stanu na dudka.",
+  "start": 205.77
+ },
+ {
+  "i": 18,
+  "pl": "Przed niespełna miesiącem zapewniano mnie w tym pokoju, że coś podobnego jest wprost nie do pomyślenia.",
+  "start": 223.24
+ },
+ {
+  "i": 19,
+  "pl": "Nadinspektor popatrzył spokojnie w stronę okna.",
+  "start": 229.0
+ },
+ {
+  "i": 20,
+  "pl": "— Pozwoli mi pan zauważyć, sir Ethelredzie, że dotychczas nie miałem sposobności dawać panu jakichkolwiek zapewnień.",
+  "start": 232.5
+ },
+ {
+  "i": 21,
+  "pl": "Wyniosłe spojrzenie na wpół przymkniętych oczu zogniskowało się teraz na twarzy nadinspektora.",
+  "start": 240.41
+ },
+ {
+  "i": 22,
+  "pl": "— To prawda — wyznał głęboki, równy głos. — Posyłałem po Heata. Pan jest jeszcze raczej nowicjuszem na swym obecnym stanowisku — A jakże się panu tam powodzi?",
+  "start": 248.56
+ },
+ {
+  "i": 23,
+  "pl": "— Mam wrażenie, że każdego dnia czegoś się uczę.",
+  "start": 262.67
+ },
+ {
+  "i": 24,
+  "pl": "— Oczywiście, oczywiście. Spodziewam się, że pan da sobie radę.",
+  "start": 266.4
+ },
+ {
+  "i": 25,
+  "pl": "— Dziękuję, sir Ethelredzie. Dziś także nauczyłem się czegoś i to w ciągu ostatniej godziny. Cała ta sprawa różni się wybitnie od zwykłego anarchistycznego zamachu; to uderza, jeśli głębiej w nią wejrzeć. Dlatego właśnie tu jestem.",
+  "start": 272.85
+ },
+ {
+  "i": 26,
+  "pl": "Dygnitarz wsparł się wielkimi dłońmi pod boki.",
+  "start": 288.71
+ },
+ {
+  "i": 27,
+  "pl": "— Doskonale. Proszę mówić dalej. Tylko bez szczegółów. Niech mi pan oszczędzi szczegółów.",
+  "start": 292.58
+ },
+ {
+  "i": 28,
+  "pl": "— Nie myślę nudzić pana szczegółami — zaczął nadinspektor ze spokojem i niewzruszoną pewnością siebie.",
+  "start": 299.54
+ },
+ {
+  "i": 29,
+  "pl": "Podczas gdy mówił, wskazówki na zegarze za plecami dostojnika posunęły się o siedem minut. Ów zegar, tykający posępnie i słabo, był ciężką, połyskliwą machiną, całą w masywnych wolutach⁶¹ z tego samego ciemnego marmuru co kominek.",
+  "start": 306.64
+ },
+ {
+  "i": 30,
+  "pl": "Nadinspektor mówił, używając często nawiasów, w których umieszczał wszystkie drobne fakty, to jest szczegóły — w taki sposób, że były tam bardzo na miejscu. Żaden pomruk, żaden gest nie przerwał opowiadania.",
+  "start": 321.73
+ },
+ {
+  "i": 31,
+  "pl": "Wielki człowiek mógł ujść za posąg któregoś ze swych książęcych przodków, posąg ogołocony ze zbroi krzyżowca i odziany w źle skrojony surdut. Nadinspektor miał wrażenie, że może mówić swobodnie choćby i godzinę.",
+  "start": 335.77
+ },
+ {
+  "i": 32,
+  "pl": "Ale miał się na baczności i po upływie wyżej wspomnianych siedmiu minut zakończył nagłym wnioskiem; powtórzył w nim tezę postawioną na początku i zaskoczył przyjemnie sir Ethelreda wybitną zwięzłością i siłą tego wniosku.",
+  "start": 348.89
+ },
+ {
+  "i": 33,
+  "pl": "— Rozpatrując ową sprawę, nieprzedstawiającą skądinąd większego znaczenia, spotykamy się z faktem niebywałym, przynajmniej w tej właśnie postaci, i wymagającym specjalnego potraktowania.",
+  "start": 364.68
+ },
+ {
+  "i": 34,
+  "pl": "Głos sir Ethelreda pogłębił się i nabrał pewności:",
+  "start": 376.42
+ },
+ {
+  "i": 35,
+  "pl": "— Ja myślę! Jeśli ambasador obcego mocarstwa jest w to wplątany!",
+  "start": 380.54
+ },
+ {
+  "i": 36,
+  "pl": "— Ech, ambasador — zaprotestował tamten, smukły i prosty, pozwalając sobie na półuśmiech. — Byłoby z mej strony głupotą, gdybym twierdził coś w tym rodzaju. Zresztą to zbyteczne, bo jeśli mój domysł jest trafny, wszystko jedno, czy wchodzi tu w grę ambasador, czy portier.",
+  "start": 385.79
+ },
+ {
+  "i": 37,
+  "pl": "Sir Ethelred otworzył szeroko usta niby jaskinię, do której zakrzywiony nos zdawał się z ciekawością zaglądać; z tych ust wydobył się stłumiony gromowy odgłos, jak dźwięk dalekich organów nastawiony na pogardę i oburzenie.",
+  "start": 404.42
+ },
+ {
+  "i": 38,
+  "pl": "— Daję słowo, ci ludzie stracili miarę. Widać myślą, że wolno im tu wprowadzać swoje tatarskie metody! Turek okazałby więcej przyzwoitości.",
+  "start": 418.37
+ },
+ {
+  "i": 39,
+  "pl": "— Zapomina pan, sir Ethelredzie, że właściwie mówiąc, nie wiemy jeszcze nic pewnego.",
+  "start": 429.23
+ },
+ {
+  "i": 40,
+  "pl": "— No tak. Ale jakby pan to określił? Krótko i węzłowato?",
+  "start": 434.91
+ },
+ {
+  "i": 41,
+  "pl": "— Jako bezwstydne zuchwalstwo, a zarazem dziecinny wybryk osobliwego rodzaju.",
+  "start": 439.93
+ },
+ {
+  "i": 42,
+  "pl": "— Nie możemy tu znosić naiwnych wybryków obrzydliwych dzieci — rzekła wielka, rozdęta persona, jakby jeszcze trochę bardziej się nadymając. Wyniosłe spojrzenie na wpół przymkniętych oczu uderzyło miażdżąco o dywan u stóp nadinspektora. — Trzeba dać im porządnie po nosie za tę historię.",
+  "start": 445.41
+ },
+ {
+  "i": 43,
+  "pl": "Musimy być zdolni do… Jak pan to sobie w krótkości wyobraża? Nie potrzebuje pan wchodzić w szczegóły.",
+  "start": 462.45
+ },
+ {
+  "i": 44,
+  "pl": "— Doskonale. Otóż powiedziałbym, że zasadniczo nie powinniśmy tolerować istnienia tajnych agentów, ponieważ skłonni są wyolbrzymiać niebezpieczeństwo zła, przeciw któremu ich się używa. Że szpieg fabrykuje swe informacje, to jest już zwykły komunał.",
+  "start": 472.74
+ },
+ {
+  "i": 45,
+  "pl": "Ale w sferze działalności polityczno-rewolucyjnej, polegającej częściowo na gwałcie, zawodowy szpieg ma wszelkie możliwości po temu, aby wziąć się do fabrykowania samych faktów, co ma podwójny zły skutek: z jednej strony wznieca zbrodnicze współzawodnictwo, a z drugiej wywołuje popłoch, śpieszne zmiany w prawodawstwie, ślepą nienawiść.",
+  "start": 487.75
+ },
+ {
+  "i": 46,
+  "pl": "Lecz ponieważ ten świat jest niedoskonały…",
+  "start": 508.48
+ },
+ {
+  "i": 47,
+  "pl": "Przerwał mu głęboki głos dostojnika, który wtrącił szybko, stojąc bez ruchu na dywanie przed kominkiem, z rękoma wspartymi o boki i rozstawionymi wielkimi łokciami:",
+  "start": 511.56
+ },
+ {
+  "i": 48,
+  "pl": "— Niech pan wyraża się jasno.",
+  "start": 522.6
+ },
+ {
+  "i": 49,
+  "pl": "— Dobrze, sir Ethelredzie… ten świat jest niedoskonały. Więc skoro tylko zaczęło mi świtać, jakiego to rodzaju sprawa, pomyślałem, że trzeba ją poprowadzić ze szczególną dyskrecją i pozwoliłem sobie tu przyjść.",
+  "start": 525.72
+ },
+ {
+  "i": 50,
+  "pl": "— Bardzo słusznie — pochwalił z zadowoleniem wielki człowiek, spoglądając znad tłustego podbródka. — Cieszę się, że w waszej budzie jest ktoś, kto uważa, że i sekretarzowi stanu można czasem zaufać.",
+  "start": 540.4
+ },
+ {
+  "i": 51,
+  "pl": "Nadinspektor uśmiechnął się wesoło.",
+  "start": 554.83
+ },
+ {
+  "i": 52,
+  "pl": "— Właściwie to przyszło mi na myśl, że może by było lepiej, aby w tym stadium sprawy Heat został zastąpiony przez…",
+  "start": 557.25
+ },
+ {
+  "i": 53,
+  "pl": "— Aha! Heat? Osioł, co? — wykrzyknął dostojnik z wyraźną niechęcią.",
+  "start": 564.3
+ },
+ {
+  "i": 54,
+  "pl": "— Nic podobnego. Bardzo pana proszę, sir Ethelredzie, niech pan nie tłumaczy sobie mych słów tak niesprawiedliwie dla Heata.",
+  "start": 571.63
+ },
+ {
+  "i": 55,
+  "pl": "— No więc? Pewno za sprytny?",
+  "start": 579.73
+ },
+ {
+  "i": 56,
+  "pl": "— I to nie… przynajmniej nie zawsze. To on dostarczył mi podstaw do domysłów. Sam z siebie odkryłem jedynie to, że posługiwał się tym człowiekiem prywatnie. Czy można go za to potępić? On bardzo dawno pracuje w policji. Powiedział mi właściwie, iż musi mieć do pracy jakieś narzędzia.",
+  "start": 582.31
+ },
+ {
+  "i": 57,
+  "pl": "Przyszło mi na myśl, że to konkretne narzędzie powinno służyć całemu Wydziałowi Przestępstw Specjalnych, zamiast stanowić prywatną własność komisarza Heata. Według mego przekonania obowiązkiem naszego wydziału jest pozbycie się tajnych agentów. Ale Heat pracuje w wydziale od dawna.",
+  "start": 600.5
+ },
+ {
+  "i": 58,
+  "pl": "Zarzuciłby mi, że wypaczam moralność wydziału i szkodzę jego sprawności. Określiłby mój projekt z goryczą jako ochronę zbrodniczej klasy rewolucjonistów. Tak by to osądził.",
+  "start": 617.46
+ },
+ {
+  "i": 59,
+  "pl": "— No tak. Ale co pan o tym myśli?",
+  "start": 628.76
+ },
+ {
+  "i": 60,
+  "pl": "— Przede wszystkim chciałbym powiedzieć, co następuje: marna to pociecha jeśli stwierdzimy, że jakiś akt gwałtu — uszkodzenie czyjejś własności lub zabójstwo — nie jest wcale dziełem anarchizmu tylko czegoś zupełnie innego, mianowicie pewnej kategorii tolerowanego łotrostwa.",
+  "start": 633.14
+ },
+ {
+  "i": 61,
+  "pl": "Zdaje mi się, że bywa tak znacznie częściej, niż przypuszczamy. Dalej widzimy, że istnienie ludzi pozostających na żołdzie obcych mocarstw niszczy w pewnej mierze sprawność naszego nadzoru. Szpieg tego rodzaju może sobie pozwolić na większą zuchwałość niż najzuchwalsi ze spiskowców.",
+  "start": 650.54
+ },
+ {
+  "i": 62,
+  "pl": "Jego fach nie podlega żadnym ograniczeniom. Szpieg ma zbyt mało wiary, aby być zdolnym do zupełnej negacji i zbyt mało poczucia prawa, aby popełniać bezprawie.",
+  "start": 667.6
+ },
+ {
+  "i": 63,
+  "pl": "Po trzecie, istnienie tych szpiegów wśród grup rewolucyjnych — którym udzielamy przytułku, ściągając na siebie zarzuty — wyklucza wszelką pewność. Niedawno odebrał pan uspokajający raport od komisarza Heata. Ów raport nie był wcale bezpodstawny — a jednak wiadomy epizod się zdarzył.",
+  "start": 677.46
+ },
+ {
+  "i": 64,
+  "pl": "Nazywam go epizodem, bo ta sprawa, pozwalam sobie twierdzić, jest epizodyczna; nie stanowi części żadnego ogólnego planu, choćby i najszaleńszego. Właśnie te szczególne jej cechy, które zaskakują i zbijają z tropu komisarza Heata, ustalają w mych oczach jej charakter.",
+  "start": 695.92
+ },
+ {
+  "i": 65,
+  "pl": "Wystrzegam się szczegółów, sir Ethelredzie.",
+  "start": 713.12
+ },
+ {
+  "i": 66,
+  "pl": "Dygnitarz, stojący wciąż na dywanie przed kominkiem, słuchał z głęboką uwagą.",
+  "start": 716.8
+ },
+ {
+  "i": 67,
+  "pl": "— Otóż to właśnie. Niech pan streszcza się możliwie najbardziej.",
+  "start": 722.02
+ },
+ {
+  "i": 68,
+  "pl": "Nadinspektor zaznaczył gestem pełnym powagi i szacunku, że usiłuje być możliwie zwięzły.",
+  "start": 727.24
+ },
+ {
+  "i": 69,
+  "pl": "— W przeprowadzeniu tego zamachu tkwi szczególna głupota i niedołęstwo, stąd mam jak najlepsze nadzieje, że ją zgłębię i znajdę w niej coś innego niż indywidualny wybryk fanatyzmu. Jest to z całą pewnością rzecz uknuta.",
+  "start": 732.91
+ },
+ {
+  "i": 70,
+  "pl": "Tak to wygląda, jakby sprawcę zamachu dostawiono na miejsce, a potem porzucono spiesznie, zostawiając go własnej przemyślności. Stąd wniosek, iż został sprowadzony z zagranicy w celu popełnienia tego zamachu.",
+  "start": 746.67
+ },
+ {
+  "i": 71,
+  "pl": "Przy tym albo musimy przypuścić, że znał za mało angielski, aby pytać o drogę, albo też przyjmiemy fantastyczne założenie, że był głuchoniemy. Chciałbym teraz wiedzieć… lecz moja ciekawość jest bezcelowa. Oczywiście wyleciał w powietrze przypadkiem. Nie był to przypadek nadzwyczajny.",
+  "start": 759.59
+ },
+ {
+  "i": 72,
+  "pl": "Ale zaszedł pewien drobny fakt istotnie nadzwyczajny: do jego ubrania był przyszyty adres, znaleziony również przypadkiem. Ten fakt jest niewiarygodny, tak dalece niewiarygodny, że okoliczności, które go wytłumaczą, powinny rzucić światło na całą sprawę.",
+  "start": 777.87
+ },
+ {
+  "i": 73,
+  "pl": "Otóż zamiast polecić Heatowi, aby prowadził śledztwo w dalszym ciągu, mam zamiar zająć się tym osobiście — i szukać wyjaśnienia w miejscu, gdzie można je znaleźć.",
+  "start": 793.19
+ },
+ {
+  "i": 74,
+  "pl": "Tym miejscem jest pewien sklep na Brett Street, a wyjaśnienie powinienem otrzymać z ust pewnego tajnego agenta, który był ongi zaufanym szpiegiem nieboszczyka barona Stott-Wartenheima, ambasadora wielkiego mocarstwa przy Dworze Świętego Jakuba⁶².",
+  "start": 803.01
+ },
+ {
+  "i": 75,
+  "pl": "Nadinspektor umilkł i dodał po chwili:",
+  "start": 818.41
+ },
+ {
+  "i": 76,
+  "pl": "— Ci ludzie to istna plaga.",
+  "start": 821.01
+ },
+ {
+  "i": 77,
+  "pl": "Wielki człowiek stojący przed kominkiem, chcąc spojrzeć spod przymkniętych powiek na nadinspektora, odchylał głowę w tył coraz bardziej, co nadało mu wygląd niezmiernie wyniosły.",
+  "start": 823.83
+ },
+ {
+  "i": 78,
+  "pl": "— Dlaczego pan nie zostawi tego Heatowi?",
+  "start": 836.15
+ },
+ {
+  "i": 79,
+  "pl": "— Ponieważ jest w naszym wydziale zasiedziały. Tacy ludzie mają swoją własną moralność. Uznałby mój sposób prowadzenia śledztwa za skandaliczne wynaturzenie obowiązku.",
+  "start": 839.35
+ },
+ {
+  "i": 80,
+  "pl": "Dla niego jest jasne jak słońce, że obowiązek rozkazuje uznać winnymi tylu wybitnych anarchistów, ilu się tylko da, i to na podstawie bardzo niepewnych poszlak, które zebrał podczas śledztwa na miejscu zamachu; o mnie zaś powiedziałby, że usiłuję wykazać niewinność tychże anarchistów.",
+  "start": 849.9
+ },
+ {
+  "i": 81,
+  "pl": "Staram się przedstawić panu możliwie jasno tę mętną sprawę, nie zapuszczając się w szczegóły.",
+  "start": 867.34
+ },
+ {
+  "i": 82,
+  "pl": "— Więc wyraziłby się o panu w ten sposób — mruknął sir Ethelred z dumnie wzniesioną głową.",
+  "start": 874.26
+ },
+ {
+  "i": 83,
+  "pl": "— Obawiam się, że tak… i to z oburzeniem i wstrętem, o których ani pan, ani ja nie mamy wyobrażenia. Urzędnikiem jest świetnym. Nie trzeba wystawiać jego lojalności na zbyt ciężką próbę. To jest zawsze błędem. Poza tym chcę mieć zupełną swobodę…",
+  "start": 882.7
+ },
+ {
+  "i": 84,
+  "pl": "taką, jakiej nie uważałbym może za wskazane udzielić komisarzowi Heatowi. Nie mam najmniejszego zamiaru oszczędzać tego Verloca. Wyobrażam sobie, że zaskoczy go bardzo tak prędkie wykrycie jego związku z tą sprawą, bez względu na to, jaki jest ów związek. Nie będzie trudno go zastraszyć.",
+  "start": 898.38
+ },
+ {
+  "i": 85,
+  "pl": "Ale nasz prawdziwy cel leży gdzieś poza tym człowiekiem. Chciałbym, aby mnie pan upoważnił do obiecania mu takich warunków bezpieczeństwa, jakie uznam za stosowne.",
+  "start": 916.3
+ },
+ {
+  "i": 86,
+  "pl": "— Zgoda — rzekł dostojnik, stojąc wciąż na dywanie przed kominkiem. — Niech pan wyśledzi, co tylko się da; niech pan użyje do tego własnych sposobów.",
+  "start": 926.65
+ },
+ {
+  "i": 87,
+  "pl": "— Muszę zabrać się do roboty natychmiast, jeszcze dziś wieczór — rzekł nadinspektor.",
+  "start": 937.36
+ },
+ {
+  "i": 88,
+  "pl": "Sir Ethelred wsunął rękę pod poły surduta i odchyliwszy głowę, przypatrywał się spokojnie nadinspektorowi.",
+  "start": 943.06
+ },
+ {
+  "i": 89,
+  "pl": "— Posiedzenie przeciągnie się do późna w nocy — powiedział. — Proszę, aby pan przyszedł do parlamentu donieść mi o swych odkryciach, jeśli się jeszcze nie rozejdziemy. Zawiadomię Toodlesa⁶³, żeby na pana czekał. Zaprowadzi pana do mego pokoju.",
+  "start": 951.21
+ },
+ {
+  "i": 90,
+  "pl": "Liczni krewni oraz przyjaciele sekretarza o młodzieńczym wyglądzie żywili dlań nadzieję poważnej, wspaniałej przyszłości — a tymczasem sfera towarzyska, którą w wolnych chwilach ozdabiał swoją osobą, wybrała dla swego faworyta wyżej wymienione przezwisko.",
+  "start": 967.0
+ },
+ {
+  "i": 91,
+  "pl": "Sir Ethelred słyszał je co dzień z ust żony i córek (przeważnie przy śniadaniu) i uczynił przezwisku ten zaszczyt, że je zaadaptował z powagą.",
+  "start": 983.18
+ },
+ {
+  "i": 92,
+  "pl": "Nadinspektor był zaskoczony i uradowany.",
+  "start": 992.91
+ },
+ {
+  "i": 93,
+  "pl": "— Naturalnie, że stawię się w parlamencie, aby podzielić się z panem swymi odkryciami, jeśli pan będzie miał chwilę czasu, aby…",
+  "start": 996.98
+ },
+ {
+  "i": 94,
+  "pl": "— Nie będę miał czasu — przerwał wielki człowiek. — Ale zobaczę się z panem. Teraz też nie mam czasu… Czy panu nikt nie będzie towarzyszył?",
+  "start": 1004.0
+ },
+ {
+  "i": 95,
+  "pl": "— Nikt. Sądzę, że tak będzie najlepiej.",
+  "start": 1015.19
+ },
+ {
+  "i": 96,
+  "pl": "Wielki człowiek odchylił głowę tak bardzo, aby nie spuszczać wzroku z nadinspektora, że musiał prawie zamknąć powieki.",
+  "start": 1018.23
+ },
+ {
+  "i": 97,
+  "pl": "— Hm! Aha! A jak pan zamierza… Czy pan się za kogoś przebierze?",
+  "start": 1027.12
+ },
+ {
+  "i": 98,
+  "pl": "— Właściwie to nie! Ale oczywiście zmienię ubranie.",
+  "start": 1035.02
+ },
+ {
+  "i": 99,
+  "pl": "— Oczywiście — powtórzył wielki człowiek jakby z wyniosłym roztargnieniem. Odwrócił z wolna dużą głowę i przez ramię rzucił z ukosa dumnym wzrokiem na ciężki marmurowy zegar, który tykał chytrze i słabo.",
+  "start": 1039.21
+ },
+ {
+  "i": 100,
+  "pl": "Złocone wskazówki skorzystały tymczasem ze sposobności i przesunęły się za plecami dostojnika o całych dwadzieścia minut.",
+  "start": 1051.9
+ },
+ {
+  "i": 101,
+  "pl": "Nadinspektor, który nie mógł dojrzeć wskazówek, zdenerwował się trochę w czasie tej przerwy. Lecz wielki człowiek zwrócił ku niemu oblicze spokojne i niezamącone.",
+  "start": 1059.24
+ },
+ {
+  "i": 102,
+  "pl": "— Doskonale — powiedział i umilkł, jakby w zdecydowanej pogardzie dla urzędowego zegara. — Ale co przede wszystkim skierowało pana na tę drogę?",
+  "start": 1070.4
+ },
+ {
+  "i": 103,
+  "pl": "— Zawsze byłem zdania… — zaczął nadinspektor.",
+  "start": 1082.22
+ },
+ {
+  "i": 104,
+  "pl": "— No tak, naturalnie, że pan był zdania… To się samo przez się rozumie. Ale pytam o powód bezpośredni.",
+  "start": 1086.3
+ },
+ {
+  "i": 105,
+  "pl": "— Jakże mam to określić? Antagonizm nowego człowieka w stosunku do starych metod. Chęć dowiedzenia się czegoś z pierwszej ręki. Trochę niecierpliwości. Pracuję wciąż w tym samym zakresie, tylko że uprząż jest inna. Uwierała mnie trochę w paru czułych miejscach.",
+  "start": 1096.06
+ },
+ {
+  "i": 106,
+  "pl": "— Mam nadzieję, że się panu powiedzie — rzekł łaskawie wielki człowiek, wyciągając rękę miękką w dotknięciu, lecz szeroką i potężną jak dłoń monumentalnego farmera. Nadinspektor uścisnął ją i wyszedł.",
+  "start": 1113.75
+ },
+ {
+  "i": 107,
+  "pl": "W sąsiednim pokoju Toodles, który czekał, siedząc na brzegu stołu, podszedł do nadinspektora, miarkując wrodzoną sobie wesołość.",
+  "start": 1128.41
+ },
+ {
+  "i": 108,
+  "pl": "— No jakże? Zadowolony pan? — zapytał żywo z powagą.",
+  "start": 1137.89
+ },
+ {
+  "i": 109,
+  "pl": "— Najzupełniej. Winienem panu wieczną wdzięczność — odrzekł nadinspektor; jego długie oblicze wyglądało jak wyciosane z drzewa, w przeciwieństwie do niby to poważnej twarzy sekretarza, gotowej lada chwila rozpłynąć się w uśmiechu i chichocie.",
+  "start": 1142.81
+ },
+ {
+  "i": 110,
+  "pl": "— To świetnie. Ale mówię panu, nie może pan sobie wyobrazić, jaki on jest rozdrażniony z powodu tych ataków na jego prawo o upaństwowieniu łowisk. Nazywają to początkiem rewolucji społecznej. Naturalnie, że to jest krok rewolucyjny. Ale tamci są wprost pozbawieni przyzwoitości. Te ataki osobiste…",
+  "start": 1159.46
+ },
+ {
+  "i": 111,
+  "pl": "— Ja czytam dzienniki — zauważył nadinspektor.",
+  "start": 1179.62
+ },
+ {
+  "i": 112,
+  "pl": "— Ohydne! Prawda? A pan nie ma pojęcia, jakie on mnóstwo roboty musi dzień w dzień odwalić. Sam wszystko załatwia, jakby nikomu nie ufał w sprawie tych łowisk.",
+  "start": 1183.99
+ },
+ {
+  "i": 113,
+  "pl": "— A jednak poświęcił całe pół godziny na rozpatrywanie mojej drobnej sprawy — wtrącił nadinspektor.",
+  "start": 1195.12
+ },
+ {
+  "i": 114,
+  "pl": "— Drobnej! Naprawdę? Bardzo mnie to cieszy. Wobec tego szkoda, że go pan tym zaprzątał. Ta walka strasznie go dużo kosztuje. Coraz bardziej jest wyczerpany. Czuję to, gdy opiera się na moim ramieniu w drodze do parlamentu. A czy on naprawdę jest na ulicy bezpieczny?",
+  "start": 1201.29
+ },
+ {
+  "i": 115,
+  "pl": "Dziś po południu Mullins rozstawił tu swój oddział. Przy każdej latarni sterczy policjant i co drugi człowiek, którego spotykamy po drodze do Palace Yard, jest oczywistym szpiclem. On wkrótce będzie miał tego dosyć.",
+  "start": 1218.43
+ },
+ {
+  "i": 116,
+  "pl": "Proszę pana, chyba to niemożliwe, aby któryś z tych zagranicznych łotrów podniósł na niego rękę… jak pan myśli? To by była klęska narodowa. Jakżeby kraj bez niego się obszedł?",
+  "start": 1232.53
+ },
+ {
+  "i": 117,
+  "pl": "— Nie mówiąc już o panu. Przecież on wspiera się na pana ramieniu — zauważył chłodno nadinspektor. — Zginęlibyście obaj.",
+  "start": 1246.81
+ },
+ {
+  "i": 118,
+  "pl": "— Byłby to dla młodego człowieka łatwy sposób przejścia do historii. Zamordowano tak niewielu brytyjskich ministrów, że nie przeszłoby to bez wrażenia. Ale mówiąc poważnie…",
+  "start": 1258.63
+ },
+ {
+  "i": 119,
+  "pl": "— Jeśli pan chce przejść do historii, będzie pan musiał coś w tym celu uczynić. Mówię poważnie, że poza przepracowaniem nie grozi obu panom żadne niebezpieczeństwo.",
+  "start": 1270.35
+ },
+ {
+  "i": 120,
+  "pl": "— Mnie łowiska nie uśmiercą, a do przesiadywania późno w nocy jestem przyzwyczajony — oświadczył Toodles z niewinną lekkomyślnością. Ale poczuł natychmiast skruchę i jął przybierać minę posępną, a dyplomatyczną, jakby naciągał rękawiczki.",
+  "start": 1281.42
+ },
+ {
+  "i": 121,
+  "pl": "— Jego potężny intelekt da sobie radę choćby z największym nawałem pracy. Ja się boję tylko o jego nerwy. Banda reakcjonistów z tym gburowatym bydlęciem Cheesemannem na czele wciąż go znieważa.",
+  "start": 1297.61
+ },
+ {
+  "i": 122,
+  "pl": "— A jeśli będzie chciał rozpętać rewolucję? — mruknął nadinspektor.",
+  "start": 1309.92
+ },
+ {
+  "i": 123,
+  "pl": "— Nadszedł już czas; on jest jedynym człowiekiem dość wielkim na to, aby się podjąć tego dzieła — zapewnił wywrotowy Toodles, zapalając się pod spokojnym, rozważnym wzrokiem nadinspektora. Gdzieś na korytarzu daleki dzwonek zabrzmiał nagląco i młody człowiek nadstawił ucha ze zbożną czujnością.",
+  "start": 1316.83
+ },
+ {
+  "i": 124,
+  "pl": "— Już jest gotów do wyjścia — wyszeptał gorączkowo, porwał kapelusz i znikł z pokoju.",
+  "start": 1336.39
+ },
+ {
+  "i": 125,
+  "pl": "Nadinspektor wyszedł innymi drzwiami krokiem mniej elastycznym. Przeciął znów szeroką aleję, potem szedł śpiesznie wąską uliczką i powrócił do gmachu, gdzie mieścił się jego wydział. Nie zwalniając kroku, znalazł się u drzwi swego gabinetu. Nim zdążył je zamknąć, jego oczy pobiegły do biurka.",
+  "start": 1342.95
+ },
+ {
+  "i": 126,
+  "pl": "Stał chwilę bez ruchu, potem przeszedł kilka kroków, rozejrzał się po podłodze, siadł na fotelu, zadzwonił i czekał.",
+  "start": 1361.37
+ },
+ {
+  "i": 127,
+  "pl": "— Czy komisarz Heat jut poszedł?",
+  "start": 1369.25
+ },
+ {
+  "i": 128,
+  "pl": "— Tak jest, panie nadinspektorze. Pół godziny temu.",
+  "start": 1372.44
+ },
+ {
+  "i": 129,
+  "pl": "Nadinspektor skinął głową.",
+  "start": 1376.42
+ },
+ {
+  "i": 130,
+  "pl": "— Dobrze.",
+  "start": 1378.85
+ },
+ {
+  "i": 131,
+  "pl": "Siedząc nieruchomo, w kapeluszu zsuniętym z czoła, pomyślał, że to wygląda zupełnie na bezczelność Heata, żeby jakby nigdy nic zabrać z sobą jedyny dowód rzeczowy. Ale pomyślał to bez niechęci. Dawni, cenieni słudzy pozwalają sobie na takie rzeczy.",
+  "start": 1380.12
+ },
+ {
+  "i": 132,
+  "pl": "Lepiej było istotnie, aby się nie poniewierał ów kawałek palta z przyszytym adresem.",
+  "start": 1398.32
+ },
+ {
+  "i": 133,
+  "pl": "Porzuciwszy myśli o tym dowodzie nieufności ze strony komisarza Heata, napisał i wysłał parę słów do żony, polecając jej, aby usprawiedliwiła jego nieobecność przed opiekunką Michaelisa, u której mieli być na obiedzie tego wieczoru.",
+  "start": 1403.75
+ },
+ {
+  "i": 134,
+  "pl": "W zasłoniętej kotarą alkowie zawierającej umywalnię, rząd drewnianych kołków i półkę, nadinspektor przebrał się w marynarkę i włożył płaski kapelusz, który podkreślił w sposób uderzający długość jego poważnej, brunatnej twarzy.",
+  "start": 1418.15
+ },
+ {
+  "i": 135,
+  "pl": "W pełnym świetle pokoju wyglądał jak chłodny, rozważny Don Kichot o ruchach bardzo powolnych i o zapadłych oczach płonących posępnym zapałem. Szybki i dyskretny jak cień, opuścił przybytek swej codziennej pracy. Wyszedł na ulicę podobną do zamulonego akwarium, z którego wyciekła woda.",
+  "start": 1433.09
+ },
+ {
+  "i": 136,
+  "pl": "Ogarnęła go mroczna, ponura wilgoć. Ściany domów były mokre, błoto na jezdni błyszczało, rzekłbyś, fosforycznie, a gdy się wynurzył na Strand z wąskiej uliczki obok stacji Charing Cross, atmosfera dzielnicy wchłonęła go zupełnie.",
+  "start": 1451.63
+ },
+ {
+  "i": 137,
+  "pl": "Można było pomyśleć, że nadinspektor jest jednym z owych podejrzanych cudzoziemców, których spotyka się wieczorem w tej okolicy, snujących się po ciemnych zaułkach.",
+  "start": 1466.61
+ },
+ {
+  "i": 138,
+  "pl": "Nadinspektor przystanął tuż przy brzegu chodnika i czekał. Jego wprawne oko wyśledziło na jezdni, wśród niewyraźnej gry cieni i świateł, że zbliża się, pełznąc, dorożka.",
+  "start": 1477.17
+ },
+ {
+  "i": 139,
+  "pl": "Nie kiwnął na nią, ale gdy niski stopień sunący wzdłuż chodnika znalazł się u jego nóg, wskoczył zręcznie do środka przed wielkim, toczącym się kołem i przez zasuwane okienko przemówił do dorożkarza, który tkwił z tyłu na wysokim koźle i patrzył przed siebie obojętnie, nie spostrzegłszy, że ktoś wsiadł do jego wehikułu.",
+  "start": 1489.07
+ },
+ {
+  "i": 140,
+  "pl": "Jazda trwała dość krótko. Na znak dany przez nadinspektora skończyła się raptem w nieokreślonym miejscu, między dwiema latarniami, przed wielkim składem bławatnym o długim rzędzie okien wystawowych już przesłoniętych na noc falistą blachą żelazną.",
+  "start": 1509.99
+ },
+ {
+  "i": 141,
+  "pl": "Pasażer podał monetę przez zasuwane okienko i wymknął się, zostawiając dorożkarza pod dziwacznym wrażeniem, upiornym i niesamowitym.",
+  "start": 1526.12
+ },
+ {
+  "i": 142,
+  "pl": "Ale wyczuwalna dotykiem objętość monety była zadowalająca, a że dorożkarz nie posiadał wykształcenia literackiego, nie uległ więc obawie, aby pieniądz stał się zeschłym liściem w jego kieszeni⁶⁴. Wywyższony nad świat pasażerów przez warunki swego zawodu, zapatrywał się na ich czyny bez wielkiego zainteresowania.",
+  "start": 1535.5
+ },
+ {
+  "i": 143,
+  "pl": "Zawrócił ostro z miejsca, wyrażając tym swój światopogląd.",
+  "start": 1555.04
+ },
+ {
+  "i": 144,
+  "pl": "Tymczasem nadinspektor zamawiał już u kelnera potrawy we włoskiej restauracyjce za rogiem — długiej, wąskiej, nęcącej perspektywą luster i białych obrusów typowej pułapce na głodnych.",
+  "start": 1559.37
+ },
+ {
+  "i": 145,
+  "pl": "Restauracyjka była pozbawiona powietrza, lecz posiadała swoistą atmosferę podejrzanej kuchni, służącej do nabierania nędznej ludzkości przy zaspokajaniu najbardziej natarczywej z jej marnych potrzeb.",
+  "start": 1571.08
+ },
+ {
+  "i": 146,
+  "pl": "Nadinspektor, rozmyślający o swoim przedsięwzięciu w tej niemoralnej atmosferze, zdawał się zatracać coraz bardziej swą tożsamość. Miał poczucie osamotnienia i niebezpiecznej swobody. Było to raczej przyjemne.",
+  "start": 1582.22
+ },
+ {
+  "i": 147,
+  "pl": "Gdy zapłaciwszy za krótki posiłek, wstał i czekał na resztę, ujrzał siebie w lustrzanej tafli; zdziwił się, spostrzegłszy, że wygląda zupełnie na cudzoziemca. Wpatrzył się w swój obraz melancholijnym, badawczym wzrokiem i pod wpływem nagłego natchnienia podniósł kołnierz marynarki.",
+  "start": 1595.64
+ },
+ {
+  "i": 148,
+  "pl": "Uznał ten pomysł za dobry i uzupełnił go, podkręcając końce czarnych wąsów. Był zadowolony z subtelnej zmiany, którą wprowadził do swego wyglądu przez te drobne poprawki. „Tak jest doskonale” — pomyślał. „A przy tym będę trochę mokry, trochę zbryzgany błotem”.",
+  "start": 1614.56
+ },
+ {
+  "i": 149,
+  "pl": "Spostrzegł, że kelner stoi u jego boku i że na stole leży przed nim mała kupka srebrnych pieniędzy. Kelner czuwał nad nią jednym okiem, a drugim śledził długie plecy wysokiej, niezbyt młodej kobiety, która szła ku odległemu stolikowi i, rzekłbyś, nie spostrzegała nikogo z wyżyn swej niedostępności.",
+  "start": 1635.03
+ },
+ {
+  "i": 150,
+  "pl": "Była widać codziennym gościem.",
+  "start": 1653.57
+ },
+ {
+  "i": 151,
+  "pl": "Wychodząc, nadinspektor stwierdził w duchu, że klienci tej restauracji zatracili w obcowaniu z podejrzaną kuchnią wszelkie cechy narodowe i osobiste. Była to rzecz dziwna, ponieważ włoskie restauracje są instytucją tak wybitnie brytyjską.",
+  "start": 1656.71
+ },
+ {
+  "i": 152,
+  "pl": "Tymczasem owi ludzie byli równie wyzbyci z cech narodowych jak stawiane przed nimi potrawy o wyglądzie przyzwoitym, choć nieokreślonym. Nie posiadali także żadnych cech charakterystycznych, które by świadczyły o ich zawodzie, środowisku lub rasie.",
+  "start": 1671.93
+ },
+ {
+  "i": 153,
+  "pl": "Mogło się zdawać, że zostali stworzeni dla włoskiej restauracji, a kto wie, może włoska restauracja została stworzona dla nich. Ta druga hipoteza była jednak nie do przyjęcia, ponieważ tych zagadkowych ludzi nie można było spotkać nigdzie poza jadłodajniami owego typu. Tylko tam się ich widywało.",
+  "start": 1687.29
+ },
+ {
+  "i": 154,
+  "pl": "Nikt nie mógłby wytworzyć sobie dokładnego wyobrażenia, jakim zajęciom oddawali się we dnie i gdzie kładli się spać w nocy. Nadinspektor poczuł się także człowiekiem nigdzie nie przynależnym.",
+  "start": 1706.57
+ },
+ {
+  "i": 155,
+  "pl": "Niepodobna było odgadnąć, jaki jest jego zawód, a gdy pomyślał o udaniu się na spoczynek, ogarnęły go wątpliwości. Nie żywił ich wprawdzie co do miejsca tego spoczynku, ale za to co do czasu, kiedy będzie mógł się położyć.",
+  "start": 1717.95
+ },
+ {
+  "i": 156,
+  "pl": "Przyjemne uczucie niezależności owładnęło nim, gdy posłyszał, że drzwi zamknęły się z głuchym trzaskiem za jego plecami.",
+  "start": 1731.83
+ },
+ {
+  "i": 157,
+  "pl": "Znalazł się natychmiast wśród bezmiaru tłustego błota, mokrych murów, rozsianych tu i ówdzie latarni, a cały ten bezmiar ogarniała, gnębiła, przenikała, dławiła i dusiła czerń wilgotnej nocy londyńskiej, składającej się sadzy i deszczu.",
+  "start": 1738.63
+ },
+ {
+  "i": 158,
+  "pl": "Brett Street leżała niezbyt daleko. Początek tej wąskiej ulicy wypływał z trójkątnej przestrzeni otoczonej przez ciemne i tajemnicze domy, świątynie drobnego handlu opuszczone nocą przez kupców. Tylko stragan z owocami na rogu ulicy gorzał blaskiem i jaskrawością barw. Poza tym wszystko było czarne;",
+  "start": 1755.05
+ },
+ {
+  "i": 159,
+  "pl": "nielicznym przechodniom mijającym stragan wystarczał jeden krok, aby zanurzyć się w ciemność tuż za rozjarzonymi stosami pomarańcz i cytryn. Odgłos kroków przepadał bez echa. Nigdy się ich już nie posłyszy.",
+  "start": 1776.79
+ },
+ {
+  "i": 160,
+  "pl": "Rozmiłowany w przygodach szef Wydziału Przestępstw Specjalnych śledził z odległości ciekawym okiem tych znikających ludzi. Było mu lekko na sercu, jakby się przyczaił w zasadzce, samotny wśród dżungli odległej o wiele tysięcy mil od urzędowych pulpitów i kałamarzy.",
+  "start": 1792.36
+ },
+ {
+  "i": 161,
+  "pl": "Ta wesołość i rozstrzelenie myśli wobec dość ważnego zadania świadczyły chyba, że nasz świat nie jest właściwie sprawą tak poważną, jak by się mogło zdawać. Albowiem nadinspektor z natury nie był skłonny do lekkomyślności.",
+  "start": 1810.24
+ },
+ {
+  "i": 162,
+  "pl": "Policjant obchodzący swój rewir zarysował się ciemną sylwetką na tle jaśniejących wspaniale pomarańcz i cytryn i bez pośpiechu zagłębił się w Brett Street. Nadinspektor, zupełnie jakby należał do klasy przestępczej, zwolnił kroku, by uczynić się niewidocznym w oczekiwaniu na jego powrót.",
+  "start": 1824.4
+ },
+ {
+  "i": 163,
+  "pl": "Ale zdawało się, że ów policjant przepadł na zawsze. Nie wrócił już; widać odszedł drugim końcem ulicy.",
+  "start": 1842.62
+ },
+ {
+  "i": 164,
+  "pl": "Nadinspektor, powziąwszy to przekonanie, wszedł z kolei na Brett Street i napotkał wielki wóz, stojący przed mętnie oświetlonym oknem gospody dla woźniców. Furman posilał się w gospodzie, a konie, ze łbami spuszczonymi do ziemi, żuły spokojnie paszę z worków.",
+  "start": 1852.01
+ },
+ {
+  "i": 165,
+  "pl": "Nieco dalej, po przeciwnej stronie ulicy, druga podejrzana plama mętnego światła padała ze sklepu pana Verloca, z wystawy pełnej wiszących dzienników, zarysów książek i niewyraźnych stosów tekturowych pudełek. Nadinspektor stał, przyglądając się wystawie poprzez jezdnię.",
+  "start": 1867.63
+ },
+ {
+  "i": 166,
+  "pl": "Nie miał wątpliwości, że to jest sklep, o który mu chodzi. Obok wystawy zapełnionej cieniami rzeczy nieokreślonych, przez uchylone drzwi padała na chodnik wąska, jasna smuga gazowego światła.",
+  "start": 1884.63
+ },
+ {
+  "i": 167,
+  "pl": "Za nadinspektorem wóz i konie, stopione w jedną masę, wydawały się czymś żywym — jakimś zagradzającym pół jezdni potworem o czworokątnym grzbiecie; dochodziły stamtąd nagłe uderzenia podków o bruk, gwałtowne pobrzęki i ciężkie sapanie.",
+  "start": 1896.82
+ },
+ {
+  "i": 168,
+  "pl": "U przeciwległego końca Brett Street, po drugiej stronie szerokiej jezdni, znajdował się wielki, licznie uczęszczany szynk, buchający hałaśliwą wesołością i złowieszczym blaskiem.",
+  "start": 1913.16
+ },
+ {
+  "i": 169,
+  "pl": "Ta przegroda jaskrawego światła przeciwstawiała się cieniom otaczającym skromny przybytek rodzinnego szczęścia pana Verloca i odpierając te cienie, czyniła mrok ulicy jeszcze bardziej posępnym, groźnym, złowrogim.",
+  "start": 1923.62
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

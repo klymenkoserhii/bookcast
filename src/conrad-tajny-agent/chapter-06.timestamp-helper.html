@@ -1,0 +1,1863 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to chapter-06.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-06.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tajny agent · Rozdział VI — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Tajny agent · Rozdział VI · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="chapter-06.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Dobroczynna opiekunka Michaelisa, apostoła nadziei humanitarnych, była jedną z najbardziej wpływowych i dystyngowanych znajomych nadinspektorowej; mówiła jej po imieniu: „Annie” i traktowała ją jak niezbyt mądrą i zupełnie niedoświadczoną panienkę.",
+  "start": 1.82
+ },
+ {
+  "i": 1,
+  "pl": "Ale zgodziła się nawiązać z jej mężem przyjacielskie stosunki, na co bynajmniej nie wszystkie znajome nadinspektorowej się zdobyły.",
+  "start": 19.22
+ },
+ {
+  "i": 2,
+  "pl": "Opiekunka Michaelisa, wydana za mąż w zamierzchłej przeszłości bardzo młodo i bardzo świetnie, patrzyła jakiś czas z bliska nie tylko na wielkie sprawy, ale i na wielkich ludzi. Pochodziła z wysokiej arystokracji.",
+  "start": 27.92
+ },
+ {
+  "i": 3,
+  "pl": "Choć stara ilością przeżytych lat, miała ten wyjątkowy temperament, który opiera się czasowi z szyderczym lekceważeniem, jakby czas był gminną konwencjonalnością uznawaną tylko przez ludzi niższej kategorii.",
+  "start": 40.9
+ },
+ {
+  "i": 4,
+  "pl": "Zgodnie ze swym charakterem, odrzuciła wiele innych konwencjonalnych form — z którymi łatwiej sobie poradzić niż z czasem, niestety! — bo te formy albo ją nudziły, albo przeszkadzały jej gardzić ludźmi lub obdarzać ich sympatią.",
+  "start": 52.9
+ },
+ {
+  "i": 5,
+  "pl": "Zachwyt był dla niej uczuciem zupełnie nieznanym (zarzucał jej to w skrytości ducha wysoko urodzony małżonek) — po pierwsze dlatego, że zatrąca mniej lub więcej pospolitością, a po drugie dlatego, że jest poniekąd przyznaniem się do niższości. Jej natura obu tych uczuć po prostu nie rozumiała.",
+  "start": 68.58
+ },
+ {
+  "i": 6,
+  "pl": "Otwarte, nieustraszone wypowiadanie własnego zdania łatwo jej przychodziło, ponieważ sądziła o wszystkim tylko z punktu widzenia swego społecznego stanowiska.",
+  "start": 87.18
+ },
+ {
+  "i": 7,
+  "pl": "Tak samo nie krępowała się nigdy w czynach;",
+  "start": 96.48
+ },
+ {
+  "i": 8,
+  "pl": "a że jej takt płynął z uczuć na wskroś ludzkich, że zachowała wiele fizycznych sił i ujawniała swą wyższość w sposób pogodny i serdeczny, była przedmiotem podziwu trzech pokoleń, a ostatnie pokolenie, jakie zapewne danym jej było oglądać, zawyrokowało, że jest kobietą niepospolitą.",
+  "start": 99.24
+ },
+ {
+  "i": 9,
+  "pl": "Inteligentna, pełna wyniosłej prostoty i w gruncie rzeczy ciekawa — ale nie tylko towarzyskich plotek, jak wiele kobiet — urządziła sobie na starość rozrywkę, przyciągając do swego salonu, który się cieszył wielką, prawie historyczną sławą — wszystko, co słusznie lub niesłusznie wznosiło się nad przeciętny ludzki poziom przez pozycję towarzyską, dowcip, śmiałość, powodzenie lub klęskę.",
+  "start": 117.6
+ },
+ {
+  "i": 10,
+  "pl": "Członkowie królewskich rodów, artyści, ludzie nauki, młodzi politycy oraz szarlatani najróżniejszego wieku i kondycji, co pozbawieni treści i wagi wyłaniają się na wierzch jak korki i pokazują najlepiej kierunek płytkich prądów — wszyscy byli przyjmowani gościnnie w tym domu;",
+  "start": 142.94
+ },
+ {
+  "i": 11,
+  "pl": "gospodyni słuchała ich, przenikała na wskroś, rozumiała, szacowała — ku własnemu zbudowaniu. Mówiła, że lubi śledzić, ku czemu świat idzie.",
+  "start": 159.88
+ },
+ {
+  "i": 12,
+  "pl": "A ponieważ miała do świata stosunek rzeczowy, jej sądy o ludziach i wydarzeniach, choć oparte na specjalnych przesądach, były rzadko zupełnie mylne i prawie nigdy uparte.",
+  "start": 168.96
+ },
+ {
+  "i": 13,
+  "pl": "Na całym świecie salon jej był chyba jedynym miejscem, gdzie nadinspektor policji mógł się spotkać ze zwolnionym czasowo więźniem, spotkać się na gruncie niezawodowym i nieoficjalnym. Nadinspektor nie pamiętał dokładnie, kto pewnego dnia przyprowadził tam Michaelisa.",
+  "start": 178.35
+ },
+ {
+  "i": 14,
+  "pl": "Miał wrażenie, że to musiał być pewien wysoko skoligacony członek parlamentu o nieprzeciętnych sympatiach, dostarczających stale tematu gazetom humorystycznym.",
+  "start": 194.89
+ },
+ {
+  "i": 15,
+  "pl": "Różni znakomici ludzie, nawet ci, którzy cieszyli się tylko chwilowym rozgłosem, wprowadzali się nawzajem swobodnie do tej świątyni, gdzie królowała niebanalna ciekawość starej kobiety.",
+  "start": 204.61
+ },
+ {
+  "i": 16,
+  "pl": "Niepodobna było przewidzieć, kogo się zastanie w poufnej pogawędce z gospodynią za niebieskim parawanem z wyblakłego jedwabiu, ujętego w złote ramy. Parawan ów oddzielał od wielkiego salonu przytulny kącik z kanapką i kilku fotelami;",
+  "start": 216.35
+ },
+ {
+  "i": 17,
+  "pl": "naokoło rozbrzmiewał gwar głosów i grupy ludzi stały lub siedziały w świetle sześciu wielkich okien.",
+  "start": 232.27
+ },
+ {
+  "i": 18,
+  "pl": "Michaelis wywołał nagły przewrót w uczuciach publiczności, tej samej, która przed laty oklaskiwała okrutny wyrok skazujący go na dożywotne więzienie za uczestnictwo w wariackim zamachu, mającym na celu porwanie kilku więźniów jadących policyjną karetką.",
+  "start": 239.03
+ },
+ {
+  "i": 19,
+  "pl": "Spiskowcy postanowili zastrzelić konie i obezwładnić eskortę. Na nieszczęście został też zastrzelony jeden z policjantów; zostawił żonę i troje małych dzieci.",
+  "start": 255.13
+ },
+ {
+  "i": 20,
+  "pl": "Całe królestwo, dla którego obrony, dobrobytu i chwały ludzie giną co dzień na posterunku, zawrzało jak długie i szerokie wściekłym oburzeniem i zapamiętałą, niepohamowaną litością dla ofiary. Trzej główni sprawcy zamachu zostali powieszeni.",
+  "start": 266.13
+ },
+ {
+  "i": 21,
+  "pl": "Smukły i młody Michaelis, ślusarz z zawodu, uczęszczający pilnie do szkół wieczornych, nie wiedział nawet, że kogoś zabito, bo rola jego i kilku innych sprzysiężonych polegała na wyłamaniu drzwi z tyłu więziennej karetki.",
+  "start": 282.06
+ },
+ {
+  "i": 22,
+  "pl": "W chwili gdy go ujęto, miał pęk wytrychów w jednej kieszeni, wielkie dłuto w drugiej i krótki lewar w ręku — zupełnie jak włamywacz. Ale żaden włamywacz nie zostałby skazany tak ciężko. Śmierć policjanta była dla Michaelisa ciosem, tak samo jak niepowodzenie spisku.",
+  "start": 296.48
+ },
+ {
+  "i": 23,
+  "pl": "Nie zataił ani jednego, ani drugiego z tych uczuć przed sądzącymi go rodakami, a tego rodzaju skrucha wydała się gorsząco niedoskonała publiczności przepełniającej salę sądu. Sędzia, ogłaszając wyrok, rozwodził się z przejęciem nad znieprawieniem i zatwardziałością młodego więźnia.",
+  "start": 315.1
+ },
+ {
+  "i": 24,
+  "pl": "Takim to sposobem skazujący go wyrok nabrał bezpodstawnego rozgłosu; uwolnienie zaś Michaelisa stało się sławne z przyczyn równie mało uzasadnionych.",
+  "start": 334.6
+ },
+ {
+  "i": 25,
+  "pl": "Rozgłosili o nim ludzie, którzy chcieli wyzyskać więzienną karę Michaelisa, uwydatniając jej stronę uczuciową — dla własnych celów lub też dla jakichś celów niezrozumiałych. Michaelis w naiwności serca i prostocie ducha nie przeciwstawił się temu.",
+  "start": 344.36
+ },
+ {
+  "i": 26,
+  "pl": "Uważał, że jego dzieje osobiste nie mają żadnego znaczenia. Był jak ci świątobliwi ludzie, których indywidualność zatraca się w rozpamiętywaniu wyznawanej przez nich wiary. Jego idee nie były w ścisłym znaczeniu tego słowa przekonaniami, ponieważ były niedostępne dla rozumowań.",
+  "start": 361.22
+ },
+ {
+  "i": 27,
+  "pl": "Pełne przeciwieństw i niejasności, składały się na niezłomną wiarę przesiąkniętą humanitaryzmem, wiarę, którą wyznawał raczej, niż głosił — z łagodnym uporem, z uśmiechem pełnym spokojnej pewności siebie;",
+  "start": 377.9
+ },
+ {
+  "i": 28,
+  "pl": "naiwne niebieskie oczy miał zawsze spuszczone, ponieważ widok ludzkich twarzy mącił mu natchnienie, które zawdzięczał samotności.",
+  "start": 391.7
+ },
+ {
+  "i": 29,
+  "pl": "Nadinspektor ujrzał go pierwszy raz w tej charakterystycznej pozie, wzruszającego groteskową, nieuleczalną otyłością, którą były więzień musiał dźwigać do końca życia jak niewolnik na galerze swą kulę. Michaelis wypełniał sobą uprzywilejowany fotel za parawanem.",
+  "start": 399.23
+ },
+ {
+  "i": 30,
+  "pl": "Siedział tam u wezgłowia kanapki zajętej przez panią domu; spokojny, rozprawiający łagodnym głosem, nieświadom siebie jak malutkie dziecko, miał także coś z dziecięcego wdzięku — pociągającego wdzięku ufności.",
+  "start": 415.77
+ },
+ {
+  "i": 31,
+  "pl": "Wierzył w przyszłość, której tajne drogi zostały mu objawione w czterech ścianach głośnego więzienia i nie miał powodu podejrzewać nikogo.",
+  "start": 430.4
+ },
+ {
+  "i": 32,
+  "pl": "Choć nie mógł udzielić zaciekawionej pani domu dokładnego pojęcia o tym, ku czemu świat dąży, potrafił bez wysiłku wywrzeć na niej silne wrażenie wiarą bynajmniej nie zgorzkniałą i głębią optymizmu.",
+  "start": 438.96
+ },
+ {
+  "i": 33,
+  "pl": "Pewna prostota myśli wspólna jest duszom pogodnym, choćby się znajdowały na przeciwległych krańcach towarzyskiej drabiny. Wielka pani była na swój sposób pełna prostoty.",
+  "start": 451.76
+ },
+ {
+  "i": 34,
+  "pl": "Poglądy i wierzenia Michaelisa nie zawierały nic, co by ją mogło zgorszyć lub przestraszyć, ponieważ osądzała je ze swej społecznej wyżyny. Jej sympatie skłaniały się szczerze ku ludziom w jego rodzaju. Nie była wyzyskującym kapitalistą; znajdowała się niejako ponad grą czynników ekonomicznych.",
+  "start": 461.92
+ },
+ {
+  "i": 35,
+  "pl": "I umiała przejąć się głęboką litością dla jaskrawych przejawów zwykłej ludzkiej nędzy, właśnie dlatego, że były jej tak bardzo obce i że musiała przeobrazić je sobie w myśli na cierpienia duchowe, aby pojąć ich okrucieństwo.",
+  "start": 479.8
+ },
+ {
+  "i": 36,
+  "pl": "Nadinspektor pamiętał dokładnie rozmowę prowadzoną przez tych dwoje. Słuchał w milczeniu. Było to poniekąd równie ciekawe, nawet wzruszające w swej beznadziejnej jałowości, jak próby duchowego porozumienia między mieszkańcami odległych planet.",
+  "start": 494.87
+ },
+ {
+  "i": 37,
+  "pl": "Lecz Michaelis — groteskowe wcielenie uczuć humanitarnych — przemawiał do wyobraźni.",
+  "start": 509.15
+ },
+ {
+  "i": 38,
+  "pl": "W końcu podniósł się, ujął wyciągniętą ku niemu rękę wielkiej pani, uścisnął ją i przez chwilę zatrzymał w ogromnej, pulchnej dłoni z serdecznością pełną swobody, po czym odwrócił się od poufnego zakątka, ukazując potężne kwadratowe plecy, które wyglądały jak rozdęte pod kusą kurtką z miękkiej wełny.",
+  "start": 515.19
+ },
+ {
+  "i": 39,
+  "pl": "Rozglądał się pogodnie, życzliwie i sunął ku odległym drzwiom między grupami gości, kiwając się z boku na bok. Szmer rozmów cichł naokoło niego. Uśmiechnął się dobrodusznie do wysokiej, pięknej panny, gdy oczy ich się spotkały, i wyszedł z salonu, nieświadom ścigających go spojrzeń.",
+  "start": 534.75
+ },
+ {
+  "i": 40,
+  "pl": "Pierwszy występ Michaelisa w świecie bardzo się udał; były więzień wzbudził szacunek niezamącony ani jednym szyderczym szeptem. Przerwane rozmowy potoczyły się we właściwym tonie, lekkim albo poważnym.",
+  "start": 553.09
+ },
+ {
+  "i": 41,
+  "pl": "Tylko zgrabny, długonogi mężczyzna lat czterdziestu, o wyglądzie pełnym energii, rozmawiając blisko okna z dwiema paniami, zauważył głośno z niespodzianą głębią uczucia:",
+  "start": 566.31
+ },
+ {
+  "i": 42,
+  "pl": "— On waży przeszło dwieście pięćdziesiąt funtów⁵⁰, a ma najwyżej pięć stóp i sześć cali⁵¹. Biedak! To straszne… straszne.",
+  "start": 577.83
+ },
+ {
+  "i": 43,
+  "pl": "Pani domu, patrząc z roztargnieniem na nadinspektora, który został z nią sam na sam za parawanem, zdawała się porządkować swoje wrażenia; na jej pięknej nieruchomej twarzy malowała się zaduma.",
+  "start": 587.93
+ },
+ {
+  "i": 44,
+  "pl": "Tymczasem podeszli z lekka uśmiechnięci panowie o siwych wąsach i okrągłych czerstwych obliczach, gromadząc się wokół parawanu;",
+  "start": 600.01
+ },
+ {
+  "i": 45,
+  "pl": "zbliżyło się kilka innych osób — dwie dojrzałe kobiety z poważnymi twarzami pełnymi stanowczości i wdzięku, jakiś wygolony mężczyzna o zapadłych policzkach i wyglądzie staroświeckiego dandysa, bawiący się złotym monoklem zawieszonym na szerokiej czarnej wstążce.",
+  "start": 608.67
+ },
+ {
+  "i": 46,
+  "pl": "Przez chwilę panowało milczenie pełne szacunku choć nie pozbawione zastrzeżeń, wreszcie pani domu wykrzyknęła, bez oburzenia, tylko jakby wyrażając swój protest:",
+  "start": 624.57
+ },
+ {
+  "i": 47,
+  "pl": "— I ten człowiek jest uznany oficjalnie za rewolucjonistę! Co za absurd.",
+  "start": 635.09
+ },
+ {
+  "i": 48,
+  "pl": "Spojrzała bacznie na nadinspektora, który szepnął usprawiedliwiająco:",
+  "start": 640.24
+ },
+ {
+  "i": 49,
+  "pl": "— Może nie za groźnego rewolucjonistę.",
+  "start": 644.9
+ },
+ {
+  "i": 50,
+  "pl": "— Tego by jeszcze brakowało! To wyznawca idei, po prostu święty — oświadczyła stanowczo wielka pani. — A oni trzymali go pod kluczem przez dwadzieścia lat. Człowiek otrząsa się na taką głupotę. A teraz, kiedy jest wolny, wszyscy jego bliscy wyprowadzili się gdzieś albo poumierali. Rodzice mu umarli;",
+  "start": 649.2
+ },
+ {
+  "i": 51,
+  "pl": "dziewczyna, z którą miał się żenić, umarła podczas jego pobytu w więzieniu; utracił sprawność potrzebną do wykonywania swego rzemiosła. Opowiedział mi to wszystko z największą słodyczą i oświadczył, że za to miał dużo czasu do rozmyślań nad różnymi rzeczami. Ładna rekompensata!",
+  "start": 668.44
+ },
+ {
+  "i": 52,
+  "pl": "Jeśli tak wyglądają rewolucjoniści, niektórzy z nas powinni zbliżać się do nich na kolanach — ciągnęła trochę żartobliwie, a tymczasem banalne towarzyskie uśmiechy zastygły na twarzach zwróconych ku niej z konwencjonalnym szacunkiem. — Oczywiście nieborak nie będzie w stanie na siebie zarobić.",
+  "start": 686.12
+ },
+ {
+  "i": 53,
+  "pl": "Ktoś musi trochę się nim zająć.",
+  "start": 704.06
+ },
+ {
+  "i": 54,
+  "pl": "— Trzeba by mu poradzić, żeby przeprowadził jakąś kurację — rozległ się w pewnej odległości żołnierski, poważny głos mężczyzny o energicznym wyglądzie. Ów mężczyzna wyglądał kwitnąco na swoje lata i nawet materiał jego żakietu robił wrażenie sprężystości i zdrowia, jakby był żywą tkanką.",
+  "start": 708.02
+ },
+ {
+  "i": 55,
+  "pl": "— Właściwie to on jest kaleką — dodał ze szczerym przejęciem.",
+  "start": 728.28
+ },
+ {
+  "i": 56,
+  "pl": "Inne głosy, widać rade z nadarzającej się sposobności, szeptały śpiesznie wyrazy współczucia:",
+  "start": 733.54
+ },
+ {
+  "i": 57,
+  "pl": "— Przerażające.",
+  "start": 740.74
+ },
+ {
+  "i": 58,
+  "pl": "— Potworne.",
+  "start": 743.21
+ },
+ {
+  "i": 59,
+  "pl": "— Cóż to za przykry widok!",
+  "start": 744.58
+ },
+ {
+  "i": 60,
+  "pl": "Chudy pan z monoklem na szerokiej wstążce orzekł z przesadną wytwornością: „Istna groteska”. Goście stojący obok niego uśmiechnęli się do siebie z trafności tej uwagi.",
+  "start": 747.74
+ },
+ {
+  "i": 61,
+  "pl": "Nadinspektor nie wyraził swego zdania ani wówczas, ani też później, ponieważ jego stanowisko nie pozwalało mu ujawnić niezależnej opinii o więźniu wypuszczonym czasowo na wolność. Lecz w gruncie rzeczy zgadzał się w zapatrywaniach z przyjaciółką i opiekunką swej żony;",
+  "start": 759.9
+ },
+ {
+  "i": 62,
+  "pl": "był pewien, że Michaelis jest humanitarnym uczuciowcem, trochę narwanym, lecz w gruncie rzeczy niezdolnym do skrzywdzenia muchy.",
+  "start": 777.4
+ },
+ {
+  "i": 63,
+  "pl": "Więc też gdy nazwisko Michaelisa wypłynęło nagle w związku z przykrą sprawą wybuchu, nadinspektor uprzytomnił sobie niebezpieczeństwo grożące apostołowi na urlopie i od razu przyszła mu na myśl zagorzała sympatia starej damy do Michaelisa.",
+  "start": 785.43
+ },
+ {
+  "i": 64,
+  "pl": "Jej despotyczna dobroć nie ścierpiałaby, aby go pozbawiono wolności. Opiekunka Michaelisa miała dlań przywiązanie głębokie, spokojne, ugruntowane.",
+  "start": 802.23
+ },
+ {
+  "i": 65,
+  "pl": "Nie tylko czuła, że jest nieszkodliwy, ale wszystkim to opowiadała i stopniowo — przez pomieszanie pojęć — własny pogląd na tę sprawę stał się dla niej niewzruszonym dowodem.",
+  "start": 812.83
+ },
+ {
+  "i": 66,
+  "pl": "Zdawało się po prostu, że ją urzekł potworny wygląd tego człowieka o niewinnych dziecięcych oczach i uśmiechu tłustego anioła. W końcu prawie uwierzyła w jego teorię przyszłych czasów, ponieważ idee Michaelisa nie raziły w niczym jej uprzedzeń.",
+  "start": 823.47
+ },
+ {
+  "i": 67,
+  "pl": "Nie podobał się jej nowy żywioł plutokratyczny⁵² w składzie społeczeństwa, a uprzemysłowienie jako metoda rozwoju ludzkości wydawało jej się dziwnie odrażające, ponieważ było mechaniczne i nieczułe.",
+  "start": 838.37
+ },
+ {
+  "i": 68,
+  "pl": "Humanitarne nadzieje łagodnego apostoła nie dążyły do zniweczenia istniejącego porządku rzeczy, tylko do jego ruiny ekonomicznej. Opiekunka Michaelisa naprawdę nie rozumiała, jakie zło moralne mogłoby stąd wyniknąć. Przepadłoby całe mnóstwo parweniuszów, których nie lubiła i którym nie ufała;",
+  "start": 851.17
+ },
+ {
+  "i": 69,
+  "pl": "a nie ufała im bynajmniej nie dlatego, że coś osiągnęli (bo nie uznawała ich osiągnięć), ale dlatego, że grzeszyli głęboką nieznajomością świata, co było zasadniczą przyczyną niedojrzałości ich zapatrywań i jałowości serc.",
+  "start": 869.59
+ },
+ {
+  "i": 70,
+  "pl": "Wskutek unicestwienia wszystkich kapitałów przepadliby parweniusze, lecz wszechświatowa ruina (koniecznie wszechświatowa, jak to zostało objawione Michaelisowi) nie naruszyłaby wartości społecznych. Zniknięcie ostatniej sztuki pieniądza nie mogło dotknąć ludzi na wysokich stanowiskach;",
+  "start": 884.45
+ },
+ {
+  "i": 71,
+  "pl": "opiekunka Michaelisa nie rozumiała, w czym mogłoby zmienić na przykład jej położenie. Wyłuszczyła nadinspektorowi te swoje odkrycia z nieulękłą pogodą starej kobiety, która zdołała uniknąć zarazy obojętności.",
+  "start": 902.97
+ },
+ {
+  "i": 72,
+  "pl": "Nadinspektor postanowił, że będzie słuchał tego rodzaju wynurzeń w milczeniu, a ze względów taktycznych i z wrodzonego popędu starał się, aby to milczenie nie było irytujące.",
+  "start": 915.65
+ },
+ {
+  "i": 73,
+  "pl": "Miał serdeczny sentyment dla starej adeptki Michaelisa, uczucie skomplikowane, trochę zależne od uznania, jakim się cieszyła, i od jej cech indywidualnych, ale wypływające przede wszystkim z wdzięczności za pogłaskaną miłość własną. Czuł, że jest naprawdę lubiany w tym domu.",
+  "start": 925.87
+ },
+ {
+  "i": 74,
+  "pl": "Gospodyni była wcieloną dobrocią. I posiadała także mądrość praktyczną właściwą kobietom doświadczonym. Szlachetnie uznała w całej rozciągłości prawa towarzyskie nadinspektora jako męża Annie, przez co jego pożycie małżeńskie stało się znacznie łatwiejsze.",
+  "start": 943.35
+ },
+ {
+  "i": 75,
+  "pl": "Miała nieoceniony wpływ na Annie, kobietę pożeraną przez małostkowy egoizm, małostkową zazdrość, małostkową zawiść. Niestety i dobroć, i mądrość adeptki Michaelisa były nieobliczalne, na wskroś kobiece i nieraz trudno było z nią sobie radzić. Pozostała w pełni kobietą przez całe swoje życie;",
+  "start": 958.79
+ },
+ {
+  "i": 76,
+  "pl": "nie zrobiło się z niej — jak to bywa — coś w rodzaju starego mężczyzny w spódnicy, kapryśnego i obrzydliwego.",
+  "start": 978.89
+ },
+ {
+  "i": 77,
+  "pl": "Nadinspektor myślał o niej zawsze jak o kobiecie — o tym najwyższym typie kobiecości, z którego się wywodzą tkliwe, naiwne, zażarte opiekunki wszelkiego rodzaju mężczyzn przemawiających pod wpływem uczuć szczerych lub udanych, strażniczki kaznodziejów, wizjonerów, proroków lub reformatorów.",
+  "start": 984.99
+ },
+ {
+  "i": 78,
+  "pl": "Nadinspektor wysoko cenił wybitną i zacną przyjaciółkę swej żony, a zarazem i swoją, więc też zaniepokoił się losem skazańca Michaelisa.",
+  "start": 1003.91
+ },
+ {
+  "i": 79,
+  "pl": "Gdyby go aresztowano na podstawie podejrzeń, że brał choćby najmniejszy udział w tym zamachu, nie dałoby się chyba uniknąć uwięzienia go i musiałby przynajmniej odsiedzieć dawną karę. A to by go zabiło; nigdy by już z więzienia nie wyszedł.",
+  "start": 1012.95
+ },
+ {
+  "i": 80,
+  "pl": "Tu nadinspektor uczynił w duchu uwagę bardzo nieodpowiednią ze względu na jego urzędowe stanowisko, a zarazem nieprzynoszącą zaszczytu jego uczuciom:",
+  "start": 1027.59
+ },
+ {
+  "i": 81,
+  "pl": "— Jeśli przymkną znów Michaelisa, ona nigdy mi tego nie daruje.",
+  "start": 1037.37
+ },
+ {
+  "i": 82,
+  "pl": "Tej szczerej myśli sformułowanej po cichu musiał towarzyszyć pewien szyderczy samokrytycyzm. Człowiek, zajmujący się tym, czego nie lubi, traci wiele zbawczych złudzeń co do własnej osoby.",
+  "start": 1044.25
+ },
+ {
+  "i": 83,
+  "pl": "Kiedy się ma niechęć do swej pracy, kiedy się nie widzi w niej żadnego uroku, jest się skłonnym przenieść te uczucia na siebie samego.",
+  "start": 1055.29
+ },
+ {
+  "i": 84,
+  "pl": "Tylko wtedy można zakosztować pociechy całkowitych złudzeń w stosunku do własnej osoby, gdy przeznaczona nam czynność harmonizuje szczęśliwym trafem ze skłonnościami właściwymi naszemu charakterowi.",
+  "start": 1063.31
+ },
+ {
+  "i": 85,
+  "pl": "Nadinspektor nie lubił swojej pracy w kraju. Jego poprzednią działalność policyjną w pewnym odległym punkcie kuli ziemskiej uprzyjemniało podobieństwo do wojny partyzanckiej lub przynajmniej do sportu na wolnym powietrzu, sportu pełnego ryzyka i podniecenia.",
+  "start": 1076.86
+ },
+ {
+  "i": 86,
+  "pl": "Zamiłowanie do przygód łączyło się u nadinspektora z wybitnymi zdolnościami natury głównie administracyjnej.",
+  "start": 1093.5
+ },
+ {
+  "i": 87,
+  "pl": "Przykuty do biurka wśród czterech milionów ludzi, uważał się za ofiarę ironii losu — tego samego losu, który doprowadził go do małżeństwa z kobietą wyjątkowo wrażliwą na klimat podzwrotnikowy, a przy tym wybredną i pod innymi względami, co świadczyło o wykwincie jej natury i upodobań.",
+  "start": 1099.94
+ },
+ {
+  "i": 88,
+  "pl": "Choć nadinspektor odniósł się złośliwie do swego niepokoju, nie mógł odegnać tamtej gorszącej myśli. Miał instynkt samozachowawczy silnie rozwinięty. Powtórzył w duchu z bluźnierczym naciskiem, wyrażając się jeszcze dobitniej:",
+  "start": 1118.94
+ },
+ {
+  "i": 89,
+  "pl": "— A niech to jasna cholera! Jeśli ten przeklęty Heat postawi na swoim, Michaelisa tłuszcz zaleje w więzieniu i ona nigdy mi tego nie przebaczy.",
+  "start": 1134.43
+ },
+ {
+  "i": 90,
+  "pl": "Czarna, szczupła postać nadinspektora trwała bez ruchu; z tyłu głowy, pod srebrzystym połyskiem krótko strzyżonych włosów, odcinała się biała pręga kołnierza. Cisza przeciągnęła się tak długo, że komisarz Heat ośmielił się chrząknąć. Wywarło to pewien skutek.",
+  "start": 1143.22
+ },
+ {
+  "i": 91,
+  "pl": "Nieruchomy zwierzchnik, zwrócony wciąż ku oknu, zapytał inteligentnego i gorliwego urzędnika:",
+  "start": 1160.38
+ },
+ {
+  "i": 92,
+  "pl": "— Pan myśli, że Michaelis ma jakiś związek z tą sprawą?",
+  "start": 1167.1
+ },
+ {
+  "i": 93,
+  "pl": "Komisarz Heat był bardzo pewien siebie, lecz ostrożny.",
+  "start": 1171.74
+ },
+ {
+  "i": 94,
+  "pl": "— Hm, panie nadinspektorze — rzekł — mamy chyba na czym się oprzeć. Bądź co bądź człowiek tego rodzaju nie powinien być na wolności.",
+  "start": 1176.01
+ },
+ {
+  "i": 95,
+  "pl": "— Trzeba mieć jakiś niezaprzeczony dowód jego winy — rozległa się szeptem uwaga.",
+  "start": 1188.43
+ },
+ {
+  "i": 96,
+  "pl": "Komisarz Heat podniósł brwi, patrząc na wąskie, czarne plecy odwrócone uporczywie od jego inteligencji i gorliwości.",
+  "start": 1194.09
+ },
+ {
+  "i": 97,
+  "pl": "— Wyszukanie oczywistych dowodów przeciw niemu nie będzie wcale trudne — rzekł z cnotliwym zadowoleniem.",
+  "start": 1202.35
+ },
+ {
+  "i": 98,
+  "pl": "— Może mi pan w tym względzie zaufać, panie nadinspektorze — dodał zupełnie niepotrzebnie z pełni serca, albowiem uważał za okoliczność bardzo korzystną, że miał w ręku tego człowieka i że będzie mógł go rzucić na pastwę publiczności, w razie gdyby jej się spodobało podnieść ryk oburzenia.",
+  "start": 1209.05
+ },
+ {
+  "i": 99,
+  "pl": "Ale niepodobna było przewidzieć, czy publiczność będzie ryczała, czy też nie. W danym wypadku zależało to oczywiście od dzienników.",
+  "start": 1226.75
+ },
+ {
+  "i": 100,
+  "pl": "Tak czy owak komisarz Heat, zawodowy dostawca materiału do więzień, człowiek o instynktach prawnych, uważał, że według wszelkich zasad logiki więzienie powinno przypaść w udziale każdemu jawnemu wrogowi prawa. Siła tego przekonania przyprawiła go o nietakt.",
+  "start": 1235.99
+ },
+ {
+  "i": 101,
+  "pl": "Pozwolił sobie na krótki, zarozumiały śmiech i powtórzył:",
+  "start": 1251.91
+ },
+ {
+  "i": 102,
+  "pl": "— Panie nadinspektorze, proszę mi pod tym względem zaufać.",
+  "start": 1256.3
+ },
+ {
+  "i": 103,
+  "pl": "Tego już było za wiele dla nadinspektora, który przez półtora roku z górą ukrywał pod wymuszonym spokojem irytację na metody panujące w biurze i na podwładnych.",
+  "start": 1261.54
+ },
+ {
+  "i": 104,
+  "pl": "Czuł się niby czworokątny hak wbity do okrągłej dziury i uważał dzień w dzień za obelgę tę z dawien dawna ustaloną gładką okrągłość, do której człowiek o mniej ostrych i kanciastych kształtach byłby się przystosował z rozkoszą, wzruszywszy parę razy ramionami.",
+  "start": 1271.12
+ },
+ {
+  "i": 105,
+  "pl": "Najbardziej mierziło go właśnie to, że musiał brać tyle rzeczy na wiarę. Usłyszawszy śmiech komisarza Heata, odwrócił się szybko na pięcie, jakby go prąd elektryczny odepchnął od okna.",
+  "start": 1287.88
+ },
+ {
+  "i": 106,
+  "pl": "Przychwycił na twarzy podwładnego nie tylko ukryte pod wąsami, zrozumiałe w tej chwili zadowolenie z siebie, lecz i resztki badawczej czujności w okrągłych oczach.",
+  "start": 1299.42
+ },
+ {
+  "i": 107,
+  "pl": "Te oczy na pewno tkwiły przed chwilą w plecach nadinspektora, a teraz spotkały się z jego wzrokiem, zanim ich wytężona uwaga zdążyła ustąpić wyrazowi zwykłego zadziwienia.",
+  "start": 1309.12
+ },
+ {
+  "i": 108,
+  "pl": "Nadinspektor miał istotnie pewne kwalifikacje odpowiadające swemu stanowisku. Nagle ocknęła się w nim podejrzliwość. Bezstronność każe przyznać, że łatwo było obudzić jego nieufność do metod policji, jeśli nie chodziło o oddział na wpół wojskowy i przez niego zorganizowany.",
+  "start": 1320.74
+ },
+ {
+  "i": 109,
+  "pl": "Podejrzliwość drzemała w nim czasem po prostu ze zmęczenia, ale zawsze miała jedno oko otwarte. Nadinspektor oceniał dość średnio gorliwość i zdolności Heata, a to wykluczało wszelkie doń zaufanie.",
+  "start": 1338.82
+ },
+ {
+  "i": 110,
+  "pl": "„On coś knuje” — wykrzyknął w duchu i z miejsca się rozgniewał. Podszedłszy do biurka gwałtownymi krokami, rzucił się na fotel.",
+  "start": 1353.01
+ },
+ {
+  "i": 111,
+  "pl": "„Grzęznę tu w tym śmietnisku papierów — rozmyślał z bezpodstawną złością — ludziom się zdaje, że trzymam w ręku wszystkie nici, tymczasem trzymam tylko to, co mi tamci wetkną do ręki i nic więcej. A drugie końce nici mogą umieścić, gdzie im się żywnie podoba”.",
+  "start": 1363.07
+ },
+ {
+  "i": 112,
+  "pl": "Podniósł głowę i zwrócił ku swemu urzędnikowi długą, chudą twarz o wydatnych rysach energicznego Don Kichota.",
+  "start": 1380.36
+ },
+ {
+  "i": 113,
+  "pl": "— No, co tam pan ma w zanadrzu?",
+  "start": 1388.21
+ },
+ {
+  "i": 114,
+  "pl": "Heat utkwił wzrok w zwierzchniku. Patrzył bez mrugnięcia okrągłymi, nieruchomymi oczyma, jak zwykł był patrzeć na różnych członków warstwy przestępczej, gdy mimo wielokrotnych ostrzeżeń składali zeznania w tonie urażonej niewinności albo fałszywej prostoty, albo niechętnej rezygnacji.",
+  "start": 1392.14
+ },
+ {
+  "i": 115,
+  "pl": "Ale za tym kamiennym, zawodowym wzrokiem kryło się zdziwienie, bo komisarz Heat, prawa ręka swego wydziału, nie był przyzwyczajony, aby zwracano się doń podobnym tonem, łączącym harmonijnie wzgardę z niecierpliwością.",
+  "start": 1409.96
+ },
+ {
+  "i": 116,
+  "pl": "Zaczął mówić, przewlekając wyrazy, jak człowiek zaskoczony przez coś nowego i niespodziewanego.",
+  "start": 1424.56
+ },
+ {
+  "i": 117,
+  "pl": "— Pan pyta, panie nadinspektorze, jakie mam dowody przeciw Michaelisowi?",
+  "start": 1430.52
+ },
+ {
+  "i": 118,
+  "pl": "Nadinspektor patrzył bacznie na tę okrągłą głowę, na końce wąsów zwisających poniżej silnie rozwiniętych szczęk, jak u normandzkiego korsarza, na okrągłą i bladą twarz, której stanowczość kryła się pod warstwą tłuszczu, na przebiegłe zmarszczki rozchodzące się od oczu ku skroniom — i z tej celowej kontemplacji cennego i zaufanego urzędnika wysnuł przekonanie tak nagłe, że poczuł się jakby natchniony.",
+  "start": 1436.08
+ },
+ {
+  "i": 119,
+  "pl": "— Mam powód do przypuszczeń — rzekł tonem opanowanym — że wchodząc do tego pokoju, nie myślał pan o Michaelisie; że nie myślał pan głównie o nim… a może nawet i wcale.",
+  "start": 1462.65
+ },
+ {
+  "i": 120,
+  "pl": "— Pan ma powód do przypuszczeń, panie nadinspektorze? — mruknął komisarz Heat z wszelkimi pozorami zdziwienia, które do pewnego stopnia było prawdziwe.",
+  "start": 1478.6
+ },
+ {
+  "i": 121,
+  "pl": "Odkrył, że w całej tej sprawie jest jakaś strona delikatna i kłopotliwa, narzucająca mu pewną dozę fałszu — tego rodzaju fałszu, który pod nazwą sprytu, ostrożności, rozwagi wyłania się bardzo często w jakimś punkcie ludzkich spraw.",
+  "start": 1488.58
+ },
+ {
+  "i": 122,
+  "pl": "Heat poczuł w owej chwili to samo, co by czuł linoskoczek, gdyby podczas jego popisu dyrektor music hallu wybiegł nagle ze swego dyrektorskiego ustronia i zaczął potrząsać liną.",
+  "start": 1503.02
+ },
+ {
+  "i": 123,
+  "pl": "Gniew, rozterka ducha wywołana postępkiem tak zdradliwym i strach przed skręceniem karku przyprawiłyby artystę o gęsią skórkę, jak to się mówi.",
+  "start": 1516.3
+ },
+ {
+  "i": 124,
+  "pl": "Poza tym linoskoczek czułby zgorszenie i troskę o dobre wykonanie swej sztuki, albowiem człowiek musi się utożsamiać z czymś bardziej uchwytnym niż jego własna osobowość, musi umieścić w czymś swoją dumę, czy to w swym stanowisku społecznym, czy w rodzaju pracy, którą jest obarczony, czy też po prostu w doskonałości swego próżniactwa, jeśli jest w tej szczęśliwej sytuacji, że może się nim rozkoszować.",
+  "start": 1526.22
+ },
+ {
+  "i": 125,
+  "pl": "— Tak — rzekł nadinspektor — mam do tego powód. Nie chcę powiedzieć, że pan nie myślał wcale o Michaelisie. Ale uderza mnie to, że pan sam nie bardzo wierzy, aby wymieniony przez pana fakt miał taką wielką wagę.",
+  "start": 1551.39
+ },
+ {
+  "i": 126,
+  "pl": "Jeśli ślady zbrodni istotnie tam prowadzą, dlaczego pan nie zaczął ich tropić od razu, czy to udając się osobiście do tej wsi, czy też wysyłając któregoś ze swych ludzi?",
+  "start": 1564.03
+ },
+ {
+  "i": 127,
+  "pl": "— Więc pan myśli, panie nadinspektorze, że tego zaniedbałem? — zapytał komisarz tonem, któremu usiłował nadać odcień wyłącznie refleksyjny.",
+  "start": 1575.54
+ },
+ {
+  "i": 128,
+  "pl": "Zmuszony niespodzianie do ześrodkowania wszystkich sił, aby zachować równowagę, uczepił się tego punktu i naraził się na zgromienie: nadinspektor ściągnął z lekka brwi i zauważył, że to pytanie jest bardzo nie na miejscu.",
+  "start": 1585.98
+ },
+ {
+  "i": 129,
+  "pl": "— Ale ponieważ już je pan wypowiedział — ciągnął chłodno — odpowiem panu, że nie miałem tego na myśli.",
+  "start": 1600.16
+ },
+ {
+  "i": 130,
+  "pl": "Urwał i zapadłymi oczami spojrzał komisarzowi prosto w twarz, co było pełnym równoważnikiem niedopowiedzianych słów: „i pan to wie doskonale”.",
+  "start": 1610.35
+ },
+ {
+  "i": 131,
+  "pl": "Naczelnik tak zwanego Wydziału Przestępstw Specjalnych, odcięty przez swe stanowisko od tropienia na własną rękę tajemnic kryjących się w sercach winowajców, skłonny był ćwiczyć na własnych podwładnych swój wybitny talent do wykrywania w ludziach podejrzanych cech charakteru.",
+  "start": 1621.1
+ },
+ {
+  "i": 132,
+  "pl": "Ten szczególny instynkt trudno by nazwać słabością. Był naturalny. Nadinspektor urodził się detektywem. Przy wyborze kariery ów instynkt wpłynął nań nieświadomie; jeśli zawiódł go kiedy w życiu, to chyba w jednej jedynej wyjątkowej okoliczności: przy wyborze żony — co było też naturalne.",
+  "start": 1637.56
+ },
+ {
+  "i": 133,
+  "pl": "A że ten instynkt nie mógł szukać sobie żeru po świecie, karmił się takim materiałem ludzkim, jaki mu był dostępny przy urzędowym odosobnieniu nadinspektora. Nigdy nie możemy przestać być sobą.",
+  "start": 1658.44
+ },
+ {
+  "i": 134,
+  "pl": "Nadinspektor, szef Wydziału Przestępstw Specjalnych, wsparł się łokciem o biurko, objął szczupłą ręką policzek i skrzyżowawszy chude nogi, pogrążył się ze wzrastającym zajęciem w sprawie zamachu.",
+  "start": 1671.42
+ },
+ {
+  "i": 135,
+  "pl": "Komisarz Heat, choć nie był przeciwnikiem godnym w pełni przenikliwości nadinspektora, był jej w każdym razie najgodniejszy w zasięgu swego zwierzchnika. Nieufność do ustalonych reputacji harmonizowała ściśle ze zdolnościami detektywistycznymi nadinspektora.",
+  "start": 1685.56
+ },
+ {
+  "i": 136,
+  "pl": "Przyszedł mu na myśl pewien stary tłuścioch, bogaty naczelnik plemienia w odległej kolonii, któremu tradycyjnie ufali kolejni gubernatorowie i o którym mieli wysokie mniemanie; był według nich niezłomnym przyjacielem białych, podporą zaprowadzonego przez nich ładu i prawnego porządku.",
+  "start": 1701.58
+ },
+ {
+  "i": 137,
+  "pl": "Otóż nadinspektor ustosunkował się do niego sceptycznie i odkrył, że ów naczelnik jest zasadniczo swym własnym przyjacielem i niczyim innym.",
+  "start": 1719.84
+ },
+ {
+  "i": 138,
+  "pl": "Nie był właściwie zdrajcą, ale jego wierność miała wiele niebezpiecznych zastrzeżeń, wypływających z należytych względów dla własnej korzyści, wygody i bezpieczeństwa. Jego naiwna dwulicowość, w znacznej mierze nieświadoma, była mimo to niebezpieczna.",
+  "start": 1729.72
+ },
+ {
+  "i": 139,
+  "pl": "Nadinspektor zużył na zdemaskowanie go dość dużo czasu. Ten naczelnik był również wysokim, tęgim mężczyzną i (oczywiście poza kolorem skóry) komisarz Heat go przypominał, choć podobieństwo nie leżało właściwie ani w oczach, ani w ustach. To było szczególne.",
+  "start": 1746.8
+ },
+ {
+  "i": 140,
+  "pl": "Ale czyż Alfred Wallace⁵³ nie opowiada (w swojej świetnej książce o Archipelagu Malajskim), że wśród mieszkańców wysp Aru odkrył w starym, nagim dzikusie koloru sadzy dziwaczne podobieństwo do swego bliskiego przyjaciela w kraju?",
+  "start": 1762.44
+ },
+ {
+  "i": 141,
+  "pl": "Nadinspektor poczuł, pierwszy raz od czasu, gdy objął swe stanowisko, że wykona jakąś istotną pracę w zamian za pobieraną pensję. I wrażenie to było przyjemne. „Odwrócę go podszewką na wierzch jak znoszoną rękawiczkę” — pomyślał, patrząc w zadumie na komisarza Heata.",
+  "start": 1778.22
+ },
+ {
+  "i": 142,
+  "pl": "— Nie, tego nie miałem na myśli — podjął znów. — Nie wątpię, że pan jest dobrym fachowcem, nie wątpię o tym bynajmniej, i właśnie dlatego… — Urwał i dodał odmiennym tonem: — Jaki bezsporny dowód może pan wysunąć przeciw Michaelisowi?",
+  "start": 1795.32
+ },
+ {
+  "i": 143,
+  "pl": "Oczywiście poza faktem, że tych dwóch podejrzanych ludzi — pan jest pewien, że dwóch — przyjechało ze stacji odległej o trzy mile⁵⁴ od wsi, w której Michaelis mieszka obecnie?",
+  "start": 1812.07
+ },
+ {
+  "i": 144,
+  "pl": "— Już i to jest dla nas poszlaką wystarczającą, panie nadinspektorze, jeśli chodzi o człowieka tego rodzaju — rzekł komisarz, odzyskując spokój. Lekki potakujący ruch głowy nadinspektora ukoił w znacznej mierze zdumienie i gniew głośnego urzędnika.",
+  "start": 1822.63
+ },
+ {
+  "i": 145,
+  "pl": "Albowiem komisarz Heat był człowiekiem łagodnym, wzorowym mężem, przywiązanym ojcem; a zaufanie swego wydziału i publiczności, jakim się cieszył, pozytywnie oddziaływało na jego pogodny charakter, usposabiając go życzliwie względem kolejnych nadinspektorów, którzy przewijali się przez ten oto pokój.",
+  "start": 1840.29
+ },
+ {
+  "i": 146,
+  "pl": "Za pamięci Heata było ich trzech. Pierwszy, porywczy, czerwonolicy człowiek o białych brwiach, żołnierskim obejściu i wybuchowym temperamencie, dawał się prowadzić na jedwabnej nitce. Opuścił wydział, przekroczywszy granicę wieku.",
+  "start": 1858.41
+ },
+ {
+  "i": 147,
+  "pl": "Drugi, skończony dżentelmen, znał najdokładniej i swoje, i cudze miejsce, a gdy zrezygnował, aby objąć wyższe stanowisko poza granicami kraju, dostał order — w gruncie rzeczy za zasługi komisarza Heata. Praca z nim była zaszczytem i przyjemnością.",
+  "start": 1873.25
+ },
+ {
+  "i": 148,
+  "pl": "Trzeci od samego początku nie cieszył się sympatią wydziału, a po upływie osiemnastu miesięcy ten stan rzeczy trwał w dalszym ciągu. Komisarz Heat, mimo dziwactw swego zwierzchnika, uważał go właściwie za nieszkodliwego.",
+  "start": 1889.35
+ },
+ {
+  "i": 149,
+  "pl": "Nadinspektor mówił, a Heat słuchał z wszelkimi pozorami szacunku (taki szacunek niczego nie dowodzi, ponieważ jest obowiązujący), w gruncie rzeczy zaś z dobrotliwą wyrozumiałością.",
+  "start": 1904.41
+ },
+ {
+  "i": 150,
+  "pl": "— Czy Michaelis zameldował, że opuszcza Londyn i udaje się na wieś?",
+  "start": 1916.63
+ },
+ {
+  "i": 151,
+  "pl": "— Tak, panie nadinspektorze. Zameldował.",
+  "start": 1922.88
+ },
+ {
+  "i": 152,
+  "pl": "— Co też on tam robi? — ciągnął nadinspektor, który był o tym najdokładniej powiadomiony.",
+  "start": 1925.98
+ },
+ {
+  "i": 153,
+  "pl": "Michaelis siedział w starym drewnianym fotelu, wciśnięty weń niewygodnie, przed dębowym stołem stoczonym przez robaki, na pierwszym piętrze czteropokojowej willi pokrytej omszałą dachówką — i pisał dzień i noc drżącym, pochyłym pismem ową Autobiografię więźnia, która miała się stać księgą objawienia w dziejach ludzkości.",
+  "start": 1931.62
+ },
+ {
+  "i": 154,
+  "pl": "Warunki jego pracy — ograniczona przestrzeń, odosobnienie i samotność w małej czteropokojowej willi — sprzyjały jego natchnieniu.",
+  "start": 1952.2
+ },
+ {
+  "i": 155,
+  "pl": "Była to jakby cela więzienna, z tą tylko różnicą, że nikt mu nie przeszkadzał w ohydnym zamiarze wyciągnięcia go na spacer, zgodnie z tyrańskimi przepisami jego dawnego mieszkania, to jest więzienia. Nie zdawał sobie sprawy, czy słońce jeszcze świeci nad ziemią, czy też nie świeci.",
+  "start": 1961.04
+ },
+ {
+  "i": 156,
+  "pl": "Pot wyciśnięty literackim trudem spływał mu z czoła. Nagliła go rozkoszna gorliwość. Było to dlań wyzwolenie wewnętrznego życia, wylot duszy w szeroki świat. A gorliwość jego niewinnej próżności (obudzonej przez wydawcę, który ofiarował pięćset funtów za druk pamiętników) wydawała się czymś świętym.",
+  "start": 1978.21
+ },
+ {
+  "i": 157,
+  "pl": "— Ścisłe informacje w tym względzie byłyby oczywiście jak najbardziej pożądane — nalegał chytrze nadinspektor.",
+  "start": 1998.19
+ },
+ {
+  "i": 158,
+  "pl": "Heat, czując nowy przypływ irytacji wobec tej ostentacyjnej skrupulatności, powiedział, że miejscowa policja hrabstwa została natychmiast powiadomiona o przyjeździe Michaelisa i że dokładny raport można mieć w przeciągu paru godzin. Zatelegrafuje się do tamtejszego komisarza…",
+  "start": 2006.09
+ },
+ {
+  "i": 159,
+  "pl": "Mówił dość wolno i zdawał się rozmyślać nad skutkami takiego telegramu. Świadczyła o tym lekka zmarszczka na czole. Przerwało mu pytanie:",
+  "start": 2022.7
+ },
+ {
+  "i": 160,
+  "pl": "— Wysłał pan już ten telegram?",
+  "start": 2032.88
+ },
+ {
+  "i": 161,
+  "pl": "— Nie, panie nadinspektorze — odrzekł jakby ze zdziwieniem.",
+  "start": 2036.18
+ },
+ {
+  "i": 162,
+  "pl": "Nadinspektor rozkrzyżował nagie nogi. Szybkość tego ruchu była w sprzeczności z niedbałym tonem, jakim zapytał:",
+  "start": 2041.68
+ },
+ {
+  "i": 163,
+  "pl": "— Czy pan sądzi, że Michaelis miał coś do czynienia na przykład z przygotowaniem tej bomby?",
+  "start": 2048.38
+ },
+ {
+  "i": 164,
+  "pl": "Komisarz zaczął się niby to namyślać.",
+  "start": 2053.08
+ },
+ {
+  "i": 165,
+  "pl": "— Tego bym nie powiedział. I po co mamy wypowiadać teraz jakieś przypuszczenia. Michaelis zadaje się z ludźmi, którzy są uznani za niebezpiecznych. Został delegatem Czerwonego Komitetu w niespełna rok po chwilowym opuszczeniu więzienia. Wygląda mi to na dowód uznania.",
+  "start": 2056.54
+ },
+ {
+  "i": 166,
+  "pl": "Tu komisarz Heat roześmiał się na wpół gniewnie a na wpół pogardliwie. W stosunku do takiego Michaelisa skrupuły byłyby czymś niewłaściwym i nawet nielegalnym.",
+  "start": 2074.79
+ },
+ {
+  "i": 167,
+  "pl": "Po jego wyjściu z więzienia przed dwoma laty kilku sentymentalnych dziennikarzy, czyhających na okazję do nadzwyczajnego dodatku, obdarzyło go sławą i ta sława stanowiła wciąż dla Heata jątrzące wspomnienie. Aresztowanie tego człowieka za najlżejszą poszlaką było na wskroś legalne.",
+  "start": 2085.24
+ },
+ {
+  "i": 168,
+  "pl": "Było legalne i pożądane w danych okolicznościach. Dwaj poprzedni zwierzchnicy Heata byliby to od razu zrozumieli, gdy tymczasem ten, nie mówiąc ani tak, ani nie, siedział jak pogrążony w zadumie.",
+  "start": 2104.16
+ },
+ {
+  "i": 169,
+  "pl": "Co więcej, uwięzienie Michaelisa było nie tylko legalne i pożądane, ale rozwiązywało pewną drobną, a dokuczliwą kwestię, którą Heat miał na wątrobie.",
+  "start": 2117.56
+ },
+ {
+  "i": 170,
+  "pl": "Owa kwestia wiązała się z reputacją i spokojem Heata, a nawet ze sprawnym wykonywaniem jego obowiązków. Zdaniem komisarza Michaelis na pewno wiedział coś niecoś o zamachu, lecz nie wiedział o nim zbyt wiele. Była to okoliczność pomyślna.",
+  "start": 2127.05
+ },
+ {
+  "i": 171,
+  "pl": "Wiedział o nim znacznie mniej — Heat o tym nie wątpił — niż pewni ludzie, których Heat miał na myśli. Lecz uwięzienie tych ludzi uważał za niepożądane, nie mówiąc już o tym, że byłaby to sprawa znacznie trudniejsza ze względu na „prawidła gry”.",
+  "start": 2143.57
+ },
+ {
+  "i": 172,
+  "pl": "Owe prawidła nie ochraniały w tym samym stopniu Michaelisa, który karę więzienia już odsiadywał.",
+  "start": 2156.93
+ },
+ {
+  "i": 173,
+  "pl": "Byłoby idiotyzmem nie wyciągnąć korzyści z prawnych ułatwień, dziennikarze zaś, którzy wynosili Michaelisa pod niebiosa w sentymentalnym wylewie uczuć, strącą go z piedestału, rzucając nań sentymentalne gromy.",
+  "start": 2162.25
+ },
+ {
+  "i": 174,
+  "pl": "Ta perspektywa, do której Heat się odnosił z otuchą, miała dlań urok osobistego tryumfu.",
+  "start": 2176.29
+ },
+ {
+  "i": 175,
+  "pl": "A gdzieś na dnie jego nieskazitelnej duszy przeciętnego żonatego obywatela, czaiła się prawie nieświadoma, lecz mimo to potężna niechęć do zderzenia się z desperackim okrucieństwem Profesora — do czego wypadki mogły go zmusić. Ową niechęć wzmocniło przypadkowe zetknięcie się z Profesorem w uliczce.",
+  "start": 2182.77
+ },
+ {
+  "i": 176,
+  "pl": "Spotkanie to nie zostawiło Heatowi miłego posmaku wyższości, który członkowie policji wynoszą z nieoficjalnych a poufnych stosunków ze światem przestępczym;",
+  "start": 2201.65
+ },
+ {
+  "i": 177,
+  "pl": "takie poczucie wyższości głaszcze próżność płynącą z władzy i zaspakaja pospolitą żądzę panowania nad bliźnimi w sposób, na jaki żądza ta zasługuje.",
+  "start": 2211.17
+ },
+ {
+  "i": 178,
+  "pl": "Komisarz Heat nie uważał, aby wzorowy anarchista, Profesor, był jego bliźnim. To człowiek niemożliwy — wściekły pies, którego należy unikać. Komisarz nie lękał się go bynajmniej; przeciwnie, zamierzał kiedyś się z nim porachować. Ale jeszcze nie teraz;",
+  "start": 2221.91
+ },
+ {
+  "i": 179,
+  "pl": "gdy nadejdzie właściwy czas, chciał go wziąć w swoje obroty należycie i skutecznie, według wszelkich prawideł gry. Chwila obecna nie była odpowiednia do pokuszenia się o to, nie była odpowiednia z wielu względów, i osobistych, i służbowych.",
+  "start": 2239.07
+ },
+ {
+  "i": 180,
+  "pl": "Komisarz Heat czuł to bardzo wyraźnie i dlatego wydało mu się rzeczą słuszną i odpowiednią, aby sprawę zamachu zepchnąć z mętnego i niewygodnego tropu, który wiódł Bóg wie dokąd i wprowadzić ją na spokojną (i legalną) bocznicę zwącą się Michaelisem.",
+  "start": 2252.75
+ },
+ {
+  "i": 181,
+  "pl": "Powtórzył zatem, jakby zastanawiając się sumiennie nad słowami zwierzchnika:",
+  "start": 2268.21
+ },
+ {
+  "i": 182,
+  "pl": "— Więc co do tej bomby… Nie, tego bym nie powiedział. Może się to nigdy nie wyjaśni. Ale najwidoczniej Michaelis jest związany z tą sprawą w jakiś sposób, który możemy wykryć bez wielkich zachodów.",
+  "start": 2275.08
+ },
+ {
+  "i": 183,
+  "pl": "Na jego twarzy malowała się ta pełna powagi, przygniatająca obojętność, znana kiedyś dobrze wybitniejszym złodziejom, którzy się jej bardzo lękali.",
+  "start": 2290.29
+ },
+ {
+  "i": 184,
+  "pl": "Komisarz Heat, choć był tak zwanym człowiekiem, nie umiał się uśmiechać⁵⁵. Lecz był zadowolony z biernej i uważnej postawy nadinspektora, który mruknął łagodnie:",
+  "start": 2299.79
+ },
+ {
+  "i": 185,
+  "pl": "— Więc pan myśli naprawdę, że trzeba skierować śledztwo w tę stronę?",
+  "start": 2310.27
+ },
+ {
+  "i": 186,
+  "pl": "— Naprawdę, panie nadinspektorze.",
+  "start": 2316.04
+ },
+ {
+  "i": 187,
+  "pl": "— Jest pan o tym przekonany?",
+  "start": 2318.18
+ },
+ {
+  "i": 188,
+  "pl": "— Tak, panie nadinspektorze. To jest kierunek, który musimy obrać.",
+  "start": 2320.44
+ },
+ {
+  "i": 189,
+  "pl": "Nadinspektor cofnął tak nagle dłoń, na której wspierała się jego przechylona głowa, że zważywszy na znużoną jego postawę, mogło to grozić osunięciem się całego ciała. Lecz stało się wprost przeciwnie: wyprostował się w fotelu żwawo i czujnie, a ręka jego opadła na biurko z głośnym stukiem.",
+  "start": 2325.72
+ },
+ {
+  "i": 190,
+  "pl": "— Chciałbym wiedzieć, dlaczego dopiero teraz przyszło to panu do głowy?",
+  "start": 2345.46
+ },
+ {
+  "i": 191,
+  "pl": "— Dopiero teraz przyszło mi do głowy? — powtórzył komisarz bardzo wolno.",
+  "start": 2349.69
+ },
+ {
+  "i": 192,
+  "pl": "— Tak. Dopiero w chwili, kiedy pan został wezwany do tego pokoju… o czym pan dobrze wie.",
+  "start": 2355.31
+ },
+ {
+  "i": 193,
+  "pl": "Komisarz doznał wrażenia, że powietrze między jego ubraniem a skórą rozgrzało się w przykry sposób. Było to uczucie niebywałe i niewiarygodne.",
+  "start": 2361.09
+ },
+ {
+  "i": 194,
+  "pl": "— Oczywiście — rzekł niezmiernie wolno, rozciągając sylaby do ostatecznych granic — jeśli istnieje jakiś nieznany mi powód, aby więźnia Michaelisa zostawić w spokoju, to może i dobrze się stało, że nie puściłem w ruch tamtejszej policji.",
+  "start": 2371.37
+ },
+ {
+  "i": 195,
+  "pl": "Zużył tyle czasu na wypowiedzenie tych słów, iż niesłabnące napięcie uwagi, z jakim zwierzchnik go słuchał, zakrawało na wytrzymałość wręcz bohaterską. Nadinspektor odparł natychmiast:",
+  "start": 2386.93
+ },
+ {
+  "i": 196,
+  "pl": "— Nie wiem nic o żadnym takim powodzie. No, no, komisarzu, te chytre wykręty są w stosunku do mnie wysoce niestosowne… wysoce niestosowne. A przy tym, uważa pan, postępuje pan nielojalnie. Do czego to podobne, żebym musiał sam nad takimi rzeczami się głowić. Jestem naprawdę zdumiony.",
+  "start": 2399.47
+ },
+ {
+  "i": 197,
+  "pl": "Umilkł i dodał gładko:",
+  "start": 2423.1
+ },
+ {
+  "i": 198,
+  "pl": "— Chyba nie potrzebuję mówić, że nasza rozmowa jest ściśle prywatna.",
+  "start": 2425.96
+ },
+ {
+  "i": 199,
+  "pl": "Te słowa bynajmniej komisarza nie ułagodziły. Zawrzał gniewem jak zdradzony linoskoczek. Jego duma zaufanego sługi została urażona zapewnieniem, że zwierzchnik potrząsa liną bynajmniej nie po to, aby go przyprawić o złamanie karku. Heat uznał to wręcz za bezczelność. Kto by się tam bał!",
+  "start": 2431.0
+ },
+ {
+  "i": 200,
+  "pl": "Nadinspektorów zmieniają jak rękawiczki, lecz dobry komisarz nie jest w biurze zjawiskiem efemerycznym. Heat wcale się złamania karku nie lękał. Ale zepsuto mu popisową scenę i to usprawiedliwiało aż nadto żar jego szlachetnego oburzenia.",
+  "start": 2450.82
+ },
+ {
+  "i": 201,
+  "pl": "A ponieważ myśląc o ludziach, nie robimy sobie z nimi ceremonii, myśli komisarza Heata przybrały postać groźną i proroczą.",
+  "start": 2464.88
+ },
+ {
+  "i": 202,
+  "pl": "„Mój stary — zwrócił się w duchu do zwierzchnika, utkwiwszy w jego twarzy okrągłe, zwykle błąkające się oczy — mój stary, ty nie umiesz wcale zachować się na swym stanowisku i ręczę, że wkrótce z niego wylecisz”.",
+  "start": 2474.5
+ },
+ {
+  "i": 203,
+  "pl": "Jakby w wyzywającej odpowiedzi na tę myśl, coś na kształt uprzejmego uśmiechu przewinęło się po wargach nadinspektora. W sposób swobodny i rzeczowy przystąpił znów do szarpania naciągniętej liny.",
+  "start": 2490.28
+ },
+ {
+  "i": 204,
+  "pl": "— A teraz zajmiemy się tym, co pan odkrył na miejscu — rzekł.",
+  "start": 2504.65
+ },
+ {
+  "i": 205,
+  "pl": "„Dłużej klasztora niż przeora” — ciągnął komisarz Heat swe prorocze myśli.",
+  "start": 2512.23
+ },
+ {
+  "i": 206,
+  "pl": "Ale natychmiast przyszła mu do głowy refleksja, że wysoki urzędnik, nawet „wylany” (tak sobie to właśnie wyobrażał), w trakcie wylatywania przez drzwi ma jednak dość czasu, aby wymierzyć szpetnego kopniaka któremuś z podwładnych. Nie łagodząc zbytnio bazyliszkowego spojrzenia, rzekł obojętnie:",
+  "start": 2517.95
+ },
+ {
+  "i": 207,
+  "pl": "— Właśnie się do tego zbliżamy, panie nadinspektorze.",
+  "start": 2537.77
+ },
+ {
+  "i": 208,
+  "pl": "— Dobrze. No więc co pan przynosi?",
+  "start": 2541.73
+ },
+ {
+  "i": 209,
+  "pl": "Komisarz, który postanowił zeskoczyć z liny, znalazł się na ziemi, posępny i szczery.",
+  "start": 2545.95
+ },
+ {
+  "i": 210,
+  "pl": "— Przynoszę adres — rzekł bez pośpiechu, wyciągając z kieszeni osmalony strzęp granatowego sukna. — To jest część palta, które miał na sobie człowiek rozszarpany na sztuki. Naturalnie palto mogło do niego nie należeć i mogło nawet być skradzione.",
+  "start": 2552.81
+ },
+ {
+  "i": 211,
+  "pl": "Ale takie przypuszczenie odpada, jeśli się spojrzy na to.",
+  "start": 2568.77
+ },
+ {
+  "i": 212,
+  "pl": "Komisarz podszedł do biurka, wygładzając starannie granatowy łachmanek. Zabrał go z odrażającego stosu w kostnicy, bo wiedział, że pod kołnierzem znajduje się czasem nazwisko krawca. Rzadko się to przydaje, a jednak…",
+  "start": 2573.17
+ },
+ {
+  "i": 213,
+  "pl": "Właściwie to się nie spodziewał, że znajdzie tam dla siebie coś użytecznego, ale jakież było jego zdziwienie, gdy zobaczył przyszyty starannie — wcale nie pod kołnierzem, lecz pod klapą — czworokątny kawałek perkalu z adresem wypisanym tuszem do znakowania.",
+  "start": 2588.27
+ },
+ {
+  "i": 214,
+  "pl": "Komisarz cofnął rękę, którą gładził strzęp sukna.",
+  "start": 2603.45
+ },
+ {
+  "i": 215,
+  "pl": "— Zabrałem to nieznacznie, tak że nikt nie zauważył — rzekł. — Sądziłem, że tak będzie lepiej. W razie potrzeby można to zawsze pokazać.",
+  "start": 2607.75
+ },
+ {
+  "i": 216,
+  "pl": "Nadinspektor, uniósłszy się lekko na krześle, przyciągnął do siebie gałganek. Siedział, patrząc nań w milczeniu. Na kawałku perkalu trochę większym niż bibułka do papierosów były wypisane tuszem liczba 32 i nazwa Brett Street. Zdziwił się szczerze.",
+  "start": 2617.05
+ },
+ {
+  "i": 217,
+  "pl": "— Nie rozumiem, dlaczego on chodził po świecie zaopatrzony w taką etykietę — rzekł, podnosząc oczy na komisarza. — To wprost niepojęte.",
+  "start": 2634.5
+ },
+ {
+  "i": 218,
+  "pl": "— Spotkałem raz w hotelowej palarni starszego pana, który miał zawsze przy sobie swoje nazwisko i adres wszyte we wszystkie ubrania, w przewidywaniu jakiegoś wypadku lub nagłej choroby — rzekł komisarz. — Twierdził, że ma osiemdziesiąt cztery lata, ale na to nie wyglądał.",
+  "start": 2645.67
+ },
+ {
+  "i": 219,
+  "pl": "Mówił mi, że boi się stracić raptem pamięć, jak ludzie, o których czytywał w gazetach.",
+  "start": 2663.89
+ },
+ {
+  "i": 220,
+  "pl": "Nagłe pytanie nadinspektora, który chciał się dowiedzieć, co jest pod numerem 32 na Brett Street, przerwało komisarzowi tok wspomnień. Strącony na ziemię za pomocą nieuczciwych sztuczek, Heat postanowił iść drogą zupełnej otwartości.",
+  "start": 2669.62
+ },
+ {
+  "i": 221,
+  "pl": "Wierzył nieugięcie, iż nie jest wskazane, aby jego wydział był zbyt dobrze poinformowany, lecz uważał, że rozsądne zatajenie informacji dla dobra sprawy jest najdalszym krańcem, do którego lojalność pozwala mu się posunąć.",
+  "start": 2683.9
+ },
+ {
+  "i": 222,
+  "pl": "Skoro nadinspektor chciał wszystko popsuć, nic go oczywiście nie mogło od tego powstrzymać. Ale ze swej strony komisarz nie czuł się bynajmniej zobowiązany do pośpiechu. Tedy odpowiedział zwięźle:",
+  "start": 2698.24
+ },
+ {
+  "i": 223,
+  "pl": "— To sklep, panie nadinspektorze.",
+  "start": 2711.93
+ },
+ {
+  "i": 224,
+  "pl": "Nadinspektor, z oczami spuszczonymi na strzęp granatowego sukna, oczekiwał dalszych informacji. Ponieważ nie nastąpiły, zabrał się z anielską cierpliwością do zadawania pytań. W ten sposób wyrobił sobie pojęcie o rodzaju handlu pana Verloca, o jego wyglądzie, i usłyszał w końcu jego nazwisko.",
+  "start": 2714.57
+ },
+ {
+  "i": 225,
+  "pl": "Podczas przerwy w rozmowie nadinspektor podniósł oczy i spostrzegł pewne ożywienie na twarzy Heata. Patrzyli na siebie bez słowa.",
+  "start": 2733.15
+ },
+ {
+  "i": 226,
+  "pl": "— Tego człowieka nie ma oczywiście na liście wydziału — rzekł Heat.",
+  "start": 2742.18
+ },
+ {
+  "i": 227,
+  "pl": "— Czy któryś z moich poprzedników był powiadomiony o tym, co mi pan przed chwilą powiedział? — zapytał nadinspektor, opierając łokcie na stole i podnosząc złożone ręce przed twarzą, jakby zamierzał się modlić, tylko że jego oczy nie miały pobożnego wyrazu.",
+  "start": 2747.68
+ },
+ {
+  "i": 228,
+  "pl": "— Nie, panie nadinspektorze; naturalnie, że nie. I w jakim celu? Ujawnienie człowieka tego rodzaju nie pociągnęłoby za sobą dobrych skutków. Wystarczało mi, że wiem kim on jest i że posługuję się nim w sposób, który można jawnie wykorzystać.",
+  "start": 2762.56
+ },
+ {
+  "i": 229,
+  "pl": "— I pan uważa, że tego rodzaju prywatne wiadomości zgadzają się z urzędowym stanowiskiem, jakie pan zajmuje?",
+  "start": 2776.86
+ },
+ {
+  "i": 230,
+  "pl": "— Oczywiście, panie nadinspektorze. Uważam to za zupełnie właściwe. Pozwolę sobie zauważyć, że dzięki tym zasadom doszedłem do swego stanowiska… a uchodzę za człowieka, który zna swoje rzemiosło. Tamto jest moją sprawą prywatną.",
+  "start": 2783.78
+ },
+ {
+  "i": 231,
+  "pl": "Mój znajomy z policji francuskiej dał mi do zrozumienia, że ten człowiek jest szpiegiem na żołdzie ambasady. Prywatna znajomość, prywatna informacja, prywatne jej zużytkowanie — oto mój punkt widzenia.",
+  "start": 2797.8
+ },
+ {
+  "i": 232,
+  "pl": "— Rozumiem — rzekł spokojnie nadinspektor, odkładając na razie ów temat; spostrzegł przy tym, że stan duszy głośnego urzędnika, rzekłbyś, oddziałuje na kształt jego dolnej szczęki, jakby właściwe komisarzowi żywe poczucie jego wysokiej klasy zawodowej gnieździło się właśnie w tej części ciała.",
+  "start": 2812.0
+ },
+ {
+  "i": 233,
+  "pl": "Potem rzekł, oparłszy policzek na złożonych dłoniach:",
+  "start": 2830.98
+ },
+ {
+  "i": 234,
+  "pl": "— No więc… mówmy prywatnie, jeśli pan woli… jak długo był pan w prywatnym kontakcie z tym szpiegiem ambasady?",
+  "start": 2834.98
+ },
+ {
+  "i": 235,
+  "pl": "Dyskretna odpowiedź komisarza na to pytanie, tak dyskretna, że nie zawarła się wcale w wypowiedzianych słowach, brzmiała:",
+  "start": 2843.42
+ },
+ {
+  "i": 236,
+  "pl": "— Długo przedtem, nim przyszło komu do głowy zawezwać cię na twoje stanowisko.",
+  "start": 2850.72
+ },
+ {
+  "i": 237,
+  "pl": "Natomiast tak zwana jawna odpowiedź była znacznie ściślejsza:",
+  "start": 2857.9
+ },
+ {
+  "i": 238,
+  "pl": "— Zobaczyłem go pierwszy raz przeszło siedem lat temu, kiedy dwie osoby z cesarskiej rodziny i kanclerz cesarstwa bawili w Londynie. Polecono mi zorganizować wszystko dla zapewnienia im bezpieczeństwa. Baron Stott-Wartenheim pełnił wówczas funkcje ambasadora. Był to starszy pan bardzo nerwowy.",
+  "start": 2861.68
+ },
+ {
+  "i": 239,
+  "pl": "Raz wieczorem, na trzy dni przed bankietem w Guildhall⁵⁶, zawiadomił mnie, że chciałby zamienić ze mną parę słów. Kiedym przyszedł, powozy czekały już u bramy, aby zawieźć do opery członków cesarskiej rodziny i kanclerza. Poszedłem zaraz na górę. Zastałem barona w stanie okropnego zdenerwowania;",
+  "start": 2880.7
+ },
+ {
+  "i": 240,
+  "pl": "chodził po sypialni tam i z powrotem ze splecionymi kurczowo rękami. Zapewnił mnie o swym zaufaniu do naszej policji i do moich zdolności, a potem powiedział, że ma u siebie człowieka, który dopiero co przyjechał z Paryża i którego informacjom można wierzyć bezwzględnie.",
+  "start": 2900.12
+ },
+ {
+  "i": 241,
+  "pl": "Chciał, żebym wysłuchał, co ten człowiek ma do powiedzenia. Zaprowadził mnie natychmiast do sąsiedniej ubieralni, gdzie zastałem barczystego człowieka w grubym palcie; siedział na krześle, trzymając w jednej ręce kapelusz i laskę. Baron powiedział do niego po francusku: „Może pan wszystko mówić”.",
+  "start": 2915.6
+ },
+ {
+  "i": 242,
+  "pl": "Pokój był oświetlony dość licho. Rozmawiałem z tym człowiekiem może jakichś pięć minut. Udzielił mi rzeczywiście wiadomości bardzo zastraszających.",
+  "start": 2933.4
+ },
+ {
+  "i": 243,
+  "pl": "Potem baron, wciąż niespokojny, wziął mnie na bok i zaczął go przede mną wychwalać, a kiedy się znów odwróciłem, nie było już tego człowieka, znikł jak kamfora. Widać wstał i wymknął się jakimś tylnym wyjściem.",
+  "start": 2942.58
+ },
+ {
+  "i": 244,
+  "pl": "Nie było czasu biec za nim, bo musiałem zejść prędko za ambasadorem frontowymi schodami i dopilnować, aby całe towarzystwo wyruszyło bezpiecznie do opery. Ale tej samej nocy zastosowałem się do otrzymanych wiadomości. Trudno powiedzieć, czy były prawdziwe, lecz wyglądały dość wiarygodnie.",
+  "start": 2955.34
+ },
+ {
+  "i": 245,
+  "pl": "Bardzo być może, że oszczędziły nam grubych nieprzyjemności w dniu cesarskich odwiedzin w City⁵⁷.",
+  "start": 2973.58
+ },
+ {
+  "i": 246,
+  "pl": "— W jakiś czas później, mniej więcej w miesiąc po mej nominacji na komisarza, zwrócił moją uwagę wysoki, tęgi mężczyzna, który wydał mi się znajomy; wychodził spiesznie ze sklepu złotnika na Strandzie⁵⁸. Poszedłem za nim, bo mi to było po drodze na Charing Cross;",
+  "start": 2979.16
+ },
+ {
+  "i": 247,
+  "pl": "doszedłszy tam, zobaczyłem po drugiej stronie ulicy jednego z naszych detektywów, więc kiwnąłem na niego, pokazałem mu tego człowieka i poleciłem, aby śledził go przez parę dni, a potem zdał mi raport.",
+  "start": 2996.44
+ },
+ {
+  "i": 248,
+  "pl": "Zaraz nazajutrz po południu mój agent zjawił się i doniósł, że ów człowiek tego samego dnia o pół do jedenastej wziął ślub w urzędzie cywilnym z córką właścicielki pensjonatu, gdzie mieszkał i odjechał z nią na tydzień do Margate⁵⁹. Nasz agent widział, jak wynosili ich rzeczy do dorożki.",
+  "start": 3007.54
+ },
+ {
+  "i": 249,
+  "pl": "Na jednej torbie znajdowały się paryskie nalepki. Ten człowiek nie mógł mi jakoś wyjść z głowy i za najbliższą podróżą służbową do Paryża rozmawiałem o nim z tym moim znajomym z francuskiej policji.",
+  "start": 3024.98
+ },
+ {
+  "i": 250,
+  "pl": "Otóż mój znajomy powiedział, co następuje: „Sądząc z pana słów, zdaje się, że chodzi tu o dość znanego emisariusza i satelitę Czerwonego Komitetu Rewolucyjnego. Mówi, że jest Anglikiem. Naszym zdaniem on już od kilku lat jest tajnym agentem jednej z londyńskich ambasad”.",
+  "start": 3036.72
+ },
+ {
+  "i": 251,
+  "pl": "Wówczas przypomniałem sobie wszystko dokładnie. To on był owym jegomościem, którego zobaczyłem siedzącego na krześle w ubieralni barona Stott-Wartenheima. Odrzekłem swemu znajomemu, że ma najzupełniejszą słuszność — że ten człowiek jest z pewnością tajnym agentem.",
+  "start": 3054.86
+ },
+ {
+  "i": 252,
+  "pl": "Znajomy zadał sobie trud wyszukania w kartotece dokładnych wiadomości o tym człowieku. Uważałem za wskazane dowiedzieć się możliwie najwięcej, ale nie sądzę, aby pan zechciał wysłuchiwać teraz jego historii.",
+  "start": 3070.74
+ },
+ {
+  "i": 253,
+  "pl": "Nadinspektor potrząsnął głową wspartą na rękach.",
+  "start": 3082.81
+ },
+ {
+  "i": 254,
+  "pl": "— Na razie chodzi mi tylko o pana stosunki z tym pożytecznym osobnikiem — rzekł i przymknął powoli znużone, osadzone głęboko oczy, po czym otworzył je szybko, spoglądając wzrokiem znacznie rzeźwiejszym.",
+  "start": 3085.91
+ },
+ {
+  "i": 255,
+  "pl": "— W moich stosunkach z tym człowiekiem nie ma nic urzędowego — rzekł komisarz z goryczą. — Zaszedłem raz wieczorem do jego sklepu, powiedziałem, kim jestem, i przypomniałem mu o naszym pierwszym spotkaniu. Ani mrugnął.",
+  "start": 3098.71
+ },
+ {
+  "i": 256,
+  "pl": "Powiedział, że się ożenił i ustatkował, a teraz pragnie tylko, żeby mu nie przeszkadzać w prowadzeniu niewielkiego interesu. Obiecałem na swoją odpowiedzialność, że o ile nie popełni czegoś rażącego, policja zostawi go w spokoju.",
+  "start": 3112.33
+ },
+ {
+  "i": 257,
+  "pl": "To było dla niego bardzo ważne, bo wystarczało mi szepnąć słówko w urzędzie celnym i zaraz by otworzyli w Dover⁶⁰ którąś z tych paczek, co przychodzą do niego z Paryża i Brukseli; skonfiskowaliby je na pewno i w rezultacie może wytoczono by mu proces.",
+  "start": 3125.65
+ },
+ {
+  "i": 258,
+  "pl": "— To handel bardzo niepewny — mruknął nadinspektor. — Dlaczego on wziął się do tego?",
+  "start": 3141.06
+ },
+ {
+  "i": 259,
+  "pl": "Inspektor podniósł brwi z obojętną pogardą.",
+  "start": 3148.07
+ },
+ {
+  "i": 260,
+  "pl": "— Pewno ma na kontynencie jakieś stosunki, jakichś znajomych wśród ludzi handlujących tym towarem. Towarzystwo dla niego jak ulał. A przy tym to wałkoń… jak oni wszyscy.",
+  "start": 3152.25
+ },
+ {
+  "i": 261,
+  "pl": "— A czym się on panu wywdzięcza za tę protekcję?",
+  "start": 3162.95
+ },
+ {
+  "i": 262,
+  "pl": "Komisarz nie miał ochoty rozwodzić się nad wartością usług Verloca.",
+  "start": 3166.39
+ },
+ {
+  "i": 263,
+  "pl": "— Komu innemu nie przydałby się na nic. Trzeba tkwić w tym po uszy, żeby umieć posługiwać się takim człowiekiem. Ja umiem się orientować w informacjach, których mi dostarcza. A kiedy potrzebuję jakiejś wskazówki, Verloc potrafi mi ją zwykle wydostać.",
+  "start": 3171.67
+ },
+ {
+  "i": 264,
+  "pl": "Heat popadł nagle w dyskretną zadumę, a nadinspektor powstrzymał się od uśmiechu na myśl, że reputacja komisarza Heata mogła być w wielkiej mierze dziełem tajnego agenta Verloca.",
+  "start": 3187.15
+ },
+ {
+  "i": 265,
+  "pl": "— Przydaje nam się także w ogólniejszym zakresie; nasi ludzie z Wydziału Przestępstw Specjalnych pełniący służbę na stacjach Charing Cross i Victoria mają rozkaz, aby śledzić bacznie wszystkich, z którymi się go widuje. On spotyka się często z nowo przybyłymi, a potem ich śledzi.",
+  "start": 3199.86
+ },
+ {
+  "i": 266,
+  "pl": "Przypuszczam, że wyznaczono mu tę funkcję. Gdy potrzebuję natychmiast czyjegoś adresu, mogę zawsze dostać go od Verloca. Naturalnie umiem naszymi stosunkami odpowiednio kierować. W ciągu ostatnich dwóch lat widziałem go najwyżej trzy razy.",
+  "start": 3217.26
+ },
+ {
+  "i": 267,
+  "pl": "W razie czego posyłam mu parę słów bez podpisu, a on odpowiada mi w ten sposób pod moim adresem prywatnym.",
+  "start": 3232.0
+ },
+ {
+  "i": 268,
+  "pl": "Od czasu do czasu nadinspektor potakiwał ruchem prawie niedostrzegalnym. Heat dodał, że nie sądzi, aby Verloc cieszył się pełnym zaufaniem wybitnych członków Międzynarodowego Komitetu Rewolucyjnego, ale nie ma wątpliwości, iż na ogół mu wierzą.",
+  "start": 3238.27
+ },
+ {
+  "i": 269,
+  "pl": "— Ile razy miałem powód przypuszczać, że coś się święci — zakończył — Verloc umiał zawsze dostarczyć mi pożytecznych informacji.",
+  "start": 3254.32
+ },
+ {
+  "i": 270,
+  "pl": "Nadinspektor zauważył znacząco:",
+  "start": 3264.48
+ },
+ {
+  "i": 271,
+  "pl": "— Zawiódł pana tym razem.",
+  "start": 3267.38
+ },
+ {
+  "i": 272,
+  "pl": "— Skądinąd też żadnych wiadomości nie miałem — odparł Heat. — Nie pytałem go o nic, więc też nic mi nie mógł powiedzieć. Nie jest u nas na służbie. Żadnej pensji od nas nie pobiera.",
+  "start": 3270.23
+ },
+ {
+  "i": 273,
+  "pl": "— Tak — mruknął nadinspektor. — Jest szpiegiem na żołdzie obcego rządu. Nie moglibyśmy nigdy mu zaufać.",
+  "start": 3281.56
+ },
+ {
+  "i": 274,
+  "pl": "— Muszę sobie radzić na swój sposób — oświadczył Heat. — Gdyby było trzeba, wszedłbym w porozumienie z samym diabłem i wziąłbym za to odpowiedzialność. Są rzeczy, których rozgłaszać się nie powinno.",
+  "start": 3290.17
+ },
+ {
+  "i": 275,
+  "pl": "— Pana wyobrażenie o tajności polega zdaje się na tym, żeby ukrywać co się da przed szefem swego wydziału. Czy pan nie posuwa się trochę za daleko? A gdzie on mieszka? przy swoim sklepie?",
+  "start": 3302.62
+ },
+ {
+  "i": 276,
+  "pl": "— Kto? Verloc? Ach, tak. Mieszka przy sklepie. Zdaje się, że razem z nim mieszka jego teściowa.",
+  "start": 3314.51
+ },
+ {
+  "i": 277,
+  "pl": "— Czy dom jest śledzony?",
+  "start": 3321.77
+ },
+ {
+  "i": 278,
+  "pl": "— O nie. I po cóż? Śledzi się niektórych ludzi, co tam przychodzą. Według mego zdania on o tej sprawie nic nie wie.",
+  "start": 3324.41
+ },
+ {
+  "i": 279,
+  "pl": "— A jak mi pan to wyjaśni? — nadinspektor kiwnął głową w stronę granatowego strzępu sukna leżącego przed nim na stole.",
+  "start": 3333.88
+ },
+ {
+  "i": 280,
+  "pl": "— Wcale tego nie wyjaśnię, panie nadinspektorze. To jest po prostu nie do wyjaśnienia. Na podstawie swoich wiadomości wytłumaczyć tego nie mogę. — Heat uczynił te zeznania ze szczerością człowieka, którego reputacja jest niewzruszona. — A w każdym razie jeszcze nie teraz.",
+  "start": 3341.74
+ },
+ {
+  "i": 281,
+  "pl": "Myślę, że człowiekiem, który najwięcej miał z tym do czynienia, okaże się Michaelis.",
+  "start": 3358.68
+ },
+ {
+  "i": 282,
+  "pl": "— Tak pan myśli?",
+  "start": 3364.08
+ },
+ {
+  "i": 283,
+  "pl": "— Tak, panie nadinspektorze, ponieważ odpowiadam za wszystkich innych.",
+  "start": 3365.79
+ },
+ {
+  "i": 284,
+  "pl": "— No a tamten drugi człowiek, który jakoby uciekł z parku?",
+  "start": 3370.32
+ },
+ {
+  "i": 285,
+  "pl": "— Chyba jest już teraz daleko — oświadczył Heat.",
+  "start": 3375.22
+ },
+ {
+  "i": 286,
+  "pl": "Nadinspektor popatrzył na niego bacznie i raptem wstał, jakby powziąwszy jakiś plan działania. Naprawdę zaś w tej samej chwili uległ rozkosznej pokusie. Heat usłyszał, że szef pozwala mu odejść i wydaje polecenie, aby stawił się nazajutrz wczesnym rankiem w celu dalszej narady nad sprawą.",
+  "start": 3379.92
+ },
+ {
+  "i": 287,
+  "pl": "Przyjął to do wiadomości z nieprzeniknioną twarzą i opuścił pokój miarowym krokiem.",
+  "start": 3398.31
+ },
+ {
+  "i": 288,
+  "pl": "Jakimkolwiek był plan nadinspektora, nie miał nic wspólnego z ową biurową pracą, która zatruwała mu życie przez zamknięcie go w czterech ścianach i przez swą pozorną nierealność. Ów plan nie mógł mieć nic wspólnego z pracą w biurze, bo inaczej skądby się wzięła żwawość, która ogarnęła nadinspektora.",
+  "start": 3403.94
+ },
+ {
+  "i": 289,
+  "pl": "Natychmiast po wyjściu Heata rozejrzał się żywo za kapeluszem i włożył go na głowę. Potem usiadł z powrotem, aby całą rzecz przemyśleć. Ale ponieważ już przedtem się zdecydował, jego namysł trwał krótko. Heat był jeszcze daleko od swego domu, gdy nadinspektor opuścił gmach policyjny.",
+  "start": 3423.8
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

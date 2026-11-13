@@ -1,0 +1,2705 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-04.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-04.md audio/chapter-04.webm
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-04.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-04.md
+     It reads chapter-04.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path audio/chapter-04.webm, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Tajny agent · Rozdział IV</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative;
+    cursor: help;
+    color: var(--accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    top: 12px;
+    width: min(360px, calc(100vw - 36px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans);
+    text-align: left;
+    white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-pl { display: block; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* EN / UA toggles + blocks */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .en p {
+    font-family: var(--sans);
+    font-size: .93rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Tajny agent · Rozdział IV</h1>
+      <p class="chapter-name"></p>
+      <p>Joseph Conrad · trilingual study edition: EN → PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleEn" class="ctl" type="button" aria-pressed="false">Reveal all EN</button>
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>audio/chapter-04.webm</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>E</kbd> toggle EN · <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (EN → PL → UA, in reading order)  */
+/*    Generated from chapter-04.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "en": "Most of the thirty or so little tables covered by red cloths with a white design stood ranged at right angles to the deep brown wainscoting of the underground hall.",
+  "pl": "Z trzydziestu mniej więcej stolików, pokrytych czerwonymi obrusami w biały deseń, większość stała przysunięta pod kątem prostym do ciemnobrunatnych boazerii podziemnej sali.",
+  "ua": "Із тридцяти приблизно столиків, вкритих червоними скатертями в білий візерунок, більшість стояло впритул під прямим кутом до темно-коричневих панелей підвальної зали.",
+  "para": 0,
+  "start": 1.16
+ },
+ {
+  "en": "Bronze chandeliers with many globes depended from the low, slightly vaulted ceiling, and the fresco paintings ran flat and dull all round the walls without windows, representing scenes of the chase and of outdoor revelry in medieval costumes.",
+  "pl": "Brązowe świeczniki o licznych kloszach zwisały z niskiego, lekko sklepionego sufitu, a wokół ścian pozbawionych okien biegły płaskie, ciemne w kolorze freski przedstawiające sceny z polowań i uczt na świeżym powietrzu. Ludzie biorący w nich udział byli w średniowiecznych ubiorach;",
+  "ua": "Бронзові люстри з численними плафонами звисали з низької, злегка склепінчастої стелі, а навколо стін без вікон тяглися плоскі, темні, як фреска, зображення сцен полювання та гулянь на свіжому повітрі. Люди на них були в середньовічному вбранні;",
+  "para": 0,
+  "start": 12.38
+ },
+ {
+  "en": "Varlets in green jerkins brandished hunting knives and raised on high tankards of foaming beer.",
+  "pl": "pachołkowie przybrani w zielone kaffany dzierżyli myśliwskie noże, podnosząc wysoko dzbany pieniącego się piwa.",
+  "ua": "пахолки в зелених кафтанах тримали мисливські ножі, піднімаючи високо кухлі пінистого пива.",
+  "para": 0,
+  "start": 30.44
+ },
+ {
+  "en": "“Unless I am very much mistaken, you are the man who would know the inside of this confounded affair,” said the robust Ossipon, leaning over, his elbows far out on the table and his feet tucked back completely under his chair. His eyes stared with wild eagerness.",
+  "pl": "— Głowę bym dał, że wy wiecie, co tkwi w tej przeklętej sprawie — rzekł krzepki Ossipon, który siedział z nogami wciągniętymi pod krzesło, pochylony nad stołem i rozparty na łokciach. Oczy wyłaziły mu na wierzch z ciekawości.",
+  "ua": "— Голову даю на відсіч, що ви знаєте, що ховається в цій проклятій справі, — сказав кремезний Осіпон, який сидів, підібравши ноги під стілець, нахилений над столом і спертий на лікті. Очі вилазили йому наверх від цікавості.",
+  "para": 1,
+  "start": 38.74
+ },
+ {
+  "en": "An upright semi-grand piano near the door, flanked by two palms in pots, executed suddenly all by itself a valse tune with aggressive virtuosity. The din it raised was deafening.",
+  "pl": "Duże pianino, stojące blisko drzwi między dwiema palmami, samo z siebie zagrało nagle walca z wyzywającą biegłością. Hałas, jaki wznieciło, był ogłuszający.",
+  "ua": "Велике піаніно, що стояло біля дверей між двома пальмами, само собою раптом зіграло вальс з викличною вправністю. Гуркіт, який воно підняло, був оглушливим.",
+  "para": 2,
+  "start": 52.82
+ },
+ {
+  "en": "When it ceased, as abruptly as it had started, the bespectacled, dingy little man who faced Ossipon behind a heavy glass mug full of beer emitted calmly what had the sound of a general proposition.",
+  "pl": "Przestało grać równie nagle, jak zaczęło, a mały śniady człowieczek w okularach, siedzący naprzeciw Ossipona nad wielkim szklanym kuflem pełnym piwa, wypowiedział spokojnie coś na kształt ogólnego twierdzenia:",
+  "ua": "Воно перестало грати так само раптом, як і почало, і малий смаглявий чоловічок в окулярах, що сидів навпроти Осіпона за великим скляним кухлем, повним пива, спокійно вимовив щось на кшталт загального твердження:",
+  "para": 2,
+  "start": 63.5
+ },
+ {
+  "en": "“In principle what one of us may or may not know as to any given fact can’t be a matter for inquiry to the others.”",
+  "pl": "— W zasadzie nikt nie ma prawa wtrącać się do tego, co inni wiedzą o jakimś fakcie albo czego nie wiedzą.",
+  "ua": "— У принципі ніхто не має права втручатися в те, що інші знають про якийсь факт, або чого не знають.",
+  "para": 3,
+  "start": 76.1
+ },
+ {
+  "en": "“Certainly not,” Comrade Ossipon agreed in a quiet undertone. “In principle.”",
+  "pl": "— Naturalnie — potwierdził spokojnie towarzysz Ossipon ściszonym głosem. — W zasadzie.",
+  "ua": "— Звісно, — підтвердив спокійно товариш Осіпон приглушеним голосом. — У принципі.",
+  "para": 4,
+  "start": 85.33
+ },
+ {
+  "en": "With his big florid face held between his hands he continued to stare hard, while the dingy little man in spectacles coolly took a drink of beer and stood the glass mug back on the table.",
+  "pl": "Obejmując dłońmi wielką, czerwoną twarz, patrzył w dalszym ciągu z wytężoną uwagą na śniadego człowieczka w okularach, który pociągnął spokojnie łyk piwa i postawił kufel z powrotem.",
+  "ua": "Обійнявши долонями велику, червону обличчя, він і надалі дивився з напруженою увагою на смаглявого чоловічка в окулярах, який спокійно ковтнув пиво і поставив кухель назад.",
+  "para": 5,
+  "start": 92.51
+ },
+ {
+  "en": "His flat, large ears departed widely from the sides of his skull, which looked frail enough for Ossipon to crush between thumb and forefinger; the dome of the forehead seemed to rest on the rim of the spectacles;",
+  "pl": "Jego płaskie, wielkie uszy odstawały od czaszki, która wydawała się tak krucha, że Ossipon mógłby chyba ją zgnieść między kciukiem a palcem wskazującym. Wypukłe czoło człowieczka jakby opierało się o brzeg jego okularów;",
+  "ua": "Його пласкі, великі вуха відстовбурчувалися від черепа, який здавався таким крихким, що Осіпон міг би, мабуть, розчавити його між великим і вказівним пальцями; опукле чоло чоловічка ніби спиралося на обідок його окулярів;",
+  "para": 5,
+  "start": 103.57
+ },
+ {
+  "en": "the flat cheeks, of a greasy, unhealthy complexion, were merely smudged by the miserable poverty of a thin dark whisker. The lamentable inferiority of the whole physique was made ludicrous by the supremely self-confident bearing of the individual.",
+  "pl": "na płaskich policzkach o tłustej, niezdrowej cerze widać było smugi nędznych, rzadkich, ciemnych bokobrodów. Niewypowiedzianie marna kompleksja fizyczna tego osobnika stawała się pocieszna w zestawieniu z jego obejściem pełnym najwyższej pewności siebie.",
+  "ua": "на пласких щоках з жирним, нездоровим тоном помітні були розводи злиденної, рідкої темної бороди. Невимовно жалюгідна фізична конституція цієї особи ставала комічною в порівнянні з його поведінкою, сповненою найвищої самовпевненості.",
+  "para": 5,
+  "start": 117.11
+ },
+ {
+  "en": "His speech was curt, and he had a particularly impressive manner of keeping silent.",
+  "pl": "Wyrażał się zwięźle, a jego milczenie wydawało się szczególnie doniosłe.",
+  "ua": "Він висловлювався стисло, а його мовчання здавалося особливо вагомим.",
+  "para": 5,
+  "start": 131.81
+ },
+ {
+  "en": "Ossipon spoke again from between his hands in a mutter.",
+  "pl": "Ossipon mruknął znów poprzez palce:",
+  "ua": "Осіпон знову муркнув крізь пальці:",
+  "para": 6,
+  "start": 136.15
+ },
+ {
+  "en": "“Have you been out much today?”",
+  "pl": "— Długo byliście dziś na mieście?",
+  "ua": "— Довго ви сьогодні були в місті?",
+  "para": 7,
+  "start": 139.03
+ },
+ {
+  "en": "“No. I stayed in bed all the morning,” answered the other. “Why?”",
+  "pl": "— Nie. Całe rano leżałem w łóżku — odrzekł tamten. — A bo co?",
+  "ua": "— Ні. Увесь ранок пролежав у ліжку, — відповів той. — А що таке?",
+  "para": 8,
+  "start": 143.15
+ },
+ {
+  "en": "“Oh! Nothing,” said Ossipon, gazing earnestly and quivering inwardly with the desire to find out something, but obviously intimidated by the little man’s overwhelming air of unconcern.",
+  "pl": "— Ach, nic — rzekł Ossipon, patrząc w niego z powagą; skręcał się w duchu z pragnienia, żeby coś wymyszkować, lecz był najwidoczniej onieśmielony wyrazem przygniatającej obojętności na twarzy człowieczka.",
+  "ua": "— А, нічого, — сказав Осіпон, дивлячись на нього серйозно; у душі він скручувався від бажання щось вигадати, але, здається, був пригнічений виразом пригнічуючої байдужості на обличчі чоловічка.",
+  "para": 9,
+  "start": 150.2
+ },
+ {
+  "en": "When talking with this comrade﻿—which happened but rarely﻿—the big Ossipon suffered from a sense of moral and even physical insignificance. However, he ventured another question. “Did you walk down here?”",
+  "pl": "Barczysty Ossipon cierpiał od poczucia moralnej, a nawet fizycznej niższości, gdy rozmawiał z tym towarzyszem, co zresztą zdarzało się rzadko. Jednak odważył się zadać jeszcze jedno pytanie: — Czyście przyszli pieszo?",
+  "ua": "Кремезний Осіпон страждав від відчуття моральної, а то й фізичної нижності, коли розмовляв з цим товаришем, що, втім, траплялося рідко. Проте він наважився поставити ще одне питання: — Ви прийшли пішки?",
+  "para": 9,
+  "start": 164.02
+ },
+ {
+  "en": "“No; omnibus,” the little man answered readily enough. He lived far away in Islington, in a small house down a shabby street, littered with straw and dirty paper,",
+  "pl": "— Nie, przyjechałem omnibusem — odpowiedział człowieczek dość żwawo. Mieszkał daleko na przedmieściu Islington³⁸, w małym domku na niechlujnej ulicy usianej słomą i brudnymi papierami;",
+  "ua": "— Ні, приїхав омнібусом, — відповів чоловічок досить жваво. Він жив далеко в передмісті Ізлінгтон³⁸, у маленькому будинку на неохайній вулиці, всіяній соломою та брудним папером;",
+  "para": 10,
+  "start": 178.31
+ },
+ {
+  "en": "where out of school hours a troop of assorted children ran and squabbled with a shrill, joyless, rowdy clamour. His single back room, remarkable for having an extremely large cupboard,",
+  "pl": "w godzinach pozaszkolnych banda przeróżnych dzieci biegała tam i kłóciła się wśród ostrych wrzasków niemających nic wspólnego z wesołością. Pokój człowieczka wychodził na podwórze i odznaczał się bardzo wielkim kredensem;",
+  "ua": "у шкільні години там бігала й сварилася зграя різноманітних дітей, серед гострих криків, позбавлених будь-якої веселості. Кімната чоловічка виходила на двір і вирізнялася дуже великим комодом;",
+  "para": 10,
+  "start": 190.01
+ },
+ {
+  "en": "he rented furnished from two elderly spinsters, dressmakers in a humble way with a clientele of servant girls mostly. He had a heavy padlock put on the cupboard, but otherwise he was a model lodger, giving no trouble, and requiring practically no attendance.",
+  "pl": "lokator wynajmował ten pokój z meblami od dwóch starych panien, które za skromnym wynagrodzeniem szyły suknie dla klienteli złożonej przeważnie ze służących. Zaopatrzył kredens w wielką kłódkę, poza tym był to lokator wzorowy, niesprawiający żadnego kłopotu i niewymagający właściwie żadnych posług.",
+  "ua": "орендар знімав цю кімнату з меблями в двох старих дів, які за скромну плату шили сукні для клієнтки, що складалася переважно з покоївок. Він забезпечив комод великою замкою, а взагалі був взірцевим мешканцем, не завдавав жодного клопоту і практично не вимагав жодного обслуговування.",
+  "para": 10,
+  "start": 203.05
+ },
+ {
+  "en": "His oddities were that he insisted on being present when his room was being swept, and that when he went out he locked his door, and took the key away with him.",
+  "pl": "Jego dziwactwa polegały na tym, że musiał być zawsze obecny przy zamiataniu pokoju, a wychodząc, zamykał drzwi i brał klucz z sobą.",
+  "ua": "Його дивацтва полягали в тому, що він мусив бути присутнім при підмітанні кімнати, а виходячи, замикав двері й брав ключ із собою.",
+  "para": 10,
+  "start": 221.89
+ },
+ {
+  "en": "Ossipon had a vision of these round black-rimmed spectacles progressing along the streets on the top of an omnibus, their self-confident glitter falling here and there on the walls of houses or lowered upon the heads of the unconscious stream of people on the pavements.",
+  "pl": "Ossipon ujrzał w myśli na szczycie omnibusu te okulary w czarnej oprawie; oto suną wzdłuż ulic, a ich zarozumiałe błyski padają tu i ówdzie na ściany domów lub na głowy nieświadomego tłumu płynącego chodnikami.",
+  "ua": "Осіпон уявив, як ті круглі окуляри в чорній оправі височать на даху омнібуса; ось вони ковзають уздовж вулиць, і їхні зарозумілі відблиски падають тут і там на стіні будинків або на голови несвідомого натовпу, що тече тротуарами.",
+  "para": 11,
+  "start": 230.23
+ },
+ {
+  "en": "The ghost of a sickly smile altered the set of Ossipon’s thick lips at the thought of the walls nodding, of people running for life at the sight of those spectacles. If they had only known! What a panic! He murmured interrogatively:",
+  "pl": "Cień bladego uśmiechu zmącił linię grubych warg Ossipona, który wyobraził sobie, że ściany domów się chwieją, a ludzie uciekają co sił na widok tych okularów. Gdybyż wiedzieli! Cóż by to była za panika! Mruknął pytająco:",
+  "ua": "Тінь блідої усмішки змінила лінію товстих губ Осіпона, який уявив, як хитаються стіни будинків, а люди тікають щосили на вид тих окулярів. Коли б вони знали! Який би це був паніка! Він муркнув питально:",
+  "para": 11,
+  "start": 244.37
+ },
+ {
+  "en": "“Been sitting long here?”",
+  "pl": "— Dawno tu siedzicie?",
+  "ua": "— Довго ви тут сидите?",
+  "para": 12,
+  "start": 258.94
+ },
+ {
+  "en": "“An hour or more,” answered the other negligently, and took a pull at the dark beer. All his movements﻿—the way he grasped the mug, the act of drinking, the way he set the heavy glass down and folded his arms﻿—had a firmness, an assured precision",
+  "pl": "— Coś około godziny — odrzekł tamten niedbale i znów pociągnął łyk czarnego piwa. Jego ruchy — sposób, w jaki ujmował kufel, sam akt picia, sposób, w jaki stawiał ciężkie naczynie i krzyżował ręce — wszystko zdradzało stanowczość i niezawodną precyzję;",
+  "ua": "— Щось годину, — відповів той байдуже і знову ковтнув чорного пива. Усі його рухи — спосіб, у який він брав кухель, сам акт пиття, спосіб, у який він ставив важку посудину і складав руки, — усе виявляло рішучість і надійну точність;",
+  "para": 13,
+  "start": 262.38
+ },
+ {
+  "en": "which made the big and muscular Ossipon, leaning forward with staring eyes and protruding lips, look the picture of eager indecision.",
+  "pl": "natomiast wielki, muskularny Ossipon, pochylony naprzód z wlepionymi w człowieczka oczyma i wysuniętymi wargami, w porównaniu do tamtego wyglądał jak wcielenie niepewności i zaciekawienia.",
+  "ua": "натомість великий, м'язистий Осіпон, нахилений уперед із втупленими в чоловічка очима і висунутими губами, у порівнянні з тим виглядав як втілення нерішучості й цікавості.",
+  "para": 13,
+  "start": 279.14
+ },
+ {
+  "en": "“An hour,” he said. “Then it may be you haven’t heard yet the news I’ve heard just now﻿—in the street. Have you?”",
+  "pl": "— Około godziny — powtórzył. — Więc może jeszcze nie wiecie o nowinie, którą słyszałem przed chwilą na ulicy. Co?",
+  "ua": "— Приблизно годину, — повторив він. — Отже, може, ви ще не знаєте про новину, яку я щойно почув на вулиці. Ну?",
+  "para": 14,
+  "start": 290.86
+ },
+ {
+  "en": "The little man shook his head negatively the least bit. But as he gave no indication of curiosity Ossipon ventured to add that he had heard it just outside the place.",
+  "pl": "Człowieczek uczynił głową nieznaczny ruch przeczący. Ale ponieważ nie okazał żadnego zainteresowania, Ossipon ośmielił się dodać, że usłyszał ową nowinę akurat przed wejściem do kawiarni.",
+  "ua": "Чоловічок зробив головою ледь помітний рух заперечення. Але оскільки він не виявив жодної зацікавленості, Осіпон посмілився додати, що почув ту новину саме перед входом до кав'ярні.",
+  "para": 15,
+  "start": 299.46
+ },
+ {
+  "en": "A newspaper boy had yelled the thing under his very nose, and not being prepared for anything of that sort, he was very much startled and upset. He had to come in there with a dry mouth.",
+  "pl": "Mały roznosiciel gazet wrzasnął mu ją w samo ucho, a że Ossipon nie był przygotowany na fakt tego rodzaju, bardzo nim to wstrząsnęło i wyprowadziło go z równowagi. Musiał tu zajść, bo zaschło mu w gardle.",
+  "ua": "Малий рознощик газет верескнув йому просто у вухо, а оскільки Осіпон не був готовий до факту такого роду, це дуже його справило і вибило з рівноваги. Він мусив зайти сюди, бо в нього пересохло в горлі.",
+  "para": 15,
+  "start": 310.38
+ },
+ {
+  "en": "“I never thought of finding you here,” he added, murmuring steadily, with his elbows planted on the table.",
+  "pl": "— Nie przypuszczałem nigdy, że was tu zastanę — dodał, wciąż szeptem, z łokciami opartymi o stół.",
+  "ua": "— Я й не сподівався, що застану вас тут, — додав він, досі шепочучи, з ліктями, спертими об стіл.",
+  "para": 16,
+  "start": 323.88
+ },
+ {
+  "en": "“I come here sometimes,” said the other, preserving his provoking coolness of demeanour.",
+  "pl": "— Zachodzę tu czasami — rzekł tamten, nie zmieniając ani na jotę wyzywającego chłodu obejścia.",
+  "ua": "— Я іноді заходжу сюди, — сказав той, не змінюючи ані на йоту викличного холоду своєї поведінки.",
+  "para": 17,
+  "start": 331.76
+ },
+ {
+  "en": "“It’s wonderful that you of all people should have heard nothing of it,” the big Ossipon continued. His eyelids snapped nervously upon the shining eyes. “You of all people,” he repeated tentatively.",
+  "pl": "— To nadzwyczajne, że właśnie wy o tym nie słyszeliście — ciągnął barczysty Ossipon. Powieki jego roziskrzonych oczu zatrzepotały nerwowo. — Właśnie wy — powtórzył, ciągnąc tamtego za język.",
+  "ua": "— Дивно, що саме ви про це не чули, — продовжував кремезний Осіпон. повіки його вогняних очей тремтіли нервово. — Саме ви, — повторив він, намагаючись випитати.",
+  "para": 18,
+  "start": 339.39
+ },
+ {
+  "en": "This obvious restraint argued an incredible and inexplicable timidity of the big fellow before the calm little man, who again lifted the glass mug, drank, and put it down with brusque and assured movements. And that was all.",
+  "pl": "Ta widoczna powściągliwość Ossipona zdradzała niewiarygodną i zagadkową nieśmiałość wielkiego draba w stosunku do spokojnego człowieczka, który szorstkimi, pewnymi ruchami podniósł znów szklany kufel, napił się, postawił go z powrotem. I to było wszystko.",
+  "ua": "Ця очевидна стриманість Осіпона виявляла неймовірну і загадкову сором'язливість великого гіганта перед спокійним чоловічком, який шорсткими, впевненими рухами знову підняв скляний кухель, випив і поставив назад. І це було все.",
+  "para": 18,
+  "start": 353.27
+ },
+ {
+  "en": "Ossipon after waiting for something, word or sign, that did not come, made an effort to assume a sort of indifference.",
+  "pl": "Ossipon czekał chwilę na próżno na jakieś słowo lub gest, siląc się na sztuczną obojętność. Ściszył głos jeszcze bardziej i rzekł:",
+  "ua": "Осіпон чекав марно якогось слова чи жесту, намагаючись вдавати штучну байдужість. Він ще більше приспустив голос і сказав:",
+  "para": 19,
+  "start": 369.63
+ },
+ {
+  "en": "“Do you,” he said, deadening his voice still more, “give your stuff to anybody who’s up to asking you for it?”",
+  "pl": "— Czy wy dajecie ten wasz proch każdemu, kto was o to poprosi?",
+  "ua": "— Чи даєте ви цей свій порох кожному, хто вас про це попросить?",
+  "para": 20,
+  "start": 378.02
+ },
+ {
+  "en": "“My absolute rule is never to refuse anybody﻿—as long as I have a pinch by me,” answered the little man with decision.",
+  "pl": "— Moją niewzruszoną zasadą jest nie odmawiać nigdy nikomu… póki mam przy sobie choć szczyptę — odrzekł człowieczek stanowczym tonem.",
+  "ua": "— Моїм непорушним правилом є ніколи нікому не відмовляти… поки маю при собі хоча б крихту, — відповів чоловічок рішучим тоном.",
+  "para": 21,
+  "start": 383.79
+ },
+ {
+  "en": "“That’s a principle?” commented Ossipon.",
+  "pl": "— To jest wasza zasada? — spytał Ossipon.",
+  "ua": "— Це ваше правило? — запитав Осіпон.",
+  "para": 22,
+  "start": 393.24
+ },
+ {
+  "en": "“It’s a principle.”",
+  "pl": "— To jest moja zasada.",
+  "ua": "— Це моє правило.",
+  "para": 23,
+  "start": 396.86
+ },
+ {
+  "en": "“And you think it’s sound?”",
+  "pl": "— I uważacie to za rozsądne?",
+  "ua": "— І ви вважаєте це розумним?",
+  "para": 24,
+  "start": 399.19
+ },
+ {
+  "en": "The large round spectacles, which gave a look of staring self-confidence to the sallow face, confronted Ossipon like sleepless, unwinking orbs flashing a cold fire.",
+  "pl": "Wielkie, okrągłe okulary, które nadawały wybladłej twarzy człowieczka wyraz niewzruszonej pewności siebie, tkwiły naprzeciw Ossipona niby bezsenne, nieruchome oczy błyskające zimnym ogniem.",
+  "ua": "Великі круглі окуляри, що надавали блідому обличчю чоловічки вираз непорушної самовпевненості, стояли навпроти Осіпона, наче безсонні, непорушні очі, що блищать холодним вогнем.",
+  "para": 25,
+  "start": 401.47
+ },
+ {
+  "en": "“Perfectly. Always. Under every circumstance. What could stop me? Why should I not? Why should I think twice about it?”",
+  "pl": "— Bezwzględnie. Zawsze. We wszystkich okolicznościach. Cóż by mnie mogło od tego powstrzymać? Dlaczego nie mam tego robić? Dlaczego mam się wahać?",
+  "ua": "— Абсолютно. Завжди. За будь-яких обставин. Що могло б мене від цього стримати? Чому я не повинен цього робити? Чому мені вагатися?",
+  "para": 26,
+  "start": 413.74
+ },
+ {
+  "en": "Ossipon gasped, as it were, discreetly.",
+  "pl": "Ossipon jak gdyby sapnął dyskretnie.",
+  "ua": "Осіпон, як виходило, непомітно хапнув повітря.",
+  "para": 27,
+  "start": 422.45
+ },
+ {
+  "en": "“Do you mean to say you would hand it over to a ‘teck’ if one came to ask you for your wares?”",
+  "pl": "— Czy chcecie powiedzieć, że dalibyście waszego towaru nawet szpiclowi, gdyby przyszedł i poprosił?",
+  "ua": "— Ви хочете сказати, що віддали б свій товар навіть шпигуну, якби він прийшов і попросив вас про це?",
+  "para": 28,
+  "start": 426.32
+ },
+ {
+  "en": "The other smiled faintly.",
+  "pl": "Człowieczek uśmiechnął się z lekka.",
+  "ua": "Чоловічок ледь усміхнувся.",
+  "para": 29,
+  "start": 431.88
+ },
+ {
+  "en": "“Let them come and try it on, and you will see,” he said. “They know me, but I know also every one of them. They won’t come near me﻿—not they.”",
+  "pl": "— Niech któryś z nich spróbuje, a wtedy zobaczycie — odpowiedział. — Znają mnie, ale ja znam także każdego z nich. Nie zbliżą się do mnie, nie ma obawy.",
+  "ua": "— Хай один із них спробує, і тоді побачите, — відповів він. — Вони мене знають, але я також знаю кожного з них. Не наблизяться до мене, не бійтеся.",
+  "para": 30,
+  "start": 434.48
+ },
+ {
+  "en": "His thin livid lips snapped together firmly. Ossipon began to argue.",
+  "pl": "Jego cienkie, sine wargi zacisnęły się mocno. Ossipon podjął znowu:",
+  "ua": "Його тонкі, синюваті губи міцно стиснулися. Осіпон заговорив знову:",
+  "para": 31,
+  "start": 446.82
+ },
+ {
+  "en": "“But they could send someone﻿—rig a plant on you. Don’t you see? Get the stuff from you in that way, and then arrest you with the proof in their hands.”",
+  "pl": "— Ale mogliby kogoś podesłać i nabić was w butelkę. Czy wy tego nie rozumiecie? Mogliby to w ten sposób od was wydostać, a potem was zaaresztować z dowodem w ręku.",
+  "ua": "— Але вони могли б когось підіслати і завести вас на граблі. Ви цього не розумієте? Вони могли б так витягти це у вас, а потім заарештувати з доказом у руках.",
+  "para": 32,
+  "start": 452.57
+ },
+ {
+  "en": "“Proof of what? Dealing in explosives without a licence perhaps.” This was meant for a contemptuous jeer, though the expression of the thin, sickly face remained unchanged, and the utterance was negligent. “I don’t think there’s one of them anxious to make that arrest.",
+  "pl": "— Z dowodem czego? Chyba tego, że handluję materiałami wybuchowymi bez pozwolenia. — Miało to być pogardliwe szyderstwo, lecz wyraz szczupłej, chorowitej twarzy nie zmienił się, a ton głosu był niedbały. — Nie będą się kwapili mnie zaaresztować.",
+  "ua": "— Доказ чого? Хіба що того, що я торгую вибухівкою без дозволу. — Мало бути зверхнім насмішкою, але вираз худого, хворобливого обличчя не змінився, а тон голосу був байдужим. — Не квапитимуться вони мене заарештовувати.",
+  "para": 33,
+  "start": 462.78
+ },
+ {
+  "en": "I don’t think they could get one of them to apply for a warrant. I mean one of the best. Not one.”",
+  "pl": "Wątpię, aby któryś z nich zgłosił się po rozkaz aresztowania. Choćby i najdzielniejszy. Nikt się nie zgłosi.",
+  "ua": "Сумніваюся, щоб хтось із них подався по ордер на арешт. Хай навіть найвідважніший. Ніхто не подасться.",
+  "para": 33,
+  "start": 479.15
+ },
+ {
+  "en": "“Why?” Ossipon asked.",
+  "pl": "— Dlaczego? — zapytał Ossipon.",
+  "ua": "— Чому? — запитав Осіпон.",
+  "para": 34,
+  "start": 486.93
+ },
+ {
+  "en": "“Because they know very well I take care never to part with the last handful of my wares. I’ve it always by me.” He touched the breast of his coat lightly. “In a thick glass flask,” he added.",
+  "pl": "— Bo wiedzą bardzo dobrze, że nigdy się nie rozstaję z ostatnią garścią swego towaru. Mam go zawsze przy sobie. — Dotknął lekko surduta na piersi. — W grubym szklanym flakonie — dodał.",
+  "ua": "— Бо вони добре знають, що я ніколи не розлучаюся з останнім жменею свого товару. Він завжди при мені. — Він легко торкнувся сюртука на грудях. — У товстому скляному флаконі, — додав.",
+  "para": 35,
+  "start": 490.11
+ },
+ {
+  "en": "“So I have been told,” said Ossipon, with a shade of wonder in his voice. “But I didn’t know if﻿—”",
+  "pl": "— Słyszałem o tym — rzekł Ossipon z odcieniem podziwu w głosie. — Ale nie wiedziałem, że…",
+  "ua": "— Я про це чув, — сказав Осіпон із відтінком захвату в голосі. — Але я не знав, що…",
+  "para": 36,
+  "start": 503.55
+ },
+ {
+  "en": "“They know,” interrupted the little man crisply, leaning against the straight chair back, which rose higher than his fragile head. “I shall never be arrested. The game isn’t good enough for any policeman of them all.",
+  "pl": "— Oni wiedzą — przerwał cierpko człowieczek, opierając się plecami o krzesło, które górowało oparciem nad jego małą głową. — Nie zaaresztują mnie nigdy. Ten kawał nie opłaciłby się żadnemu policjantowi.",
+  "ua": "— Вони знають, — гірко перервав чоловічок, спершись спиною об стілець, підлокітник якого височав над його малою головою. — Мене ніколи не заарештують. Ця гра не варта жодного поліцейського.",
+  "para": 37,
+  "start": 510.08
+ },
+ {
+  "en": "To deal with a man like me you require sheer, naked, inglorious heroism.”",
+  "pl": "Uporanie się z takim człowiekiem jak ja wymaga bezinteresownego bohaterstwa, bohaterstwa bez sławy.",
+  "ua": "Щоб упоратися з таким чоловіком, як я, потрібне безкорисливе героїчство, героїчство без слави.",
+  "para": 37,
+  "start": 524.49
+ },
+ {
+  "en": "Again his lips closed with a self-confident snap. Ossipon repressed a movement of impatience.",
+  "pl": "Znowu zacisnął usta z miną bardzo pewną siebie. Ossipon powściągnął ruch zniecierpliwienia i odparł:",
+  "ua": "Він знову стиснув уста з дуже впевненим виразом. Осіпон стримав рух нетерпіння і відповів:",
+  "para": 38,
+  "start": 531.64
+ },
+ {
+  "en": "“Or recklessness﻿—or simply ignorance,” he retorted. “They’ve only to get somebody for the job who does not know you carry enough stuff in your pocket to blow yourself and everything within sixty yards of you to pieces.”",
+  "pl": "— Albo zuchwałości… albo po prostu nieświadomości. Mogliby powierzyć to zadanie komuś, kto nie wie, że nosicie w kieszeni dość materiału wybuchowego, aby wysadzić w powietrze siebie i wszystko naokoło w promieniu sześćdziesięciu jardów.",
+  "ua": "— Або зухвалості… або просто необізнаності. Вони могли б доручити це завдання комусь, хто не знає, що ви носите в кишені достатньо вибухівки, щоб підірвати себе й усе навколо в радіусі шістдесяти ярдів.",
+  "para": 39,
+  "start": 538.18
+ },
+ {
+  "en": "“I never affirmed I could not be eliminated,” rejoined the other. “But that wouldn’t be an arrest. Moreover, it’s not so easy as it looks.”",
+  "pl": "— Nie twierdziłem nigdy, że nie można mnie usunąć — odparł tamten. — Ale to by nie było aresztowanie. Przy tym nie takie to łatwe, jak się zdaje.",
+  "ua": "— Я ніколи не стверджував, що мене неможливо усунути, — відповів той. — Але це був би не арешт. До того ж це не так легко, як здається.",
+  "para": 40,
+  "start": 552.47
+ },
+ {
+  "en": "“Bah!” Ossipon contradicted. “Don’t be too sure of that. What’s to prevent half-a-dozen of them jumping upon you from behind in the street? With your arms pinned to your sides you could do nothing﻿—could you?”",
+  "pl": "— Et! — zaprzeczył Ossipon. — Nie bądźcie tacy pewni siebie. Któż zaręczy, że z pół tuzina policjantów nie skoczy na was z tyłu na ulicy? Gdyby wam przygwoździli ręce do boków, to byście nie mogli nic zrobić… no bo jakże?",
+  "ua": "— Ба! — заперечив Осіпон. — Не будьте такі впевнені. Хто поручиться, що півдюжини поліцейських не кинуться на вас зі спини на вулиці? Якби вам пригвоздили руки до боків, ви б нічого не могли зробити… ну бо як?",
+  "para": 41,
+  "start": 563.99
+ },
+ {
+  "en": "“Yes; I could. I am seldom out in the streets after dark,” said the little man impassively, “and never very late. I walk always with my right hand closed round the india-rubber ball which I have in my trouser pocket. The pressing of this ball actuates a detonator inside the flask I carry in my pocket.",
+  "pl": "— Owszem, mógłbym. Wychodzę rzadko o zmroku — rzekł obojętnie człowieczek — i nigdy bardzo późno. Trzymam rękę na gumowej gruszce, którą noszę zawsze w lewej kieszeni spodni. Naciśnięcie tej gruszki oddziaływa na zapalnik w środku flakonu, znajdującego się w przedniej kieszeni marynarki.",
+  "ua": "— Міг би. Я рідко виходжу на вулицю після сутінок, — сказав байдуже чоловічок, — і ніколи дуже пізно. Я тримаю руку на гумовій груші, яку завжди ношу в лівій кишені штанів. Натискання цієї груші впливає на запальник усередині флакона, що лежить у передній кишені піджака.",
+  "para": 42,
+  "start": 579.66
+ },
+ {
+  "en": "It’s the principle of the pneumatic instantaneous shutter for a camera lens. The tube leads up﻿—”",
+  "pl": "Na takiej samej zasadzie jest zbudowana migawka aparatu fotograficznego. Rurka prowadzi w górę do…",
+  "ua": "За таким самим принципом побудована заслінка фотокамери. Трубка веде вгору до…",
+  "para": 42,
+  "start": 600.66
+ },
+ {
+  "en": "With a swift disclosing gesture he gave Ossipon a glimpse of an india-rubber tube, resembling a slender brown worm, issuing from the armhole of his waistcoat and plunging into the inner breast pocket of his jacket.",
+  "pl": "Szybkim ruchem uchylił marynarkę i Ossipon zobaczył gumową rurkę podobną do cienkiej brunatnej glisty, wychodzącą z kamizelki, z otworu pachy, i zanurzoną w wewnętrznej przedniej kieszeni marynarki.",
+  "ua": "Швидким рухом він відкинув піджак, і Осіпон побачив гумову трубку, подібну до тонкого брунатного черв'яка, що виходить з пройми жилетки і занурюється у внутрішню передню кишеню піджака.",
+  "para": 43,
+  "start": 607.16
+ },
+ {
+  "en": "His clothes, of a nondescript brown mixture, were threadbare and marked with stains, dusty in the folds, with ragged buttonholes.",
+  "pl": "Odzienie człowieczka, nieokreślonego brązowego koloru, było wytarte i poplamione, pełne kurzu w załamkach; dziurki od guzików były obszarpane.",
+  "ua": "Одяг чоловічка невизначеного брунатного кольору був зношений і в плямах, у складках повний пилу; петлі для ґудзиків були обшарпані.",
+  "para": 43,
+  "start": 619.68
+ },
+ {
+  "en": "“The detonator is partly mechanical, partly chemical,” he explained, with casual condescension.",
+  "pl": "— Zapalnik jest częściowo mechaniczny, a częściowo chemiczny — wyjaśnił człowieczek z niedbałą łaskawością.",
+  "ua": "— Запальник частково механічний, а частково хімічний, — пояснив чоловічок з байдужою ласкавістю.",
+  "para": 44,
+  "start": 630.3
+ },
+ {
+  "en": "“It is instantaneous, of course?” murmured Ossipon, with a slight shudder.",
+  "pl": "— Działa oczywiście natychmiast? — szepnął Ossipon z lekkim dreszczem.",
+  "ua": "— Він, звісно, миттєвий? — прошепотів Осіпон із легким дрижем.",
+  "para": 45,
+  "start": 638.56
+ },
+ {
+  "en": "“Far from it,” confessed the other, with a reluctance which seemed to twist his mouth dolorously. “A full twenty seconds must elapse from the moment I press the ball till the explosion takes place.”",
+  "pl": "— Ale gdzież tam — wyznał tamten z niechęcią, która wykrzywiła mu usta jakby skurczem bólu. — Całych dwadzieścia sekund musi upłynąć od chwili, gdy nacisnę gruszkę, aż do chwili wybuchu.",
+  "ua": "— Аж ніяк, — зізнався той із нехтуючою неприязню, що скривила йому уста, наче від болю. — Цілих двадцять секунд має минути від моменту, коли я натисну грушу, до моменту вибуху.",
+  "para": 46,
+  "start": 643.48
+ },
+ {
+  "en": "“Phew!” whistled Ossipon, completely appalled. “Twenty seconds! Horrors! You mean to say that you could face that? I should go crazy﻿—”",
+  "pl": "— Fiu! — gwizdnął Ossipon, do reszty przerażony. — Dwadzieścia sekund! Okropność! I wy uważacie, że moglibyście to wytrzymać? Ja bym zwariował.",
+  "ua": "— Фі! — свиснув Осіпон, приголомшений до решти. — Двадцять секунд! Жах! І ви вважаєте, що змогли б це витримати? Я б збожеволів.",
+  "para": 47,
+  "start": 656.84
+ },
+ {
+  "en": "“Wouldn’t matter if you did. Of course, it’s the weak point of this special system, which is only for my own use. The worst is that the manner of exploding is always the weak point with us.",
+  "pl": "— Dziura by się w niebie nie zrobiła. Oczywiście jest to słaba strona tego systemu, który przeznaczyłem tylko na własny użytek. Co gorsza, sposób, w jaki wybuch następuje, jest stale słabą stroną naszych bomb.",
+  "ua": "— Діри на небі не було б. Звісно, це слабке місце цієї системи, яку я призначив лише для власного вжитку. Гірше те, що спосіб, у який відбувається вибух, постійно є слабким місцем наших бомб.",
+  "para": 48,
+  "start": 670.37
+ },
+ {
+  "en": "I am trying to invent a detonator that would adjust itself to all conditions of action, and even to unexpected changes of conditions. A variable and yet perfectly precise mechanism. A really intelligent detonator.”",
+  "pl": "Usiłuję wynaleźć zapalnik, który by się dostosowywał do wszystkich warunków akcji i nawet do nieoczekiwanych zmian tych warunków. Mechanizm giętki, a jednak idealnie precyzyjny. Zapalnik prawdziwie inteligentny.",
+  "ua": "Я намагаюся винайти запальник, який пристосовувався б до всіх умов дії і навіть до несподіваних змін цих умов. Механізм гнучкий, а водночас ідеально точний. Справді розумний запальник.",
+  "para": 48,
+  "start": 681.45
+ },
+ {
+  "en": "“Twenty seconds,” muttered Ossipon again. “Ough! And then﻿—”",
+  "pl": "— Dwadzieścia sekund — mruknął znów Ossipon. — Brr! A potem…",
+  "ua": "— Двадцять секунд, — знову пробурмотів Осіпон. — Бrr! А потім…",
+  "para": 49,
+  "start": 697.1
+ },
+ {
+  "en": "With a slight turn of the head the glitter of the spectacles seemed to gauge the size of the beer saloon in the basement of the renowned Silenus Restaurant.",
+  "pl": "Człowieczek odwrócił z lekka głowę; połysk jego okularów zdawał się mierzyć objętość piwiarni mieszczącej się w podziemiach słynnej restauracji „Sylen”.",
+  "ua": "Чоловічок ледь повернув голову; блиск його окулярів, здавалося, міряв обсяг пивоварні, що містилася в підвалах знаменитого ресторану «Силен».",
+  "para": 50,
+  "start": 702.7
+ },
+ {
+  "en": "“Nobody in this room could hope to escape,” was the verdict of that survey. “Nor yet this couple going up the stairs now.”",
+  "pl": "— Nikt nie uszedłby cało z tej sali — zabrzmiał wyrok, który był wynikiem oględzin. — Nawet tych dwoje idących w górę po schodach.",
+  "ua": "— Ніхто не вийде цілком з цієї зали, — пролунало вирок, який був підсумком огляду. — Навіть ті двоє, що йдуть нагору сходами.",
+  "para": 51,
+  "start": 714.07
+ },
+ {
+  "en": "The piano at the foot of the staircase clanged through a mazurka with brazen impetuosity, as though a vulgar and impudent ghost were showing off. The keys sank and rose mysteriously. Then all became still.",
+  "pl": "Pianino u stóp klatki schodowej huknęło mazura z bezczelną natarczywością. Klawisze zapadały się i podnosiły w tajemniczy sposób; wyglądało to na popis jakiegoś pospolitego i zuchwałego ducha. Potem wszystko ucichło.",
+  "ua": "Піаніно біля підніжжя сходів гуркнуло мазурку з нахабною нав'язливістю. Клавіші провалювалися і піднімалися таємничим чином; це виглядало як вистав якогось звичайного й зухвалого духу. Потім усе стихло.",
+  "para": 52,
+  "start": 724.23
+ },
+ {
+  "en": "For a moment Ossipon imagined the overlighted place changed into a dreadful black hole belching horrible fumes choked with ghastly rubbish of smashed brickwork and mutilated corpses. He had such a distinct perception of ruin and death that he shuddered again.",
+  "pl": "Przez chwilę Ossipon wyobrażał sobie tę rozgorzałą od świateł salę zamienioną w straszną, czarną jamę pełną kotłującego się wstrętnego dymu, zawaloną ohydnym rumowiskiem ceglanego gruzu i okaleczonymi ciałami. Ujrzał tak wyraźnie obraz zniszczenia i śmierci, że wstrząsnął się znowu.",
+  "ua": "На мить Осіпон уявив цю розпалену від світла залу, перетворену на страшну чорну яму, повну кипучого гидкого диму, завалену огидним руїнним цегляним сміттям і покаліченими тілами. Він побачив так чітко образ руйнування і смерті, що знову здригнувся.",
+  "para": 52,
+  "start": 738.03
+ },
+ {
+  "en": "The other observed, with an air of calm sufficiency:",
+  "pl": "Jego towarzysz rzekł z miną spokojną i zarozumiałą:",
+  "ua": "Його товариш мовив зі спокійним і зарозумілим виразом:",
+  "para": 52,
+  "start": 756.97
+ },
+ {
+  "en": "“In the last instance it is character alone that makes for one’s safety. There are very few people in the world whose character is as well established as mine.”",
+  "pl": "— W gruncie rzeczy bezpieczeństwo człowieka zależy tylko od jego charakteru. Bardzo jest mało na świecie ludzi o charakterze tak opanowanym jak mój.",
+  "ua": "— У кінцевому підсумку безпека людини залежить лише від її характеру. Дуже мало на світі людей із характером настільки стриманим, як мій.",
+  "para": 53,
+  "start": 760.6
+ },
+ {
+  "en": "“I wonder how you managed it,” growled Ossipon.",
+  "pl": "— Ciekawym, jakeście do tego doszli — burknął Ossipon.",
+  "ua": "— Цікаво, як ви до цього дійшли, — буркнув Осіпон.",
+  "para": 54,
+  "start": 771.22
+ },
+ {
+  "en": "“Force of personality,” said the other, without raising his voice; and coming from the mouth of that obviously miserable organism the assertion caused the robust Ossipon to bite his lower lip. “Force of personality,” he repeated, with ostentatious calm.",
+  "pl": "— Siła indywidualności — rzekł tamten, nie podnosząc głosu; krzepki Ossipon słysząc to zdanie z ust człowieka o tak nędznej postaci, przygryzł dolną wargę. — Siła indywidualności — powtórzył człowieczek z ostentacyjnym spokojem.",
+  "ua": "— Сила особистості, — сказав той, не піднімаючи голосу; кремезний Осіпон, почувши це твердження з вуст людини про таку жалюгідну постать, прикушив нижню губу. — Сила особистості, — повторив чоловічок з виставним спокоєм.",
+  "para": 55,
+  "start": 777.33
+ },
+ {
+  "en": "“I have the means to make myself deadly, but that by itself, you understand, is absolutely nothing in the way of protection. What is effective is the belief those people have in my will to use the means. That’s their impression. It is absolute. Therefore I am deadly.”",
+  "pl": "— Mam środki po temu, aby być śmiercionośnym, ale rozumiecie, że ten fakt sam przez się nie jest dla mnie żadną ochroną. Broni mnie tylko przekonanie tych ludzi, że swoich środków użyję. Wierzą w to. Nieodparcie. I dlatego jestem śmiercionośny.",
+  "ua": "— Я маю засоби, щоб бути смертоносним, але, розумієте, сам по собі цей факт не є для мене жодним захистом. Мене захищає лише переконання цих людей, що я свої засоби використаю. Вони вірять у це. Незаперечно. І тому я смертоносний.",
+  "para": 55,
+  "start": 795.05
+ },
+ {
+  "en": "“There are individuals of character amongst that lot too,” muttered Ossipon ominously.",
+  "pl": "— Wśród nich są także silne indywidualności — mruknął złowrogo Ossipon.",
+  "ua": "— Серед них є також сильні особистості, — зловісно пробурмотів Осіпон.",
+  "para": 56,
+  "start": 813.47
+ },
+ {
+  "en": "“Possibly. But it is a matter of degree obviously, since, for instance, I am not impressed by them. Therefore they are inferior. They cannot be otherwise. Their character is built upon conventional morality. It leans on the social order. Mine stands free from everything artificial.",
+  "pl": "— Możliwe. Ale widać chodzi o stopień siły, bo na przykład ja się ich nie boję. Na tym polega ich niższość. Oni nie mogą być inni. Ich charakter jest ugruntowany na konwencjonalnej moralności. Opiera się na społecznym porządku. Mój charakter wolny jest od wszystkiego, co sztuczne.",
+  "ua": "— Можливо. Але, очевидно, йдеться про ступінь сили, бо, наприклад, я їх не бою. На цьому ґрунтується їхня нижність. Вони не можуть бути іншими. Їхній характер ґрунтується на конвенційній моралі. Він спирається на суспільний лад. Мій характер вільний від усього штучного.",
+  "para": 57,
+  "start": 819.96
+ },
+ {
+  "en": "They are bound in all sorts of conventions. They depend on life, which, in this connection, is a historical fact surrounded by all sorts of restraints and considerations, a complex organised fact open to attack at every point;",
+  "pl": "Oni są skrępowani mnóstwem konwencjonalnych przepisów. Związani są z życiem, które w tym wypadku jest tworem historycznym, zależnym od różnych względów i ograniczeń, złożonym, zorganizowanym tworem wystawionym zewsząd na ataki;",
+  "ua": "Вони сковані безліччю конвенційних приписів. Вони пов'язані з життям, яке в цьому випадку є історичним твором, залежним від різних оглядів і обмежень, складним, організованим твором, підданим звідусіль атакам;",
+  "para": 57,
+  "start": 837.94
+ },
+ {
+  "en": "whereas I depend on death, which knows no restraint and cannot be attacked. My superiority is evident.”",
+  "pl": "tymczasem ja związany jestem ze śmiercią, która nie zna żadnych ograniczeń i której atakować nie można. Moja wyższość jest oczywista.",
+  "ua": "натомість я пов'язаний зі смертю, яка не знає жодних обмежень і яку не можна атакувати. Моя перевага очевидна.",
+  "para": 57,
+  "start": 853.2
+ },
+ {
+  "en": "“This is a transcendental way of putting it,” said Ossipon, watching the cold glitter of the round spectacles. “I’ve heard Karl Yundt say much the same thing not very long ago.”",
+  "pl": "— Ujmujecie to w sposób transcendentalny — rzekł Ossipon, śledząc zimny połysk okularów. — Słyszałem niedawno, jak Karl Yundt mówił coś bardzo podobnego.",
+  "ua": "— Ви подаєте це трансцендентним чином, — сказав Осіпон, стежачи за холодним блиском окулярів. — Я недавно чув, як Карл Юндт говорив щось дуже подібне.",
+  "para": 58,
+  "start": 864.61
+ },
+ {
+  "en": "“Karl Yundt,” mumbled the other contemptuously, “the delegate of the International Red Committee, has been a posturing shadow all his life. There are three of you delegates, aren’t there? I won’t define the other two, as you are one of them. But what you say means nothing.",
+  "pl": "— Karl Yundt — mruknął tamten pogardliwie — delegat Międzynarodowego Czerwonego Komitetu, był przez całe życie pozującym cieniem. Jest tu was trzech delegatów, prawda? Nie będę określał dwóch pozostałych, bo jednym z nich wy jesteście. To, co wszyscy trzej mówicie, nie ma w ogóle żadnego znaczenia.",
+  "ua": "— Карл Юндт, — пробурмотів той зневажливо, — делегат Міжнародного Червоного Комітету, усе життя був позувальною тінню. Вас тут троє делегатів, правда? Не буду описувати двох інших, бо одним із них є ви. Те, що ви троє кажете, взагалі не має жодного значення.",
+  "para": 59,
+  "start": 876.56
+ },
+ {
+  "en": "You are the worthy delegates for revolutionary propaganda, but the trouble is not only that you are as unable to think independently as any respectable grocer or journalist of them all, but that you have no character whatever.”",
+  "pl": "Jesteście szacownymi delegatami do spraw propagandy rewolucyjnej, ale w tym sęk, że nie tylko nie potraficie myśleć niezależnie, zupełnie jak pierwszy lepszy szanowany kupiec czy dziennikarz, lecz żaden z was nie ma siły charakteru.",
+  "ua": "Ви шановані делегати з питань революційної пропаганди, але суть у тому, що ви не лише не здатні мислити незалежно, абсолютно як перший-ліпший поважний купець чи журналіст, але й жоден із вас не має сили характеру.",
+  "para": 59,
+  "start": 898.86
+ },
+ {
+  "en": "Ossipon could not restrain a start of indignation.",
+  "pl": "Ossipon nie mógł powstrzymać odruchu oburzenia.",
+  "ua": "Осіпон не міг стримати рух обурення.",
+  "para": 60,
+  "start": 913.45
+ },
+ {
+  "en": "“But what do you want from us?” he exclaimed in a deadened voice. “What is it you are after yourself?”",
+  "pl": "— Czegóż wy od nas chcecie? — wykrzyknął stłumionym głosem. — I nad czym pracujecie sami?",
+  "ua": "— Чого ж ви від нас хочете? — вигукнув приглушеним голосом. — І над чим самі працюєте?",
+  "para": 61,
+  "start": 917.84
+ },
+ {
+  "en": "“A perfect detonator,” was the peremptory answer. “What are you making that face for? You see, you can’t even bear the mention of something conclusive.”",
+  "pl": "— Nad udoskonaleniem zapalnika — brzmiała stanowcza odpowiedź. — Cóż znaczy ta krzywa mina? Widzicie, nie możecie znieść nawet wzmianki o czymś decydującym.",
+  "ua": "— Над удосконаленням запальника, — пролунала рішуча відповідь. — Що це за крива морда? Бачите, ви не можете витримати навіть згадки про щось вирішальне.",
+  "para": 62,
+  "start": 924.54
+ },
+ {
+  "en": "“I am not making a face,” growled the annoyed Ossipon bearishly.",
+  "pl": "— Ja się wcale nie krzywię — warknął brutalnie udręczony Ossipon.",
+  "ua": "— Я зовсім не кривлюся, — буркнув жорстоко знівечений Осіпон, як ведмідь.",
+  "para": 63,
+  "start": 937.66
+ },
+ {
+  "en": "“You revolutionists,” the other continued, with leisurely self-confidence, “are the slaves of the social convention, which is afraid of you; slaves of it as much as the very police that stands up in the defence of that convention.",
+  "pl": "— Wy, rewolucjoniści — ciągnął tamten ze swobodną pewnością siebie — jesteście wszyscy w niewoli u porządku społecznego, który się was obawia; w niewoli zupełnie takiej samej, jak policja broniąca tego porządku.",
+  "ua": "— Ви, революціонери, — продовжував той із вільною впевненістю, — всі в неволі у суспільного ладу, який боїться вас; у неволі точно такої самої, як і поліція, що оберігає цей лад.",
+  "para": 64,
+  "start": 942.92
+ },
+ {
+  "en": "Clearly you are, since you want to revolutionise it. It governs your thought, of course, and your action too, and thus neither your thought nor your action can ever be conclusive.”",
+  "pl": "To jasne, że jesteście jego niewolnikami, ponieważ chcecie ten porządek zrewolucjonizować. On rządzi zarówno waszą myślą, jak waszymi czynami, i dlatego ani wasze myśli, ani wasze czyny nigdy do niczego nie doprowadzą.",
+  "ua": "Зрозуміло, що ви його невільники, бо хочете цей лад зреволюціонізувати. Він управляє як вашою думкою, так і вашими вчинками, і тому ні ваші думки, ні ваші вчинки ніколи ні до чого не доведуть.",
+  "para": 64,
+  "start": 956.98
+ },
+ {
+  "en": "He paused, tranquil, with that air of close, endless silence, then almost immediately went on. “You are not a bit better than the forces arrayed against you﻿—than the police, for instance. The other day I came suddenly upon Chief Inspector Heat at the corner of Tottenham Court Road. He looked at me very steadily.",
+  "pl": "— Zamilkł spokojnie, rzekłbyś, ostatecznie, i prawie natychmiast podjął znów: — Nie jesteście ani o włos lepsi od sił przeciw wam zgrupowanych… na przykład od policji. Któregoś dnia zetknąłem się nagle z komisarzem Heatem na rogu Tottenham Court Road. Nie spuszczał ze mnie wzroku.",
+  "ua": "— Він замовк спокійно, мов би остаточно, і майже одразу знову заговорив: — Ви не на йоту кращі за сили, згруповані проти вас… наприклад, за поліцію. Якогось дня я раптово зіткнувся з комісаром Хітом на розі Тоттенем-Корт-Роуд. Він не спускав з мене очей.",
+  "para": 64,
+  "start": 970.46
+ },
+ {
+  "en": "But I did not look at him. Why should I give him more than a glance? He was thinking of many things﻿—of his superiors, of his reputation, of the law courts, of his salary, of newspapers﻿—of a hundred things. But I was thinking of my perfect detonator only. He meant nothing to me.",
+  "pl": "Ale ja na niego nie patrzyłem. Wystarczył mi jeden rzut oka. On myślał o wielu rzeczach — o swych przełożonych, o swej reputacji, o sądach, o swej pensji, o dziennikach… o tysiącu rzeczy. Ale ja myślałem tylko o swym doskonałym zapalniku. Komisarz Heat był dla mnie niczym.",
+  "ua": "Але я на нього не дивився. Достатньо мені було одного погляду. Він думав про багато речей — про своїх начальників, про свою репутацію, про суди, про свою платню, про газети… про тисячу речей. А я думав лише про свій досконалий запальник. Комісар Хіт був для мене нічим.",
+  "para": 64,
+  "start": 988.42
+ },
+ {
+  "en": "He was as insignificant as﻿—I can’t call to mind anything insignificant enough to compare him with﻿—except Karl Yundt perhaps. Like to like. The terrorist and the policeman both come from the same basket.",
+  "pl": "Był dla mnie osobistością tak mało znaczącą jak… nic równie błahego nie mogę sobie przypomnieć — z wyjątkiem może Karla Yundta. Jeden wart drugiego. I terrorysta, i policjant — obaj z tej samej beczki.",
+  "ua": "Він був для мене особистістю такою малозначущою, як… нічого настільки банального не можу пригадати — хіба що Карла Юндта. Один вартий другого. І терорист, і поліцейський — обидва з однієї бочки.",
+  "para": 64,
+  "start": 1007.99
+ },
+ {
+  "en": "Revolution, legality﻿—counter moves in the same game; forms of idleness at bottom identical. He plays his little game﻿—so do you propagandists. But I don’t play; I work fourteen hours a day, and go hungry sometimes.",
+  "pl": "Rewolucja, legalność — to przeciwne sobie posunięcia w tej samej grze, formy nieróbstwa w gruncie rzeczy identyczne. Oni prowadzą swoją grę — i wy, ideowcy, swoją. Ale ja w żadną grę się nie bawię; ja pracuję czternaście godzin na dobę i czasem przymieram głodem.",
+  "ua": "Революція, легальність — це протилежні ходи в тій самій грі, форми неробства в кінцевому підсумку тотожні. Вони ведуть свою гру — і ви, ідеологи, свою. Але я в жодну гру не граю; я працюю чотирнадцять годин на добу і іноді помираю з голоду.",
+  "para": 64,
+  "start": 1023.73
+ },
+ {
+  "en": "My experiments cost money now and again, and then I must do without food for a day or two. You’re looking at my beer. Yes. I have had two glasses already, and shall have another presently. This is a little holiday, and I celebrate it alone. Why not?",
+  "pl": "Moje doświadczenia wymagają niekiedy pieniędzy, a wtedy muszę się obejść parę dni bez jedzenia. Patrzycie na moje piwo. Tak. Wypiłem już dwa kufle i zaraz wypiję trzeci. Dziś urządziłem sobie święto i obchodzę je w samotności. Czemu nie?",
+  "ua": "Мої досліди іноді потребують грошей, і тоді я мушу обходитися пару днів без їжі. Ви дивитеся на моє пиво. Так. Я вже випив два кухлі і зараз вип'ю третій. Сьогодні я влаштував собі свято і відзначаю його на самоті. Чому ні?",
+  "para": 64,
+  "start": 1042.43
+ },
+ {
+  "en": "I’ve the grit to work alone, quite alone, absolutely alone. I’ve worked alone for years.”",
+  "pl": "Mam dość sił, aby pracować samotnie, zupełnie samotnie, w absolutnej samotności. Pracuję w samotności od lat.",
+  "ua": "Маю досить сили, щоб працювати наодинці, зовсім наодинці, в абсолютній самоті. Я працюю наодинці роками.",
+  "para": 64,
+  "start": 1057.27
+ },
+ {
+  "en": "Ossipon’s face had turned dusky red.",
+  "pl": "Ciemny rumieniec pokrył twarz Ossipona.",
+  "ua": "Темний рум'янець покрив обличчя Осіпона.",
+  "para": 65,
+  "start": 1065.81
+ },
+ {
+  "en": "“At the perfect detonator﻿—eh?” he sneered, very low.",
+  "pl": "— Nad idealnym zapalnikiem… co? — zadrwił bardzo cicho.",
+  "ua": "— Над досконалим запальником… чи? — насмішкувато промовив дуже тихо.",
+  "para": 66,
+  "start": 1069.06
+ },
+ {
+  "en": "“Yes,” retorted the other. “It is a good definition. You couldn’t find anything half so precise to define the nature of your activity with all your committees and delegations. It is I who am the true propagandist.”",
+  "pl": "— Tak — odparł tamten. — Dobrzeście to określili. Nie znaleźlibyście nic nawet w części równie ścisłego na określenie waszej działalności, włączając w to wszystkie wasze komitety i delegacje. To ja jestem prawdziwym ideowcem.",
+  "ua": "— Так, — відповів той. — Добре ви це окреслили. Ви не знайшли б нічого навіть наполовину настільки точного для визначення вашої діяльності, включно з усіма вашими комітетами та делегаціями. Саме я є справжнім ідеологом.",
+  "para": 67,
+  "start": 1074.64
+ },
+ {
+  "en": "“We won’t discuss that point,” said Ossipon, with an air of rising above personal considerations. “I am afraid I’ll have to spoil your holiday for you, though. There’s a man blown up in Greenwich Park this morning.”",
+  "pl": "— Nie będziemy się o to spierać — rzekł Ossipon, przybierając minę wznoszenia się ponad względy osobiste. — Przykro mi, że będę jednak musiał zepsuć wam święto. Dziś rano w Greenwich Park jakiś człowiek został wysadzony w powietrze.",
+  "ua": "— Не будемо про це сперечатися, — сказав Осіпон, прийнявши вигляд людини, що здіймається над особистими міркуваннями. — Шкодує, але мені доведеться зіпсувати вам свято. Сьогодні вранці в Грінвіч-парку якогось чоловіка висадили в повітря.",
+  "para": 68,
+  "start": 1091.4
+ },
+ {
+  "en": "“How do you know?”",
+  "pl": "— Skąd o tym wiecie?",
+  "ua": "— Звідки ви це знаєте?",
+  "para": 69,
+  "start": 1109.87
+ },
+ {
+  "en": "“They have been yelling the news in the streets since two o’clock. I bought the paper, and just ran in here. Then I saw you sitting at this table. I’ve got it in my pocket now.”",
+  "pl": "— Już od drugiej wykrzykują tę wiadomość na ulicach. Kupiłem dziennik i wbiegłem tutaj. Potem zobaczyłem, że siedzicie przy tym stoliku. Mam dziennik w kieszeni.",
+  "ua": "— Вже з другої години цю новину верещать на вулицях. Я купив газету і вбіг сюди. Потім побачив, що ви сидите за цим столиком. Газета в мене в кишені.",
+  "para": 70,
+  "start": 1111.8
+ },
+ {
+  "en": "He pulled the newspaper out. It was a good-sized rosy sheet, as if flushed by the warmth of its own convictions, which were optimistic. He scanned the pages rapidly.",
+  "pl": "Wyciągnął gazetę — duży różowy arkusz, jakby zarumieniony od żaru swych przekonań, które były optymistyczne. Przebiegł go wzrokiem.",
+  "ua": "Він витяг газету — великий рожевий аркуш, ніби почервонілий від жару своїх переконань, які були оптимістичними. Пробіг її очима.",
+  "para": 71,
+  "start": 1122.02
+ },
+ {
+  "en": "“Ah! Here it is. Bomb in Greenwich Park. There isn’t much so far. Half-past eleven. Foggy morning. Effects of explosion felt as far as Romney Road and Park Place. Enormous hole in the ground under a tree filled with smashed roots and broken branches. All round fragments of a man’s body blown to pieces.",
+  "pl": "— Aha! Mam. Bomba w Greenwich, w parku. Mało szczegółów na razie. Pół do jedenastej. Mglisty ranek. Skutki wybuchu odczuto aż na Romney Road i Park Place. Olbrzymia wyrwa w ziemi pod drzewem, pełna zmiażdżonych korzeni i połamanych gałęzi. Naokoło szczątki ludzkiego ciała rozerwanego na strzępy.",
+  "ua": "— Ага! Є. Бомба в Грінвіч-парку. Поки що мало подробиць. Пів на одинадцяту. Туманний ранок. Наслідки вибуху відчули аж на Ромні-Роуд і Парк-Плейс. Велетенська яма в землі під деревом, повна розтрощених коренів і зламаних гілок. Навколо уламки людського тіла, розірваного на шматки.",
+  "para": 72,
+  "start": 1130.26
+ },
+ {
+  "en": "That’s all. The rest’s mere newspaper gup. No doubt a wicked attempt to blow up the Observatory, they say. H’m. That’s hardly credible.”",
+  "pl": "To już wszystko. Reszta same dziennikarskie bzdury. Piszą, że to z pewnością zbrodniczy zamach na obserwatorium. Hm. Trudno temu uwierzyć.",
+  "ua": "Це все. Решта — самі журналістські нісенітниці. Пишуть, що це, безперечно, злочинний замах на обсерваторію. Гм. Важко в це повірити.",
+  "para": 72,
+  "start": 1150.3
+ },
+ {
+  "en": "He looked at the paper for a while longer in silence, then passed it to the other, who after gazing abstractedly at the print laid it down without comment.",
+  "pl": "Przez chwilę patrzył jeszcze w milczeniu na gazetę, wreszcie podał ją człowieczkowi, który spojrzał z roztargnieniem na dziennik i odłożył go bez słowa.",
+  "ua": "Ще хвилину він мовчки дивився на газету, нарешті подав її чоловічку, який поглянув на газету з розсіяністю і відклав її без слова.",
+  "para": 73,
+  "start": 1160.35
+ },
+ {
+  "en": "It was Ossipon who spoke first﻿—still resentful.",
+  "pl": "Pierwszy odezwał się Ossipon tonem wciąż urażonym:",
+  "ua": "Першим заговорив Осіпон тоном досі ображеної людини:",
+  "para": 74,
+  "start": 1169.77
+ },
+ {
+  "en": "“The fragments of only one man, you note. Ergo: blew himself up. That spoils your day off for you﻿—don’t it? Were you expecting that sort of move? I hadn’t the slightest idea﻿—",
+  "pl": "— Uważacie, szczątki tylko jednego człowieka. Ergo³⁹: sam siebie wysadził w powietrze. To popsuje wam chyba nastrój… co? Czyście się spodziewali tego rodzaju posunięcia? Nie miałem najlżejszego wyobrażenia…",
+  "ua": "— Зверніть увагу: уламки лише одного чоловіка. Ergo³⁹: підірвав сам себе. Це, здається, зіпсує вам настрій… чи? Ви сподівалися на такий хід? Я не мав і найменшого уявлення…",
+  "para": 75,
+  "start": 1174.11
+ },
+ {
+  "en": "not the ghost of a notion of anything of the sort being planned to come off here﻿—in this country. Under the present circumstances it’s nothing short of criminal.”",
+  "pl": "nawet nie postało mi w głowie, że knują coś podobnego, że tego rodzaju historia ma się tu stać — tu, w Anglii. Zważywszy na obecne warunki jest to po prostu zbrodnia.",
+  "ua": "навіть не спадало мені на думку, що вони щось подібне замислюють, що така історія має тут статися — тут, в Англії. За теперішніх обставин це просто злочин.",
+  "para": 75,
+  "start": 1188.51
+ },
+ {
+  "en": "The little man lifted his thin black eyebrows with dispassionate scorn.",
+  "pl": "Człowieczek podniósł rzadkie czarne brwi z obojętną pogardą.",
+  "ua": "Чоловічок підняв рідкісні чорні брови з байдужою зневагою.",
+  "para": 76,
+  "start": 1198.23
+ },
+ {
+  "en": "“Criminal! What is that? What is crime? What can be the meaning of such an assertion?”",
+  "pl": "— Zbrodnia! Co przez to rozumiecie? Czym jest zbrodnia? Co chcecie przez to powiedzieć?",
+  "ua": "— Злочин! Що ви цим маєте на увазі? Що таке злочин? Що ви хочете цим сказати?",
+  "para": 77,
+  "start": 1203.31
+ },
+ {
+  "en": "“How am I to express myself? One must use the current words,” said Ossipon impatiently. “The meaning of this assertion is that this business may affect our position very adversely in this country. Isn’t that crime enough for you?",
+  "pl": "— A jakże mam się wyrazić? Muszę używać ogólnie przyjętych słów — rzekł niecierpliwie Ossipon. — Chcę przez to powiedzieć, że owa historia może wpłynąć bardzo niekorzystnie na nasze położenie w Anglii. Mało wam jeszcze tej zbrodni?",
+  "ua": "— А як же мені висловитися? Мушу вживати загальноприйняті слова, — нетерпляче сказав Осіпон. — Я хочу цим сказати, що та історія може дуже несприятливо вплинути на наше становище в Англії. Вам ще мало цього злочину?",
+  "para": 78,
+  "start": 1211.45
+ },
+ {
+  "en": "I am convinced you have been giving away some of your stuff lately.”",
+  "pl": "Jestem pewien, że w ostatnich czasach daliście komuś tego waszego towaru.",
+  "ua": "Я впевнений, що останнім часом ви комусь давали свого товару.",
+  "para": 78,
+  "start": 1226.07
+ },
+ {
+  "en": "Ossipon stared hard. The other, without flinching, lowered and raised his head slowly.",
+  "pl": "Ossipon patrzył bacznie w twarz człowieczka. Tamten z całym spokojem podniósł z wolna głowę i opuścił ją.",
+  "ua": "Осіпон пильно дивився в обличчя чоловічки. Той із цілковитим спокоєм повільно підняв голову й опустив її.",
+  "para": 79,
+  "start": 1230.69
+ },
+ {
+  "en": "“You have!” burst out the editor of the F. P. leaflets in an intense whisper. “No! And are you really handing it over at large like this, for the asking, to the first fool that comes along?”",
+  "pl": "— Więc to wy! — wybuchnął dobitnym szeptem redaktor ulotek P. P. — Nie może być! Więc naprawdę rozdajecie to ot tak sobie, na żądanie, pierwszemu lepszemu durniowi, który się nawinie?",
+  "ua": "— Отже, це ви! — вибухнув виразним шепотом редактор улоток П. П. — Не може бути! Отже, ви справді роздаєте це отак собі, на вимогу, першому-ліпшому дурневі, який трапиться?",
+  "para": 80,
+  "start": 1238.9
+ },
+ {
+  "en": "“Just so! The condemned social order has not been built up on paper and ink, and I don’t fancy that a combination of paper and ink will ever put an end to it, whatever you may think.",
+  "pl": "— Tak jest! Skazany na zagładę ustrój społeczny nie został zbudowany z papieru i atramentu i nie wyobrażam sobie, aby kombinacja papieru z atramentem mogła położyć mu koniec, bez względu na to, co wy sobie wyobrażacie.",
+  "ua": "— Саме так! Засуджений суспільний лад не збудований з паперу та чорнила, і я не уявляю, щоб поєднання паперу з чорнилом могло покласти йому кінець, незалежно від того, що ви собі уявляєте.",
+  "para": 81,
+  "start": 1252.7
+ },
+ {
+  "en": "Yes, I would give the stuff with both hands to every man, woman, or fool that likes to come along. I know what you are thinking about. But I am not taking my cue from the Red Committee.",
+  "pl": "Tak, rozdawałbym swój proch na wszystkie strony każdemu mężczyźnie, każdej kobiecie, każdemu durniowi, wszystkim, którym by się spodobało przyjść po to do mnie. Wiem, co myślicie. Ale ja się nie kieruję wskazówkami Czerwonego Komitetu.",
+  "ua": "Так, я роздавав би свій порох на всі боки кожному чоловіку, кожній жінці, кожному дурневі, усім, кому сподобалося б прийти по це до мене. Я знаю, про що ви думаєте. Але я не керуюся вказівками Червоного Комітету.",
+  "para": 81,
+  "start": 1266.44
+ },
+ {
+  "en": "I would see you all hounded out of here, or arrested﻿—or beheaded for that matter﻿—without turning a hair. What happens to us as individuals is not of the least consequence.”",
+  "pl": "Gdyby was stąd wszystkich wyszczuli, albo uwięzili, albo na przykład ucięli wam głowy — nawet bym palcem nie kiwnął. To, co nas spotyka indywidualnie, nie ma najmniejszego znaczenia.",
+  "ua": "Якби вас усіх звідси вигнали, чи заарештували, чи, наприклад, відтяли голови — я б навіть пальцем не зрушив. Те, що з нами трапляється індивідуально, не має найменшого значення.",
+  "para": 81,
+  "start": 1280.25
+ },
+ {
+  "en": "He spoke carelessly, without heat, almost without feeling, and Ossipon, secretly much affected, tried to copy this detachment.",
+  "pl": "Mówił niedbale, chłodno, prawie obojętnie i Ossipon, bardzo poruszony w skrytości ducha, starał się naśladować ten obojętny ton:",
+  "ua": "Він говорив байдуже, холодно, майже байдуже, і Осіпон, дуже зворушений у глибині душі, намагався наслідувати цей байдужий тон:",
+  "para": 82,
+  "start": 1294.05
+ },
+ {
+  "en": "“If the police here knew their business they would shoot you full of holes with revolvers, or else try to sandbag you from behind in broad daylight.”",
+  "pl": "— Gdyby tutejsza policja stała na wysokości zadania, podziurawiliby was kulami jak sito albo w biały dzień przygnietliby was z tyłu worami z piaskiem.",
+  "ua": "— Якби місцева поліція стояла на висоті завдання, вони прошили б вас кулями, як решето, або в білий день прибили б зі спини мішками з піском.",
+  "para": 83,
+  "start": 1302.47
+ },
+ {
+  "en": "The little man seemed already to have considered that point of view in his dispassionate self-confident manner.",
+  "pl": "Zdawało się, że człowieczek rozważył już ten punkt widzenia w swój zwykły, obojętny i pewny siebie sposób.",
+  "ua": "Здавалося, чоловічок уже зважив цю точку зору у свій звичайний, байдужий і впевнений у собі спосіб.",
+  "para": 84,
+  "start": 1313.36
+ },
+ {
+  "en": "“Yes,” he assented with the utmost readiness. “But for that they would have to face their own institutions. Do you see? That requires uncommon grit. Grit of a special kind.”",
+  "pl": "— Tak — potwierdził z błyskawiczną gotowością. — Ale wówczas zadarliby z własnymi ustawami. Rozumiecie? To wymaga niepośledniej siły charakteru. Siły charakteru zupełnie specjalnej.",
+  "ua": "— Так, — підтвердив із блискавичною готовністю. — Але тоді вони зіткнулися б з власними законами. Розумієте? Це потребує незвичайної сили характеру. Сили характеру цілком особливої.",
+  "para": 85,
+  "start": 1319.51
+ },
+ {
+  "en": "Ossipon blinked.",
+  "pl": "Ossipon zmrużył oczy.",
+  "ua": "Осіпон змірив очі.",
+  "para": 86,
+  "start": 1334.35
+ },
+ {
+  "en": "“I fancy that’s exactly what would happen to you if you were to set up your laboratory in the States. They don’t stand on ceremony with their institutions there.”",
+  "pl": "— Przypuszczam, że tak by się właśnie z wami obeszli, gdybyście założyli wasze laboratorium w Stanach. Oni się nie ceremoniują ze swymi ustawami.",
+  "ua": "— Гадаю, саме так і повелися б із вами, якби ви влаштували вашу лабораторію в Штатах. Вони не церемоняться зі своїми законами.",
+  "para": 87,
+  "start": 1336.79
+ },
+ {
+  "en": "“I am not likely to go and see. Otherwise your remark is just,” admitted the other. “They have more character over there, and their character is essentially anarchistic. Fertile ground for us, the States﻿—very good ground.",
+  "pl": "— Nie mam zamiaru tam jechać, żeby się o tym przekonać. Zresztą wasza uwaga jest słuszna — przyznał człowieczek. — Tamci mają więcej charakteru i ten charakter jest na wskroś anarchistyczny. To urodzajny dla nas grunt. Stany Zjednoczone — bardzo dobry grunt.",
+  "ua": "— Я не збираюся туди їхати, щоб у цьому переконатися. До того ж ваше зауваження слушне, — зізнався чоловічок. — Тамтешні мають більше характеру, і цей характер наскрізь анархічний. Для нас це родючий ґрунт. Сполучені Штати — дуже добрий ґрунт.",
+  "para": 88,
+  "start": 1345.53
+ },
+ {
+  "en": "The great Republic has the root of the destructive matter in her. The collective temperament is lawless. Excellent. They may shoot us down, but﻿—”",
+  "pl": "W tej wielkiej republice tkwi zaród zniszczenia. Temperament zbiorowy jest nastawiony przeciw prawu. Doskonale! Mogą nas powystrzelać, ale…",
+  "ua": "У цій великій республіці заховано зародок руйнування. Колективний темперамент налаштований проти закону. Чудово! Вони можуть нас повистрілювати, але…",
+  "para": 88,
+  "start": 1361.25
+ },
+ {
+  "en": "“You are too transcendental for me,” growled Ossipon, with moody concern.",
+  "pl": "— Jesteście dla mnie zbyt abstrakcyjni — burknął Ossipon, zatroskany i markotny.",
+  "ua": "— Ви для мене надто абстрактні, — буркнув Осіпон, стурбований і похмурий.",
+  "para": 89,
+  "start": 1374.23
+ },
+ {
+  "en": "“Logical,” protested the other. “There are several kinds of logic. This is the enlightened kind. America is all right. It is this country that is dangerous, with her idealistic conception of legality.",
+  "pl": "— Jestem tylko logiczny — zaprzeczył człowieczek. — Istnieje kilka rodzajów logiki. Moja należy do kategorii właściwej ludziom oświeconym. Ameryka jest w porządku. To Anglia jest niebezpieczna ze względu na swe idealistyczne wyobrażenia o praworządności.",
+  "ua": "— Я лише логічний, — заперечив чоловічок. — Існує кілька видів логіки. Моя належить до категорії, притаманної освіченим людям. Америка в порядку. Небезпечною є Англія через свої ідеалістичні уявлення про правопорядок.",
+  "para": 90,
+  "start": 1379.78
+ },
+ {
+  "en": "The social spirit of this people is wrapped up in scrupulous prejudices, and that is fatal to our work. You talk of England being our only refuge! So much the worse. Capua! What do we want with refuges? Here you talk, print, plot, and do nothing.",
+  "pl": "Duch społeczny tego narodu cechują skrupuły, uprzedzenia i to dla naszego dzieła jest zgubne. Mówicie, że Anglia jest jedynym naszym schronieniem. Tym gorzej. To nasza Kapua⁴⁰! Po co nam schronienie? Gadacie tu, drukujecie, knujecie i nic nie robicie.",
+  "ua": "Суспільний дух цього народу вирізняють сумніви, упередження, і для нашої справи це згубно. Ви кажете, що Англія — наш єдиний притулок. Тим гірше. Це наша Капуя⁴⁰! Навіщо нам притулок? Тут ви говорите, друкуєте, змовляєтеся і нічого не робите.",
+  "para": 90,
+  "start": 1397.92
+ },
+ {
+  "en": "I daresay it’s very convenient for such Karl Yundts.”",
+  "pl": "Powiedziałbym, że to jest bardzo wygodne dla takich Karlów Yundtów.",
+  "ua": "Сказав би, що це дуже зручно для таких Карлів Юндтів.",
+  "para": 90,
+  "start": 1417.46
+ },
+ {
+  "en": "He shrugged his shoulders slightly, then added with the same leisurely assurance:",
+  "pl": "Wzruszył lekko ramionami i dodał z tą samą swobodną pewnością siebie:",
+  "ua": "Він легенько знизав плечима і додав з тією ж вільною впевненістю:",
+  "para": 91,
+  "start": 1421.4
+ },
+ {
+  "en": "“To break up the superstition and worship of legality should be our aim. Nothing would please me more than to see Inspector Heat and his likes take to shooting us down in broad daylight with the approval of the public. Half our battle would be won then;",
+  "pl": "— Naszym celem powinno być skruszenie przesądów oraz czci dla prawa. Najbardziej by mi się spodobało, gdyby komisarz Heat i jego banda zaczęli w biały dzień do nas strzelać ku zadowoleniu publiczności. Wówczas nasza bitwa byłaby na wpół wygrana;",
+  "ua": "— Нашою метою має бути знищення забобонів та культу закону. Мені найбільше сподобалося б, якби комісар Хіт і його банда почали в білий день стріляти в нас на задоволення публіки. Тоді нашу битву було б наполовину виграно;",
+  "para": 92,
+  "start": 1425.73
+ },
+ {
+  "en": "the disintegration of the old morality would have set in in its very temple. That is what you ought to aim at. But you revolutionists will never understand that.",
+  "pl": "rozkład starej moralności zagnieździłby się u samego jej źródła. Oto cel, do którego powinniście dążyć. Ale wy, rewolucjoniści, nigdy tego nie zrozumiecie.",
+  "ua": "розклад старої моралі оселився б у самому її джерелі. Ось до чого ви маєте прагнути. Але ви, революціонери, цього ніколи не зрозумієте.",
+  "para": 92,
+  "start": 1440.65
+ },
+ {
+  "en": "You plan the future, you lose yourselves in reveries of economical systems derived from what is; whereas what’s wanted is a clean sweep and a clear start for a new conception of life. That sort of future will take care of itself if you will only make room for it.",
+  "pl": "Snujecie plany na przyszłość, gubicie się w marzeniach o systemie ekonomicznym wywodzącym się z istniejącego porządku rzeczy, a tymczasem należy zmieść wszystko, co jest, i wywieść z nicości nowe pojęcie życia. Taka przyszłość sama da sobie radę, jeśli zrobi się dla niej miejsce.",
+  "ua": "Ви будуєте плани на майбутнє, губитеся в мріях про економічну систему, що випливає з існуючого ладу речей, тим часом слід змести все, що є, і вивести з ніщого нове поняття життя. Таке майбутнє само подбає про себе, якщо для нього звільнятимуть місце.",
+  "para": 92,
+  "start": 1451.25
+ },
+ {
+  "en": "Therefore I would shovel my stuff in heaps at the corners of the streets if I had enough for that; and as I haven’t, I do my best by perfecting a really dependable detonator.”",
+  "pl": "I dlatego właśnie usypałbym na rogach wszystkich ulic kupy swego prochu, gdyby go tylko starczyło; a ponieważ go nie starczy, robię, co mogę, aby zbudować idealnie doskonały zapalnik.",
+  "ua": "Саме тому я насипав би купи свого пороху на рогах усіх вулиць, якби його вистачало; а оскільки його не вистачає, я роблю все, що можу, щоб побудувати ідеально досконалий запальник.",
+  "para": 92,
+  "start": 1468.29
+ },
+ {
+  "en": "Ossipon, who had been mentally swimming in deep waters, seized upon the last word as if it were a saving plank.",
+  "pl": "Ossipon, który zatopił się w myślach, pochwycił to ostatnie słowo jak deskę ratunku.",
+  "ua": "Осіпон, який поринув у думки, схопився за останнє слово, як за рятівну дошку.",
+  "para": 93,
+  "start": 1480.24
+ },
+ {
+  "en": "“Yes. Your detonators. I shouldn’t wonder if it weren’t one of your detonators that made a clean sweep of the man in the park.”",
+  "pl": "— Aha. Wasz zapalnik. Nie zdziwię się wcale, jeśli to jeden z waszych zapalników zmiótł tego człowieka w parku.",
+  "ua": "— Ага. Ваш запальник. Я не здивуюся зовсім, якщо це один із ваших запальників змів того чоловіка в парку.",
+  "para": 94,
+  "start": 1485.72
+ },
+ {
+  "en": "A shade of vexation darkened the determined sallow face confronting Ossipon.",
+  "pl": "Cień przykrości przesłonił stanowcze, blade oblicze tkwiące naprzeciw Ossipona.",
+  "ua": "Тінь прикрості затемнила рішуче, бліде обличчя, що стояло навпроти Осіпона.",
+  "para": 95,
+  "start": 1493.33
+ },
+ {
+  "en": "“My difficulty consists precisely in experimenting practically with the various kinds. They must be tried after all. Besides﻿—”",
+  "pl": "— Trudność mojej pracy polega właśnie na tym, że muszę robić doświadczenia z różnego rodzaju zapalnikami. Przecież trzeba je wypróbować. Zresztą…",
+  "ua": "— Складність моєї роботи якраз і полягає в тому, що мушу робити досліди з різними запальниками. Їх же треба випробувати. До того ж…",
+  "para": 96,
+  "start": 1498.57
+ },
+ {
+  "en": "Ossipon interrupted.",
+  "pl": "Ossipon przerwał.",
+  "ua": "Осіпон перервав.",
+  "para": 97,
+  "start": 1508.57
+ },
+ {
+  "en": "“Who could that fellow be? I assure you that we in London had no knowledge﻿—Couldn’t you describe the person you gave the stuff to?”",
+  "pl": "— Kto to mógł być, ten człowiek? Ręczę wam, że nikt z nas w Londynie nie miał pojęcia… Czy możecie mi opisać człowieka, któremu daliście materiał wybuchowy?",
+  "ua": "— Хто міг бути той чоловік? Гарантую вам, що ніхто з нас у Лондоні не мав уявлення… Чи можете ви описати чоловіка, якому ви дали вибухівку?",
+  "para": 98,
+  "start": 1510.27
+ },
+ {
+  "en": "The other turned his spectacles upon Ossipon like a pair of searchlights.",
+  "pl": "Tamten zwrócił na Ossipona okulary jak podwójny reflektor.",
+  "ua": "Той повернув до Осіпона окуляри, як подвійний прожектор.",
+  "para": 99,
+  "start": 1519.49
+ },
+ {
+  "en": "“Describe him,” he repeated slowly. “I don’t think there can be the slightest objection now. I will describe him to you in one word﻿—Verloc.”",
+  "pl": "— Opisać — powtórzył z wolna. — Teraz chyba nic temu nie przeszkadza. Opiszę go wam w jednym słowie: Verloc.",
+  "ua": "— Описати, — повторив повільно. — Тепер, здається, цьому ніщо не завадить. Я опишу вам його одним словом: Верлок.",
+  "para": 100,
+  "start": 1523.68
+ },
+ {
+  "en": "Ossipon, whom curiosity had lifted a few inches off his seat, dropped back, as if hit in the face.",
+  "pl": "Ossipon, który z ciekawości uniósł się trochę na krześle, opadł, jakby go spoliczkowano.",
+  "ua": "Осіпон, якого цікавість трохи підняла зі стільця, опав, наче його вдарили в обличчя.",
+  "para": 101,
+  "start": 1534.72
+ },
+ {
+  "en": "“Verloc! Impossible.”",
+  "pl": "— Verloc? Niemożliwe.",
+  "ua": "— Верлок? Неможливо.",
+  "para": 102,
+  "start": 1541.46
+ },
+ {
+  "en": "The self-possessed little man nodded slightly once.",
+  "pl": "Opanowany człowieczek skinął lekko głową.",
+  "ua": "Оволоділий собою чоловічок легенько кивнув головою.",
+  "para": 103,
+  "start": 1546.06
+ },
+ {
+  "en": "“Yes. He’s the person. You can’t say that in this case I was giving my stuff to the first fool that came along. He was a prominent member of the group as far as I understand.”",
+  "pl": "— Tak. To on. W tym wypadku nie możecie powiedzieć, że dałem swój materiał pierwszemu lepszemu durniowi, który się nawinął. O ile wiem, Verloc był wybitnym członkiem waszej grupy.",
+  "ua": "— Так. Це він. У цьому випадку ви не можете сказати, що я віддав свій матеріал першому-ліпшому дурневі, який трапився. Наскільки мені відомо, Верлок був помітним членом вашої групи.",
+  "para": 104,
+  "start": 1549.23
+ },
+ {
+  "en": "“Yes,” said Ossipon. “Prominent. No, not exactly. He was the centre for general intelligence, and usually received comrades coming over here. More useful than important. Man of no ideas. Years ago he used to speak at meetings﻿—in France, I believe. Not very well, though.",
+  "pl": "— Tak — odrzekł Ossipon. — Wybitnym. Choć nie, niekoniecznie. Był ośrodkiem naszego wywiadu i przyjmował zwykle kolegów, którzy tu przybywali. Umiał być pożyteczny, ale wybitny nie był. Umysł pozbawiony twórczości. Przed laty przemawiał na zebraniach… zdaje się, że we Francji. Ale nieszczególnie.",
+  "ua": "— Так, — відповів Осіпон. — Помітним. Хоча ні, не обов'язково. Він був центром нашої розвідки і зазвичай приймав товаришів, які прибували сюди. Умів бути корисним, але помітним не був. Розум без творчості. Роками він виступав на зборах… здається, у Франції. Але не дуже вдало.",
+  "para": 105,
+  "start": 1561.8
+ },
+ {
+  "en": "He was trusted by such men as Latorre, Moser and all that old lot. The only talent he showed really was his ability to elude the attentions of the police somehow. Here, for instance, he did not seem to be looked after very closely. He was regularly married, you know.",
+  "pl": "Ufali mu tacy ludzie jak Latorre, Moser i cała ta stara gwardia. Jedyny talent, jakim się naprawdę wykazał, to umiejętność odwracania w jakiś sposób uwagi policji. Na przykład w tym wypadku wcale nie wygląda mi na to, aby go specjalnie śledzono. Miał, uważacie, prawowitą żonę.",
+  "ua": "Йому довіряли такі люди, як Латорре, Мосер і вся та стара гвардія. Єдиний талант, яким він справді виявився, — уміння якось відвертати увагу поліції. Наприклад, у цьому випадку зовсім не виглядає так, ніби за ним спеціально стежили. Мав, розумієте, законну дружину.",
+  "para": 105,
+  "start": 1583.67
+ },
+ {
+  "en": "I suppose it’s with her money that he started that shop. Seemed to make it pay, too.”",
+  "pl": "Zdaje się, że to za jej pieniądze założył ten sklep. Chyba mu się to opłacało.",
+  "ua": "Здається, саме на її гроші він відкрив цю крамницю. Здається, йому це йшло на користь.",
+  "para": 105,
+  "start": 1601.49
+ },
+ {
+  "en": "Ossipon paused abruptly, muttered to himself “I wonder what that woman will do now?” and fell into thought.",
+  "pl": "Ossipon urwał nagle. Mruknął pod nosem: „Co też ta kobieta teraz zrobi?” i pogrążył się w myślach.",
+  "ua": "Осіпон раптом обірвався. Він пробурмотів собі під ніс: «Що ж та жінка тепер зробить?» — і поринув у думки.",
+  "para": 106,
+  "start": 1606.74
+ },
+ {
+  "en": "The other waited with ostentatious indifference. His parentage was obscure, and he was generally known only by his nickname of Professor. His title to that designation consisted in his having been once assistant demonstrator in chemistry at some technical institute. He quarrelled with the authorities upon a question of unfair treatment.",
+  "pl": "Tamten czekał z ostentacyjną obojętnością. Pochodził z niskiej sfery, a znano go ogólnie pod przezwiskiem Profesora. Jego prawo do tego określenia wynikało stąd, że był kiedyś laborantem chemikiem w jakimś instytucie technicznym. Pokłócił się ze zwierzchnikami o wyrządzoną mu niesprawiedliwość.",
+  "ua": "Той чекав з виставною байдужістю. Походив він із низького середовища, і загально його знали під прізвиськом Професор. Його право на це визначення випливало з того, що колись був лаборантом-хіміком у якомусь технічному інституті. Він посварився з керівництвом через заподіяну йому несправедливість.",
+  "para": 107,
+  "start": 1615.5
+ },
+ {
+  "en": "Afterwards he obtained a post in the laboratory of a manufactory of dyes. There too he had been treated with revolting injustice.",
+  "pl": "Potem dostał miejsce w laboratorium fabryki farb. Tam również potraktowano go z oburzającą niesprawiedliwością.",
+  "ua": "Потім він отримав місце в лабораторії фабрики фарб. Там його так само поставилися з обурливою несправедливістю.",
+  "para": 107,
+  "start": 1632.72
+ },
+ {
+  "en": "His struggles, his privations, his hard work to raise himself in the social scale, had filled him with such an exalted conviction of his merits that it was extremely difficult for the world to treat him with justice﻿—the standard of that notion depending so much upon the patience of the individual.",
+  "pl": "Jego zmagania się, jego niedostatek, jego zawzięte wysiłki, aby zdobyć wyższe miejsce na drabinie społecznej, napełniły go niezłomnym przeświadczeniem o własnych zasługach i dlatego bardzo było trudno obejść się z nim sprawiedliwie — gdyż pojęcie człowieka o sprawiedliwym traktowaniu zależy w wysokim stopniu od jego wytrzymałości.",
+  "ua": "Його боротьба, його злидні, його завзяті зусилля здобути вище місце на суспільних драбинах наповнили його непохитним переконанням у власних заслугах, і тому дуже було важко поводитися з ним справедливо, — бо поняття людини про справедливе поводження великою мірою залежить від її витривалості.",
+  "para": 107,
+  "start": 1639.28
+ },
+ {
+  "en": "The Professor had genius, but lacked the great social virtue of resignation.",
+  "pl": "Profesor był człowiekiem utalentowanym, lecz brakowało mu owej wielkiej cnoty społecznej, którą jest rezygnacja.",
+  "ua": "Професор був талановитою людиною, але йому бракувало великої суспільної чесноти — покірності.",
+  "para": 107,
+  "start": 1660.16
+ },
+ {
+  "en": "“Intellectually a nonentity,” Ossipon pronounced aloud, abandoning suddenly the inward contemplation of Mrs. Verloc’s bereaved person and business. “Quite an ordinary personality. You are wrong in not keeping more in touch with the comrades, Professor,” he added in a reproving tone.",
+  "pl": "— Jako intelekt był niczym — wyrzekł głośno Ossipon, przestając nagle rozmyślać nad osobą i stanem interesów osieroconej pani Verloc. — Indywidualność na wskroś pospolita. To źle, Profesorze, że nie utrzymujecie bliższych stosunków z towarzyszami — dodał tonem nagany.",
+  "ua": "— Як інтелект він ніщо, — голосно виголосив Осіпон, раптом переставши міркувати про особу та стан справ осиротілої пані Верлок. — Особистість цілком посередня. Ви не маєте рації, що не тримаєте ближчих стосунків із товаришами, Професоре, — додав докірним тоном.",
+  "para": 108,
+  "start": 1668.82
+ },
+ {
+  "en": "“Did he say anything to you﻿—give you some idea of his intentions? I hadn’t seen him for a month. It seems impossible that he should be gone.”",
+  "pl": "— Czy Verloc coś wam powiedział, czy zwierzył się ze swych zamiarów? Nie widziałem go od miesiąca. Wydaje mi się niemożliwe, aby już nie żył.",
+  "ua": "— Чи Верлок вам щось говорив, чи довірився у своїх намірах? Я не бачив його місяць. Здається мені неможливим, що він уже не живий.",
+  "para": 108,
+  "start": 1688.52
+ },
+ {
+  "en": "“He told me it was going to be a demonstration against a building,” said the Professor. “I had to know that much to prepare the missile. I pointed out to him that I had hardly a sufficient quantity for a completely destructive result, but he pressed me very earnestly to do my best.",
+  "pl": "— Powiedział mi, że to ma być zamach na jakiś budynek — rzekł Profesor. — Musiałem to wiedzieć, aby przygotować odpowiednią bombę. Zwróciłem mu uwagę, że ilość materiału wybuchowego, jaką posiadam, nie wystarcza, aby wywołać zupełne zniszczenie, lecz prosił mnie usilnie, abym zrobił, co będę mógł.",
+  "ua": "— Він сказав мені, що це має бути замах на якусь будівлю, — сказав Професор. — Я мусив знати це, щоб підготувати відповідну бомбу. Я звернув йому увагу, що кількість вибухівки, якою я володію, недостатня, щоб спричинити повне знищення, але він наполегливо просив мене зробити все, що зможу.",
+  "para": 109,
+  "start": 1699.33
+ },
+ {
+  "en": "As he wanted something that could be carried openly in the hand, I proposed to make use of an old one-gallon copal varnish can I happened to have by me. He was pleased at the idea.",
+  "pl": "Ponieważ chciał, żebym przygotował coś, co będzie można nieść w ręku, zaproponowałem, że użyję do tego starej jednogalonowej⁴¹ blaszanki od pokostu kopalowego⁴², którą miałem przypadkiem u siebie. Ta myśl mu się podobała.",
+  "ua": "Оскільки він хотів щось, що можна нести в руці, я запропонував використати для цього стару одногалонну⁴¹ бляшанку від копального лаку⁴², яка випадково була в мене. Ця думка йому сподобалася.",
+  "para": 109,
+  "start": 1719.4
+ },
+ {
+  "en": "It gave me some trouble, because I had to cut out the bottom first and solder it on again afterwards. When prepared for use, the can enclosed a wide-mouthed, well-corked jar of thick glass packed around with some wet clay",
+  "pl": "Było to trochę kłopotliwe, bo musiałem najpierw wyciąć dno, a potem je znów przylutować. W blaszance znajdował się gruby szklany słoik o dużym otworze, szczelnie zakorkowany i otoczony wilgotną gliną;",
+  "ua": "Це було трохи клопітно, бо мені довелося спершу вирізати дно, а потім знову його припаяти. У бляшанці містився товстий скляний банка з великим отвором, щільно закоркована й оточена вологою глиною;",
+  "para": 109,
+  "start": 1735.62
+ },
+ {
+  "en": "and containing sixteen ounces of X2 green powder. The detonator was connected with the screw top of the can. It was ingenious﻿—a combination of time and shock. I explained the system to him. It was a thin tube of tin enclosing a﻿—”",
+  "pl": "słoik zawierał szesnaście uncji⁴³ zielonego prochu X₂. Zapalnik połączyłem z wkręconym wierzchem blaszanki. To było bardzo pomysłowe… kombinacja czasu i uderzenia. Wyjaśniłem Verlocowi ten system. Cienka rurka blaszana zawierająca…",
+  "ua": "у банці було шістнадцять унцій⁴³ зеленого пороху X₂. Запальник я з'єднав із гвинтовим кришкою бляшанки. Це було дуже вигадливо… поєднання часу й удару. Я пояснив Верлоку цю систему. Тонка бляшана трубка, що містила…",
+  "para": 109,
+  "start": 1747.68
+ },
+ {
+  "en": "Ossipon’s attention had wandered.",
+  "pl": "Myśl Ossipona zwróciła się w inną stronę.",
+  "ua": "Думка Осіпона пішла в інший бік.",
+  "para": 110,
+  "start": 1766.01
+ },
+ {
+  "en": "“What do you think has happened?” he interrupted.",
+  "pl": "— Jak się to mogło stać? — przerwał.",
+  "ua": "— Як це моглося статися? — перервав.",
+  "para": 111,
+  "start": 1769.67
+ },
+ {
+  "en": "“Can’t tell. Screwed the top on tight, which would make the connection, and then forgot the time. It was set for twenty minutes. On the other hand, the time contact being made, a sharp shock would bring about the explosion at once.",
+  "pl": "— Czy ja wiem? Może przykręcił wierzch, co pociągnęło za sobą włączenie kontaktu, a potem zapomniał o terminie wybuchu, który obliczyłem na dwadzieścia minut. Ale mocny wstrząs mógł także spowodować wybuch natychmiast, ponieważ kontakt był włączony.",
+  "ua": "— Хто його знає. Може, він закрутив кришку щільно, що й замкнуло контакт, а потім забув про час вибуху, який я обчислив на двадцять хвилин. Але сильний струс міг також спричинити вибух негайно, оскільки контакт був замкнутий.",
+  "para": 112,
+  "start": 1773.31
+ },
+ {
+  "en": "He either ran the time too close, or simply let the thing fall. The contact was made all right﻿—that’s clear to me at any rate. The system’s worked perfectly. And yet you would think that a common fool in a hurry would be much more likely to forget to make the contact altogether. I was worrying myself about that sort of failure mostly.",
+  "pl": "Pewno źle obliczył czas albo po prostu upuścił bombę. W każdym razie jedno jest dla mnie jasne: kontakt był w zupełnym porządku. System działał wzorowo. Zdawałoby się, że w pośpiechu przeciętny dureń zapomniałby raczej o włączeniu kontaktu. Tego rodzaju niebezpieczeństwo najbardziej mnie niepokoiło.",
+  "ua": "Може, він погано обчислив час або просто уронив бомбу. У будь-якому разі для мене ясно одне: контакт був цілком у порядку. Система діяла бездоганно. Здавалося б, у поспіху звичайний дурень скоріше забув би замкнути контакт зовсім. Саме такого роду небезпека найбільше мене непокоїла.",
+  "para": 112,
+  "start": 1789.59
+ },
+ {
+  "en": "But there are more kinds of fools than one can guard against. You can’t expect a detonator to be absolutely foolproof.”",
+  "pl": "Ale tyle jest rodzajów głupoty, że nie można się jej ustrzec. Trudno wymagać od zapalnika, aby był zupełnie odporny na głupotę.",
+  "ua": "Але такі види дурості є, що від них не вберешся. Не можна вимагати від запальника, щоб він був абсолютно стійкий до дурості.",
+  "para": 112,
+  "start": 1809.07
+ },
+ {
+  "en": "He beckoned to a waiter. Ossipon sat rigid, with the abstracted gaze of mental travail. After the man had gone away with the money he roused himself, with an air of profound dissatisfaction.",
+  "pl": "Kiwnął na kelnera. Ossipon siedział wyprostowany, a jego skupiony wzrok świadczył o pracy mózgu. Gdy kelner odszedł z pieniędzmi, Ossipon ocknął się z miną pełną głębokiego niezadowolenia.",
+  "ua": "Він махнув кельнеру. Осіпон сидів нерухомо, і його зосереджений погляд свідчив про роботу мозку. Коли кельнер пішов із грошима, Осіпон отямився з обличчям, сповненим глибокого невдоволення.",
+  "para": 113,
+  "start": 1818.2
+ },
+ {
+  "en": "“It’s extremely unpleasant for me,” he mused. “Karl has been in bed with bronchitis for a week. There’s an even chance that he will never get up again. Michaelis’s luxuriating in the country somewhere. A fashionable publisher has offered him five hundred pounds for a book. It will be a ghastly failure.",
+  "pl": "— To dla mnie niezmiernie przykre — zaczął głośno rozważać. — Karl od tygodnia leży w łóżku na bronchit⁴⁴. Równie dobrze może wcale już nie wstać. Michaelis używa sobie gdzieś na wsi. Modny wydawca zaproponował mu pięćset funtów za książkę. To będzie straszna klapa.",
+  "ua": "— Це для мене надзвичайно прикро, — почав вголос міркувати. — Карл уже тиждень лежить у ліжку з бронхітом⁴⁴. Цілком можливо, що він більше не встане. Міхаеліс десь розважається в селі. Модний видавець запропонував йому п'ятсот фунтів за книжку. Це буде жахлива невдача.",
+  "para": 114,
+  "start": 1831.57
+ },
+ {
+  "en": "He has lost the habit of consecutive thinking in prison, you know.”",
+  "pl": "Jak wiecie, odzwyczaił się w celi od logicznego myślenia.",
+  "ua": "Як ви знаєте, він у камері відучився мислити послідовно.",
+  "para": 114,
+  "start": 1852.19
+ },
+ {
+  "en": "The Professor on his feet, now buttoning his coat, looked about him with perfect indifference.",
+  "pl": "Profesor stał, zapinając palto, i rozglądał się z niewzruszoną obojętnością.",
+  "ua": "Професор, стоячи, застібав пальто і роззирався з непорушною байдужістю.",
+  "para": 115,
+  "start": 1856.06
+ },
+ {
+  "en": "“What are you going to do?” asked Ossipon wearily. He dreaded the blame of the Central Red Committee, a body which had no permanent place of abode, and of whose membership he was not exactly informed.",
+  "pl": "— Co teraz zrobicie? — zapytał Ossipon znużonym głosem. Drżał przed naganą ze strony Centralnego Czerwonego Komitetu, który nigdzie stale nie przebywał i o którego składzie nie był dokładnie powiadomiony.",
+  "ua": "— Що ви тепер робитимете? — запитав Осіпон стомленим голосом. Він тремтів перед докором з боку Центрального Червоного Комітету, який ніде постійно не перебував і про склад якого він не був точно поінформований.",
+  "para": 116,
+  "start": 1861.84
+ },
+ {
+  "en": "If this affair eventuated in the stoppage of the modest subsidy allotted to the publication of the F. P. pamphlets, then indeed he would have to regret Verloc’s inexplicable folly.",
+  "pl": "Niepojęte szaleństwo Verloca odbiłoby się dotkliwie na Ossiponie, gdyby cała ta sprawa pociągnęła za sobą zniesienie skromnego subsydium udzielanego na wydawanie ulotek P. P.",
+  "ua": "Незбагненне божевілля Верлока би болюче позначилося на Осіпоні, якби вся ця справа потягнула за собою скасування скромної субсидії, що надавалася на видання улоток П. П.",
+  "para": 116,
+  "start": 1875.22
+ },
+ {
+  "en": "“Solidarity with the extremest form of action is one thing, and silly recklessness is another,” he said, with a sort of moody brutality. “I don’t know what came to Verloc. There’s some mystery there. However, he’s gone.",
+  "pl": "— Solidaryzowanie się z krańcową formą działania jest jedną rzeczą, a głupia lekkomyślność drugą — rzekł z pewnego rodzaju ponurą brutalnością. — Nie rozumiem, co Verloca napadło. Jest w tym jakaś tajemnica. A tymczasem on zginął.",
+  "ua": "— Солідарність із крайньою формою дії — одна реча, а дурна необачність — інша, — сказав із певного роду похморою жорстокістю. — Я не розумію, що Верлока напало. У цьому є якась таємниця. А тим часом він загинув.",
+  "para": 117,
+  "start": 1887.98
+ },
+ {
+  "en": "You may take it as you like, but under the circumstances the only policy for the militant revolutionary group is to disclaim all connection with this damned freak of yours. How to make the disclaimer convincing enough is what bothers me.”",
+  "pl": "Wolno wam się zapatrywać na to, jak chcecie, ale w tych okolicznościach jedynie właściwą polityką dla walczącej grupy rewolucyjnej jest odżegnanie się od wszelkiej łączności z tym waszym diabelskim wybrykiem. Teraz głowię się tylko nad tym, jak zrobić, żeby takie oświadczenie wydało się wiarygodne.",
+  "ua": "Ви можете дивитися на це, як хочете, але за теперішніх обставин єдиною слушною політикою для воюючої революційної групи є відмова від будь-якого зв'язку з цим вашим чортовим витівником. Тепер я ламаю голову лише над тим, як зробити, щоб така заява здалася переконливою.",
+  "para": 117,
+  "start": 1905.09
+ },
+ {
+  "en": "The little man on his feet, buttoned up and ready to go, was no taller than the seated Ossipon. He levelled his spectacles at the latter’s face point-blank.",
+  "pl": "Człowieczek stał w zapiętym palcie, gotów do wyjścia, ani trochę nie wyższy od siedzącego Ossipona. Wycelował okulary prosto w jego twarz.",
+  "ua": "Чоловічок стояв у застебнутому пальті, готовий вийти, ані трохи не вищий за сидячого Осіпона. Він навів окуляри просто йому в обличчя.",
+  "para": 118,
+  "start": 1925.12
+ },
+ {
+  "en": "“You might ask the police for a testimonial of good conduct. They know where every one of you slept last night. Perhaps if you asked them they would consent to publish some sort of official statement.”",
+  "pl": "— Moglibyście poprosić policję o świadectwo dobrego prowadzenia. Oni wiedzą, gdzie który z was spał wczoraj w nocy. Gdybyście ich poprosili, zechcieliby może ogłosić coś w rodzaju urzędowego raportu.",
+  "ua": "— Ви могли б попросити поліцію про характеристику доброї поведінки. Вони знають, де кожен із вас спав учора вночі. Якби ви їх попросили, можливо, вони погодилися б опублікувати щось на кшталт офіційного звіту.",
+  "para": 119,
+  "start": 1934.12
+ },
+ {
+  "en": "“No doubt they are aware well enough that we had nothing to do with this,” mumbled Ossipon bitterly. “What they will say is another thing.” He remained thoughtful, disregarding the short, owlish, shabby figure standing by his side.",
+  "pl": "— Na pewno wiedzą dokładnie, że nic z tym nie mamy wspólnego — mruknął gorzko Ossipon. — A co powiedzą, to inna sprawa. — Siedział zamyślony, nie zwracając uwagi na kusą, niechlujną, sowiooką postać stojącą u jego boku.",
+  "ua": "— Безперечно, вони точно знають, що ми до цього не маємо жодного стосунку, — гірко пробурмотів Осіпон. — А що вони скажуть — інша річ. — Він сидів задуманий, не звертаючи уваги на коротку, неохайну, совину постать, що стояла біля нього.",
+  "para": 120,
+  "start": 1949.25
+ },
+ {
+  "en": "“I must lay hands on Michaelis at once, and get him to speak from his heart at one of our gatherings. The public has a sort of sentimental regard for that fellow. His name is known. And I am in touch with a few reporters on the big dailies.",
+  "pl": "— Natychmiast muszę znaleźć Michaelisa i uprosić go, aby przemówił od serca na którymś z naszych zebrań. Publiczność ma coś na kształt sentymentalnego szacunku dla tego człowieka. Jego nazwisko jest znane, a ja pozostaję w kontakcie z kilku reporterami wielkich dzienników.",
+  "ua": "— Негайно мушу знайти Міхаеліса і вмовити його, щоб він виступив від серця на одному з наших зборів. Публіка має щось на кшталт сентиментальної поваги до цієї людини. Його ім'я відоме, а я перебуваю в контакті з кількома журналістами великих газет.",
+  "para": 120,
+  "start": 1964.03
+ },
+ {
+  "en": "What he would say would be utter bosh, but he has a turn of talk that makes it go down all the same.”",
+  "pl": "To, co powie Michaelis, będzie skończoną bzdurą, ale taki ma jakiś sposób mówienia, że można to przełknąć.",
+  "ua": "Те, що скаже Міхаеліс, буде цілковитою нісенітницею, але він має такий спосіб говорити, що це можна проковтнути.",
+  "para": 120,
+  "start": 1980.05
+ },
+ {
+  "en": "“Like treacle,” interjected the Professor, rather low, keeping an impassive expression.",
+  "pl": "— Jak lukrecję⁴⁵ — wtrącił dość cicho Profesor z niewzruszonym wyrazem twarzy.",
+  "ua": "— Як солодку⁴⁵, — досить тихо вставив Професор із непорушним виразом обличчя.",
+  "para": 121,
+  "start": 1987.24
+ },
+ {
+  "en": "The perplexed Ossipon went on communing with himself half audibly, after the manner of a man reflecting in perfect solitude.",
+  "pl": "Zakłopotany Ossipon dalej prowadził ze sobą półgłośną rozmowę, niby człowiek rozmyślający w zupełnej samotności.",
+  "ua": "Збентежений Осіпон далі вів із собою півголосну розмову, наче людина, що міркує в цілковитій самоті.",
+  "para": 122,
+  "start": 1994.0
+ },
+ {
+  "en": "“Confounded ass! To leave such an imbecile business on my hands. And I don’t even know if﻿—”",
+  "pl": "— Osioł, psiakrew! Żeby mi ściągnąć na łeb taką idiotyczną historię! I nawet nie wiem, czy…",
+  "ua": "— Осел, к чорту! Тягнути на мою голову таку дурну історію! І навіть не знаю, чи…",
+  "para": 123,
+  "start": 2001.31
+ },
+ {
+  "en": "He sat with compressed lips. The idea of going for news straight to the shop lacked charm. His notion was that Verloc’s shop might have been turned already into a police trap.",
+  "pl": "Siedział, zaciąwszy usta. Nie uśmiechała mu się myśl, aby po prostu zasięgnąć języka w sklepie. Wyobrażał sobie, że policja zastawiła już tam pułapkę.",
+  "ua": "Він сидів зі стиснутими устами. Не подобалася йому думка просто дізнатися новин у крамниці. Він уявляв, що поліція вже влаштувала там пастку.",
+  "para": 124,
+  "start": 2008.84
+ },
+ {
+  "en": "They will be bound to make some arrests, he thought, with something resembling virtuous indignation, for the even tenor of his revolutionary life was menaced by no fault of his. And yet unless he went there he ran the risk of remaining in ignorance of what perhaps it would be very material for him to know.",
+  "pl": "„Będą musieli kilka osób zaaresztować” — pomyślał i uczuł coś w rodzaju cnotliwego oburzenia, albowiem spokojny tryb jego rewolucyjnego życia został zagrożony wcale nie z jego winy. A znów jeśli do sklepu nie pójdzie, gotów się nie dowiedzieć o czymś bardzo ważnym.",
+  "ua": "«Доведеться кількох заарештувати», — подумав він і відчув щось на кшталт чесного обурення, бо спокійний лад його революційного життя було під загрозою зовсім не з його вини. А знову ж, якщо в крамницю не піде, може й не дізнатися про щось дуже важливе.",
+  "para": 124,
+  "start": 2019.3
+ },
+ {
+  "en": "Then he reflected that, if the man in the park had been so very much blown to pieces as the evening papers said, he could not have been identified.",
+  "pl": "Potem przyszło mu na myśl, że jeżeli ów człowiek w parku został rozszarpany na drobne strzępy, jak piszą w gazetach, to nie potrafili go zidentyfikować.",
+  "ua": "Потім йому спадло на думку, що якщо того чоловіка в парку розірвало на дрібні шматки, як пишуть у газетах, то його не змогли ідентифікувати.",
+  "para": 124,
+  "start": 2036.42
+ },
+ {
+  "en": "And if so, the police could have no special reason for watching Verloc’s shop more closely than any other place known to be frequented by marked anarchists﻿—no more reason, in fact, than for watching the doors of the Silenus. There would be a lot of watching all round, no matter where he went. Still﻿—",
+  "pl": "A w takim razie policja nie ma powodu do pilnowania sklepu Verloca staranniej niż każdego innego punktu zbornego wybitnych anarchistów — niż na przykład restauracji „Sylen”. Gdziekolwiek by się Ossipon udał, wszędzie natrafi na policję. Jednakże…",
+  "ua": "А в такому разі поліція не має особливих підстав пильнувати крамницю Верлока уважніше, ніж будь-яке інше місце збирання помітних анархістів — ніж, наприклад, ресторан «Силен». Куди б Осіпон не пішов, усіде натрапить на поліцію. Утім…",
+  "para": 124,
+  "start": 2044.64
+ },
+ {
+  "en": "“I wonder what I had better do now?” he muttered, taking counsel with himself.",
+  "pl": "— Co tu teraz robić? — mruknął, radząc się siebie samego.",
+  "ua": "— Що ж мені тепер робити? — пробурмотів, радячись сам із собою.",
+  "para": 125,
+  "start": 2061.51
+ },
+ {
+  "en": "A rasping voice at his elbow said, with sedate scorn:",
+  "pl": "Chropawy głos u jego boku rzekł ze spokojną wzgardą:",
+  "ua": "Хрипкий голос біля його ліктя мовив із спокійною зневагою:",
+  "para": 126,
+  "start": 2067.1
+ },
+ {
+  "en": "“Fasten yourself upon the woman for all she’s worth.”",
+  "pl": "— Uczepcie się tej kobiety, jeśli warta fatygi.",
+  "ua": "— Учепіться за цю жінку, якщо вона варта клопоту.",
+  "para": 127,
+  "start": 2071.81
+ },
+ {
+  "en": "After uttering these words the Professor walked away from the table. Ossipon, whom that piece of insight had taken unawares, gave one ineffectual start, and remained still, with a helpless gaze, as though nailed fast to the seat of his chair.",
+  "pl": "Wyrzekłszy te słowa, Profesor oddalił się od stolika. Ossipon, zaskoczony jego przenikliwością, targnął się na krześle, jakby się chciał zerwać, lecz w dalszym ciągu siedział nieruchomo, patrząc przed siebie bezsilnie, rzekłbyś, przybity gwoździem do siedzenia.",
+  "ua": "Проголосивши ці слова, Професор відійшов від столика. Осіпон, захоплений зненацька його проникливістю, здригнувся на стільці, ніби хотів підвестися, але й надалі сидів нерухомо, дивлячись перед собою безрадно, мов би прибитий цвяхом до сидіння.",
+  "para": 128,
+  "start": 2075.25
+ },
+ {
+  "en": "The lonely piano, without as much as a music stool to help it, struck a few chords courageously, and beginning a selection of national airs, played him out at last to the tune of “Blue Bells of Scotland.” The painfully detached notes grew faint behind his back while he went slowly upstairs, across the hall, and into the street.",
+  "pl": "Samotne pianino, pozbawione nawet pomocy taboretu, uderzyło mężnie w struny i zacząwszy grać wybór narodowych pieśni, wypędziło wreszcie Ossipona melodią Błękitnych dzwonków Szkocji⁴⁶. Przykre, wyraźne tony słabły coraz bardziej za jego plecami, gdy szedł z wolna w górę po schodach, mijał hall i wydostał się na ulicę.",
+  "ua": "Самотнє піаніно, позбавлене навіть допомоги табурета, мужньо вдарило по струнах і, почавши грати добірку національних пісень, нарешті провело Осіпона мелодією «Блакитних дзвіночків Шотландії»⁴⁶. Неприємні, чіткі тони слабшали дедалі більше за його спиною, коли він повільно йшов нагору сходами, перетнув хол і вийшов на вулицю.",
+  "para": 128,
+  "start": 2090.95
+ },
+ {
+  "en": "In front of the great doorway a dismal row of newspaper sellers standing clear of the pavement dealt out their wares from the gutter. It was a raw, gloomy day of the early spring;",
+  "pl": "Naprzeciw wielkich drzwi sterczał tuż u chodnika ponury szereg gazeciarzy, którzy sprzedawali swój towar, stojąc w rynsztoku. Był zimny, posępny dzień wczesnej wiosny;",
+  "ua": "Навпроти великих дверей просто біля тротуару стояв понурий ряд газетярів, які продавали свій товар, стоячи в каналізаційній канаві. Це був холодний, похмурий день ранньої весни;",
+  "para": 129,
+  "start": 2110.59
+ },
+ {
+  "en": "and the grimy sky, the mud of the streets, the rags of the dirty men, harmonised excellently with the eruption of the damp, rubbishy sheets of paper soiled with printers’ ink. The posters, maculated with filth, garnished like tapestry the sweep of the curbstone.",
+  "pl": "brudne niebo, błoto na ulicy, łachmany gazeciarzy harmonizowały świetnie z plikami wilgotnych szmat papieru zbrukanych farbą drukarską. Powalane błotem afisze ozdabiały jak dywany wygięty brzeg chodnika.",
+  "ua": "брудне небо, багно на вулиці, лахміття газетярів чудово гармонували зі стосами волокнистих паперових аркушів, зіпсуваних друкарською фарбою. Обліплені брудом афіші прикрашали, наче килими, вигнутий край тротуару.",
+  "para": 129,
+  "start": 2121.43
+ },
+ {
+  "en": "The trade in afternoon papers was brisk, yet, in comparison with the swift, constant march of foot traffic, the effect was of indifference, of a disregarded distribution. Ossipon looked hurriedly both ways before stepping out into the crosscurrents, but the Professor was already out of sight.",
+  "pl": "Sprzedaż wieczornych gazet odbywała się żwawo, lecz na tle szybkiego, nieustannego ruchu przechodniów robiła wrażenie rozdawnictwa dzienników przyjmowanych obojętnie, lekceważąco. Ossipon rozejrzał się spiesznie przed wejściem w krzyżujące się prądy, ale Profesora nigdzie nie było już widać.",
+  "ua": "Продаж вечірніх газет вівся жваво, але на тлі швидкого, безперервного руху перехожих справляв враження роздачі газет, які приймають байдуже, зневажливо. Осіпон поспішно озирнувся перед тим, як увійти в схрещені потоки, але Професора вже ніде не було видно.",
+  "para": 129,
+  "start": 2133.97
+ }
+];
+const ANNOTATIONS = {"38": {"term": "Islington", "definition": "*Islington* — dzielnica mieszkalna ok. 6 km od centrum Londynu, od połowy XIX do połowy XX w. zaniedbana i zamieszkiwana głównie przez biedotę. [przypis edytorski]", "translation": "житловий район приблизно за 6 км від центру Лондона; від середини XIX до середини XX століття був занедбаним і заселеним переважно біднотою. [редакторська примітка]"}, "39": {"term": "ergo", "definition": "*ergo* (łac.) — więc, zatem. [przypis edytorski]", "translation": "(лат.) — отже, таким чином. [редакторська примітка]"}, "40": {"term": "Kapua", "definition": "*Kapua* — miasto na Płw. Apenińskim; w staroż. słynące z bogactwa, luksusu i wygód, które miały doprowadzić zimujące tam po bitwie pod Kannami (216 p.n.e.) oddziały Hannibala do osłabienia ducha bojowego. [przypis edytorski]", "translation": "місто на Апеннінському півострові; у давнину славилося багатством, розкошами й комфортом, які, за переказами, послабили бойовий дух війська Ганнібала, що зимувало там після битви при Каннах (216 р. до н. е.). [редакторська примітка]"}, "41": {"term": "galon", "definition": "*galon* — anglosaska miara objętości płynów i ciał sypkich; galon angielski jest równy ok. 4,5 litra. [przypis edytorski]", "translation": "англосаксонська міра об’єму рідин і сипких речовин; англійський галон дорівнює приблизно 4,5 літра. [редакторська примітка]"}, "42": {"term": "kopalowy pokost", "definition": "*kopalowy pokost* — werniks malarski wykonywany z rozpuszczonego kopalu, twardej, żółtawej masy żywicznej zbliżonej do bursztynu. [przypis edytorski]", "translation": "художній лак, виготовлений із розчиненого копалу — твердої жовтуватої смоли, схожої на бурштин. [редакторська примітка]"}, "43": {"term": "uncja", "definition": "*uncja* — ang. jednostka objętości lub wagi, ok. 28 cm³ lub 28 g. [przypis edytorski]", "translation": "англійська одиниця об’єму або ваги — приблизно 28 см³ або 28 г. [редакторська примітка]"}, "44": {"term": "bronchit", "definition": "*bronchit* — zapalenie oskrzeli. [przypis edytorski]", "translation": "запалення бронхів. [редакторська примітка]"}, "45": {"term": "lukrecja", "definition": "*lukrecja* — wyciąg z korzenia drzewa lukrecjowego o charakterystycznym słodko-mdłym smaku, stosowany w lecznictwie. [przypis edytorski]", "translation": "екстракт із кореня солодки з характерним солодкувато-нудотним смаком, який застосовують у медицині. [редакторська примітка]"}, "46": {"term": "Błękitne dzwonki Szkocji", "definition": "*Błękitne dzwonki Szkocji* (ang. *Blue Bells of Scotland*) — popularna ballada szkocka, opublikowana po raz pierwszy w 1801 r. [przypis edytorski]", "translation": "(англ. *Blue Bells of Scotland*) — популярна шотландська балада, уперше опублікована 1801 року. [редакторська примітка]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into audio/chapter-04.webm, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  1.16,    // [  0] conf 0.91  "Z trzydziestu mniej więcej stolików, pokr…"
+  12.38,   // [  1] conf 0.95  "Brązowe świeczniki o licznych kloszach zw…"
+  30.44,   // [  2] conf 0.86  "pachołkowie przybrani w zielone kaffany d…"
+  38.74,   // [  3] conf 0.97  "— Głowę bym dał, że wy wiecie, co tkwi w…"
+  52.82,   // [  4] conf 1.00  "Duże pianino, stojące blisko drzwi między…"
+  63.50,   // [  5] conf 0.96  "Przestało grać równie nagle, jak zaczęło,…"
+  76.10,   // [  6] conf 1.00  "— W zasadzie nikt nie ma prawa wtrącać si…"
+  85.33,   // [  7] conf 1.00  "— Naturalnie — potwierdził spokojnie towa…"
+  92.51,   // [  8] conf 0.96  "Obejmując dłońmi wielką, czerwoną twarz,…"
+  103.57,  // [  9] conf 1.00  "Jego płaskie, wielkie uszy odstawały od c…"
+  117.11,  // [ 10] conf 1.00  "na płaskich policzkach o tłustej, niezdro…"
+  131.81,  // [ 11] conf 1.00  "Wyrażał się zwięźle, a jego milczenie wyd…"
+  136.15,  // [ 12] conf 0.80  "Ossipon mruknął znów poprzez palce:"   // start word fuzzy-corrected
+  139.03,  // [ 13] conf 1.00  "— Długo byliście dziś na mieście?"
+  143.15,  // [ 14] conf 1.00  "— Nie. Całe rano leżałem w łóżku — odrzek…"
+  150.20,  // [ 15] conf 0.79  "— Ach, nic — rzekł Ossipon, patrząc w nie…"   // start word fuzzy-corrected
+  164.02,  // [ 16] conf 0.97  "Barczysty Ossipon cierpiał od poczucia mo…"
+  178.31,  // [ 17] conf 0.96  "— Nie, przyjechałem omnibusem — odpowiedz…"
+  190.01,  // [ 18] conf 0.97  "w godzinach pozaszkolnych banda przeróżny…"
+  203.05,  // [ 19] conf 0.93  "lokator wynajmował ten pokój z meblami od…"
+  221.89,  // [ 20] conf 0.95  "Jego dziwactwa polegały na tym, że musiał…"
+  230.23,  // [ 21] conf 0.91  "Ossipon ujrzał w myśli na szczycie omnibu…"   // start word fuzzy-corrected
+  244.37,  // [ 22] conf 0.91  "Cień bladego uśmiechu zmącił linię grubyc…"
+  258.94,  // [ 23] conf 1.00  "— Dawno tu siedzicie?"
+  262.38,  // [ 24] conf 1.00  "— Coś około godziny — odrzekł tamten nied…"
+  279.14,  // [ 25] conf 0.96  "natomiast wielki, muskularny Ossipon, poc…"
+  290.86,  // [ 26] conf 1.00  "— Około godziny — powtórzył. — Więc może…"
+  299.46,  // [ 27] conf 1.00  "Człowieczek uczynił głową nieznaczny ruch…"
+  310.38,  // [ 28] conf 1.00  "Mały roznosiciel gazet wrzasnął mu ją w s…"
+  323.88,  // [ 29] conf 1.00  "— Nie przypuszczałem nigdy, że was tu zas…"
+  331.76,  // [ 30] conf 1.00  "— Zachodzę tu czasami — rzekł tamten, nie…"
+  339.39,  // [ 31] conf 0.96  "— To nadzwyczajne, że właśnie wy o tym ni…"
+  353.27,  // [ 32] conf 1.00  "Ta widoczna powściągliwość Ossipona zdrad…"
+  369.63,  // [ 33] conf 1.00  "Ossipon czekał chwilę na próżno na jakieś…"
+  378.02,  // [ 34] conf 0.92  "— Czy wy dajecie ten wasz proch każdemu,…"
+  383.79,  // [ 35] conf 1.00  "— Moją niewzruszoną zasadą jest nie odmaw…"
+  393.24,  // [ 36] conf 1.00  "— To jest wasza zasada? — spytał Ossipon."
+  396.86,  // [ 37] conf 1.00  "— To jest moja zasada."
+  399.19,  // [ 38] conf 1.00  "— I uważacie to za rozsądne?"
+  401.47,  // [ 39] conf 0.95  "Wielkie, okrągłe okulary, które nadawały…"
+  413.74,  // [ 40] conf 0.91  "— Bezwzględnie. Zawsze. We wszystkich oko…"
+  422.45,  // [ 41] conf 0.80  "Ossipon jak gdyby sapnął dyskretnie."   // start word fuzzy-corrected
+  426.32,  // [ 42] conf 1.00  "— Czy chcecie powiedzieć, że dalibyście w…"
+  431.88,  // [ 43] conf 1.00  "Człowieczek uśmiechnął się z lekka."
+  434.48,  // [ 44] conf 1.00  "— Niech któryś z nich spróbuje, a wtedy z…"
+  446.82,  // [ 45] conf 0.90  "Jego cienkie, sine wargi zacisnęły się mo…"
+  452.57,  // [ 46] conf 1.00  "— Ale mogliby kogoś podesłać i nabić was…"
+  462.78,  // [ 47] conf 1.00  "— Z dowodem czego? Chyba tego, że handluj…"
+  479.15,  // [ 48] conf 1.00  "Wątpię, aby któryś z nich zgłosił się po…"
+  486.93,  // [ 49] conf 1.00  "— Dlaczego? — zapytał Ossipon."
+  490.11,  // [ 50] conf 0.97  "— Bo wiedzą bardzo dobrze, że nigdy się n…"
+  503.55,  // [ 51] conf 1.00  "— Słyszałem o tym — rzekł Ossipon z odcie…"
+  510.08,  // [ 52] conf 1.00  "— Oni wiedzą — przerwał cierpko człowiecz…"
+  524.49,  // [ 53] conf 1.00  "Uporanie się z takim człowiekiem jak ja w…"
+  531.64,  // [ 54] conf 0.86  "Znowu zacisnął usta z miną bardzo pewną s…"
+  538.18,  // [ 55] conf 1.00  "— Albo zuchwałości… albo po prostu nieświ…"
+  552.47,  // [ 56] conf 1.00  "— Nie twierdziłem nigdy, że nie można mni…"
+  563.99,  // [ 57] conf 0.92  "— Et! — zaprzeczył Ossipon. — Nie bądźcie…"   // start word fuzzy-corrected
+  579.66,  // [ 58] conf 0.95  "— Owszem, mógłbym. Wychodzę rzadko o zmro…"
+  600.66,  // [ 59] conf 1.00  "Na takiej samej zasadzie jest zbudowana m…"
+  607.16,  // [ 60] conf 0.93  "Szybkim ruchem uchylił marynarkę i Ossipo…"
+  619.68,  // [ 61] conf 1.00  "Odzienie człowieczka, nieokreślonego brąz…"
+  630.30,  // [ 62] conf 1.00  "— Zapalnik jest częściowo mechaniczny, a…"
+  638.56,  // [ 63] conf 0.88  "— Działa oczywiście natychmiast? — szepną…"
+  643.48,  // [ 64] conf 1.00  "— Ale gdzież tam — wyznał tamten z niechę…"
+  656.84,  // [ 65] conf 1.00  "— Fiu! — gwizdnął Ossipon, do reszty prze…"
+  670.37,  // [ 66] conf 1.00  "— Dziura by się w niebie nie zrobiła. Ocz…"
+  681.45,  // [ 67] conf 0.96  "Usiłuję wynaleźć zapalnik, który by się d…"   // start word fuzzy-corrected
+  697.10,  // [ 68] conf 0.75  "— Dwadzieścia sekund — mruknął znów Ossip…"
+  702.70,  // [ 69] conf 0.90  "Człowieczek odwrócił z lekka głowę; połys…"
+  714.07,  // [ 70] conf 1.00  "— Nikt nie uszedłby cało z tej sali — zab…"
+  724.23,  // [ 71] conf 0.93  "Pianino u stóp klatki schodowej huknęło m…"   // start word fuzzy-corrected
+  738.03,  // [ 72] conf 0.95  "Przez chwilę Ossipon wyobrażał sobie tę r…"
+  756.97,  // [ 73] conf 1.00  "Jego towarzysz rzekł z miną spokojną i za…"
+  760.60,  // [ 74] conf 1.00  "— W gruncie rzeczy bezpieczeństwo człowie…"
+  771.22,  // [ 75] conf 0.71  "— Ciekawym, jakeście do tego doszli — bur…"
+  777.33,  // [ 76] conf 0.97  "— Siła indywidualności — rzekł tamten, ni…"
+  795.05,  // [ 77] conf 1.00  "— Mam środki po temu, aby być śmiercionoś…"
+  813.47,  // [ 78] conf 0.89  "— Wśród nich są także silne indywidualnoś…"
+  819.96,  // [ 79] conf 1.00  "— Możliwe. Ale widać chodzi o stopień sił…"
+  837.94,  // [ 80] conf 1.00  "Oni są skrępowani mnóstwem konwencjonalny…"
+  853.20,  // [ 81] conf 1.00  "tymczasem ja związany jestem ze śmiercią,…"
+  864.61,  // [ 82] conf 0.80  "— Ujmujecie to w sposób transcendentalny…"
+  876.56,  // [ 83] conf 0.93  "— Karl Yundt — mruknął tamten pogardliwie…"   // start word fuzzy-corrected
+  898.86,  // [ 84] conf 1.00  "Jesteście szacownymi delegatami do spraw…"
+  913.45,  // [ 85] conf 0.83  "Ossipon nie mógł powstrzymać odruchu obur…"
+  917.84,  // [ 86] conf 0.92  "— Czegóż wy od nas chcecie? — wykrzyknął…"   // start word fuzzy-corrected
+  924.54,  // [ 87] conf 1.00  "— Nad udoskonaleniem zapalnika — brzmiała…"
+  937.66,  // [ 88] conf 0.89  "— Ja się wcale nie krzywię — warknął brut…"
+  942.92,  // [ 89] conf 1.00  "— Wy, rewolucjoniści — ciągnął tamten ze…"
+  956.98,  // [ 90] conf 1.00  "To jasne, że jesteście jego niewolnikami,…"
+  970.46,  // [ 91] conf 0.91  "— Zamilkł spokojnie, rzekłbyś, ostateczni…"
+  988.42,  // [ 92] conf 0.96  "Ale ja na niego nie patrzyłem. Wystarczył…"
+  1007.99, // [ 93] conf 0.97  "Był dla mnie osobistością tak mało znaczą…"
+  1023.73, // [ 94] conf 0.95  "Rewolucja, legalność — to przeciwne sobie…"
+  1042.43, // [ 95] conf 1.00  "Moje doświadczenia wymagają niekiedy pien…"
+  1057.27, // [ 96] conf 1.00  "Mam dość sił, aby pracować samotnie, zupe…"
+  1065.81, // [ 97] conf 1.00  "Ciemny rumieniec pokrył twarz Ossipona."
+  1069.06, // [ 98] conf 1.00  "— Nad idealnym zapalnikiem… co? — zadrwił…"
+  1074.64, // [ 99] conf 1.00  "— Tak — odparł tamten. — Dobrzeście to ok…"
+  1091.40, // [100] conf 0.97  "— Nie będziemy się o to spierać — rzekł O…"
+  1109.87, // [101] conf 1.00  "— Skąd o tym wiecie?"
+  1111.80, // [102] conf 1.00  "— Już od drugiej wykrzykują tę wiadomość…"
+  1122.02, // [103] conf 1.00  "Wyciągnął gazetę — duży różowy arkusz, ja…"
+  1130.26, // [104] conf 1.00  "— Aha! Mam. Bomba w Greenwich, w parku. M…"
+  1150.30, // [105] conf 0.95  "To już wszystko. Reszta same dziennikarsk…"
+  1160.35, // [106] conf 1.00  "Przez chwilę patrzył jeszcze w milczeniu…"
+  1169.77, // [107] conf 0.86  "Pierwszy odezwał się Ossipon tonem wciąż…"
+  1174.11, // [108] conf 0.96  "— Uważacie, szczątki tylko jednego człowi…"
+  1188.51, // [109] conf 1.00  "nawet nie postało mi w głowie, że knują c…"
+  1198.23, // [110] conf 1.00  "Człowieczek podniósł rzadkie czarne brwi…"
+  1203.31, // [111] conf 1.00  "— Zbrodnia! Co przez to rozumiecie? Czym…"
+  1211.45, // [112] conf 0.97  "— A jakże mam się wyrazić? Muszę używać o…"
+  1226.07, // [113] conf 1.00  "Jestem pewien, że w ostatnich czasach dal…"
+  1230.69, // [114] conf 0.82  "Ossipon patrzył bacznie w twarz człowiecz…"   // start word fuzzy-corrected
+  1238.90, // [115] conf 0.89  "— Więc to wy! — wybuchnął dobitnym szepte…"
+  1252.70, // [116] conf 1.00  "— Tak jest! Skazany na zagładę ustrój spo…"
+  1266.44, // [117] conf 0.97  "Tak, rozdawałbym swój proch na wszystkie…"
+  1280.25, // [118] conf 0.93  "Gdyby was stąd wszystkich wyszczuli, albo…"
+  1294.05, // [119] conf 0.94  "Mówił niedbale, chłodno, prawie obojętnie…"
+  1302.47, // [120] conf 1.00  "— Gdyby tutejsza policja stała na wysokoś…"
+  1313.36, // [121] conf 1.00  "Zdawało się, że człowieczek rozważył już…"
+  1319.51, // [122] conf 0.95  "— Tak — potwierdził z błyskawiczną gotowo…"
+  1334.35, // [123] conf 0.67  "Ossipon zmrużył oczy."   // start word fuzzy-corrected
+  1336.79, // [124] conf 1.00  "— Przypuszczam, że tak by się właśnie z w…"
+  1345.53, // [125] conf 1.00  "— Nie mam zamiaru tam jechać, żeby się o…"
+  1361.25, // [126] conf 1.00  "W tej wielkiej republice tkwi zaród znisz…"
+  1374.23, // [127] conf 0.90  "— Jesteście dla mnie zbyt abstrakcyjni —…"
+  1379.78, // [128] conf 1.00  "— Jestem tylko logiczny — zaprzeczył czło…"
+  1397.92, // [129] conf 0.97  "Duch społeczny tego narodu cechują skrupu…"
+  1417.46, // [130] conf 0.90  "Powiedziałbym, że to jest bardzo wygodne…"
+  1421.40, // [131] conf 1.00  "Wzruszył lekko ramionami i dodał z tą sam…"
+  1425.73, // [132] conf 1.00  "— Naszym celem powinno być skruszenie prz…"
+  1440.65, // [133] conf 1.00  "rozkład starej moralności zagnieździłby s…"
+  1451.25, // [134] conf 0.95  "Snujecie plany na przyszłość, gubicie się…"
+  1468.29, // [135] conf 0.96  "I dlatego właśnie usypałbym na rogach wsz…"
+  1480.24, // [136] conf 0.92  "Ossipon, który zatopił się w myślach, poc…"   // start word fuzzy-corrected
+  1485.72, // [137] conf 1.00  "— Aha. Wasz zapalnik. Nie zdziwię się wca…"
+  1493.33, // [138] conf 0.78  "Cień przykrości przesłonił stanowcze, bla…"
+  1498.57, // [139] conf 1.00  "— Trudność mojej pracy polega właśnie na…"
+  1508.57, // [140] conf 0.50  "Ossipon przerwał."   // LOW CONFIDENCE; low match ratio; start word fuzzy-corrected
+  1510.27, // [141] conf 1.00  "— Kto to mógł być, ten człowiek? Ręczę wa…"
+  1519.49, // [142] conf 1.00  "Tamten zwrócił na Ossipona okulary jak po…"
+  1523.68, // [143] conf 0.82  "— Opisać — powtórzył z wolna. — Teraz chy…"
+  1534.72, // [144] conf 1.00  "Ossipon, który z ciekawości uniósł się tr…"
+  1541.46, // [145] conf 0.50  "— Verloc? Niemożliwe."   // LOW CONFIDENCE; low match ratio; start word fuzzy-corrected
+  1546.06, // [146] conf 1.00  "Opanowany człowieczek skinął lekko głową."
+  1549.23, // [147] conf 0.96  "— Tak. To on. W tym wypadku nie możecie p…"
+  1561.80, // [148] conf 0.97  "— Tak — odrzekł Ossipon. — Wybitnym. Choć…"
+  1583.67, // [149] conf 0.91  "Ufali mu tacy ludzie jak Latorre, Moser i…"
+  1601.49, // [150] conf 1.00  "Zdaje się, że to za jej pieniądze założył…"
+  1606.74, // [151] conf 0.94  "Ossipon urwał nagle. Mruknął pod nosem: „…"   // start word fuzzy-corrected
+  1615.50, // [152] conf 1.00  "Tamten czekał z ostentacyjną obojętnością…"
+  1632.72, // [153] conf 1.00  "Potem dostał miejsce w laboratorium fabry…"
+  1639.28, // [154] conf 1.00  "Jego zmagania się, jego niedostatek, jego…"
+  1660.16, // [155] conf 1.00  "Profesor był człowiekiem utalentowanym, l…"
+  1668.82, // [156] conf 0.94  "— Jako intelekt był niczym — wyrzekł głoś…"
+  1688.52, // [157] conf 0.96  "— Czy Verloc coś wam powiedział, czy zwie…"
+  1699.33, // [158] conf 0.98  "— Powiedział mi, że to ma być zamach na j…"
+  1719.40, // [159] conf 0.91  "Ponieważ chciał, żebym przygotował coś, c…"
+  1735.62, // [160] conf 1.00  "Było to trochę kłopotliwe, bo musiałem na…"
+  1747.68, // [161] conf 0.86  "słoik zawierał szesnaście uncji⁴³ zielone…"
+  1766.01, // [162] conf 0.86  "Myśl Ossipona zwróciła się w inną stronę."
+  1769.67, // [163] conf 1.00  "— Jak się to mogło stać? — przerwał."
+  1773.31, // [164] conf 0.97  "— Czy ja wiem? Może przykręcił wierzch, c…"
+  1789.59, // [165] conf 1.00  "Pewno źle obliczył czas albo po prostu up…"
+  1809.07, // [166] conf 1.00  "Ale tyle jest rodzajów głupoty, że nie mo…"
+  1818.20, // [167] conf 0.93  "Kiwnął na kelnera. Ossipon siedział wypro…"
+  1831.57, // [168] conf 0.93  "— To dla mnie niezmiernie przykre — zaczą…"
+  1852.19, // [169] conf 1.00  "Jak wiecie, odzwyczaił się w celi od logi…"
+  1856.06, // [170] conf 1.00  "Profesor stał, zapinając palto, i rozgląd…"
+  1861.84, // [171] conf 0.96  "— Co teraz zrobicie? — zapytał Ossipon zn…"
+  1875.22, // [172] conf 0.79  "Niepojęte szaleństwo Verloca odbiłoby się…"
+  1887.98, // [173] conf 0.91  "— Solidaryzowanie się z krańcową formą dz…"
+  1905.09, // [174] conf 0.98  "Wolno wam się zapatrywać na to, jak chcec…"
+  1925.12, // [175] conf 0.95  "Człowieczek stał w zapiętym palcie, gotów…"
+  1934.12, // [176] conf 1.00  "— Moglibyście poprosić policję o świadect…"
+  1949.25, // [177] conf 0.97  "— Na pewno wiedzą dokładnie, że nic z tym…"
+  1964.03, // [178] conf 1.00  "— Natychmiast muszę znaleźć Michaelisa i…"
+  1980.05, // [179] conf 1.00  "To, co powie Michaelis, będzie skończoną…"
+  1987.24, // [180] conf 0.90  "— Jak lukrecję⁴⁵ — wtrącił dość cicho Pro…"
+  1994.00, // [181] conf 1.00  "Zakłopotany Ossipon dalej prowadził ze so…"
+  2001.31, // [182] conf 0.93  "— Osioł, psiakrew! Żeby mi ściągnąć na łe…"
+  2008.84, // [183] conf 1.00  "Siedział, zaciąwszy usta. Nie uśmiechała…"
+  2019.30, // [184] conf 1.00  "„Będą musieli kilka osób zaaresztować” —…"
+  2036.42, // [185] conf 0.96  "Potem przyszło mu na myśl, że jeżeli ów c…"
+  2044.64, // [186] conf 0.91  "A w takim razie policja nie ma powodu do…"
+  2061.51, // [187] conf 0.89  "— Co tu teraz robić? — mruknął, radząc si…"
+  2067.10, // [188] conf 0.89  "Chropawy głos u jego boku rzekł ze spokoj…"   // start word fuzzy-corrected
+  2071.81, // [189] conf 0.86  "— Uczepcie się tej kobiety, jeśli warta f…"   // start word fuzzy-corrected
+  2075.25, // [190] conf 0.94  "Wyrzekłszy te słowa, Profesor oddalił się…"
+  2090.95, // [191] conf 0.89  "Samotne pianino, pozbawione nawet pomocy…"
+  2110.59, // [192] conf 1.00  "Naprzeciw wielkich drzwi sterczał tuż u c…"
+  2121.43, // [193] conf 1.00  "brudne niebo, błoto na ulicy, łachmany ga…"
+  2133.97, // [194] conf 0.89  "Sprzedaż wieczornych gazet odbywała się ż…"
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const AUDIO_URL = "audio/chapter-04.webm";
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+let audioObjectUrl = null;
+async function loadAudio(url) {
+  // Browsers block fetch() from file:// pages; direct media loading still works there.
+  if (location.protocol === "file:") {
+    audio.src = url;
+    audio.load();
+    return;
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Audio request failed (${response.status})`);
+    const blob = await response.blob();
+    audioObjectUrl = URL.createObjectURL(blob);
+    audio.src = audioObjectUrl;
+    audio.load();
+  } catch (error) {
+    console.error("Could not load chapter audio:", error);
+    showBanner();
+  }
+}
+loadAudio(AUDIO_URL);
+window.addEventListener("pagehide", () => {
+  if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+}, { once: true });
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  enOpen: false,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function appendTooltipText(parent, text) {
+  // Render table emphasis safely; never interpret annotation cells as HTML.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function setStudyText(element, text) {
+  // Preserve unsupported superscripts literally, and decorate known note numbers.
+  const footnote = /<sup>(\d+)<\/sup>|([⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g;
+  const superscriptDigits = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const numberValue = match[1] || Array.from(match[2], digit => String(superscriptDigits.indexOf(digit))).join("");
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[numberValue];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${numberValue}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = numberValue;
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      const definition = document.createElement("span");
+      definition.className = "note-pl";
+      appendTooltipText(definition, note.definition);
+      tooltip.appendChild(definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = numberValue;
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- EN / UA toggle chips --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const enChip = document.createElement("button");
+    enChip.type = "button";
+    enChip.className = "chip";
+    enChip.textContent = "EN ▾";
+    enChip.setAttribute("aria-expanded", "false");
+    enChip.setAttribute("aria-controls", "en-" + i);
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+
+    toggles.append(enChip, uaChip);
+
+    /* --- hidden EN block --- */
+    const enBox = document.createElement("div");
+    enBox.className = "stack en";
+    enBox.id = "en-" + i;
+    enBox.hidden = true;
+    const enLbl = document.createElement("span");
+    enLbl.className = "lbl";
+    enLbl.textContent = "English";
+    const enP = document.createElement("p");
+    enP.lang = "en";
+    setStudyText(enP, unit.en);
+    enBox.append(enLbl, enP);
+
+    /* --- hidden UA block --- */
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, enBox, uaBox, pbar);
+
+    enChip.addEventListener("click", () => setEn(i, enBox.hidden));
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, enChip, uaChip, enBox, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: ${AUDIO_URL}`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = (box.classList.contains("en") ? "EN " : "UA ") + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setEn(i, open) { setChip(els[i].enChip, els[i].enBox, open); }
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleEnEl = document.getElementById("toggleEn");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(kind, open) {
+  const key = kind === "en" ? "enOpen" : "uaOpen";
+  state[key] = open;
+  els.forEach((e, i) => (kind === "en" ? setEn(i, open) : setUa(i, open)));
+  const btn = kind === "en" ? toggleEnEl : toggleUaEl;
+  btn.textContent = (open ? "Hide all " : "Reveal all ") + kind.toUpperCase();
+  btn.setAttribute("aria-pressed", String(open));
+  btn.classList.toggle("is-on", open);
+}
+
+toggleEnEl.addEventListener("click", () => setAll("en", !state.enOpen));
+toggleUaEl.addEventListener("click", () => setAll("ua", !state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+// If metadata never arrives (missing file / unsupported codec), tell the user.
+setTimeout(() => { if (audio.readyState < 1) showBanner(); }, 2500);
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "e" || ev.key === "E") {
+    setAll("en", !state.enOpen);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll("ua", !state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

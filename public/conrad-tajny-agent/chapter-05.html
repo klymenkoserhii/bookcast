@@ -1,0 +1,2785 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-05.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-05.md audio/chapter-05.webm
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-05.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-05.md
+     It reads chapter-05.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path audio/chapter-05.webm, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Tajny agent · Rozdział V</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative;
+    cursor: help;
+    color: var(--accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+    outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none;
+    position: fixed;
+    z-index: 20;
+    left: 12px;
+    top: 12px;
+    width: min(360px, calc(100vw - 36px));
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans);
+    text-align: left;
+    white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-pl { display: block; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* EN / UA toggles + blocks */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .en p {
+    font-family: var(--sans);
+    font-size: .93rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Tajny agent · Rozdział V</h1>
+      <p class="chapter-name"></p>
+      <p>Joseph Conrad · trilingual study edition: EN → PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="ctl" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <select id="rate" aria-label="Playback speed"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+        </select>
+      </label>
+
+      <button id="toggleEn" class="ctl" type="button" aria-pressed="false">Reveal all EN</button>
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>audio/chapter-05.webm</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>E</kbd> toggle EN · <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (EN → PL → UA, in reading order)  */
+/*    Generated from chapter-05.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "en": "The Professor had turned into a street to the left, and walked along, with his head carried rigidly erect, in a crowd whose every individual almost overtopped his stunted stature. It was vain to pretend to himself that he was not disappointed. But that was mere feeling;",
+  "pl": "Profesor skręcił w ulicę po lewej stronie i szedł, trzymając głowę prosto i sztywno wśród tłumu, gdzie prawie każdy przechodzień górował nad jego kusą postacią. Profesor czuł się zawiedziony; nie warto było tego przed sobą ukrywać. Ale dotyczyło to tylko jego uczuć;",
+  "ua": "Професор повернув на вулицю ліворуч і йшов, тримаючи голову просто й напружено серед натовпу, де перехожий майже кожен перевищував його низькорослу постать. Професор відчував себе розчарованим; не варто було це перед собою приховувати. Але це стосувалося лише його почуттів;",
+  "para": 0,
+  "start": 1.7
+ },
+ {
+  "en": "the stoicism of his thought could not be disturbed by this or any other failure. Next time, or the time after next, a telling stroke would be delivered﻿—something really startling﻿—a blow fit to open the first crack in the imposing front of the great edifice of legal conceptions sheltering the atrocious injustice of society.",
+  "pl": "stoicyzmu jego myśli nie mogło zakłócić żadne niepowodzenie. Prędzej czy później zostanie wymierzony celny cios — cios naprawdę przerażający — i zarysuje się imponująca, wielka fasada gmachu prawnych pojęć, gmachu, który jest siedzibą okrutnej niesprawiedliwości społecznej.",
+  "ua": "стоїцизму його думок не могло збурити жодне невдалище. Рано чи пізно буде завдано влучного удару — удару справді жахливого — і постане вражаючий великий фасад будівлі правових понять, оселища жорстокої соціальної несправедливості.",
+  "para": 0,
+  "start": 20.68
+ },
+ {
+  "en": "Of humble origin, and with an appearance really so mean as to stand in the way of his considerable natural abilities, his imagination had been fired early by the tales of men rising from the depths of poverty to positions of authority and affluence.",
+  "pl": "Profesor pochodził ze skromnego środowiska; wyobraźnię rozpaliły mu wcześnie opowiadania o kolejach ludzi, którzy wznieśli się z otchłani nędzy na wyżyny władzy i bogactw, lecz wyjątkowo obskurna powierzchowność przeszkodziła mu wykorzystać wielkie przyrodzone zdolności.",
+  "ua": "Походив із скромного середовища; уяву йому рано запалили оповіді про кар'єри людей, які піднялися з океану бідності на вершини влади й багатства, однак винятково потворна зовнішність завадила йому скористатися з великими природженими здібностями.",
+  "para": 1,
+  "start": 38.98
+ },
+ {
+  "en": "The extreme, almost ascetic purity of his thought, combined with an astounding ignorance of worldly conditions, had set before him a goal of power and prestige to be attained without the medium of arts, graces, tact, wealth﻿—by sheer weight of merit alone.",
+  "pl": "Jego niezmierna, prawie ascetyczna czystość myśli, połączona ze zdumiewającą nieznajomością warunków życia sprawiła, że postawił sobie za cel osiągnięcie potęgi i rozgłosu nie za pomocą chytrości, wdzięku, taktu, bogactwa, lecz siłą samej zasługi.",
+  "ua": "Його надмірна, майже аскетична чистота думок, у поєднанні з дивовижним невіданням життєвих умов, змусила його поставити собі за мету здобути могутність і славу не за допомогою хитрості, чарів, такту, багатства, а силою самої заслуги.",
+  "para": 1,
+  "start": 55.4
+ },
+ {
+  "en": "On that view he considered himself entitled to undisputed success.",
+  "pl": "Uznał, że na tej podstawie ma prawo do niezaprzeczonego powodzenia.",
+  "ua": "Зважаючи на це, він вважав, що має право на беззаперечний успіх.",
+  "para": 1,
+  "start": 71.66
+ },
+ {
+  "en": "His father, a delicate dark enthusiast with a sloping forehead, had been an itinerant and rousing preacher of some obscure but rigid Christian sect﻿—a man supremely confident in the privileges of his righteousness.",
+  "pl": "Jego ojciec, wątły, posępny zapaleniec o smagłej twarzy i cofniętym czole, był swego czasu wędrownym, porywającym kaznodzieją jakiejś mało znanej i surowej sekty chrześcijańskiej; przy tym wierzył ślepo w przywileje, do których uprawniało go bogobojne życie.",
+  "ua": "Його батько, кволий похмурий фанатик зі смаглявим обличчям і відступним чолом, свого часу був мандрівним, захопливим проповідником якоїсь маловідомої й суворої християнської секти; до того ж сліпо вірив у привілеї, на які давав право його побожний спосіб життя.",
+  "para": 2,
+  "start": 75.28
+ },
+ {
+  "en": "In the son, individualist by temperament, once the science of colleges had replaced thoroughly the faith of conventicles, this moral attitude translated itself into a frenzied puritanism of ambition. He nursed it as something secularly holy.",
+  "pl": "Synowi, mającemu silne poczucie indywidualności, nauka zastąpiła sekciarską wiarę, a jego postawa duchowa wyraziła się w zapamiętałej, na wskroś purytańskiej ambicji. Pielęgnował ją niby jakąś świecką świętość. Ambicja ta została zawiedziona, a wówczas otwarły mu się oczy na prawdziwą istotę świata;",
+  "ua": "Синові зі сильним почуттям особистості наука замінила сектантську віру, а його духовна позиція виразилася в запеклій, наскрізь пуританській амбіції. Він плекав її немов якусь світську святість. Ця амбіція зазнала краху, і тоді відкрилися йому очі на справжню суть світу;",
+  "para": 2,
+  "start": 91.4
+ },
+ {
+  "en": "To see it thwarted opened his eyes to the true nature of the world, whose morality was artificial, corrupt, and blasphemous. The way of even the most justifiable revolutions is prepared by personal impulses disguised into creeds.",
+  "pl": "osądził, że jego etyka jest sztuczna, znieprawiona, bluźniercza. Drogę do rewolucji, nawet najbardziej usprawiedliwionych, torują samolubne popędy, ukryte pod pozorami przekonań.",
+  "ua": "визнав, що його етика штучна, зіпсована, богозневажлива. Дорогу до революцій, навіть найбільш виправданих, прокладають егоїстичні потяги, сховані під виглядом переконань.",
+  "para": 2,
+  "start": 112.51
+ },
+ {
+  "en": "The Professor’s indignation found in itself a final cause that absolved him from the sin of turning to destruction as the agent of his ambition.",
+  "pl": "Profesor uznał swoje oburzenie za przyczynę decydującą, która rozgrzeszała go z tego, że wybrał zagładę jako narzędzie własnej ambicji.",
+  "ua": "Обурення Професора знайшло в собі вирішальну причину, яка виправдовувала його з вини вибору руйнування як знаряддя власної амбіції.",
+  "para": 2,
+  "start": 124.09
+ },
+ {
+  "en": "To destroy public faith in legality was the imperfect formula of his pedantic fanaticism; but the subconscious conviction that the framework of an established social order cannot be effectually shattered except by some form of collective or individual violence was precise and correct.",
+  "pl": "Unicestwić ogólną wiarę w praworządność — oto jak brzmiała nieścisła formuła jego pedantycznego fanatyzmu; natomiast ścisłe i trafne było podświadome przekonanie Profesora, iż ramy ustalonego społecznego porządku można zburzyć skutecznie tylko przez jakiś gwałt, zbiorowy lub indywidualny.",
+  "ua": "Знищити загальну віру в правопорядок — ось як була сформульована неточна формула його педантичного фанатизму; натомість точним і правильним виявилося підсвідоме переконання Професора, що рами встановленого суспільного порядку можна зруйнувати ефективно лише через якийсь насильницький акт, колективний чи індивідуальний.",
+  "para": 3,
+  "start": 132.51
+ },
+ {
+  "en": "He was a moral agent﻿—that was settled in his mind. By exercising his agency with ruthless defiance he procured for himself the appearances of power and personal prestige. That was undeniable to his vengeful bitterness. It pacified its unrest;",
+  "pl": "Profesor był przeświadczony, że działa na rzecz moralności. Prowadząc swą działalność z bezlitosnym męstwem, uzyskał pozory siły i powagi. Nie wątpił o tym, a świadomość ta koiła jego mściwą gorycz i niepokój;",
+  "ua": "Професор був переконаний, що діє на користь моральності. Ведучи свою справу з безжальним завзяттям, він набував вигляду сили й вагомості. Він не сумнівався в цьому, і ця свідомість заспокоювала його мстиву гіркоту й неспокій;",
+  "para": 3,
+  "start": 151.79
+ },
+ {
+  "en": "and in their own way the most ardent of revolutionaries are perhaps doing no more but seeking for peace in common with the rest of mankind﻿—the peace of soothed vanity, of satisfied appetites, or perhaps of appeased conscience.",
+  "pl": "albowiem najzagorzalsi z rewolucjonistów nie robią chyba nic innego, tylko na swój sposób dążą do osiągnięcia spokoju, podobnie jak i reszta ludzkości — spokoju sytej pychy, zaspokojonych apetytów, a może i ukojonego sumienia.",
+  "ua": "адже найпалкіші революціонери, здається, нічого іншого не роблять, як лише по-своєму прагнуть до спокою, так само як і решта людства — спокою задоволеної пихи, насичених апетитів, а може, й заспокоєного сумління.",
+  "para": 3,
+  "start": 166.09
+ },
+ {
+  "en": "Lost in the crowd, miserable and undersized, he meditated confidently on his power, keeping his hand in the left pocket of his trousers, grasping lightly the india-rubber ball, the supreme guarantee of his sinister freedom;",
+  "pl": "Zagubiony w tłumie, drobny i niepozorny, Profesor myślał z zadowoleniem o swojej sile; ręką spoczywającą w lewej kieszeni spodni obejmował lekko gumową gruszkę, najpewniejszą rękojmię swej złowrogiej wolności;",
+  "ua": "Загублений у натовпі, дрібний і непримітний, Професор задоволено думав про свою силу; рукою, що лежала в лівій кишені штанів, легко обхоплював гумову грушу — найпевнішу заставу своєї зловісної свободи;",
+  "para": 4,
+  "start": 181.79
+ },
+ {
+  "en": "but after a while he became disagreeably affected by the sight of the roadway thronged with vehicles and of the pavement crowded with men and women. He was in a long, straight street, peopled by a mere fraction of an immense multitude;",
+  "pl": "po chwili jednak dokuczył mu widok jezdni zatłoczonej pojazdami i chodnika pełnego mężczyzn i kobiet. Znajdował się na długiej, prostej ulicy, zapełnionej tylko drobną cząstką olbrzymiego zbiorowiska ludzi;",
+  "ua": "але за якийсь час йому неприємно дався взнаки вид проїзної частини, вщерть заповненої транспортом, і тротуару, повного чоловіків і жінок. Він був на довгій прямій вулиці, заселеній лише дрібною часткою величезного скупчення людей;",
+  "para": 4,
+  "start": 195.67
+ },
+ {
+  "en": "but all round him, on and on, even to the limits of the horizon hidden by the enormous piles of bricks, he felt the mass of mankind mighty in its numbers. They swarmed numerous like locusts, industrious like ants, thoughtless like a natural force,",
+  "pl": "lecz wokół siebie, dalej i dalej, aż po krańce widnokręgu ukrytego za ogromnymi budowlami z cegieł, czuł ludzkie mrowie potężne swym ogromem. Roiło się nieprzeliczone jak szarańcza, pracowite jak mrówki, bezmyślne jak siła przyrody;",
+  "ua": "але навколо себе, далі й далі, аж до країв обрію, хованого за величезними цегляними будівлями, він відчував людський мурашник, могутній своїм масштабом. Кишило їх незліченно, мов сарани, працьовитих, мов мурах, бездумних, як сила природи,",
+  "para": 4,
+  "start": 208.31
+ },
+ {
+  "en": "pushing on blind and orderly and absorbed, impervious to sentiment, to logic, to terror too perhaps.",
+  "pl": "prąc naprzód ślepo, miarowo, pochłonięte swymi sprawami, niedostępne dla uczuć, dla logiki, a może i dla strachu.",
+  "ua": "що рухалися вперед сліпо, ритмічно, поглинені своїми справами, недоступні для почуттів, для логіки, а може, й для страху.",
+  "para": 4,
+  "start": 224.01
+ },
+ {
+  "en": "That was the form of doubt he feared most. Impervious to fear! Often while walking abroad, when he happened also to come out of himself, he had such moments of dreadful and sane mistrust of mankind. What if nothing could move them?",
+  "pl": "Niedostępne dla strachu! Tego się lękał najbardziej. Często gdy chodził po mieście i gdy mu się zdarzyło spojrzeć na świat jakby cudzym wzrokiem, miał chwile przerażającej, trzeźwej niewiary w ludzkość. A jeśli nic nie jest w stanie jej wzruszyć?",
+  "ua": "Недоступні для страху! Цього він боявся найбільше. Часто, коли він ходив містом і коли йому траплялося дивитися на світ, немов очима іншого, він мав хвилини жахливої, тверезої недовіри до людства. А якщо нічого неспроможне його зворушити?",
+  "para": 5,
+  "start": 231.95
+ },
+ {
+  "en": "Such moments come to all men whose ambition aims at a direct grasp upon humanity﻿—to artists, politicians, thinkers, reformers, or saints. A despicable emotional state this, against which solitude fortifies a superior character;",
+  "pl": "Podobne chwile nawiedzają wszystkich tych, których ambitnym celem jest bezpośredni wpływ na ludzkość — artystów, polityków, myślicieli, reformatorów lub świętych. W tym opłakanym stanie ducha krzepi wyższe charaktery samotność;",
+  "ua": "Подібні хвилини відвідують усіх тих, чиєю амбітною метою є прямий вплив на людство — митців, політиків, мислителів, реформаторів чи святих. У цьому жалюгідному стані духу вищі характери кріпить самотність;",
+  "para": 5,
+  "start": 247.33
+ },
+ {
+  "en": "and with severe exultation the Professor thought of the refuge of his room, with its padlocked cupboard, lost in a wilderness of poor houses, the hermitage of the perfect anarchist.",
+  "pl": "Profesor szedł więc i myślał z głęboką radością o swym schronieniu, o pokoju z kredensem zamkniętym na kłódkę, pokoju ukrytym wśród gąszczu ubogich domów, o tej pustelni doskonałego anarchisty.",
+  "ua": "Професор ішов далі й думав з глибокою радістю про свій прихисток, про кімнату з комодом, замкненим на клямку, кімнату, сховану серед гущі бідних будинків, про цю пустельню досконалого анархіста.",
+  "para": 5,
+  "start": 262.75
+ },
+ {
+  "en": "In order to reach sooner the point where he could take his omnibus, he turned brusquely out of the populous street into a narrow and dusky alley paved with flagstones. empty shells awaiting demolition.",
+  "pl": "Aby dotrzeć prędzej do miejsca, gdzie mógł wsiąść do omnibusu, Profesor skręcił nagle z rojnej ulicy w wąski i ciemny zaułek wyłożony kamiennymi płytami. Po jednej stronie stały niskie domy ceglane — puste skorupy oczekujące na zburzenie;",
+  "ua": "Щоб швидше дійти до місця, де міг сісти в омнібус, Професор раптом повернув із людної вулиці у вузький і темний провулок, вимощений кам'яними плитами. З одного боку стояли низькі цегляні будинки — порожні оболонки, що чекали на знесення;",
+  "para": 6,
+  "start": 274.09
+ },
+ {
+  "en": "On one side the low brick houses had in their dusty windows the sightless, moribund look of incurable decay﻿— From the other side life had not departed wholly as yet.",
+  "pl": "z ich ślepych okien zasnutych kurzem wyglądała beznadziejna ruina. Po drugiej stronie zaułka życie jeszcze się tliło.",
+  "ua": "з їхніх сліпих вікон, вкритих пилом, виглядав безнадійний руйн. З другого боку провулка життя ще й досі тліло.",
+  "para": 6,
+  "start": 289.51
+ },
+ {
+  "en": "Facing the only gas-lamp yawned the cavern of a secondhand furniture dealer, where, deep in the gloom of a sort of narrow avenue winding through a bizarre forest of wardrobes, with an undergrowth tangle of table legs, a tall pier-glass glimmered like a pool of water in a wood.",
+  "pl": "Na wprost jedynej gazowej latarni rozwierała się jaskinia podrzędnego handlarza mebli, a w głębi tej jaskini, w mroku jakby wąskiej alei wijącej się wśród dziwacznego lasu szaf, podszytego gąszczem nóg stołowych, jaśniało wysokie stojące lustro niby leśne jeziorko.",
+  "ua": "Навпроти єдиної газової ліхтарі розтинулася печера дрібного торгівця меблями, а в глибині цієї печери, в темряві, наче вузької алеї, що в'ється серед дивного лісу шаф, підстеленого густим чагарником ніжок столів, сяяло високе дзеркало, мов лісове озерце.",
+  "para": 6,
+  "start": 297.55
+ },
+ {
+  "en": "An unhappy, homeless couch, accompanied by two unrelated chairs, stood in the open.",
+  "pl": "Przed wejściem do sklepu stała nieszczęsna, bezdomna kanapka w towarzystwie dwóch niedopasowanych krzeseł.",
+  "ua": "Перед входом до крамниці стояла нещасна, безпритульна канапка в товаристві двох непарних стільців.",
+  "para": 6,
+  "start": 315.31
+ },
+ {
+  "en": "The only human being making use of the alley besides the Professor, coming stalwart and erect from the opposite direction, checked his swinging pace suddenly.",
+  "pl": "Jedyny człowiek idący uliczką naprzeciw Profesora, wysoki i prosty, wstrzymał nagle rozkołysany swój krok.",
+  "ua": "Єдиний чоловік, що йшов провулком назустріч Професору, високий і прямий, раптом зупинив свій розмашистий крок.",
+  "para": 7,
+  "start": 322.71
+ },
+ {
+  "en": "“Hallo!” he said, and stood a little on one side watchfully.",
+  "pl": "— Hallo! — rzekł i stanął czujnie trochę z boku.",
+  "ua": "«Hallo!» — сказав він і з уважністю відступив трохи набік.",
+  "para": 8,
+  "start": 330.81
+ },
+ {
+  "en": "The Professor had already stopped, with a ready half turn which brought his shoulders very near the other wall. His right hand fell lightly on the back of the outcast couch, the left remained purposefully plunged deep in the trousers pocket,",
+  "pl": "Profesor już się był zatrzymał, na wpół się obróciwszy, tak że plecy jego znalazły się tuż pod przeciwległym murem. Prawą ręką wsparł się lekko o grzbiet kanapki skazanej na banicję, lewą zostawił nie bez celu zagłębioną w kieszeni spodni;",
+  "ua": "Професор уже зупинився, напівобернувшись, так що його спина опинилася впритул під протилежною стіною. Правою рукою легко сперся на спинку канапки, приреченої на вигнання, ліву ж залишив недарма зануреною в кишеню штанів;",
+  "para": 9,
+  "start": 334.57
+ },
+ {
+  "en": "and the roundness of the heavy rimmed spectacles imparted an owlish character to his moody, unperturbed face.",
+  "pl": "okrągłe okulary w ciężkiej oprawie nadawały sowi wyraz jego mrocznej, niewzruszonej twarzy.",
+  "ua": "округлі окуляри в важкій оправі надавали совиного виразу його похмурому, незрушному обличчю.",
+  "para": 9,
+  "start": 348.69
+ },
+ {
+  "en": "It was like a meeting in a side corridor of a mansion full of life. The stalwart man was buttoned up in a dark overcoat, and carried an umbrella. His hat, tilted back, uncovered a good deal of forehead, which appeared very white in the dusk.",
+  "pl": "Spotkali się jakby w bocznym korytarzu domu tętniącego życiem. Wysoki mężczyzna miał na sobie ciemne palto zapięte na wszystkie guziki i trzymał parasol. Kapelusz zsunięty na tył głowy odkrywał znaczną część czoła, które w ciemności wydawało się bardzo białe.",
+  "ua": "Зустрілися, наче в бічному коридорі будинку, що пульсує життям. Високий чоловік мав на собі темне пальто, застебнуте на всі ґудзики, і тримав парасоль. Капелюх, зсунутий на потилицю, відкривав значну частину чола, яке в темряві здавалося дуже білим.",
+  "para": 10,
+  "start": 354.35
+ },
+ {
+  "en": "In the dark patches of the orbits the eyeballs glimmered piercingly. Long, drooping moustaches, the colour of ripe corn, framed with their points the square block of his shaved chin.",
+  "pl": "W mrocznych plamach oczodołów błyskały przenikliwie źrenice. Długie i obwisłe wąsy barwy dojrzałego zboża okalały kwadratowy wygolony podbródek.",
+  "ua": "У мороку очних западин проникливо блищали зіниці. Довгі й обвислі вуса кольору стиглого збіжжя облямовували квадратну голену підборіддя.",
+  "para": 10,
+  "start": 369.91
+ },
+ {
+  "en": "“I am not looking for you,” he said curtly.",
+  "pl": "— Nie szukałem pana — rzekł krótko.",
+  "ua": "«Я вас не шукав» — сказав він стисло.",
+  "para": 11,
+  "start": 381.62
+ },
+ {
+  "en": "The Professor did not stir an inch. The blended noises of the enormous town sank down to an inarticulate low murmur. Chief Inspector Heat of the Special Crimes Department changed his tone.",
+  "pl": "Profesor ani drgnął. Zmieszane hałasy olbrzymiego miasta dochodziły tu w postaci głuchego, cichego szmeru. Komisarz Heat z Wydziału Przestępstw Specjalnych zmienił ton.",
+  "ua": "Професор не здригнувся. Змішані гуркіти величезного міста долинали сюди приглушеним, тихим шумом. Комісар Хіт з Відділу спеціальних злочинів змінив тон.",
+  "para": 12,
+  "start": 385.07
+ },
+ {
+  "en": "“Not in a hurry to get home?” he asked, with mocking simplicity.",
+  "pl": "— Nie spieszy się pan do domu? — zapytał z szyderczą prostotą.",
+  "ua": "«Не поспішаєте додому?» — спитав він з глузливою простотою.",
+  "para": 13,
+  "start": 397.59
+ },
+ {
+  "en": "The unwholesome-looking little moral agent of destruction exulted silently in the possession of personal prestige, keeping in check this man armed with the defensive mandate of a menaced society.",
+  "pl": "Mały człowieczek o chorowitym wyglądzie, moralny rozsadnik zniszczenia, rozkoszował się swoim prestiżem; oto trzymał w szachu tego człowieka, któremu zagrożona społeczność powierzyła swoją obronę.",
+  "ua": "Маленький чоловічок хворобливого вигляду, моральний рушій знищення, тішився своїм престижем; ось він утримував під контролем того чоловіка, якому загрожене суспільство довірило свій захист.",
+  "para": 14,
+  "start": 401.75
+ },
+ {
+  "en": "More fortunate than Caligula, who wished that the Roman Senate had only one head for the better satisfaction of his cruel lust, he beheld in that one man all the forces he had set at defiance: the force of law, property, oppression, and injustice.",
+  "pl": "Był szczęśliwszy niż Kaligula⁴⁷, który dla łatwiejszego nasycenia okrutnej swej żądzy pragnął, aby rzymski senat miał tylko jedną głowę; Profesor widział w komisarzu uosobienie wszystkich wyzwanych przez siebie sił: sił prawa, własności, ucisku i niesprawiedliwości.",
+  "ua": "Він був щасливіший за Калігулу⁴⁷, який для легшого задоволення своєї жорстокої пристрасті прагнув, щоб римський сенат мав лише одну голову; Професор бачив у комісарі втілення всіх сил, які викликав сам: сил права, власності, гноблення й несправедливості.",
+  "para": 14,
+  "start": 413.99
+ },
+ {
+  "en": "He beheld all his enemies, and fearlessly confronted them all in a supreme satisfaction of his vanity. They stood perplexed before him as if before a dreadful portent. He gloated inwardly over the chance of this meeting affirming his superiority over all the multitude of mankind.",
+  "pl": "Miał przed sobą swych wrogów i upojony pychą, nieustraszenie stawiał im czoło. Oto ich widział, zmieszanych jak wobec złowieszczego zjawiska. Radował się w duchu przypadkowym spotkaniem, które potwierdzało jego wyższość nad mrowiem ludzkości.",
+  "ua": "Мав перед собою своїх ворогів і, п'яний пихою, безстрашно ставав їм обличчям. Ось він бачив їх, зніяковілих, наче перед зловісним явищем. Радів у душі випадковій зустрічі, що підтверджувала його перевагу над мурашником людства.",
+  "para": 14,
+  "start": 430.51
+ },
+ {
+  "en": "It was in reality a chance meeting. Chief Inspector Heat had had a disagreeably busy day since his department received the first telegram from Greenwich a little before eleven in the morning.",
+  "pl": "Było to istotnie spotkanie przypadkowe. Komisarz Heat miał przez cały dzień przykrą robotę, już od chwili gdy jego wydział otrzymał przed jedenastą rano pierwszy telegram z Greenwich.",
+  "ua": "Це справді була випадкова зустріч. Комісар Хіт мав увесь день прикру роботу, ще з моменту, коли його відділ отримав перший телеграм із Грінвічу перед одинадцятою ранку.",
+  "para": 15,
+  "start": 445.61
+ },
+ {
+  "en": "First of all, the fact of the outrage being attempted less than a week after he had assured a high official that no outbreak of anarchist activity was to be apprehended was sufficiently annoying. If he ever thought himself safe in making a statement, it was then.",
+  "pl": "Przede wszystkim bardzo przykry był fakt następujący: oto niespełna tydzień temu Heat zapewnił pewnego wysokiego urzędnika, że nie należy się obawiać żadnych wybryków anarchistycznych. Chyba jeszcze nigdy Heat nie czuł się tak pewny swego, jak składając ów raport.",
+  "ua": "Передусім дуже неприємним був такий факт: ось мало не тиждень тому Хіт запевнив певного високопосадовця, що не слід боятися жодних анархістських виступів. Здається, ніколи раніше Хіт не почувався так упевнено у своєму, як коли складав той звіт.",
+  "para": 15,
+  "start": 457.59
+ },
+ {
+  "en": "He had made that statement with infinite satisfaction to himself, because it was clear that the high official desired greatly to hear that very thing. He had affirmed that nothing of the sort could even be thought of without the department being aware of it within twenty-four hours;",
+  "pl": "A składał go z wielkim zadowoleniem, ponieważ widział dobrze, iż wysoki urzędnik bardzo pragnął to właśnie usłyszeć. Heat oświadczył, że nawet gdyby ktoś powziął myśl zamachu, wydział byłby o tym powiadomiony w przeciągu dwudziestu czterech godzin;",
+  "ua": "І складав його з великим задоволенням, бо добре бачив, що високопосадовець дуже хотів саме це почути. Хіт заявив, що навіть якщо хтось замислить замах, відділ дізнався б про це протягом двадцяти чотирьох годин;",
+  "para": 15,
+  "start": 474.37
+ },
+ {
+  "en": "and he had spoken thus in his consciousness of being the great expert of his department. He had gone even so far as to utter words which true wisdom would have kept back. But Chief Inspector Heat was not very wise﻿—at least not truly so.",
+  "pl": "a oświadczył to w pełni poczucia, że jest najwybitniejszym ekspertem w swoim wydziale. Posunął się nawet do wypowiedzenia słów, od których prawdziwa mądrość byłaby go ustrzegła. Lecz komisarz Heat nie był bardzo mądry — a przynajmniej nie był prawdziwie mądry.",
+  "ua": "і заявив це, повністю усвідомлюючи, що він найвизначніший експерт у своєму відділі. Він навіть дійшов до слів, від яких справжня мудрість утримала б його. Та комісар Хіт не був надто мудрим — а принаймні не був справді мудрим.",
+  "para": 15,
+  "start": 487.89
+ },
+ {
+  "en": "True wisdom, which is not certain of anything in this world of contradictions, would have prevented him from attaining his present position. It would have alarmed his superiors, and done away with his chances of promotion. His promotion had been very rapid.",
+  "pl": "Istotna mądrość, która niczego nie jest pewna na tym świecie pełnym sprzeczności, przeszkodziłaby mu osiągnąć stanowisko, jakie zajmował: niepokoiłaby jego przełożonych, pozbawiając go wszelkich możliwości awansu. A Heat awansował bardzo szybko.",
+  "ua": "Справжня мудрість, яка ні в чому не впевнена на цьому світі, повному суперечностей, завадила б йому досягти посади, яку він обіймав: стурбувала б його керівників, позбавивши його будь-яких можливостей просування. А Хіт просувався дуже швидко.",
+  "para": 15,
+  "start": 504.03
+ },
+ {
+  "en": "“There isn’t one of them, sir, that we couldn’t lay our hands on at any time of night and day. We know what each of them is doing hour by hour,” he had declared. And the high official had deigned to smile.",
+  "pl": "— Nie ma wśród nich ani jednego, którego byśmy nie mogli przytrzymać każdej chwili, czy to we dnie, czy w nocy. Wiemy godzina po godzinie, co każdy z nich robi — oświadczył, a dygnitarz raczył się uśmiechnąć.",
+  "ua": "«Серед них немає жодного, кого б ми не могли схопити будь-якої хвилини, чи вдень, чи вночі. Ми знаємо година за годиною, що робить кожен з них» — заявив він, і високопосадовець зволив усміхнутися.",
+  "para": 16,
+  "start": 521.05
+ },
+ {
+  "en": "This was so obviously the right thing to say for an officer of Chief Inspector Heat’s reputation that it was perfectly delightful.",
+  "pl": "Były to właśnie słowa, które urzędnik o reputacji komisarza Heata powinien był wypowiedzieć i dlatego brzmiały tak rozkosznie.",
+  "ua": "Це були саме ті слова, які посадовець з репутацією комісара Хіта мусив би вимовити, і тому вони звучали так приємно.",
+  "para": 16,
+  "start": 534.51
+ },
+ {
+  "en": "The high official believed the declaration, which chimed in with his idea of the fitness of things.",
+  "pl": "Dygnitarz zaufał temu oświadczeniu, zgodnemu z jego pojęciem o właściwym porządku rzeczy.",
+  "ua": "Високопосадовець повірив цій заяві, бо вона відповідала його уявленню про належний порядок речей.",
+  "para": 17,
+  "start": 541.53
+ },
+ {
+  "en": "His wisdom was of an official kind, or else he might have reflected upon a matter not of theory but of experience that in the close-woven stuff of relations between conspirator and police there occur unexpected solutions of continuity, sudden holes in space and time.",
+  "pl": "Mądrość dygnitarza była z rodzaju mądrości urzędowych, bo inaczej zastanowiłby go pewien fakt wynikający nie z teorii, lecz z praktyki, a mianowicie to, że w gęstej sieci stosunków między spiskowcem a policją zdarzają się luki, nagłe dziury w czasie i przestrzeni.",
+  "ua": "Мудрість високопосадовця була з роду службової мудрості, бо інакше замислив би його певний факт, що випливає не з теорії, а з практики, а саме те, що в густій мережі стосунків між змовником і поліцією трапляються прогалини, раптові діри в часі й просторі.",
+  "para": 17,
+  "start": 547.77
+ },
+ {
+  "en": "A given anarchist may be watched inch by inch and minute by minute, but a moment always comes when somehow all sight and touch of him are lost for a few hours, during which something (generally an explosion) more or less deplorable does happen.",
+  "pl": "Choćby strzeżono danego anarchistę krok za krokiem i minuta za minutą, może przyjść chwila, kiedy zniknie z oczu na parę godzin i wtedy zdarza się coś mniej lub więcej niepożądanego (zazwyczaj wybuch).",
+  "ua": "Хоч би й стежили за певним анархістом крок за кроком і хвилина за хвилиною, може настати мить, коли він зникне з очей на кілька годин, і тоді трапляється щось більш чи менш небажане (зазвичай вибух).",
+  "para": 17,
+  "start": 563.49
+ },
+ {
+  "en": "But the high official, carried away by his sense of the fitness of things, had smiled, and now the recollection of that smile was very annoying to Chief Inspector Heat, principal expert in anarchist procedure.",
+  "pl": "Lecz wysoki urzędnik uśmiechnął się pod wpływem swych wyobrażeń o porządku rzeczy i teraz wspomnienie tego uśmiechu było bardzo przykre dla komisarza Heata, głównego eksperta od spraw anarchistycznych.",
+  "ua": "Та високопосадовець усміхнувся під впливом своїх уявлень про порядок речей, і тепер спогад про ту усмішку був дуже прикрим для комісара Хіта, головного експерта з анархістських справ.",
+  "para": 17,
+  "start": 576.53
+ },
+ {
+  "en": "This was not the only circumstance whose recollection depressed the usual serenity of the eminent specialist. There was another dating back only to that very morning. The thought that when called urgently to his Assistant Commissioner’s private room he had been unable to conceal his astonishment was distinctly vexing.",
+  "pl": "Nie było to jedyne wspomnienie mącące zwykłą pogodę ducha wybitnego specjalisty. Drugie sięgało porannych godzin tego samego dnia. Heatowi dokuczała myśl, że gdy został nagle wezwany do prywatnego gabinetu nadinspektora, nie potrafił ukryć zdumienia.",
+  "ua": "Це не був єдиний спогад, що затьмарював звичайний добробут видатного фахівця. Другий сягав ранкових годин того самого дня. Хіта мучила думка, що коли його раптом викликали до приватного кабінету надінспектора, він не зміг сховати здивування.",
+  "para": 18,
+  "start": 589.64
+ },
+ {
+  "en": "His instinct of a successful man had taught him long ago that, as a general rule, a reputation is built on manner as much as on achievement. And he felt that his manner when confronted with the telegram had not been impressive.",
+  "pl": "Instynkt szczęściarza nauczył go już dawno, iż reputacja człowieka zależy nie tylko od jego czynów, ale i od jego sposobu bycia. A czuł, że w chwili gdy mu pokazano telegram, zachował się nieodpowiednio.",
+  "ua": "Інстинкт щасливця давно навчив його, що репутація людини залежить не лише від її вчинків, а й від її поведінки. А він відчував, що в момент, коли йому показали телеграму, поводився неналежно.",
+  "para": 18,
+  "start": 605.28
+ },
+ {
+  "en": "He had opened his eyes widely, and had exclaimed “Impossible!” exposing himself thereby to the unanswerable retort of a fingertip laid forcibly on the telegram which the Assistant Commissioner, after reading it aloud, had flung on the desk.",
+  "pl": "Otworzył szeroko oczy i wykrzyknął: „To niemożliwe!”, narażając się przez to na nieodpartą replikę — uderzenie palcem w telegram, który nadinspektor rzucił na biurko, przeczytawszy go głośno.",
+  "ua": "Він широко розплющив очі і вигукнув: «Це неможливо!», наражаючись цим на невідповідну репліку — удар пальцем по телеграмі, яку надінспектор кинув на стіл, прочитавши її вголос.",
+  "para": 18,
+  "start": 618.6
+ },
+ {
+  "en": "To be crushed, as it were, under the tip of a forefinger was an unpleasant experience. Very damaging, too! Furthermore, Chief Inspector Heat was conscious of not having mended matters by allowing himself to express a conviction.",
+  "pl": "Komisarz poczuł się niejako zmiażdżony pod tym uderzeniem palca wskazującego, a to nie należy do przyjemności i bynajmniej nie pomaga w karierze. Co więcej, Heat wiedział, że sytuacji nie polepszył, pozwalając sobie na wyjawienie własnego zdania:",
+  "ua": "Комісар почувався немов розчавленим під тим ударом вказівного пальця, а це не належить до приємного й аж ніяк не сприяє кар'єрі. Більше того, Хіт знав, що не покращив становища, дозволивши собі висловити власну думку:",
+  "para": 18,
+  "start": 630.96
+ },
+ {
+  "en": "“One thing I can tell you at once: none of our lot had anything to do with this.”",
+  "pl": "— Jedno mogę od razu powiedzieć: żaden z naszych anarchistów nie ma z tym nic wspólnego.",
+  "ua": "«Одразу можу сказати одне: жоден з наших анархістів не має до цього жодного стосунку».",
+  "para": 19,
+  "start": 646.74
+ },
+ {
+  "en": "He was strong in his integrity of a good detective, but he saw now that an impenetrably attentive reserve towards this incident would have served his reputation better.",
+  "pl": "Opierał się na swym rozsądku dobrego detektywa, ale widział teraz, że nieprzenikniona, baczna powściągliwość wobec tego wypadku byłaby dla jego reputacji korzystniejsza.",
+  "ua": "Він спирався на здоровий глузд хорошого детектива, але тепер бачив, що непроникна, пильна стриманість щодо цієї події була б для його репутації вигіднішою.",
+  "para": 20,
+  "start": 652.14
+ },
+ {
+  "en": "On the other hand, he admitted to himself that it was difficult to preserve one’s reputation if rank outsiders were going to take a hand in the business. Outsiders are the bane of the police as of other professions.",
+  "pl": "Z drugiej strony powiedział sobie w duchu, iż trudno mu będzie utrzymać swą reputację, jeśli obcy anarchiści zaczną maczać palce w sprawach tego rodzaju. Partaccy intruzi są przekleństwem i dla policji, i dla wszystkich innych fachów.",
+  "ua": "З іншого боку, він сказав собі подумки, що йому буде важко зберегти свою репутацію, якщо чужі анархісти почнуть лізти до справ такого роду. Аматорські пришельці — це прокляття і для поліції, і для всіх інших професій.",
+  "para": 20,
+  "start": 662.52
+ },
+ {
+  "en": "The tone of the Assistant Commissioner’s remarks had been sour enough to set one’s teeth on edge.",
+  "pl": "Ton, jakim przemawiał nadinspektor, był tak cierpki, że Heat zacisnął zęby.",
+  "ua": "Тон, яким промовляв надінспектор, був такий кислий, що Хіт стиснув зуби.",
+  "para": 20,
+  "start": 677.8
+ },
+ {
+  "en": "And since breakfast Chief Inspector Heat had not managed to get anything to eat.",
+  "pl": "A przy tym od rannego śniadania nie miał czasu na jakikolwiek posiłek.",
+  "ua": "До того ж від ранкового сніданку він не мав часу на жоден прийом їжі.",
+  "para": 21,
+  "start": 683.3
+ },
+ {
+  "en": "Starting immediately to begin his investigation on the spot, he had swallowed a good deal of raw, unwholesome fog in the park. Then he had walked over to the hospital; and when the investigation in Greenwich was concluded at last he had lost his inclination for food.",
+  "pl": "Zaraz po tej rozmowie wyruszył na miejsce wypadku, aby rozpocząć śledztwo, i wchłonął porządną porcję zimnej, niezdrowej mgły rozwleczonej po parku. Stamtąd udał się do szpitala, a gdy śledztwo w Greenwich dobiegało wreszcie końca, stracił zupełnie apetyt.",
+  "ua": "Одразу після тієї розмови він вирушив на місце події, щоб розпочати слідство, і вдихнув добру порцію холодної, шкідливої мли, розстеленої парком. Звідти пішов до лікарні, а коли слідство в Грінвічі нарешті закінчувалося, зовсім втратив апетит.",
+  "para": 22,
+  "start": 687.66
+ },
+ {
+  "en": "Not accustomed, as the doctors are, to examine closely the mangled remains of human beings, he had been shocked by the sight disclosed to his view when a waterproof sheet had been lifted off a table in a certain apartment of the hospital.",
+  "pl": "Nie był przyzwyczajony, jak lekarze, do rozpatrywania z bliska poszarpanych ludzkich szczątków; wstrząsnął nim widok, który odsłonił się przed jego wzrokiem, gdy zdjęto nieprzemakalną płachtę ze stołu znajdującego się w jednym z oddziałów szpitala.",
+  "ua": "Він не звик, як лікарі, розглядати зблизька понівечені людські останки; його вразив вид, що відкрився перед його очима, коли зняли непромокальне простирадло зі столу в одному з відділень лікарні.",
+  "para": 22,
+  "start": 703.04
+ },
+ {
+  "en": "Another waterproof sheet was spread over that table in the manner of a tablecloth, with the corners turned up over a sort of mound﻿—a heap of rags, scorched and bloodstained, half concealing what might have been an accumulation of raw material for a cannibal feast.",
+  "pl": "Druga nieprzemakalna płachta okrywała ten stół na kształt obrusa, a jej podniesione końce spoczywały na stożkowatej kupie osmalonych i krwawych łachmanów, zasłaniając po części coś, co mogło ujść za surowiec przeznaczony na ucztę dla ludożerców.",
+  "ua": "Друге непромокальне простирадло вкривало той стіл, наче скатерть, а його підняті краї лежали на конічній купі обвуглених і кривавих лахмінь, частково ховаючи щось, що могло пройти за сировину, призначену для бенкету людоїдів.",
+  "para": 23,
+  "start": 716.35
+ },
+ {
+  "en": "It required considerable firmness of mind not to recoil before that sight. Chief Inspector Heat, an efficient officer of his department, stood his ground, but for a whole minute he did not advance. A local constable in uniform cast a sidelong glance, and said, with stolid simplicity:",
+  "pl": "Trzeba było nie byle jakiej siły ducha, żeby się nie cofnąć przed tym widokiem. Komisarz Heat, sprawny urzędnik swego wydziału, wytrwał na stanowisku, ale przez całą minutę nie posunął się naprzód. Miejscowy policjant w mundurze spojrzał z ukosa na stół i rzekł spokojnie z prostotą:",
+  "ua": "Потрібна була неабияка сила духу, щоб не відступити перед цим видовищем. Комісар Хіт, здібний чиновник свого відділу, витримав на місці, але цілу хвилину не зрушив уперед. Місцевий поліцейський у мундирі глянув збоку на стіл і сказав спокійно, з простотою:",
+  "para": 23,
+  "start": 732.05
+ },
+ {
+  "en": "“He’s all there. Every bit of him. It was a job.”",
+  "pl": "— On tu jest cały. Pozbierałem go co do kawałeczka. A to nie było łatwe.",
+  "ua": "«Він тут цілий. Я зібрав його до останнього шматочка. І це було нелегко».",
+  "para": 24,
+  "start": 750.01
+ },
+ {
+  "en": "He had been the first man on the spot after the explosion. He mentioned the fact again. He had seen something like a heavy flash of lightning in the fog. At that time he was standing at the door of the King William Street Lodge talking to the keeper. The concussion made him tingle all over. He ran between the trees towards the Observatory.",
+  "pl": "Ów policjant znalazł się pierwszy na miejscu wybuchu. Zaczął o tym znów opowiadać. Zobaczył we mgle coś na kształt wielkiej błyskawicy. Stał wówczas u drzwi King William Street Lodge, rozmawiając z dozorcą. Wstrząs targnął całym jego ciałem. Rzucił się ku obserwatorium.",
+  "ua": "Той поліцейський першим опинився на місці вибуху. Він почав знову про це розповідати. Побачив у тумані щось на кшталт важкої блискавки. Стояв тоді біля дверей King William Street Lodge, розмовляючи з доглядачем. Поштовх трусив усім його тілом. Він кинувся до обсерваторії.",
+  "para": 25,
+  "start": 757.56
+ },
+ {
+  "en": "“As fast as my legs would carry me,” he repeated twice.",
+  "pl": "— Gnałem co sił w nogach — powtarzał raz po raz.",
+  "ua": "«Мчав усією силою ніг» — повторював раз по раз.",
+  "para": 26,
+  "start": 775.98
+ },
+ {
+  "en": "Chief Inspector Heat, bending forward over the table in a gingerly and horrified manner, let him run on. The hospital porter and another man turned down the corners of the cloth, and stepped aside. The Chief Inspector’s eyes searched the gruesome detail of that heap of mixed things, which seemed to have been collected in shambles and rag shops.",
+  "pl": "Komisarz Heat nie przerywał mu, zginając się nad stołem ruchem ostrożnym i pełnym obrzydzenia. Dozorca szpitala i jakiś człowiek odchylili rogi płachty i cofnęli się. Oczy komisarza badały szczegółowo ten straszny stos różnych rzeczy, które wyglądały jakby je kto pozbierał w jatkach i u gałganiarzy.",
+  "ua": "Комісар Хіт не перебивав його, нахиляючись над столом обережним рухом, сповненим огиди. Лікарняний доглядач і ще якийсь чоловік відігнули краї простирадли і відступили. Очі комісара досліджували докладно цей жахливий стос різних речей, що виглядали, ніби їх хтознавки позбирав у м'ясних лавках та крамницях ганчір'я.",
+  "para": 27,
+  "start": 779.78
+ },
+ {
+  "en": "“You used a shovel,” he remarked, observing a sprinkling of small gravel, tiny brown bits of bark, and particles of splintered wood as fine as needles.",
+  "pl": "— Pan użył do tego szufli — rzekł Heat, spostrzegłszy trochę drobnego żwiru, małe kawałeczki kory i cieniutkie jak igły cząstki potrzaskanego drzewa.",
+  "ua": "«Ви для цього використовували лопату» — сказав Хіт, помітивши трохи дрібного гравію, маленькі шматочки кори та тоненькі, як голки, часточки поламаного дерева.",
+  "para": 28,
+  "start": 798.63
+ },
+ {
+  "en": "“Had to in one place,” said the stolid constable. “I sent a keeper to fetch a spade. When he heard me scraping the ground with it he leaned his forehead against a tree, and was as sick as a dog.”",
+  "pl": "— W jednym miejscu nie mogłem sobie poradzić — rzekł niewzruszony policjant. — Więc posłałem stróża po szuflę. Kiedy usłyszał, jak skrobię ziemię, oparł się o drzewo i zwymiotował.",
+  "ua": "«У одному місці я не справився» — сказав незворушний поліцейський. — «Тож я послав доглядача по лопату. Коли він почув, як я скребу землю, притулився чолом до дерева й знудився».",
+  "para": 29,
+  "start": 810.04
+ },
+ {
+  "en": "The Chief Inspector, stooping guardedly over the table, fought down the unpleasant sensation in his throat. The shattering violence of destruction which had made of that body a heap of nameless fragments affected his feelings with a sense of ruthless cruelty, though his reason told him the effect must have been as swift as a flash of lightning.",
+  "pl": "Komisarz, pochylony ostrożnie nad stołem, opanował przykre uczucie w gardle. Gwałtowny, niszczycielski wstrząs, który uczynił z tego ciała kupę nieokreślonych szczątków, robił na nim wrażenie bezlitosnego okrucieństwa, choć rozum mówił, że skutek wybuchu musiał być błyskawiczny.",
+  "ua": "Комісар, обережно нахилений над столом, подолав неприємне відчуття в горлі. Жорстоке руйнівне потрясіння, що зробило з цього тіла купу невизначених уламків, справляло на нього враження безжальної жорстокості, хоч розум підказував, що наслідок вибуху мусив бути блискавичним.",
+  "para": 30,
+  "start": 821.34
+ },
+ {
+  "en": "The man, whoever he was, had died instantaneously; and yet it seemed impossible to believe that a human body could have reached that state of disintegration without passing through the pangs of inconceivable agony.",
+  "pl": "Kimkolwiek był ten człowiek, zginął w jednej chwili; a jednak niepodobna było uwierzyć, aby ludzkie ciało doszło do tego stanu, nie wycierpiawszy przedtem niepojętych mąk.",
+  "ua": "Хто б цей чоловік не був, загинув за одну мить; і все ж неможливо було повірити, щоб людське тіло досягло цього стану, не переживши перед тим незбагненних мук.",
+  "para": 30,
+  "start": 838.56
+ },
+ {
+  "en": "No physiologist, and still less of a metaphysician, Chief Inspector Heat rose by the force of sympathy, which is a form of fear, above the vulgar conception of time. Instantaneous!",
+  "pl": "Komisarz Heat, obcy fizjologii i jeszcze bardziej obcy metafizyce, wzniósł się przez siłę współczucia, która jest pewną formą strachu, nad pospolite pojęcie o czasie. Błyskawiczny!",
+  "ua": "Комісар Хіт, чужий фізіології і ще більше чужий метафізиці, піднявся силою співчуття, що є певною формою страху, над буденним уявленням про час. Блискавичний!",
+  "para": 30,
+  "start": 849.52
+ },
+ {
+  "en": "He remembered all he had ever read in popular publications of long and terrifying dreams dreamed in the instant of waking; of the whole past life lived with frightful intensity by a drowning man as his doomed head bobs up, streaming, for the last time.",
+  "pl": "Przypomniał sobie wszystko, co czytał w popularnych książkach o długich, przerażających snach śnionych w chwili przebudzenia; przypomniał sobie, że tonący przeżywa z okropną wyrazistością całe swoje życie w chwili, gdy po raz ostatni wynurza głowę nad powierzchnię wody.",
+  "ua": "Пригадав усе, що читав у популярних книжках про довгі, жахливі сни, що сняться в мить пробудження; пригадав, що потопаючий переживає з жахливою виразністю все своє життя в мить, коли востаннє виводить голову над поверхню води.",
+  "para": 30,
+  "start": 860.82
+ },
+ {
+  "en": "The inexplicable mysteries of conscious existence beset Chief Inspector Heat till he evolved a horrible notion that ages of atrocious pain and mental torture could be contained between two successive winks of an eye.",
+  "pl": "Niepojęte tajemnice świadomego istnienia osaczyły komisarza Heata, aż wreszcie doszedł do straszliwego wniosku, że wieki nieludzkich fizycznych tortur i mąk duchowych mogą się zmieścić między dwoma następującymi po sobie mrugnięciami oka.",
+  "ua": "Незбагненні таємниці свідомого існування оточили комісара Хіта, аж поки він нарешті дійшов жахливого висновку, що віки нелюдських фізичних тортур і духовних мук можуть вміститися між двома послідовними морганнями ока.",
+  "para": 30,
+  "start": 876.38
+ },
+ {
+  "en": "And meantime the Chief Inspector went on, peering at the table with a calm face and the slightly anxious attention of an indigent customer bending over what may be called the byproducts of a butcher’s shop with a view to an inexpensive Sunday dinner.",
+  "pl": "Jednocześnie zaś wpatrywał się uważnie w stół z twarzą spokojną i nieco zatroskaną, niby ubogi klient, który z myślą o tanim obiedzie niedzielnym pochyla się nad czymś, co w sklepie rzeźniczym mogłoby ujść za odpadki.",
+  "ua": "Тим часом він пильно вдивлявся в стіл зі спокійним обличчям і невеликою тривогою, немов бідний клієнт, що, думаючи про дешевий недільний обід, нахиляється над чимось, що в м'ясній крамниці могло б пройти за відходи.",
+  "para": 30,
+  "start": 891.48
+ },
+ {
+  "en": "All the time his trained faculties of an excellent investigator, who scorns no chance of information, followed the self-satisfied, disjointed loquacity of the constable.",
+  "pl": "A przez cały ten czas wyćwiczona czujność Heata, czujność świetnego detektywa, niegardzącego żadną okazją do zdobycia wiadomości, śledziła bezładną gadaninę policjanta, który bardzo był z siebie zadowolony.",
+  "ua": "І ввесь цей час виправлена пильність Хіта, пильність видатного детектива, що не цурається жодної нагоди здобути відомості, стежила за безладною балаканиною поліцейського, який був дуже задоволений собою.",
+  "para": 30,
+  "start": 904.68
+ },
+ {
+  "en": "“A fair-haired fellow,” the last observed in a placid tone, and paused. “The old woman who spoke to the sergeant noticed a fair-haired fellow coming out of Maze Hill Station.” He paused. “And he was a fair-haired fellow.",
+  "pl": "— Miał jasne włosy — stwierdził spokojnie policjant i umilkł na chwilę. — Staruszka, która rozmawiała z sierżantem, zauważyła blondyna wychodzącego z Maze Hill Station. — Znów zamilkł, po czym ciągnął powoli dalej: — A on był właśnie blondynem.",
+  "ua": "«Мав світле волосся» — спокійно ствердив поліцейський і замовк на хвильку. «Старенька, яка розмовляла з сержантом, помітила білявого, що виходив зі Maze Hill Station». Він знову замовк, після чого повільно продовжив: «І він саме був білявим».",
+  "para": 31,
+  "start": 919.42
+ },
+ {
+  "en": "She noticed two men coming out of the station after the uptrain had gone on,” he continued slowly. “She couldn’t tell if they were together. She took no particular notice of the big one, but the other was a fair, slight chap, carrying a tin varnish can in one hand.”",
+  "pl": "Zauważyła dwóch ludzi wychodzących ze stacji po odejściu pociągu. Nie umiała powiedzieć, czy szli razem. Na wyższego mężczyznę nie zwróciła uwagi, ale spostrzegła, że ten drugi jest jasnowłosym szczupłym chłopcem i że niesie w ręku blaszankę od pokostu.",
+  "ua": "«Помітила двох чоловіків, що виходили зі станції після від'їзду потяга. Не могла сказати, чи йшли разом. На вищого чоловіка не звернула уваги, але помітила, що другий — білявий худорлявий хлопчисько і що несе в руку бляшанку з-під лаку».",
+  "para": 31,
+  "start": 935.82
+ },
+ {
+  "en": "The constable ceased.",
+  "pl": "Policjant urwał.",
+  "ua": "Поліцейський урвав мову.",
+  "para": 32,
+  "start": 951.43
+ },
+ {
+  "en": "“Know the woman?” muttered the Chief Inspector, with his eyes fixed on the table, and a vague notion in his mind of an inquest to be held presently upon a person likely to remain forever unknown.",
+  "pl": "— Pan zna tę kobietę? — mruknął komisarz, ciągle zapatrzony w stół, i mignęło mu przez myśl, że trzeba zaraz przeprowadzić śledztwo co do tego człowieka, którego tożsamości pewno się nigdy nie stwierdzi.",
+  "ua": "«Ви знаєте цю жінку?» — буркнув комісар, досі втуплений у стіл, і йому мелькнула думка, що треба негайно провести слідство щодо цього чоловіка, чию особистість, певно, так і не встановлять.",
+  "para": 33,
+  "start": 953.3
+ },
+ {
+  "en": "“Yes. She’s housekeeper to a retired publican, and attends the chapel in Park Place sometimes,” the constable uttered weightily, and paused, with another oblique glance at the table. Then suddenly: “Well, here he is﻿—all of him I could see. Fair. Slight﻿—slight enough. Look at that foot there.",
+  "pl": "— Tak. Ona jest gospodynią u byłego właściciela baru i chodzi czasem do kaplicy w Park Place — rzekł policjant z powagą i urwał, zerknąwszy znowu na stół. Nagle podjął: — Więc mamy go tutaj… wszystko, co tylko mogłem znaleźć. Szczupły… dosyć szczupły. Niech pan spojrzy na tę nogę.",
+  "ua": "«Так. Вона — економка у колишнього власника корчми і часом ходить до каплиці в Park Place» — сказав поліцейський поважно й урвав, зиркнувши знову на стіл. Раптом продовжив: «Ось маємо його тут… усе, що тільки міг знайти. Худорлявий… досить худорлявий. Погляньте на ту ногу».",
+  "para": 34,
+  "start": 965.36
+ },
+ {
+  "en": "I picked up the legs first, one after another. He was that scattered you didn’t know where to begin.”",
+  "pl": "Najpierw podniosłem nogi, jedną, a potem drugą. Rozleciał się na takie kawałeczki, że nie wiedziałem, od czego zacząć.",
+  "ua": "«Спершу я підняв ноги — одну, потім другу. Розсипався на такі шматочки, що я не знав, з чого починати».",
+  "para": 34,
+  "start": 986.64
+ },
+ {
+  "en": "The constable paused; the least flicker of an innocent self-laudatory smile invested his round face with an infantile expression.",
+  "pl": "Policjant umilkł; przebłysk naiwnego, pełnego dumy uśmiechu nadał jego okrągłej twarzy dziecinny wyraz.",
+  "ua": "Поліцейський замовк; спалах наївної, сповненої гордості усмішки надав його круглому обличчю дитячого виразу.",
+  "para": 35,
+  "start": 994.01
+ },
+ {
+  "en": "“Stumbled,” he announced positively. “I stumbled once myself, and pitched on my head too, while running up. Them roots do stick out all about the place. Stumbled against the root of a tree and fell, and that thing he was carrying must have gone off right under his chest, I expect.”",
+  "pl": "— On się potknął — oświadczył stanowczo. — Kiedy tam biegłem, potknąłem się także i rozciągnąłem się jak długi. Wszędzie tam sterczą korzenie. Potknął się o korzeń i upadł, a to, co niósł, musiało wybuchnąć akurat pod jego piersiami, jak mi się zdaje.",
+  "ua": "«Він спіткнувся» — твердо заявив він. — «Коли я біг туди, я теж спіткнувся й розклався на весь зріст. Скрізь там стирчать коріння. Спіткнувся об корінь і впав, а те, що він ніс, мусило вибухнути саме під його грудьми, як мені здається».",
+  "para": 36,
+  "start": 1001.33
+ },
+ {
+  "en": "The echo of the words “Person unknown” repeating itself in his inner consciousness bothered the Chief Inspector considerably. He would have liked to trace this affair back to its mysterious origin for his own information. He was professionally curious.",
+  "pl": "Słowa „tożsamość nieustalona” rozlegały się wciąż echem w duszy komisarza, doskwierając mu bardzo. Pragnął dla własnej ciekawości wyśledzić tę sprawę aż do tajemniczego jej źródła. Miał ciekawość zawodowca.",
+  "ua": "Слова «особистість не встановлена» не вщухали ехом у душі комісара, дуже його дошкуляючи. Він прагнув з власної цікавості відшукати цю справу аж до таємничого її джерела. Мав цікавість фахівця.",
+  "para": 37,
+  "start": 1017.04
+ },
+ {
+  "en": "Before the public he would have liked to vindicate the efficiency of his department by establishing the identity of that man. He was a loyal servant. That, however, appeared impossible. The first term of the problem was unreadable﻿—lacked all suggestion but that of atrocious cruelty.",
+  "pl": "A ustalając tożsamość tego człowieka, pragnął dowieść ogółowi, że jego wydział funkcjonuje jak należy. Heat był dobrym urzędnikiem. Lecz w tym przypadku ustalenie tożsamości wydawało się niemożliwe. Pierwsze słowa zagadki były nieczytelne — narzucały tylko myśl o straszliwym okrucieństwie.",
+  "ua": "А встановлюючи особистість цього чоловіка, він прагнув довести громадськості, що його відділ функціонує належним чином. Хіт був добрим чиновником. Та в цьому випадку встановлення особистості здавалося неможливим. Перші слова загадки були нечитабельні — навіяли лише думку про жахливу жорстокість.",
+  "para": 37,
+  "start": 1030.6
+ },
+ {
+  "en": "Overcoming his physical repugnance, Chief Inspector Heat stretched out his hand without conviction for the salving of his conscience, and took up the least soiled of the rags. It was a narrow strip of velvet with a larger triangular piece of dark blue cloth hanging from it. He held it up to his eyes; and the police constable spoke.",
+  "pl": "Aby zadosyćuczynić sumieniu, komisarz Heat, przezwyciężając odrazę, bez przekonania wyciągnął rękę i podniósł najmniej zbrukany ze strzępów. Był to wąski pas aksamitu złączony z większym trójkątnym kawałkiem ciemnogranatowego sukna. Heat podniósł go do oczu, a policjant rzekł:",
+  "ua": "Щоб задовольнити сумління, комісар Хіт, долаючи огиду, без переконання витягнув руку й підняв найменш зіпсований зі шматків. Це була вузька смуга оксамиту, з'єднана з більшим трикутним шматком темно-синього сукна. Хіт підняв його до очей, і поліцейський сказав:",
+  "para": 38,
+  "start": 1049.46
+ },
+ {
+  "en": "“Velvet collar. Funny the old woman should have noticed the velvet collar. Dark blue overcoat with a velvet collar, she has told us. He was the chap she saw, and no mistake. And here he is all complete, velvet collar and all. I don’t think I missed a single piece as big as a postage stamp.”",
+  "pl": "— Aksamitny kołnierz. Ciekawe, że staruszka zauważyła ten aksamitny kołnierz. Ciemnogranatowe palto z aksamitnym kołnierzem, tak nam powiedziała. To jego widziała, jak amen w pacierzu. Mamy go tu w całości, aksamitny kołnierz i wszystko. Nie zostawiłem chyba ani kawałeczka.",
+  "ua": "«Оксамитовий комір. Цікаво, що старенька помітила цей оксамитовий комір. Темно-синє пальто з оксамитовим коміром — так вона нам сказала. Саме його вона й бачила, безпомилково. Маємо його тут цілком, оксамитовий комір і все. Здається, я не залишив жодного шматочка».",
+  "para": 39,
+  "start": 1067.48
+ },
+ {
+  "en": "At this point the trained faculties of the Chief Inspector ceased to hear the voice of the constable. He moved to one of the windows for better light. His face, averted from the room, expressed a startled intense interest while he examined closely the triangular piece of broadcloth.",
+  "pl": "W tej chwili wyćwiczone zmysły Heata przestały słyszeć głos policjanta. Komisarz podszedł do okna, gdzie było jaśniej. Jego twarz, odwrócona od pokoju, wyrażała zdumienie i wytężoną uwagę; oglądał bacznie trójkątny kawałek sukna.",
+  "ua": "У цю мить виправлені почуття Хіта перестали чути голос поліцейського. Комісар підійшов до вікна, де було світліше. Його обличчя, відвернуте від кімнати, виражало здивування й напружену увагу; він пильно розглядав трикутний шматок сукна.",
+  "para": 40,
+  "start": 1087.18
+ },
+ {
+  "en": "By a sudden jerk he detached it, and only after stuffing it into his pocket turned round to the room, and flung the velvet collar back on the table﻿—",
+  "pl": "Nagłym ruchem oderwał go i wetknął do kieszeni, po czym odwrócił się i z powrotem cisnął aksamitny kołnierz na stół.",
+  "ua": "Різким рухом він відірвав його і сунув до кишені, після чого обернувся й назад кинув оксамитовий комір на стіл.",
+  "para": 40,
+  "start": 1102.36
+ },
+ {
+  "en": "“Cover up,” he directed the attendants curtly, without another look, and, saluted by the constable, carried off his spoil hastily.",
+  "pl": "— Zakryć to — rozkazał krótko towarzyszącym sobie ludziom i salutowany przez policjanta, nie spoglądając już ku stołowi, uniósł szybko swą zdobycz.",
+  "ua": "«Накрийте це» — стисло наказав він супровідним людям, і, відданий салют поліцейського, вже не поглядаючи в бік столу, швидко забрав свій трофей.",
+  "para": 41,
+  "start": 1109.5
+ },
+ {
+  "en": "A convenient train whirled him up to town, alone and pondering deeply, in a third-class compartment. That singed piece of cloth was incredibly valuable, and he could not defend himself from astonishment at the casual manner it had come into his possession. It was as if Fate had thrust that clue into his hands.",
+  "pl": "Pochłonięty myślami, jechał pociągiem w stronę miasta, siedząc samotnie w przedziale trzeciej klasy. Ta osmalona szmatka sukna byłą bezcenna; komisarz nie mógł opanować zdziwienia nad zbiegiem okoliczności, dzięki któremu wpadła mu w ręce. Zdawało się, że sam Los wskazał mu drogę.",
+  "ua": "Поглинений думками, він їхав потягом у бік міста, сидячи наодинці в купе третього класу. Та обвуглена латка сукна була безцінною; комісар не міг оволодіти здивуванням від збігу обставин, завдяки якому вона потрапила йому до рук. Здавалося, що сама Доля вказала йому шлях.",
+  "para": 42,
+  "start": 1118.68
+ },
+ {
+  "en": "And after the manner of the average man, whose ambition is to command events, he began to mistrust such a gratuitous and accidental success﻿—just because it seemed forced upon him.",
+  "pl": "I jak każdy przeciętny człowiek, którego ambicją jest wpływanie na bieg rzeczy, komisarz poczuł nieufność do powodzenia osiągniętego bez trudu, dzięki przypadkowi — właśnie dlatego, że wyglądało jakby mu je narzucono.",
+  "ua": "І, як будь-яка звичайна людина, чиєю амбіцією є вплив на перебіг подій, комісар відчув недовіру до успіху, досягнутого без зусиль, випадковістю — саме тому, що здавалося, ніби його йому нав'язано.",
+  "para": 42,
+  "start": 1138.46
+ },
+ {
+  "en": "The practical value of success depends not a little on the way you look at it. But Fate looks at nothing. It has no discretion.",
+  "pl": "Istotna wartość powodzenia jest względna, zależy w znacznym stopniu od tego, jak się na nie zapatrujemy. Ale Los jest bezwzględny i nie liczy się z niczym.",
+  "ua": "Істотна цінність успіху відносна, в значній мірі залежить від того, як ми на нього дивимося. Але Доля безжальна і не рахується ні з чим.",
+  "para": 42,
+  "start": 1152.28
+ },
+ {
+  "en": "He no longer considered it eminently desirable all round to establish publicly the identity of the man who had blown himself up that morning with such horrible completeness. But he was not certain of the view his department would take.",
+  "pl": "Komisarz nie uważał już, aby było wskazane ujawnić przed publicznością tożsamość człowieka, który tego ranka unicestwił się tak straszliwie i tak doszczętnie. Lecz Heat nie był pewien, jak jego wydział będzie się na to zapatrywał.",
+  "ua": "Комісар уже не вважав за доцільне розкривати перед публікою особистість чоловіка, який того ранку знищив себе так жахливо й так остаточно. Та Хіт не був певний, як до цього поставиться його відділ.",
+  "para": 43,
+  "start": 1163.66
+ },
+ {
+  "en": "A department is to those it employs a complex personality with ideas and even fads of its own. It depends on the loyal devotion of its servants, and the devoted loyalty of trusted servants is associated with a certain amount of affectionate contempt, which keeps it sweet, as it were.",
+  "pl": "Wydział jest dla swych urzędników czymś skomplikowanym, czymś, co ma własne poglądy, a nawet kaprysy. Wydział zależy od wierności i oddania swych sług, a oddanie i wierność zaufanych sług kojarzą się z pewnego rodzaju lekceważącym przywiązaniem, które niejako tę wierność podsyca.",
+  "ua": "Відділ для своїх чиновників — щось складне, щось, що має власні погляди, а навіть примхи. Відділ залежить від вірності й відданості своїх слуг, а відданість і вірність надійних слуг пов'язані з певного роду зневажливим прив'язанням, яке, так би мовити, підживлює ту вірність.",
+  "para": 43,
+  "start": 1177.62
+ },
+ {
+  "en": "By a benevolent provision of Nature no man is a hero to his valet, or else the heroes would have to brush their own clothes. Likewise no department appears perfectly wise to the intimacy of its workers. A department does not know so much as some of its servants.",
+  "pl": "Wskutek łaskawego zrządzenia natury żaden człowiek nie jest bohaterem dla swego lokaja, chyba że sam sobie czyści ubranie. Podobnie żaden wydział nie uchodzi za idealnie mądry w oczach spoufalonych z nim pracowników. Wydział nie wie tego wszystkiego, co wiedzą niektórzy z jego sług.",
+  "ua": "Завдяки милосердному розпорядженню природи жоден чоловік не є героєм для свого лакея, якщо тільки сам не чистить собі одяг. Так само жоден відділ не здається ідеально мудрим в очах з ним здружених працівників. Відділ не знає всього того, що знають деякі з його слуг.",
+  "para": 43,
+  "start": 1194.98
+ },
+ {
+  "en": "Being a dispassionate organism, it can never be perfectly informed. It would not be good for its efficiency to know too much.",
+  "pl": "Będąc organizmem beznamiętnym, nie może być nigdy idealnie informowany. Gdyby wiedział zbyt wiele, nie mógłby sprawnie funkcjonować.",
+  "ua": "Будучи беземоційним організмом, він ніколи не може бути ідеально поінформованим. Якби знав забагато, не зміг би ефективно функціонувати.",
+  "para": 43,
+  "start": 1213.18
+ },
+ {
+  "en": "Chief Inspector Heat got out of the train in a state of thoughtfulness entirely untainted with disloyalty, but not quite free of that jealous mistrust which so often springs on the ground of perfect devotion, whether to women or to institutions.",
+  "pl": "Komisarz Heat wysiadł z pociągu w zadumie dalekiej od nieprawomyślności, lecz nie pozbawionej szczypty tego zazdrosnego powątpiewania, które tak często kiełkuje na gruncie zupełnego poświęcenia się czy kobiecie, czy też instytucji.",
+  "ua": "Комісар Хіт вийшов із потяга в задумі, далекій від нелояльності, але не позбавленій дрібки того заздрісного сумніву, який так часто проростає на ґрунті цілковитої відданості чи жінці, чи інституції.",
+  "para": 43,
+  "start": 1221.76
+ },
+ {
+  "en": "It was in this mental disposition, physically very empty, but still nauseated by what he had seen, that he had come upon the Professor. Under these conditions which make for irascibility in a sound, normal man, this meeting was specially unwelcome to Chief Inspector Heat. He had not been thinking of the Professor;",
+  "pl": "W takim to stanie ducha Heat, zgłodniały, lecz pod wpływem tego, co widział, wciąż jeszcze skłonny do mdłości, zetknął się z Profesorem. W tych warunkach, usposabiających do irytacji zdrowego, normalnego człowieka, spotkanie to było dla Heata szczególnie niepożądane. Nie myślał o Profesorze;",
+  "ua": "У такому стані духу Хіт, зголодалий, та під впливом того, що бачив, досі ще схильний до нудоти, зустрів Професора. За таких умов, що сприяють дратівливості здорового, нормального чоловіка, ця зустріч була для Хіта особливо небажаною. Він не думав про Професора;",
+  "para": 44,
+  "start": 1234.72
+ },
+ {
+  "en": "he had not been thinking of any individual anarchist at all.",
+  "pl": "nie myślał o żadnym konkretnym anarchiście.",
+  "ua": "не думав про жодного конкретного анархіста.",
+  "para": 44,
+  "start": 1254.02
+ },
+ {
+  "en": "The complexion of that case had somehow forced upon him the general idea of the absurdity of things human, which in the abstract is sufficiently annoying to an unphilosophical temperament, and in concrete instances becomes exasperating beyond endurance.",
+  "pl": "Ta skomplikowana sprawa narzuciła mu myśl, że w ogóle wszystkie ludzkie poczynania są pozbawione sensu — która to myśl nawet w teorii jest dość przykra dla człowieka niemającego nic wspólnego z filozofią, a w wypadkach konkretnych staje się nad wszelki wyraz drażniąca.",
+  "ua": "Ця заплутана справа нав'язала йому думку, що взагалі всі людські вчинки позбавлені сенсу — думка, яка навіть у теорії досить неприємна для людини, яка не має нічого спільного з філософією, а у випадках конкретних стає понад усе дратівливою.",
+  "para": 44,
+  "start": 1256.32
+ },
+ {
+  "en": "At the beginning of his career Chief Inspector Heat had been concerned with the more energetic forms of thieving. He had gained his spurs in that sphere, and naturally enough had kept for it, after his promotion to another department, a feeling not very far removed from affection. Thieving was not a sheer absurdity.",
+  "pl": "Na początku swojej kariery komisarz Heat zajmował się poważniejszymi wypadkami kradzieży. Zdobył ostrogi na tym terenie i oczywiście zachował dlań — po awansie i przeniesieniu do innego wydziału — uczucie dość zbliżone do przywiązania. Kradzież nie jest czystym absurdem.",
+  "ua": "На початку своєї кар'єри комісар Хіт займався серйознішими випадками крадіжок. Здобув там шпори й, зрозуміло, зберіг для неї — після підвищення й переведення до іншого відділу — почуття, досить близьке до прив'язаності. Крадіжка не є чистим абсурдом.",
+  "para": 45,
+  "start": 1272.22
+ },
+ {
+  "en": "It was a form of human industry, perverse indeed, but still an industry exercised in an industrious world; it was work undertaken for the same reason as the work in potteries, in coal mines, in fields, in tool-grinding shops.",
+  "pl": "Jest to pewien rodzaj ludzkiej pracy, oczywiście wypaczonej, lecz jednak pracy wykonywanej na tym pracowitym świecie; jest to czynność podejmowana dla tej samej przyczyny, co praca garncarza, praca w kopalniach węgla czy w polu, czy też w zakładzie szlifierskim.",
+  "ua": "Це певний вид людської праці, звісно, викривленої, але все ж праці, що здійснюється на цьому працьовитому світі; це діяльність, яку беруть за тією ж причиною, що й праця гончара, праця в вугільних шахтах чи в полі, чи в шліфувальній майстерні.",
+  "para": 45,
+  "start": 1290.08
+ },
+ {
+  "en": "It was labour, whose practical difference from the other forms of labour consisted in the nature of its risk, which did not lie in ankylosis, or lead poisoning, or firedamp, or gritty dust,",
+  "pl": "Ta praca różni się w praktyce od innych rodzajów pracy gatunkiem niebezpieczeństwa, które nie polega na groźbie reumatyzmu lub zatrucia się ołowiem, gazem węglowym czy pyłem z granitu;",
+  "ua": "Ця праця відрізняється на практиці від інших видів праці родом небезпеки, яка не полягає в загрозі ревматизму чи отруєння свинцем, чадним газом чи гранітовим пилом;",
+  "para": 45,
+  "start": 1305.3
+ },
+ {
+  "en": "but in what may be briefly defined in its own special phraseology as “Seven years hard.” Chief Inspector Heat was, of course, not insensible to the gravity of moral differences. But neither were the thieves he had been looking after.",
+  "pl": "niebezpieczeństwo grożące złodziejowi polega na tym, co specjalna terminologia określa zwięźle jako „siedem lat kryminału”. Oczywiście komisarz Heat nie był obojętny na różnice natury moralnej. Ale i złodzieje, których śledził, nie byli na nie obojętni.",
+  "ua": "небезпека, що загрожує злодієві, полягає в тому, що спеціальна термінологія стисло визначає як «сім років каторги». Звісно, комісар Хіт не був байдужий до відмінностей морального характеру. Але й злодії, за якими він стежив, не були до них байдужі.",
+  "para": 45,
+  "start": 1316.46
+ },
+ {
+  "en": "They submitted to the severe sanctions of a morality familiar to Chief Inspector Heat with a certain resignation. They were his fellow-citizens gone wrong because of imperfect education, Chief Inspector Heat believed;",
+  "pl": "Poddawali się z pewną rezygnacją surowym prawom moralności wyznawanej przez komisarza Heata. On zaś uważał ich za współobywateli wykolejonych na skutek złego wychowania;",
+  "ua": "Підкорювалися з певною покірністю суворим законам моральності, яку сповідував комісар Хіт. А він вважав їх співвітчизниками, зіпсованими внаслідок поганого виховання;",
+  "para": 45,
+  "start": 1332.84
+ },
+ {
+  "en": "but allowing for that difference, he could understand the mind of a burglar, because, as a matter of fact, the mind and the instincts of a burglar are of the same kind as the mind and the instincts of a police officer.",
+  "pl": "jednak, uwzględniwszy tę różnicę, był w stanie zrozumieć umysłowość włamywacza, ponieważ w gruncie rzeczy umysłowość i instynkty włamywacza należą do tej samej kategorii, co umysłowość i instynkty urzędnika policji.",
+  "ua": "однак, врахувавши цю різницю, був спроможний зрозуміти розум злодія, бо, по суті, розум і інстинкти злодія належать до тієї самої категорії, що й розум та інстинкти поліцейського чиновника.",
+  "para": 45,
+  "start": 1343.38
+ },
+ {
+  "en": "Both recognise the same conventions, and have a working knowledge of each other’s methods and of the routine of their respective trades. They understand each other, which is advantageous to both, and establishes a sort of amenity in their relations.",
+  "pl": "Obaj poddają się tym samym prawom, znają wzajemnie z praktyki swoje metody pracy i rutynę swoich zawodów. Rozumieją, co jest dla obu stron korzystne, i to nadaje pewnego rodzaju urok ich wzajemnym stosunkom.",
+  "ua": "Обидва визнають ті самі конвенції й з практики знають методи роботи один одного та рутину своїх професій. Розуміють, що є вигідним для обох сторін, і це надає певного роду чар їхнім взаєминам.",
+  "para": 45,
+  "start": 1357.48
+ },
+ {
+  "en": "Products of the same machine, one classed as useful and the other as noxious, they take the machine for granted in different ways, but with a seriousness essentially the same.",
+  "pl": "Obaj są wytworem tego samego mechanizmu, choć jednego z nich uważa się za wytwór użyteczny, a drugiego za szkodliwy; obaj uznają konieczność tegoż mechanizmu, uznają w sposób odmienny, lecz odnoszą się do niego w zasadzie z taką samą powagą.",
+  "ua": "Обидва — витвір того самого механізму, хоч одного з них вважають корисним витвором, а іншого — шкідливим; обидва визнають необхідність цього ж механізму, визнають по-різному, але ставляться до нього в принципі з такою самою повагою.",
+  "para": 45,
+  "start": 1371.32
+ },
+ {
+  "en": "The mind of Chief Inspector Heat was inaccessible to ideas of revolt. But his thieves were not rebels. His bodily vigour, his cool inflexible manner, his courage and his fairness, had secured for him much respect and some adulation in the sphere of his early successes.",
+  "pl": "Umysł komisarza Heata był niedostępny dla pojęć rewolucyjnych. Ale i jego złodzieje nie byli buntownikami. Siła fizyczna Heata, jego chłodny, nieugięty sposób bycia, jego odwaga i prawość zdobyły mu wiele szacunku i nieco służalczych pochlebstw w sferze, gdzie pracował dawniej z powodzeniem.",
+  "ua": "Розум комісара Хіта був недоступний для революційних понять. Але й його злодії не були бунтарями. Фізична сила Хіта, його холодний, незговірний спосіб буття, його мужність і чесність здобули йому багато поваги й трохи слугувальницьких лестощів у сфері, де він колись працюв успішно.",
+  "para": 45,
+  "start": 1386.66
+ },
+ {
+  "en": "He had felt himself revered and admired. And Chief Inspector Heat, arrested within six paces of the anarchist nicknamed the Professor, gave a thought of regret to the world of thieves﻿—sane, without morbid ideals, working by routine, respectful of constituted authorities, free from all taint of hate and despair.",
+  "pl": "Czuł się tam szanowany i podziwiany. A teraz, stojąc o sześć kroków od anarchisty zwanego Profesorem, wspomniał z żalem świat złodziei — środowisko zdrowe, pozbawione chorobliwych ideałów, pracujące według pewnej rutyny, pełne szacunku dla ustanowionych władz, wolne od skaz nienawiści i rozpaczy.",
+  "ua": "Він почувався там шанованим і захопленим. А тепер, стоячи за шість кроків від анархіста, званого Професором, з жалем згадав світ злодіїв — здорове середовище, позбавлене хворобливих ідеалів, що працює за певною рутиною, сповнене поваги до встановлених влад, вільне від нальотів ненависті й відчаю.",
+  "para": 45,
+  "start": 1406.32
+ },
+ {
+  "en": "After paying this tribute to what is normal in the constitution of society (for the idea of thieving appeared to his instinct as normal as the idea of property), Chief Inspector Heat felt very angry with himself for having stopped, for having spoken, for having taken that way at all on the ground of it being a shortcut from the station to the headquarters.",
+  "pl": "Złożywszy hołd temu, co normalne w ustroju społecznym (albowiem pojęcie złodziejstwa wydawało się Heatowi równie normalne jak pojęcie własności), komisarz rozgniewał się na siebie za to, że się zatrzymał, że przemówił do Profesora, że w ogóle wybrał tę ulicę, która skracała drogę od stacji do głównego urzędu policyjnego.",
+  "ua": "Склонивши данину тому, що є нормальним в суспільному устрої (бо поняття крадіжки здавалося Хітові таким само нормальним, як поняття власності), комісар розгнівався на себе за те, що зупинився, що заговорив до Професора, що взагалі вибрав ту вулицю, яка скорочувала шлях від станції до головного поліцейського управління.",
+  "para": 46,
+  "start": 1426.48
+ },
+ {
+  "en": "And he spoke again in his big authoritative voice, which, being moderated, had a threatening character.",
+  "pl": "I powtórzył silnym, stanowczym głosem, przytłumionym i groźnym w brzmieniu:",
+  "ua": "І повторив сильним, рішучим голосом, приглушеним і погрозливим у звучанні:",
+  "para": 46,
+  "start": 1445.04
+ },
+ {
+  "en": "“You are not wanted, I tell you,” he repeated.",
+  "pl": "— Mówię panu, że pana nie potrzebuję.",
+  "ua": "«Кажу вам, що ви мені не потрібні».",
+  "para": 47,
+  "start": 1450.48
+ },
+ {
+  "en": "The anarchist did not stir. An inward laugh of derision uncovered not only his teeth but his gums as well, shook him all over, without the slightest sound. Chief Inspector Heat was led to add, against his better judgment:",
+  "pl": "Anarchista stał dalej bez ruchu. Niemy, szyderczy śmiech odsłonił nie tylko jego zęby, ale i dziąsła, targał nim całym, nie uzewnętrzniając się najlżejszym dźwiękiem. Komisarz Heat dodał mimo woli, wbrew podszeptom zdrowego rozsądku:",
+  "ua": "Анархіст далі стояв без руху. Німий, зневажливий сміх оголив не лише його зуби, а й ясна, струсив усе його тіло, не видаючи найменшого звуку. Комісар Хіт додав мимоволі, всупереч підказкам здорового глузду:",
+  "para": 48,
+  "start": 1453.7
+ },
+ {
+  "en": "“Not yet. When I want you I will know where to find you.”",
+  "pl": "— Tymczasem jeszcze nie. Kiedy przyjdzie na to czas, będę wiedział, gdzie pana znaleźć.",
+  "ua": "«Поки що ні. Коли ви мені знадобитеся, я знатиму, де вас знайти».",
+  "para": 49,
+  "start": 1469.91
+ },
+ {
+  "en": "Those were perfectly proper words, within the tradition and suitable to his character of a police officer addressing one of his special flock. But the reception they got departed from tradition and propriety. It was outrageous. The stunted, weakly figure before him spoke at last.",
+  "pl": "Były to jedyne właściwe słowa, zgodne z tradycją, odpowiednie dla urzędnika policji, który zwraca się do owieczki z powierzonego mu stada. Ale sposób, w jaki zostały przyjęte, urągał tradycji i przyzwoitości. Był oburzający. Kusa, nikła postać stojąca przed Heatem przemówiła nareszcie:",
+  "ua": "Це були цілком слушні слова, відповідні традиції й гідні поліцейського чиновника, який звертається до овечки з довіреного йому стада. Але спосіб, у який їх прийняли, кидав виклик традиції та пристойності. Він був обурливий. Низька, квола постать перед ним нарешті заговорила.",
+  "para": 50,
+  "start": 1475.55
+ },
+ {
+  "en": "“I’ve no doubt the papers would give you an obituary notice then. You know best what that would be worth to you. I should think you can imagine easily the sort of stuff that would be printed.",
+  "pl": "— Nie wątpię, że gazety poświęcą panu wówczas nekrolog. Pan wie najlepiej, czy to się panu opłaci. Łatwo sobie wyobrazić, jak taki nekrolog będzie wyglądał.",
+  "ua": "«Не сумніваюся, що газети тоді присвятять вам некролог. Ви найкраще знаєте, скільки він вам коштуватиме. Гадаю, ви легко можете уявити, який текст там надрукують.",
+  "para": 51,
+  "start": 1493.77
+ },
+ {
+  "en": "But you may be exposed to the unpleasantness of being buried together with me, though I suppose your friends would make an effort to sort us out as much as possible.”",
+  "pl": "I kto wie, czy się pan nie narazi na tę przykrość, że pochowają nas razem, choć sądzę, że pańscy przyjaciele dołożą wszelkich starań, aby rozsegregować nas możliwie najdokładniej.",
+  "ua": "Але ви можете зазнати неприємності — поховають нас разом, хоч, гадаю, ваші друзі докладуть усіх зусиль, щоб розділити нас якнайретельніше».",
+  "para": 51,
+  "start": 1504.27
+ },
+ {
+  "en": "With all his healthy contempt for the spirit dictating such speeches, the atrocious allusiveness of the words had its effect on Chief Inspector Heat. He had too much insight, and too much exact information as well, to dismiss them as rot.",
+  "pl": "Komisarz Heat czuł należytą pogardę dla uczuć dyktujących te słowa, lecz mimo to zawarta w nich straszliwa aluzja wywarła na nim wrażenie. Nie zlekceważył jej jako absurdu, gdyż był na to zbyt przenikliwy i zbyt dobrze poinformowany.",
+  "ua": "Хіт мав цілком здорову погорду до духу, що диктував такі промови, однак прихована в них жахлива алузія справила на нього враження. Він був надто проникливий і надто добре поінформований, щоб відмахнутися від них як від нісенітниці.",
+  "para": 52,
+  "start": 1515.85
+ },
+ {
+  "en": "The dusk of this narrow lane took on a sinister tint from the dark, frail little figure, its back to the wall, and speaking with a weak, self-confident voice. To the vigorous, tenacious vitality of the Chief Inspector, the physical wretchedness of that being, so obviously not fit to live, was ominous;",
+  "pl": "Mrok wąskiej uliczki nabrał czegoś złowieszczego od ciemnej, nikłej figurki opartej plecami o mur, mówiącej głosem słabym i pewnym siebie. Pełnemu sił i niewyczerpanej żywotności Heatowi nędzna postać tego stworzenia, tak widać niezdatnego do życia, wydała się złowroga;",
+  "ua": "Мрячна темрява вузького провулка набула зловісного відтінку від темної, кволої фігурки зі спиною до стіни, що говорила слабким, упевненим у собі голосом. Повному сил і невичерпної життєвості Хіту жалюгідна постать цієї істоти, явно неохочної до життя, здалася загрозливою;",
+  "para": 52,
+  "start": 1531.33
+ },
+ {
+  "en": "for it seemed to him that if he had the misfortune to be such a miserable object he would not have cared how soon he died. Life had such a strong hold upon him that a fresh wave of nausea broke out in slight perspiration upon his brow.",
+  "pl": "odniósł bowiem wrażenie, że gdyby miał nieszczęście urodzić się równie marnym stworem, byłoby mu wszystko jedno, czy umrze wcześniej, czy później. Tak silnie wrośnięty był w życie, że znów poczuł mdłości, a czoło zrosiło mu się potem.",
+  "ua": "адже йому здалося, що якби він мав нещастя бути таким жалюгідним створінням, йому було б байдужо, чим швидше помирати. Життя так міцно тримало його, що нова хвиля нудоти виступила дрібним потом на чолі.",
+  "para": 52,
+  "start": 1549.99
+ },
+ {
+  "en": "The murmur of town life, the subdued rumble of wheels in the two invisible streets to the right and left, came through the curve of the sordid lane to his ears with a precious familiarity and an appealing sweetness. He was human.",
+  "pl": "Gwar miejskiego życia, zgłuszony turkot kół na dwóch niewidocznych ulicach z prawej i lewej strony, dotarły do jego uszu półkolem niechlujnego zaułka; wydały mu się czymś swojskim i cennym, i pełnym nęcącej słodyczy. Heat był człowiekiem z krwi i kości.",
+  "ua": "Гомін міського життя, приглушений гуркіт коліс на двох невидимих вулицях праворуч і ліворуч, долинав до його вух півколом неохайного провулка з дорогоцінною близькістю й спокусливою солодістю. Він був людиною з плоті й крові.",
+  "para": 52,
+  "start": 1565.19
+ },
+ {
+  "en": "But Chief Inspector Heat was also a man, and he could not let such words pass.",
+  "pl": "Ale był także mężczyzną i nie mógł puścić takich słów mimo uszu.",
+  "ua": "Але комісар Хіт був також чоловіком, і він не міг пустити такі слова повз вуха.",
+  "para": 52,
+  "start": 1582.8
+ },
+ {
+  "en": "“All this is good to frighten children with,” he said. “I’ll have you yet.”",
+  "pl": "— Wszystko to są strachy na Lachy — rzekł. — Jeszcze się do pana dobiorę.",
+  "ua": "«Усе це годиться лякати дітей» — сказав він. — «Я ще вас дістану».",
+  "para": 53,
+  "start": 1589.33
+ },
+ {
+  "en": "It was very well said, without scorn, with an almost austere quietness.",
+  "pl": "To było powiedziane bardzo dobrze, bez pogardy, z prawie surowym spokojem.",
+  "ua": "Це було сказано дуже добре, без зневаги, з майже суворим спокоєм.",
+  "para": 54,
+  "start": 1596.92
+ },
+ {
+  "en": "“Doubtless,” was the answer; “but there’s no time like the present, believe me. For a man of real convictions this is a fine opportunity of self-sacrifice. You may not find another so favourable, so humane.",
+  "pl": "— Nie wątpię o tym — brzmiała odpowiedź — ale niech mi pan wierzy: obecna chwila jest wymarzona. Dla człowieka zasad to piękna sposobność do poświęcenia się. Może pan nie znajdzie drugiej tak sprzyjającej, tak humanitarnej.",
+  "ua": "«Звісно» — пролунало у відповідь — «але немає кращої хвилини, ніж теперня, повірте мені. Для людини з переконаннями це чудова нагода самопожертви. Може, ви не знайдете другої такої сприятливої, такої гуманної.",
+  "para": 55,
+  "start": 1603.14
+ },
+ {
+  "en": "There isn’t even a cat near us, and these condemned old houses would make a good heap of bricks where you stand. You’ll never get me at so little cost to life and property, which you are paid to protect.”",
+  "pl": "Nie ma nawet kota w pobliżu, a z tych starych domów skazanych na zagładę byłaby porządna kupa gruzu, tam gdzie pan stoi. Nigdy już nie będzie pan mógł mnie dopaść, narażając w tak małym stopniu życie i własność obywateli, za których ochronę pana opłacają.",
+  "ua": "Поруч навіть немає кішки, а з цих старих будинків, приречених на загибель, вийшла б добра купа цегли там, де ви стоїте. Ви ніколи мене не схопите, наражаючи на такий малий ризик життя й власність громадян, за охорону яких вам платять».",
+  "para": 55,
+  "start": 1619.46
+ },
+ {
+  "en": "“You don’t know who you’re speaking to,” said Chief Inspector Heat firmly. “If I were to lay my hands on you now I would be no better than yourself.”",
+  "pl": "— Pan nie wie, do kogo pan mówi — rzekł komisarz Heat ze stanowczością. — Gdybym teraz położył na panu rękę, byłbym tyleż wart, co i pan.",
+  "ua": "«Ви не знаєте, до кого говорите» — твердо сказав комісар Хіт. — «Якби я зараз поклав на вас руку, я був би не кращий за вас».",
+  "para": 56,
+  "start": 1636.4
+ },
+ {
+  "en": "“Ah! The game!”",
+  "pl": "— Aha! Więc to o prawidła gry panu chodzi!",
+  "ua": "«Ага! Власне про правила гри йдеться!»",
+  "para": 57,
+  "start": 1647.03
+ },
+ {
+  "en": "“You may be sure our side will win in the end. It may yet be necessary to make people believe that some of you ought to be shot at sight like mad dogs. Then that will be the game. But I’ll be damned if I know what yours is. I don’t believe you know yourselves.",
+  "pl": "— Zapewniam pana, że w końcu nasza strona zwycięży. Może jednak trzeba będzie ludzi przekonać, że do niektórych z was powinno się strzelać jak do wściekłych psów. Wtedy nasza gra tak właśnie będzie wyglądać. Ale bodajbym zginął, jeśli wiem, co za grę wy prowadzicie. Chyba nie wiecie tego sami.",
+  "ua": "«Будьте певні, що в кінці переможе наша сторона. Може, ще доведеться переконати людей, що деяких з вас слід розстрілювати на місці, як скажених псів. Ось і буде наша гра. Але мене прокляни, якщо я знаю, яку гру ведете ви. Не вірю, що ви знаєте самі.",
+  "para": 58,
+  "start": 1651.33
+ },
+ {
+  "en": "You’ll never get anything by it.”",
+  "pl": "Na tej drodze nigdy nic nie osiągniecie.",
+  "ua": "На цьому шляху ви нічого не досягнете».",
+  "para": 58,
+  "start": 1667.69
+ },
+ {
+  "en": "“Meantime it’s you who get something from it﻿—so far. And you get it easily, too. I won’t speak of your salary, but haven’t you made your name simply by not understanding what we are after?”",
+  "pl": "— A tymczasem wy nieźle na swej grze wychodzicie… jak dotąd. Idzie wam jak z płatka. Nie mówię o pana dochodach, ale czy pan nie zdobył sobie rozgłosu po prostu przez niezrozumienie tego, do czego dążymy?",
+  "ua": "«Тим часом ті, хто щось отримує з цієї гри, — це ви… принаймні поки що. І отримуєте ви це легко. Я не говоритиму про ваші статки, але хіба ви не здобули слави саме через нерозуміння того, чого ми прагнемо?»",
+  "para": 59,
+  "start": 1671.4
+ },
+ {
+  "en": "“What are you after, then?” asked Chief Inspector Heat, with scornful haste, like a man in a hurry who perceives he is wasting his time.",
+  "pl": "— Do czegóż więc dążycie? — spytał komisarz Heat z lekceważącym pośpiechem, jak człowiek, który mało ma czasu i widzi, że go traci na próżno.",
+  "ua": "«Чого ж ви прагнете?» — спитав комісар Хіт зі зневажливим поспіхом, як чоловік, що поспішає й бачить, як даремно витрачає час.",
+  "para": 60,
+  "start": 1686.32
+ },
+ {
+  "en": "The perfect anarchist answered by a smile which did not part his thin colourless lips; and the celebrated Chief Inspector felt a sense of superiority which induced him to raise a warning finger.",
+  "pl": "Wzorowy anarchista uśmiechnął się w odpowiedzi, nie rozchylając wąskich, bezbarwnych warg, a sławny komisarz w poczuciu swej wyższości podniósł ostrzegawczo palec:",
+  "ua": "Досконалий анархіст відповів усмішкою, не розтуливши вузьких безбарвних губ, а славний комісар, у почутті своєї переваги, підняв попереджувально палець:",
+  "para": 61,
+  "start": 1694.62
+ },
+ {
+  "en": "“Give it up﻿—whatever it is,” he said in an admonishing tone, but not so kindly as if he were condescending to give good advice to a cracksman of repute. “Give it up. You’ll find we are too many for you.”",
+  "pl": "— Bez względu na to jaki jest wasz cel, zaniechajcie go — rzekł tonem pouczającym, ale nie tak łaskawym, jak kiedy by udzielał rady słynnemu włamywaczowi. — Zaniechajcie go. Zobaczy pan, że sobie z nami nie poradzicie.",
+  "ua": "«Відмовтеся від цього — чим би воно не було» — сказав він повчальним тоном, але не так ласкаво, як коли б давав пораду знаменитому злодієві-взломнику. — Відмовтеся. Побачите, що нас надто багато для вас.",
+  "para": 62,
+  "start": 1704.72
+ },
+ {
+  "en": "The fixed smile on the Professor’s lips wavered, as if the mocking spirit within had lost its assurance. Chief Inspector Heat went on:",
+  "pl": "Zastygłe w uśmiechu wargi Profesora drgnęły, jakby szyderczy duch w jego wnętrzu stracił na pewności siebie. Komisarz Heat ciągnął dalej:",
+  "ua": "Замерла на усмішці вуст Професора тремтіли, ніби насмішливий дух усередині втратив певність. Комісар Хіт продовжував:",
+  "para": 63,
+  "start": 1720.08
+ },
+ {
+  "en": "“Don’t you believe me eh? Well, you’ve only got to look about you. We are. And anyway, you’re not doing it well. You’re always making a mess of it. Why, if the thieves didn’t know their work better they would starve.”",
+  "pl": "— Nie wierzy mi pan, co? Więc niech się pan tylko rozejrzy. Nie poradzicie sobie. I jakoś źle się do tego bierzecie. Musicie zawsze coś sknocić. Gdyby złodzieje nie znali swego fachu lepiej, niż wy znacie swój, umarliby z głodu.",
+  "ua": "«Не вірите мені, га? Ну, вам лишень озирнутися навколо. Ось ми. І в будь-якому разі ви робите це погано. Ви завжди все зіпсуєте. Якщо б злодії не знали своєї справи краще, ніж ви знаєте свою, вони б померли з голоду».",
+  "para": 64,
+  "start": 1729.21
+ },
+ {
+  "en": "The hint of an invincible multitude behind that man’s back roused a sombre indignation in the breast of the Professor. He smiled no longer his enigmatic and mocking smile. The resisting power of numbers, the unattackable stolidity of a great multitude, was the haunting fear of his sinister loneliness.",
+  "pl": "Poczucie, że za plecami tego człowieka tkwią niezwyciężone tłumy, wzbudziło ponury gniew w piersi Profesora. Z jego ust znikł szyderczy i zagadkowy uśmiech. Lęk wobec nieugiętej potęgi liczb, wobec odpornej na wszystko niewzruszoności mas, był upiorem nawiedzającym jego ponurą samotność.",
+  "ua": "Натяк на незламні маси за спиною цього чоловіка збудив понуре обурення в грудях Професора. Він більше не усміхався своєю загадковою, насмішливою усмішкою. Лякана могутність числа, неприступна тупість величезного натовпу — ось який примара переслідав його похмуру самотність.",
+  "para": 65,
+  "start": 1745.27
+ },
+ {
+  "en": "His lips trembled for some time before he managed to say in a strangled voice:",
+  "pl": "Wargi Profesora drżały jakiś czas, nim zdołał wyrzec zdławionym głosem:",
+  "ua": "Його губи довго тремтіли, перш ніж він зміг вимовити задушеним голосом:",
+  "para": 65,
+  "start": 1765.69
+ },
+ {
+  "en": "“I am doing my work better than you’re doing yours.”",
+  "pl": "— Robię swoje lepiej niż wy.",
+  "ua": "«Я роблю свою справу краще, ніж ви — свою».",
+  "para": 66,
+  "start": 1771.66
+ },
+ {
+  "en": "“That’ll do now,” interrupted Chief Inspector Heat hurriedly; and the Professor laughed right out this time. While still laughing he moved on; but he did not laugh long. It was a sad-faced, miserable little man who emerged from the narrow passage into the bustle of the broad thoroughfare.",
+  "pl": "— Dość tego — przerwał śpiesznie komisarz Heat; Profesor roześmiał się, tym razem głośno. Zaczął iść, wciąż jeszcze się śmiejąc, ale nie śmiał się długo. Gdy się wyłonił z wąskiego zaułka, był znowu nędznym człowieczkiem o smutnej twarzy. Utonął w rozgardiaszu wielkiej ulicy;",
+  "ua": "«Годі» — поспішно перервав комісар Хіт; і цього разу Професор розреготався вголос. Ідучи далі, він ще сміявся, але довго не сміявся. Коли він виринув з вузького провулка у метушню широкої вулиці, то був знову жалюгідним чоловічком із сумним обличчям. Розчинився в метушні великої вулиці;",
+  "para": 67,
+  "start": 1774.62
+ },
+ {
+  "en": "He walked with the nerveless gait of a tramp going on, still going on, indifferent to rain or sun in a sinister detachment from the aspects of sky and earth.",
+  "pl": "szedł bezsilnym krokiem wciąż dalej i dalej, niby włóczęga obojętny na deszcz lub słońce, nieczuły w swej ponurości na wygląd nieba i ziemi.",
+  "ua": "він ішов безсилим кроком усе далі й далі, ніби жебрак, байдужий до дощу чи сонця, відсторонений у своїй похмурості від вигляду неба й землі.",
+  "para": 67,
+  "start": 1793.64
+ },
+ {
+  "en": "Chief Inspector Heat, on the other hand, after watching him for a while, stepped out with the purposeful briskness of a man disregarding indeed the inclemencies of the weather, but conscious of having an authorised mission on this earth and the moral support of his kind.",
+  "pl": "Natomiast komisarz Heat, popatrzywszy za nim przez chwilę, ruszył naprzód z celową energią człowieka, który wprawdzie sobie lekceważy nielitościwe wybryki przyrody, lecz świadom jest zarówno misji, powierzonej mu na tej ziemi, jak i moralnego poparcia bliźnich.",
+  "ua": "Комісар Хіт, навпаки, поглядівши за ним ще хвильку, рушив далі з цілеспрямованою бадьорістю чоловіка, який, звісно, не зважає на невтішні примхи погоди, але свідомий свого санкціонованого послання на цій землі й моральної підтримки собі подібних.",
+  "para": 67,
+  "start": 1802.1
+ },
+ {
+  "en": "All the inhabitants of the immense town, the population of the whole country, and even the teeming millions struggling upon the planet, were with him﻿—down to the very thieves and mendicants. Yes, the thieves themselves were sure to be with him in his present work.",
+  "pl": "Mieszkańcy olbrzymiego miasta, ludność całego kraju i pleniące się miliony, które walczą o byt na tej planecie, wszyscy byli po jego stronie… aż do złodziei i żebraków włącznie. Tak, nawet złodzieje sprzyjają mu na pewno w obecnej pracy.",
+  "ua": "Усі мешканці величезного міста, усе населення цілої країни й навіть буяні мільйони, що змагаються на цій планеті, були на його боці… аж до злодіїв і жебраків включно. Так, самі злодії, певна річ, підтримують його в нинішній справі.",
+  "para": 67,
+  "start": 1818.82
+ },
+ {
+  "en": "The consciousness of universal support in his general activity heartened him to grapple with the particular problem.",
+  "pl": "Świadomość powszechnego poparcia dodała mu ducha w zmaganiu się z tym konkretnym zagadnieniem.",
+  "ua": "Свідомість всезагальної підтримки в його загальній діяльності надихнула його взятися за конкретну проблему.",
+  "para": 67,
+  "start": 1834.68
+ },
+ {
+  "en": "The problem immediately before the Chief Inspector was that of managing the Assistant Commissioner of his department, his immediate superior. This is the perennial problem of trusty and loyal servants; anarchism gave it its particular complexion, but nothing more.",
+  "pl": "Najbliższe zadanie oczekujące komisarza polegało na uporaniu się z bezpośrednim zwierzchnikiem, nadinspektorem wydziału. Jest to odwieczne zadanie zaufanych i wiernych urzędników; anarchizm nadał mu tylko specjalne zabarwienie i nic poza tym.",
+  "ua": "Найближчим завданням комісара було впоратися зі своїм безпосереднім керівником, надінспектором відділу. Це вічне завдання надійних і вірних чиновників; анархізм надав йому лише особливого забарвлення й більше нічого.",
+  "para": 68,
+  "start": 1840.22
+ },
+ {
+  "en": "Truth to say, Chief Inspector Heat thought but little of anarchism. He did not attach undue importance to it, and could never bring himself to consider it seriously. It had more the character of disorderly conduct;",
+  "pl": "Mówiąc szczerze, komisarz Heat nie miał wysokiego pojęcia o anarchizmie. Nie przypisywał mu zbytniej wagi i nie mógł się nigdy zmusić do brania go poważnie. Uważał, że anarchizm należy raczej do wykroczeń przeciw dobrym obyczajom;",
+  "ua": "Чесно кажучи, комісар Хіт дуже низько думав про анархізм. Він не надавав йому надмірної ваги й ніколи не міг змусити себе сприймати його серйозно. Це було радше якесь безладне поводження;",
+  "para": 68,
+  "start": 1856.25
+ },
+ {
+  "en": "disorderly without the human excuse of drunkenness, which at any rate implies good feeling and an amiable leaning towards festivity. As criminals, anarchists were distinctly no class﻿—no class at all.",
+  "pl": "że jest nieobyczajnością, której nie przysługuje ta zrozumiała okoliczność łagodząca — pijaństwo, idące w parze z dobrodusznością i sympatycznym pociągiem do hulanek. Podobnie jak zbrodniarze, anarchiści nie są wyraźną klasą — w ogóle żadnej klasy nie tworzą.",
+  "ua": "безладне без людського виправдання п'янством, яке в будь-якому разі свідчить про добродушність і прихильність до забав. Як злочинці, анархісти явно не становили жодної верстви — взагалі жодної верстви.",
+  "para": 68,
+  "start": 1870.57
+ },
+ {
+  "en": "And recalling the Professor, Chief Inspector Heat, without checking his swinging pace, muttered through his teeth:",
+  "pl": "Inspektor Heat przypomniał sobie Profesora i nie zatrzymując się, mruknął przez zęby, idąc swym elastycznym krokiem:",
+  "ua": "Пригадавши Професора, комісар Хіт, не стримуючи свого розмашистого кроку, пробурчав крізь зуби:",
+  "para": 68,
+  "start": 1886.75
+ },
+ {
+  "en": "“Lunatic.”",
+  "pl": "— Wariat.",
+  "ua": "«Божевільний».",
+  "para": 69,
+  "start": 1895.0
+ },
+ {
+  "en": "Catching thieves was another matter altogether. It had that quality of seriousness belonging to every form of open sport where the best man wins under perfectly comprehensible rules. There were no rules for dealing with anarchists.",
+  "pl": "Pościg za złodziejami to zupełnie inna sprawa. Ma w sobie powagę cechującą każdy rodzaj sportu na świeżym powietrzu, sportu, w którym człowiek najdzielniejszy wygrywa na zasadzie prawideł bardzo przejrzystych. Lecz nie ma prawideł na postępowanie z anarchistami.",
+  "ua": "Ловити злодіїв — це вже зовсім інша справа. У цьому була серйозність, властива кожному виду відкритого змагання, де перемагає найкращий за цілком зрозумілих правил. Правил поводження з анархістами не було.",
+  "para": 70,
+  "start": 1896.34
+ },
+ {
+  "en": "And that was distasteful to the Chief Inspector. It was all foolishness, but that foolishness excited the public mind, affected persons in high places, and touched upon international relations. A hard, merciless contempt settled rigidly on the Chief Inspector’s face as he walked on.",
+  "pl": "I właśnie to przejęło Heata niesmakiem. Cała sprawa była wierutnym głupstwem, ale to głupstwo podniecało umysły, narażało osoby na wysokich stanowiskach i zahaczało o stosunki międzynarodowe. Twarda, bezlitosna pogarda zakrzepła na twarzy komisarza.",
+  "ua": "І саме це Хітові здавалося огидним. Уся справа була цілковитим дурництвом, але це дурництво збурювало громадську думку, зачіпало осіб на високих посадах і стосувалося міжнародних відносин. Тверда, безжальна погорда скам'яніла на обличчі комісара, коли він ішов далі.",
+  "para": 70,
+  "start": 1911.96
+ },
+ {
+  "en": "His mind ran over all the anarchists of his flock. Not one of them had half the spunk of this or that burglar he had known. Not half﻿—not one-tenth.",
+  "pl": "Przebiegał myślą wszystkich anarchistów ze swej gromadki. Żaden z nich nie miał tej odwagi, co niektórzy ze znanych mu złodziei. Ani w połowie, ani nawet w dziesiątej części.",
+  "ua": "Він перебирав думкою всіх анархістів зі свого гурту. Жоден з них не міг похвалитися й половинкою завзяття деяких йому відомих злодіїв. Ані половинки — ані десятої частини.",
+  "para": 70,
+  "start": 1927.6
+ },
+ {
+  "en": "At headquarters the Chief Inspector was admitted at once to the Assistant Commissioner’s private room. He found him, pen in hand, bent over a great table bestrewn with papers, as if worshipping an enormous double inkstand of bronze and crystal.",
+  "pl": "W centrali komisarz został wpuszczony od razu do gabinetu nadinspektora. Zastał go z piórem w ręku, pochylonego nad wielkim stołem zarzuconym papierami; wyglądało to jakby nadinspektor oddawał cześć olbrzymiemu podwójnemu kałamarzowi z brązu i kryształu.",
+  "ua": "У центральному управлінні комісара одразу впустили до приватного кабінету надінспектора. Він застав того з пером у руці, нахиленим над великим столом, вкритим паперами, — виглядало, ніби надінспектор віддає честь велетенському подвійному каламару з бронзи й кристалу.",
+  "para": 71,
+  "start": 1938.95
+ },
+ {
+  "en": "Speaking tubes resembling snakes were tied by the heads to the back of the Assistant Commissioner’s wooden armchair, and their gaping mouths seemed ready to bite his elbows. And in this attitude he raised only his eyes, whose lids were darker than his face and very much creased.",
+  "pl": "Tuby głosowe⁴⁸ podobne do węży były przymocowane do oparcia drewnianego fotela, a ich rozszerzone paszcze zdawały się czyhać na odpowiednią chwilę, aby ugryźć nadinspektora w łokieć. Nie zmienił pozy, tylko podniósł oczy, których powieki były ciemniejsze niż twarz i bardzo pomarszczone.",
+  "ua": "Трубки для голосу⁴⁸, схожі на змій, були прикріплені головами до спинки дерев'яного крісла надінспектора, і їх роззявлені пащі, здавалося, чекали слушної миті, щоб вкусити його за лікоть. Він не змінив пози, лише підняв очі, повіки були темніші за обличчя й дуже зморшкуваті.",
+  "para": 71,
+  "start": 1954.67
+ },
+ {
+  "en": "The reports had come in: every anarchist had been exactly accounted for.",
+  "pl": "Oświadczył, że raporty już wpłynęły; sprawdzono dokładnie, co robił w ostatnich czasach każdy z anarchistów.",
+  "ua": "Він оголосив, що доповіді вже надійшли; було точно перевірено, чим останнім часом займався кожен із анархістів.",
+  "para": 71,
+  "start": 1973.31
+ },
+ {
+  "en": "After saying this he lowered his eyes, signed rapidly two single sheets of paper, and only then laid down his pen, and sat well back, directing an inquiring gaze at his renowned subordinate. The Chief Inspector stood it well, deferential but inscrutable.",
+  "pl": "Spuścił oczy, podpisał się szybko na dwóch pojedynczych arkuszach i dopiero wtedy, odłożywszy pióro, rozsiadł się w fotelu, zwracając badawcze spojrzenie na swego znakomitego urzędnika. Komisarz wytrzymał je, pełen szacunku, lecz niezbadany.",
+  "ua": "Сказавши це, він опустив очі, швидко підписав два окремі аркуші й лише тоді відклав перо, відкинувся в кріслі, кидаючи допитливий погляд на свого знаменитого підлеглого. Комісар витримав цей погляд, шанобливий, але непроникний.",
+  "para": 72,
+  "start": 1980.35
+ },
+ {
+  "en": "“I daresay you were right,” said the Assistant Commissioner, “in telling me at first that the London anarchists had nothing to do with this. I quite appreciate the excellent watch kept on them by your men.",
+  "pl": "— Sądzę, że pan miał rację — rzekł nadinspektor — kiedy mi pan od razu powiedział, że londyńscy anarchiści nie mają z tym nic wspólnego. Doceniam to w zupełności, że pana ludzie trzymają ich pod ścisłym dozorem.",
+  "ua": "«Гадаю, ви мали рацію» — сказав надінспектор — «коли одразу повідомили мене, що лондонські анархісти не мають до цього жодного стосунку. Я цілком ціную, як ваші люди тримають їх під пильним наглядом.",
+  "para": 73,
+  "start": 1995.69
+ },
+ {
+  "en": "On the other hand, this, for the public, does not amount to more than a confession of ignorance.”",
+  "pl": "Ale znów jeśli chodzi o publiczność, sprawa wygląda tak, jakbyśmy się przyznawali, że nic nie wiemy.",
+  "ua": "З іншого боку, для громадськості це не більше ніж зізнання в невіданні».",
+  "para": 73,
+  "start": 2008.78
+ },
+ {
+  "en": "The Assistant Commissioner’s delivery was leisurely, as it were cautious. His thought seemed to rest poised on a word before passing to another, as though words had been the stepping-stones for his intellect picking its way across the waters of error.",
+  "pl": "Nadinspektor mówił powoli, rzekłbyś, ostrożnie. Zdawało się, iż jego myśl usiłuje znaleźć drogę wśród rozlewiska błędów, przechodząc od słowa do słowa i zatrzymując się na każdym z nich jak na sterczących z wody kamieniach.",
+  "ua": "Надінспектор промовляв повільно, сказати б, обережно. Його думка, здавалося, шукала шлях серед розливу помилок, переходячи від слова до слова й зупиняючись на кожному, немов на каменях, що стирчать із води.",
+  "para": 74,
+  "start": 2015.04
+ },
+ {
+  "en": "“Unless you have brought something useful from Greenwich,” he added.",
+  "pl": "— Chyba że przywiózł mi pan z Greenwich coś pożytecznego — dodał.",
+  "ua": "«Хіба що ви привезли мені з Грінвічу щось корисне» — додав він.",
+  "para": 75,
+  "start": 2029.73
+ },
+ {
+  "en": "The Chief Inspector began at once the account of his investigation in a clear matter-of-fact manner. His superior turning his chair a little, and crossing his thin legs, leaned sideways on his elbow, with one hand shading his eyes. His listening attitude had a sort of angular and sorrowful grace.",
+  "pl": "Komisarz zaczął natychmiast zdawać sprawę ze swego śledztwa w sposób jasny i rzeczowy. Zwierzchnik obrócił się trochę wraz z fotelem, skrzyżował chude nogi i oparłszy się na łokciu, zasłonił ręką oczy. W tej jego zasłuchanej postawie był pewien wdzięk, jakby kanciasty i smutny.",
+  "ua": "Комісар негайно почав давати звіт зі свого слідства — ясно й по суті. Його керівник трохи обернувся разом із кріслом, схрестив худі ноги й, спершись на лікоть, заслонив рукою очі. У цій його слухацькій позі був певний вишуканий грація, ніби кутаста й сумна.",
+  "para": 76,
+  "start": 2035.25
+ },
+ {
+  "en": "Gleams as of highly burnished silver played on the sides of his ebony black head when he inclined it slowly at the end.",
+  "pl": "Gdy w końcu pochylił z wolna czarną jak heban głowę, po jej bokach przebiegły błyski niby po świetnie wypolerowanym srebrze.",
+  "ua": "Коли він у кінці повільно нахилив чорну, як абанос, голову, по її боках пробігли відблиски, ніби по добре відполірованому сріблі.",
+  "para": 76,
+  "start": 2052.97
+ },
+ {
+  "en": "Chief Inspector Heat waited with the appearance of turning over in his mind all he had just said, but, as a matter of fact, considering the advisability of saying something more. The Assistant Commissioner cut his hesitation short.",
+  "pl": "Komisarz Heat czekał, na pozór przeżuwając w myśli wszystko, co dotychczas powiedział, lecz w gruncie rzeczy zastanawiając się, czy należy jeszcze coś dodać. Zwierzchnik przerwał ten namysł:",
+  "ua": "Комісар Хіт чекав, наче пережовуючи в думці все, що щойно сказав, але насправді — вагаючись, чи варто додати ще щось. Надінспектор обірвав ці вагання.",
+  "para": 77,
+  "start": 2061.03
+ },
+ {
+  "en": "“You believe there were two men?” he asked, without uncovering his eyes.",
+  "pl": "— Sądzi pan, że tam było dwóch ludzi?",
+  "ua": "«Ви вважаєте, що там було двоє чоловіків?» — спитав він, не відкриваючи очей.",
+  "para": 78,
+  "start": 2073.11
+ },
+ {
+  "en": "The Chief Inspector thought it more than probable. In his opinion, the two men had parted from each other within a hundred yards from the Observatory walls. He explained also how the other man could have got out of the park speedily without being observed. The fog, though not very dense, was in his favour.",
+  "pl": "Zdaniem komisarza było to więcej niż prawdopodobne. Ci dwaj ludzie rozstali się zapewne w odległości jakich stu jardów od obserwatorium. Wyjaśnił również, jakim sposobem tamten drugi człowiek mógł wymknąć się z parku, nie będąc zauważonym. Sprzyjała mu mgła, choć niezbyt gęsta.",
+  "ua": "Комісар вважав це більш ніж ймовірним. На його думку, ті двоє розійшлися приблизно за сто ярдів від стін обсерваторії. Він також пояснив, як той другий чоловік міг швидко вислизнути з парку, не будучи поміченим. Мряка, хоч і не надто густа, була йому на користь.",
+  "para": 79,
+  "start": 2075.92
+ },
+ {
+  "en": "He seemed to have escorted the other to the spot, and then to have left him there to do the job single-handed.",
+  "pl": "Zdaje się, że przyprowadził na miejsce towarzysza, który miał już sam wykonać robotę.",
+  "ua": "Здається, він провів товариша на місце, а потім залишив його там виконувати справу поодинці.",
+  "para": 79,
+  "start": 2094.14
+ },
+ {
+  "en": "Taking the time those two were seen coming out of Maze Hill Station by the old woman, and the time when the explosion was heard, the Chief Inspector thought that the other man might have been actually at the Greenwich Park Station, ready to catch the next train up, at the moment his comrade was destroying himself so thoroughly.",
+  "pl": "Zestawiwszy czas, w którym staruszka widziała tych dwóch ludzi wychodzących z Maze Hill Station, z czasem, kiedy usłyszano wybuch, komisarz sądził, że tamten człowiek mógł już być na Greenwich Park Station i oczekiwać najbliższego pociągu w kierunku miasta — w tej samej chwili, gdy jego towarzysz unicestwił się tak doszczętnie.",
+  "ua": "Порівнявши час, коли старенька бачила тих двох, які виходили з Maze Hill Station, із часом, коли почули вибух, комісар гадав, що той чоловік міг уже бути на Greenwich Park Station, очікуючи найближчого потяга в бік міста, — саме в ту мить, коли його товариш так остаточно знищив себе.",
+  "para": 79,
+  "start": 2099.24
+ },
+ {
+  "en": "“Very thoroughly﻿—eh?” murmured the Assistant Commissioner from under the shadow of his hand.",
+  "pl": "— Doszczętnie w całym tego słowa znaczeniu, co? — szepnął nadinspektor spod ręki ocieniającej twarz.",
+  "ua": "«До кінця в повному сенсі, га?» — прошепотів надінспектор з-під руки, що заслоняла обличчя.",
+  "para": 80,
+  "start": 2119.9
+ },
+ {
+  "en": "The Chief Inspector in a few vigorous words described the aspect of the remains.",
+  "pl": "Komisarz opisał w paru jędrnych słowach wygląd szczątków.",
+  "ua": "Комісар у кількох жвавих словах описав вигляд останків.",
+  "para": 81,
+  "start": 2126.42
+ },
+ {
+  "en": "“The coroner’s jury will have a treat,” he added grimly.",
+  "pl": "— Komisja stwierdzająca śmierć będzie miała używanie — dodał posępnie.",
+  "ua": "«Судова комісія розважиться» — похмуро додав він.",
+  "para": 82,
+  "start": 2131.0
+ },
+ {
+  "en": "The Assistant Commissioner uncovered his eyes.",
+  "pl": "Nadinspektor odsłonił oczy.",
+  "ua": "Надінспектор відкрив очі.",
+  "para": 83,
+  "start": 2136.72
+ },
+ {
+  "en": "“We shall have nothing to tell them,” he remarked languidly.",
+  "pl": "— Nie będziemy mogli dać im żadnych wyjaśnień — zauważył wyczerpanym głosem.",
+  "ua": "«Нам нічого буде їм сказати» — мляво зауважив він.",
+  "para": 84,
+  "start": 2139.9
+ },
+ {
+  "en": "He looked up, and for a time watched the markedly noncommittal attitude of his Chief Inspector. His nature was one that is not easily accessible to illusions. He knew that a department is at the mercy of its subordinate officers, who have their own conceptions of loyalty.",
+  "pl": "Spojrzał w górę i przez chwilę śledził wybitnie obojętną postawę swego komisarza. Nie należał do ludzi ulegających łatwo złudzeniom. Wiedział dobrze, iż każdy wydział jest na łasce drugorzędnych urzędników, którzy mają swoje własne pojęcie o lojalności.",
+  "ua": "Він підвів очі й деякий час спостерігав за цілком нейтральною поставою свого комісара. Його вдача не була схильна до ілюзій. Він добре знав, що кожен відділ перебуває в руках підлеглих чиновників, які мають власне уявлення про вірність.",
+  "para": 85,
+  "start": 2145.36
+ },
+ {
+  "en": "His career had begun in a tropical colony. He had liked his work there. It was police work. He had been very successful in tracking and breaking up certain nefarious secret societies amongst the natives. Then he took his long leave, and got married rather impulsively.",
+  "pl": "Jego kariera rozpoczęła się w kolonii podzwrotnikowej. Lubił swą tamtejszą robotę. Była to robota policyjna. Udało mu się wyśledzić i unieszkodliwić pewne zbrodnicze tajne stowarzyszenia wśród tubylców. Potem wyjechał na długi urlop i ożenił się pod wpływem nagłego porywu.",
+  "ua": "Його кар'єра почалася в тропічній колонії. Йому подобалася тамтешня робота. Це була поліцейська робота. Йому вдалося відстежити й розгромити певні злочинні таємні товариства серед туземців. Потім він поїхав у довгу відпустку й досить імпульсивно одружився.",
+  "para": 85,
+  "start": 2160.34
+ },
+ {
+  "en": "It was a good match from a worldly point of view, but his wife formed an unfavourable opinion of the colonial climate on hearsay evidence. On the other hand, she had influential connections. It was an excellent match. But he did not like the work he had to do now.",
+  "pl": "Sądząc po światowemu, stanowili z żoną bardzo dobraną parę, ale nadinspektorowa wyrobiła sobie ze słyszenia niekorzystną opinię o klimacie kolonialnym. Miała wiele wpływowych znajomości — była to świetna partia. Lecz nadinspektor nie lubił swej obecnej roboty.",
+  "ua": "Зі світського погляду це був чудовий шлюб, але дружина з чуток ви собі несприятливу думку про колоніальний клімат. З іншого боку, вона мала впливові зв'язки. Шлюб був блискучий. Але йому не подобалася робота, яку він мав виконувати тепер.",
+  "para": 85,
+  "start": 2178.5
+ },
+ {
+  "en": "He felt himself dependent on too many subordinates and too many masters. The near presence of that strange emotional phenomenon called public opinion weighed upon his spirits, and alarmed him by its irrational nature.",
+  "pl": "Czuł się zależny od zbyt wielu podwładnych i zbyt wielu zwierzchników. Bezpośrednia bliskość tego dziwnego przejawu uczuć, zwanego opinią publiczną, przygnębiała go i niepokoiła swą irracjonalnością.",
+  "ua": "Він почував себе залежним від надто багатьох підлеглих і надто багатьох керівників. Безпосередня близькість цього дивного явища почуттів, званого громадською думкою, пригнічувала його й лякала своєю нераціональністю.",
+  "para": 85,
+  "start": 2196.97
+ },
+ {
+  "en": "No doubt that from ignorance he exaggerated to himself its power for good and evil﻿—especially for evil; and the rough east winds of the English spring (which agreed with his wife) augmented his general mistrust of men’s motives and of the efficiency of their organisation.",
+  "pl": "Nie ulega wątpliwości, że przez brak doświadczenia wyolbrzymiał sobie jej siłę czynienia dobra i zła, zwłaszcza zaś zła; przy tym ostre wschodnie wiatry angielskiej wiosny (które służyły jego żonie) pogłębiały w nim zasadniczą nieufność do pobudek rządzących ludźmi i do sprawności ich organizacji.",
+  "ua": "Певна річ, через необізнаність він перебільшував собі її силу творити добро й зло — особливо ж зло; а грубі східні вітри англійської весни (які йшли на користь його дружині) поглиблювали в ньому основну недовіру до спонук людей і до спроможності їхньої організації.",
+  "para": 85,
+  "start": 2210.17
+ },
+ {
+  "en": "The futility of office work especially appalled him on those days so trying to his sensitive liver.",
+  "pl": "Jałowość pracy biurowej gnębiła go szczególnie w owych dniach tak przykrych dla jego wrażliwej wątroby.",
+  "ua": "Нікчемність офісної роботи особливо жахала його в ті дні, що так виснажували його чутливу печінку.",
+  "para": 85,
+  "start": 2231.7
+ },
+ {
+  "en": "He got up, unfolding himself to his full height, and with a heaviness of step remarkable in so slender a man, moved across the room to the window. The panes streamed with rain, and the short street he looked down into lay wet and empty, as if swept clear suddenly by a great flood.",
+  "pl": "Wstał, rozprostował się w całej długości i krokiem ciężkim, zadziwiającym u człowieka tak szczupłego, ruszył przez pokój ku oknu. Szyby ociekały deszczem, a w dole krótka uliczka, na którą nadinspektor spoglądał, była mokra i pusta, jakby wymieciona nagle do czysta przez wielką powódź.",
+  "ua": "Він підвівся, розправившись на всю довжину, й важким кроком, дивним для такого стрункого чоловіка, подолав кімнату до вікна. Склянки стікали дощем, а внизу вузенька вуличка, на яку дивився надінспектор, була мокрою й порожньою, ніби її раптом вимело до білого великою повінню.",
+  "para": 86,
+  "start": 2239.08
+ },
+ {
+  "en": "It was a very trying day, choked in raw fog to begin with, and now drowned in cold rain. The flickering, blurred flames of gas-lamps seemed to be dissolving in a watery atmosphere.",
+  "pl": "Dzień bardzo był przykry, najpierw zdławiony przez zimną mgłę, a teraz pławiący się w zimnej ulewie. Migotliwe, zamazane płomienie gazowych latarni jak gdyby się rozpuszczały w wodnistym powietrzu.",
+  "ua": "День був дуже прикрий: спершу задушений сирою млою, а тепер потоплений у холодному дощі. Миготливі, розмиті полум'я газових ліхтарів, здавалося, розчинялися у вологому повітрі.",
+  "para": 86,
+  "start": 2258.94
+ },
+ {
+  "en": "And the lofty pretensions of a mankind oppressed by the miserable indignities of the weather appeared as a colossal and hopeless vanity deserving of scorn, wonder, and compassion.",
+  "pl": "A górnolotne pretensje ludzkości, gnębionej haniebną niepogodą, wydawały się beznadziejną, niebotyczną pychą zasługującą na pogardę, zdziwienie i litość.",
+  "ua": "А гордовиті претензії людства, пригнобленого жалюгідними знущаннями погоди, видалися колосальною, безнадійною пихою, вартою зневаги, подиву й милосердя.",
+  "para": 86,
+  "start": 2272.62
+ },
+ {
+  "en": "“Horrible, horrible!” thought the Assistant Commissioner to himself, with his face near the windowpane. “We have been having this sort of thing now for ten days; no, a fortnight﻿—a fortnight.” He ceased to think completely for a time. That utter stillness of his brain lasted about three seconds. Then he said perfunctorily:",
+  "pl": "„Co za ohydny czas!” — rozmyślał nadinspektor z twarzą zbliżoną do szyby. „Trwa to już z dziesięć dni; nie, dwa tygodnie, dwa tygodnie”. Na chwilę przestał zupełnie myśleć. Ten absolutny bezwład jego mózgu trwał około trzech sekund. Wreszcie rzekł obojętnie:",
+  "ua": "«Жах, жах!» — думав надінспектор, притуливши обличчя до скла. «От таке триває вже з десять днів; ні, два тижні — два тижні». На хвильку він цілком перестав думати. Ця повна бездіяльність його мозку тривала близько трьох секунд. Потім він байдуже мовив:",
+  "para": 87,
+  "start": 2284.29
+ },
+ {
+  "en": "“You have set inquiries on foot for tracing that other man up and down the line?”",
+  "pl": "— Czy kazał pan śledzić tamtego drugiego człowieka wzdłuż linii kolejowej?",
+  "ua": "«Ви розпорядилися вжити заходів, щоб відстежити того другого чоловіка вздовж залізниці?»",
+  "para": 88,
+  "start": 2305.52
+ },
+ {
+  "en": "He had no doubt that everything needful had been done. Chief Inspector Heat knew, of course, thoroughly the business of man-hunting. And these were the routine steps, too, that would be taken as a matter of course by the merest beginner.",
+  "pl": "Nie wątpił, że wszystko, co trzeba, zostało zarządzone. Komisarz Heat znał oczywiście do gruntu swój zawód — polowanie na ludzi. A to, o co pytał nadinspektor, było kwestią zwykłej rutyny, której by nie zaniedbał nawet ktoś początkujący.",
+  "ua": "Він не сумнівався, що зроблено все необхідне. Комісар Хіт, звісно, знав досконало свою справу — полювання на людей. І те, про що запитував надінспектор, було звичайною рутиною, якої не знехтував би навіть початківець.",
+  "para": 89,
+  "start": 2310.84
+ },
+ {
+  "en": "A few inquiries amongst the ticket collectors and the porters of the two small railway stations would give additional details as to the appearance of the two men; the inspection of the collected tickets would show at once where they came from that morning. It was elementary, and could not have been neglected.",
+  "pl": "Kilka pytań zwróconych do urzędników odbierających bilety oraz do tragarzy na obu stacyjkach dostarczyło zapewne dalszych szczegółów co do wyglądu obu mężczyzn, a przejrzenie odebranych biletów wskazało od razu, skąd tego ranka przybyli. To była rzecz zasadnicza, nie zaniedbano jej z pewnością.",
+  "ua": "Кілька запитань до контролерів квитків і носіїв на двох малих станціях напевне дали б додаткові подробиці щодо зовнішності обох чоловіків; огляд зібраних квитків одразу показав би, звідки того ранку вони прибули. Це була річ елементарна, якої не могли не зробити.",
+  "para": 89,
+  "start": 2326.84
+ },
+ {
+  "en": "Accordingly the Chief Inspector answered that all this had been done directly the old woman had come forward with her deposition. And he mentioned the name of a station.",
+  "pl": "Więc też komisarz odrzekł, że wszystko to załatwiono zaraz po złożeniu zeznań przez staruszkę. Wymienił nazwę stacji.",
+  "ua": "Отже комісар відповів, що все це зроблено щойно старенька подала свої свідчення. І він назвав назву станції.",
+  "para": 89,
+  "start": 2345.46
+ },
+ {
+  "en": "“That’s where they came from, sir,” he went on. “The porter who took the tickets at Maze Hill remembers two chaps answering to the description passing the barrier. They seemed to him two respectable working men of a superior sort﻿—sign painters or house decorators.",
+  "pl": "— Stamtąd właśnie przyjechali — ciągnął dalej. — Urzędnik, który odbierał bilety w Maze Hill, pamięta, że opuściło peron dwóch ludzi podobnych z wyglądu do poszukiwanych. Miał wrażenie, że to porządni rzemieślnicy wyższej kategorii — malarze szyldów lub malarze pokojowi.",
+  "ua": "«Ось звідки вони приїхали, сер» — продовжував він. — «Носій, що приймав квитки в Maze Hill, пам'ятає, що бар'єр перейшли двоє пасажирів, схожих на описаних. Здалося йому, що це порядні ремісники вищої категорії — мальври вивісок або фарбувальники кімнат.",
+  "para": 90,
+  "start": 2353.56
+ },
+ {
+  "en": "The big man got out of a third-class compartment backward, with a bright tin can in his hand. On the platform he gave it to carry to the fair young fellow who followed him. All this agrees exactly with what the old woman told the police sergeant in Greenwich.”",
+  "pl": "Ten duży wysiadł tyłem z przedziału trzeciej klasy, trzymając w ręku jasną blaszankę. Na peronie wręczył ją młodemu blondynowi, który wysiadł za nim. Wszystko zgadza się dokładnie z tym, co staruszka mówiła policjantowi w Greenwich.",
+  "ua": "Великий чоловік вийшов із третього класу задом наперед, тримаючи в руку блискучу бляшанку. На пероні він віддав її нести білявому юнакові, який вийшов за ним. Усе це точно збігається з тим, що старенька розповіла поліцейському сержантові в Грінвічі».",
+  "para": 90,
+  "start": 2371.84
+ },
+ {
+  "en": "The Assistant Commissioner, still with his face turned to the window, expressed his doubt as to these two men having had anything to do with the outrage. All this theory rested upon the utterances of an old charwoman who had been nearly knocked down by a man in a hurry.",
+  "pl": "Nadinspektor, ciągle zwrócony ku oknu, wyraził powątpiewanie, aby ci dwaj ludzie mieli coś wspólnego z zamachem. Cała hipoteza została zbudowana na zeznaniach starej posługaczki, której śpieszący się człowiek o mało co nie przewrócił.",
+  "ua": "Надінспектор, досі з обличчям, зверненим до вікна, висловив сумнів, чи мали ті двоє щось спільне зі замахом. Уся ця теорія спиралася на слова старої прибиральниці, яку чоловік, що поспішав, ледь не звалив з ніг.",
+  "para": 91,
+  "start": 2386.18
+ },
+ {
+  "en": "Not a very substantial authority indeed, unless on the ground of sudden inspiration, which was hardly tenable.",
+  "pl": "Nie było to źródło pewne, chyba że na staruszkę zstąpiło nagle natchnienie, co przecież trudno przypuszczać.",
+  "ua": "Джерело було не дуже надійне, якщо не вважати раптового натхнення, що його важко визнати слушним.",
+  "para": 91,
+  "start": 2400.0
+ },
+ {
+  "en": "“Frankly now, could she have been really inspired?” he queried, with grave irony, keeping his back to the room, as if entranced by the contemplation of the town’s colossal forms half lost in the night.",
+  "pl": "— Niechże pan powie szczerze, czyżby naprawdę dostąpiła natchnienia? — zapytał nadinspektor z ironiczną powagą, stojąc wciąż tyłem do pokoju, jakby go urzekł olbrzymi zarys miasta na wpół zagubionego wśród nocy.",
+  "ua": "«Скажіть чесно: чи вона справді могла бути натхненною?» — спитав він із серйозною іронією, тримаючи спину до кімнати, немов зачарований спогляданням колосальних обрисів міста, напівзагублених у ночі.",
+  "para": 92,
+  "start": 2408.04
+ },
+ {
+  "en": "He did not even look round when he heard the mutter of the word “Providential” from the principal subordinate of his department, whose name, printed sometimes in the papers, was familiar to the great public as that of one of its zealous and hardworking protectors. Chief Inspector Heat raised his voice a little.",
+  "pl": "Nie odwrócił się nawet gdy usłyszał słowo „opatrznościowy” wypowiedziane przez najwybitniejszego ze swych podwładnych, urzędnika o nazwisku pojawiającym się czasem w gazetach i znanym szerokiej publiczności jako nazwisko jednego z jej gorliwych, pracowitych obrońców. Komisarz podniósł z lekka głos.",
+  "ua": "Він навіть не обернувся, коли почув бурмотіння слова «провидінне» з уст найвизначнішого зі своїх підлеглих — чиновника, чиє ім'я, часом друковане в газетах, було знайоме широкій публіці як ім'я одного з її ревних і працьовитих захисників. Комісар Хіт трохи підняв голос.",
+  "para": 92,
+  "start": 2421.26
+ },
+ {
+  "en": "“Strips and bits of bright tin were quite visible to me,” he said. “That’s a pretty good corroboration.”",
+  "pl": "— Widziałem wyraźnie strzępy i odłamki jasnej blachy — rzekł. — To potwierdzenie dość ważne.",
+  "ua": "«Стрічки й уламки блискучої бляхи були мені цілком видимі» — сказав він. — «Це досить вагоме підтвердження».",
+  "para": 93,
+  "start": 2440.86
+ },
+ {
+  "en": "“And these men came from that little country station,” the Assistant Commissioner mused aloud, wondering. He was told that such was the name on two tickets out of three given up out of that train at Maze Hill.",
+  "pl": "— A ci dwaj mężczyźni przyjechali z tamtej wiejskiej stacyjki — zastanawiał się nadinspektor, snując głośno swe rozważania. Komisarz oświadczył mu na to, że nazwa owej stacyjki widniała na dwóch biletach z ogólnej liczby trzech oddanych w Maze Hill przez pasażerów tego pociągu.",
+  "ua": "«І ці двоє чоловіків приїхали з тієї маленької сільської станції» — міркував уголос надінспектор, дивуючись. Йому відповіли, що таке ім'я стояло на двох квитках із трьох, зданих у Maze Hill із того потяга.",
+  "para": 94,
+  "start": 2447.92
+ },
+ {
+  "en": "The third person who got out was a hawker from Gravesend well known to the porters. The Chief Inspector imparted that information in a tone of finality with some ill humour, as loyal servants will do in the consciousness of their fidelity and with the sense of the value of their loyal exertions.",
+  "pl": "Trzecim pasażerem był przekupień z Gravesend, dobrze znany tragarzom. Komisarz udzielił tej informacji tonem niedopuszczającym sprzeciwu i nieco zirytowanym, jak to się zdarza wiernym sługom, którzy mają poczucie swego oddania i wartości swych uczciwych wysiłków.",
+  "ua": "Третім пасажиром був якесь коробейник із Gravesend, добре відомий носіям. Комісар повідомив це невідпорним тоном і трохи незадоволено, як роблять вірні слуги, свідомі своєї відданості й вартості своїх чесних зусиль.",
+  "para": 94,
+  "start": 2466.02
+ },
+ {
+  "en": "And still the Assistant Commissioner did not turn away from the darkness outside, as vast as a sea.",
+  "pl": "Lecz nadinspektor patrzył dalej przez szybę w mrok rozległy jak morze.",
+  "ua": "А надінспектор усе ще не відвертався від темряви за склом, просторої, як море.",
+  "para": 94,
+  "start": 2483.03
+ },
+ {
+  "en": "“Two foreign anarchists coming from that place,” he said, apparently to the windowpane. “It’s rather unaccountable.”",
+  "pl": "— Dwóch obcych anarchistów przybywających z tej miejscowości — rzekł jak gdyby do okna. — Trudno to sobie wytłumaczyć.",
+  "ua": "«Двоє чужоземних анархістів із того місця» — сказав він, наче до віконного скла. — «Це досить нез'ясовно».",
+  "para": 95,
+  "start": 2487.83
+ },
+ {
+  "en": "“Yes, sir. But it would be still more unaccountable if that Michaelis weren’t staying in a cottage in the neighbourhood.”",
+  "pl": "— Tak, panie nadinspektorze. Ale byłoby to jeszcze trudniejsze do zrozumienia, gdyby Michaelis nie przebywał w willi położonej niedaleko stacji.",
+  "ua": "«Так, сере. Але було б ще нез'ясованіше, якби той Міхаеліс не перебував у хатці поблизу станції».",
+  "para": 96,
+  "start": 2496.15
+ },
+ {
+  "en": "At the sound of that name, falling unexpectedly into this annoying affair, the Assistant Commissioner dismissed brusquely the vague remembrance of his daily whist party at his club.",
+  "pl": "Na dźwięk nazwiska, które padło niespodzianie w związku z tą kłopotliwą sprawą, nadinspektor pożegnał się nagle z majaczącą mu niejasno perspektywą codziennej partii wista⁴⁹ w klubie.",
+  "ua": "На звук того ім'я, яке несподівано впало в цю клопітну справу, надінспектор раптово відігнав розмите уявлення про щоденну партію віста⁴⁹ у своєму клубі.",
+  "para": 97,
+  "start": 2505.48
+ },
+ {
+  "en": "It was the most comforting habit of his life, in a mainly successful display of his skill without the assistance of any subordinate.",
+  "pl": "Było to najbardziej krzepiące z jego przyzwyczajeń — dawało mu pole do popisywania się zręcznością ze skutkiem przeważnie pozytywnym i to bez żadnej pomocy podwładnych.",
+  "ua": "Це була найвтішніша звичка його життя — давала йому поле для похизування спритністю з переважно позитивним результатом і то без жодної допомоги підлеглих.",
+  "para": 97,
+  "start": 2516.34
+ },
+ {
+  "en": "He entered his club to play from five to seven, before going home to dinner, forgetting for those two hours whatever was distasteful in his life, as though the game were a beneficent drug for allaying the pangs of moral discontent.",
+  "pl": "Grywał w klubie od piątej do siódmej, przed pójściem do domu na obiad, zapominając przez te dwie godziny o wszystkich przykrościach swego życia, jakby gra w karty stanowiła dobroczynny narkotyk uśmierzający męki duchowego niedosytu.",
+  "ua": "Він приходив до клубу грати з п'ятої до сьомої, перш ніж піти додому до обіду, забуваючи на ті дві години все огидне у своєму житті, немов гра була благодійним наркотиком для полегшення мук морального невдоволення.",
+  "para": 97,
+  "start": 2526.4
+ },
+ {
+  "en": "His partners were the gloomily humorous editor of a celebrated magazine; a silent, elderly barrister with malicious little eyes; and a highly martial, simple-minded old Colonel with nervous brown hands. They were his club acquaintances merely.",
+  "pl": "Partnerami jego byli: wydawca sławnego przeglądu, odznaczający się ponurym dowcipem, małomówny, podeszły wiekiem adwokat z małymi złośliwymi oczkami oraz bardzo marsowy, prostoduszny, stary pułkownik o nerwowych brunatnych rękach. Znajomości te były ściśle klubowe.",
+  "ua": "Його партнерами бувіректира славного журналу з понурим гумором; мовчазний, літній адвокат злими вузенькими оченятами; і вельми суворий, простодушний старий полковник із нервовими брунатними руками. Ці знайомства були суворо клубними.",
+  "para": 97,
+  "start": 2541.14
+ },
+ {
+  "en": "He never met them elsewhere except at the card-table. But they all seemed to approach the game in the spirit of co-sufferers, as if it were indeed a drug against the secret ills of existence;",
+  "pl": "Nadinspektor spotykał się z tymi ludźmi wyłącznie przy kartach. Ale wszyscy czterej przystępowali do gry w charakterze, rzekłbyś, współcierpiętników, jakby karty były zaiste narkozą na tajne dolegliwości życia;",
+  "ua": "Він не зустрічався з цими людьми більше ніде, окрім картярського столу. Але всі четверо ставилися до гри в дусі співстраждальників, немов гра справді була наркозом проти таємних недуг існування;",
+  "para": 97,
+  "start": 2560.38
+ },
+ {
+  "en": "and every day as the sun declined over the countless roofs of the town, a mellow, pleasurable impatience, resembling the impulse of a sure and profound friendship, lightened his professional labours.",
+  "pl": "i co dzień, w chwili gdy słońce staczało się za niezliczone dachy miasta, słodka, przyjemna niecierpliwość, przypominająca tęsknotę za serdecznym i niezawodnym przyjacielem, przynosiła nadinspektorowi ulgę w zawodowej pracy.",
+  "ua": "і щодня, коли сонце скочувалося за безліч дахів міста, солодка, приємна нетерплячість, схожа на потяг до щирого й вірного друга, полегшувала його професійні клопоти.",
+  "para": 97,
+  "start": 2573.1
+ },
+ {
+  "en": "And now this pleasurable sensation went out of him with something resembling a physical shock, and was replaced by a special kind of interest in his work of social protection﻿—an improper sort of interest,",
+  "pl": "A teraz to przyjemne uczucie zagasło w nim, przejmując go jak gdyby fizycznym wstrząsem, i zostało zastąpione przez osobliwe zainteresowanie dla własnych zajęć polegających na opiekowaniu się społeczeństwem — zainteresowanie niewłaściwe;",
+  "ua": "А тепер це приємне відчуття згасло в нім, пройнявши його ніби фізичним потрясінням, і його замінило особливе зацікавлення власною працею соціального захисту — неналежне зацікавлення;",
+  "para": 97,
+  "start": 2588.42
+ },
+ {
+  "en": "which may be defined best as a sudden and alert mistrust of the weapon in his hand.",
+  "pl": "najlepiej można by je określić jako nagłą i czujną nieufność do broni trzymanej w ręku.",
+  "ua": "найкраще його можна визначити як раптову й пильну недовіру до зброї в руці.",
+  "para": 97,
+  "start": 2603.72
+ }
+];
+const ANNOTATIONS = {"47": {"term": "Kaligula", "definition": "*Kaligula*, właśc. *Gaius Julius Caesar Augustus Germanicus* (12–41) — cesarz rzym. (od 37), znany z despotycznych i brutalnych rządów; *pragnął, aby rzymski senat miał tylko jedną głowę*: wypowiedź Kaliguli dotyczyła nie senatu, lecz ludu rzymskiego, tłumów zgromadzonych podczas igrzysk cyrkowych. [przypis edytorski]", "translation": "римський імператор (правив із 37 року), відомий деспотичним і жорстоким правлінням; фраза «хотів, щоб у римського сенату була лише одна голова» стосувалася не сенату, а римського народу — натовпу на циркових іграх. [редакторська примітка]"}, "48": {"term": "tuba głosowa", "definition": "*tuba głosowa* — urządzenie złożone z dwóch stożków połączonych rurą powietrzną, przez które mowę można przenosić pomiędzy pomieszczeniami; w XIX w. używane do komunikacji wewnętrznej na statkach i w biurach; wyparte przez telefon. [przypis edytorski]", "translation": "пристрій із двох конусів, з’єднаних повітряною трубкою, який передавав голос між приміщеннями; у XIX столітті його використовували для внутрішнього зв’язку на кораблях і в офісах, згодом витіснив телефон. [редакторська примітка]"}, "49": {"term": "wist", "definition": "*wist* — gra karciana dla czterech osób, popularna w XVIII i XIX w., poprzednik brydża. [przypis edytorski]", "translation": "карткова гра для чотирьох гравців, популярна у XVIII–XIX століттях; попередник бриджу. [редакторська примітка]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into audio/chapter-05.webm, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  1.70,    // [  0] conf 1.00  "Profesor skręcił w ulicę po lewej stronie…"
+  20.68,   // [  1] conf 1.00  "stoicyzmu jego myśli nie mogło zakłócić ż…"
+  38.98,   // [  2] conf 0.91  "Profesor pochodził ze skromnego środowisk…"
+  55.40,   // [  3] conf 0.97  "Jego niezmierna, prawie ascetyczna czysto…"
+  71.66,   // [  4] conf 1.00  "Uznał, że na tej podstawie ma prawo do ni…"
+  75.28,   // [  5] conf 0.94  "Jego ojciec, wątły, posępny zapaleniec o…"
+  91.40,   // [  6] conf 1.00  "Synowi, mającemu silne poczucie indywidua…"
+  112.51,  // [  7] conf 1.00  "osądził, że jego etyka jest sztuczna, zni…"
+  124.09,  // [  8] conf 1.00  "Profesor uznał swoje oburzenie za przyczy…"
+  132.51,  // [  9] conf 1.00  "Unicestwić ogólną wiarę w praworządność —…"
+  151.79,  // [ 10] conf 0.94  "Profesor był przeświadczony, że działa na…"
+  166.09,  // [ 11] conf 1.00  "albowiem najzagorzalsi z rewolucjonistów…"
+  181.79,  // [ 12] conf 1.00  "Zagubiony w tłumie, drobny i niepozorny,…"
+  195.67,  // [ 13] conf 0.93  "po chwili jednak dokuczył mu widok jezdni…"
+  208.31,  // [ 14] conf 1.00  "lecz wokół siebie, dalej i dalej, aż po k…"
+  224.01,  // [ 15] conf 0.94  "prąc naprzód ślepo, miarowo, pochłonięte…"   // start word fuzzy-corrected
+  231.95,  // [ 16] conf 0.97  "Niedostępne dla strachu! Tego się lękał n…"
+  247.33,  // [ 17] conf 1.00  "Podobne chwile nawiedzają wszystkich tych…"
+  262.75,  // [ 18] conf 1.00  "Profesor szedł więc i myślał z głęboką ra…"
+  274.09,  // [ 19] conf 1.00  "Aby dotrzeć prędzej do miejsca, gdzie móg…"
+  289.51,  // [ 20] conf 0.94  "z ich ślepych okien zasnutych kurzem wygl…"
+  297.55,  // [ 21] conf 1.00  "Na wprost jedynej gazowej latarni rozwier…"
+  315.31,  // [ 22] conf 1.00  "Przed wejściem do sklepu stała nieszczęsn…"
+  322.71,  // [ 23] conf 1.00  "Jedyny człowiek idący uliczką naprzeciw P…"
+  330.81,  // [ 24] conf 0.88  "— Hallo! — rzekł i stanął czujnie trochę…"   // start word fuzzy-corrected
+  334.57,  // [ 25] conf 0.97  "Profesor już się był zatrzymał, na wpół s…"
+  348.69,  // [ 26] conf 1.00  "okrągłe okulary w ciężkiej oprawie nadawa…"
+  354.35,  // [ 27] conf 0.97  "Spotkali się jakby w bocznym korytarzu do…"
+  369.91,  // [ 28] conf 1.00  "W mrocznych plamach oczodołów błyskały pr…"
+  381.62,  // [ 29] conf 1.00  "— Nie szukałem pana — rzekł krótko."
+  385.07,  // [ 30] conf 0.95  "Profesor ani drgnął. Zmieszane hałasy olb…"
+  397.59,  // [ 31] conf 0.90  "— Nie spieszy się pan do domu? — zapytał…"
+  401.75,  // [ 32] conf 1.00  "Mały człowieczek o chorowitym wyglądzie,…"
+  413.99,  // [ 33] conf 0.97  "Był szczęśliwszy niż Kaligula⁴⁷, który dl…"
+  430.51,  // [ 34] conf 1.00  "Miał przed sobą swych wrogów i upojony py…"
+  445.61,  // [ 35] conf 0.93  "Było to istotnie spotkanie przypadkowe. K…"
+  457.59,  // [ 36] conf 0.97  "Przede wszystkim bardzo przykry był fakt…"
+  474.37,  // [ 37] conf 0.92  "A składał go z wielkim zadowoleniem, poni…"
+  487.89,  // [ 38] conf 0.97  "a oświadczył to w pełni poczucia, że jest…"
+  504.03,  // [ 39] conf 0.97  "Istotna mądrość, która niczego nie jest p…"
+  521.05,  // [ 40] conf 1.00  "— Nie ma wśród nich ani jednego, którego…"
+  534.51,  // [ 41] conf 0.94  "Były to właśnie słowa, które urzędnik o r…"
+  541.53,  // [ 42] conf 1.00  "Dygnitarz zaufał temu oświadczeniu, zgodn…"
+  547.77,  // [ 43] conf 1.00  "Mądrość dygnitarza była z rodzaju mądrośc…"
+  563.49,  // [ 44] conf 1.00  "Choćby strzeżono danego anarchistę krok z…"
+  576.53,  // [ 45] conf 0.96  "Lecz wysoki urzędnik uśmiechnął się pod w…"
+  589.64,  // [ 46] conf 0.97  "Nie było to jedyne wspomnienie mącące zwy…"
+  605.28,  // [ 47] conf 0.94  "Instynkt szczęściarza nauczył go już dawn…"
+  618.60,  // [ 48] conf 0.96  "Otworzył szeroko oczy i wykrzyknął: „To n…"
+  630.96,  // [ 49] conf 0.97  "Komisarz poczuł się niejako zmiażdżony po…"
+  646.74,  // [ 50] conf 1.00  "— Jedno mogę od razu powiedzieć: żaden z…"
+  652.14,  // [ 51] conf 1.00  "Opierał się na swym rozsądku dobrego dete…"
+  662.52,  // [ 52] conf 1.00  "Z drugiej strony powiedział sobie w duchu…"
+  677.80,  // [ 53] conf 1.00  "Ton, jakim przemawiał nadinspektor, był t…"
+  683.30,  // [ 54] conf 1.00  "A przy tym od rannego śniadania nie miał…"
+  687.66,  // [ 55] conf 1.00  "Zaraz po tej rozmowie wyruszył na miejsce…"
+  703.04,  // [ 56] conf 1.00  "Nie był przyzwyczajony, jak lekarze, do r…"
+  716.35,  // [ 57] conf 1.00  "Druga nieprzemakalna płachta okrywała ten…"
+  732.05,  // [ 58] conf 0.96  "Trzeba było nie byle jakiej siły ducha, ż…"
+  750.01,  // [ 59] conf 1.00  "— On tu jest cały. Pozbierałem go co do k…"
+  757.56,  // [ 60] conf 0.95  "Ów policjant znalazł się pierwszy na miej…"   // start word fuzzy-corrected
+  775.98,  // [ 61] conf 1.00  "— Gnałem co sił w nogach — powtarzał raz…"
+  779.78,  // [ 62] conf 0.93  "Komisarz Heat nie przerywał mu, zginając…"
+  798.63,  // [ 63] conf 0.95  "— Pan użył do tego szufli — rzekł Heat, s…"
+  810.04,  // [ 64] conf 0.92  "— W jednym miejscu nie mogłem sobie porad…"
+  821.34,  // [ 65] conf 1.00  "Komisarz, pochylony ostrożnie nad stołem,…"
+  838.56,  // [ 66] conf 0.96  "Kimkolwiek był ten człowiek, zginął w jed…"
+  849.52,  // [ 67] conf 0.96  "Komisarz Heat, obcy fizjologii i jeszcze…"
+  860.82,  // [ 68] conf 1.00  "Przypomniał sobie wszystko, co czytał w p…"
+  876.38,  // [ 69] conf 0.97  "Niepojęte tajemnice świadomego istnienia…"
+  891.48,  // [ 70] conf 1.00  "Jednocześnie zaś wpatrywał się uważnie w…"
+  904.68,  // [ 71] conf 0.93  "A przez cały ten czas wyćwiczona czujność…"
+  919.42,  // [ 72] conf 0.97  "— Miał jasne włosy — stwierdził spokojnie…"
+  935.82,  // [ 73] conf 1.00  "Zauważyła dwóch ludzi wychodzących ze sta…"
+  951.43,  // [ 74] conf 1.00  "Policjant urwał."
+  953.30,  // [ 75] conf 0.97  "— Pan zna tę kobietę? — mruknął komisarz,…"
+  965.36,  // [ 76] conf 0.98  "— Tak. Ona jest gospodynią u byłego właśc…"
+  986.64,  // [ 77] conf 1.00  "Najpierw podniosłem nogi, jedną, a potem…"
+  994.01,  // [ 78] conf 1.00  "Policjant umilkł; przebłysk naiwnego, peł…"
+  1001.33, // [ 79] conf 1.00  "— On się potknął — oświadczył stanowczo.…"
+  1017.04, // [ 80] conf 0.93  "Słowa „tożsamość nieustalona” rozlegały s…"
+  1030.60, // [ 81] conf 0.97  "A ustalając tożsamość tego człowieka, pra…"
+  1049.46, // [ 82] conf 0.89  "Aby zadosyćuczynić sumieniu, komisarz Hea…"
+  1067.48, // [ 83] conf 1.00  "— Aksamitny kołnierz. Ciekawe, że starusz…"
+  1087.18, // [ 84] conf 0.97  "W tej chwili wyćwiczone zmysły Heata prze…"
+  1102.36, // [ 85] conf 0.95  "Nagłym ruchem oderwał go i wetknął do kie…"
+  1109.50, // [ 86] conf 1.00  "— Zakryć to — rozkazał krótko towarzysząc…"
+  1118.68, // [ 87] conf 0.98  "Pochłonięty myślami, jechał pociągiem w s…"
+  1138.46, // [ 88] conf 0.97  "I jak każdy przeciętny człowiek, którego…"
+  1152.28, // [ 89] conf 1.00  "Istotna wartość powodzenia jest względna,…"
+  1163.66, // [ 90] conf 0.91  "Komisarz nie uważał już, aby było wskazan…"
+  1177.62, // [ 91] conf 0.98  "Wydział jest dla swych urzędników czymś s…"
+  1194.98, // [ 92] conf 1.00  "Wskutek łaskawego zrządzenia natury żaden…"
+  1213.18, // [ 93] conf 1.00  "Będąc organizmem beznamiętnym, nie może b…"
+  1221.76, // [ 94] conf 0.90  "Komisarz Heat wysiadł z pociągu w zadumie…"
+  1234.72, // [ 95] conf 0.93  "W takim to stanie ducha Heat, zgłodniały,…"
+  1254.02, // [ 96] conf 1.00  "nie myślał o żadnym konkretnym anarchiści…"
+  1256.32, // [ 97] conf 0.98  "Ta skomplikowana sprawa narzuciła mu myśl…"
+  1272.22, // [ 98] conf 0.97  "Na początku swojej kariery komisarz Heat…"
+  1290.08, // [ 99] conf 1.00  "Jest to pewien rodzaj ludzkiej pracy, ocz…"
+  1305.30, // [100] conf 1.00  "Ta praca różni się w praktyce od innych r…"
+  1316.46, // [101] conf 0.94  "niebezpieczeństwo grożące złodziejowi pol…"
+  1332.84, // [102] conf 0.96  "Poddawali się z pewną rezygnacją surowym…"
+  1343.38, // [103] conf 1.00  "jednak, uwzględniwszy tę różnicę, był w s…"
+  1357.48, // [104] conf 0.97  "Obaj poddają się tym samym prawom, znają…"
+  1371.32, // [105] conf 1.00  "Obaj są wytworem tego samego mechanizmu,…"
+  1386.66, // [106] conf 0.91  "Umysł komisarza Heata był niedostępny dla…"
+  1406.32, // [107] conf 0.93  "Czuł się tam szanowany i podziwiany. A te…"
+  1426.48, // [108] conf 0.98  "Złożywszy hołd temu, co normalne w ustroj…"
+  1445.04, // [109] conf 1.00  "I powtórzył silnym, stanowczym głosem, pr…"
+  1450.48, // [110] conf 1.00  "— Mówię panu, że pana nie potrzebuję."
+  1453.70, // [111] conf 0.91  "Anarchista stał dalej bez ruchu. Niemy, s…"
+  1469.91, // [112] conf 1.00  "— Tymczasem jeszcze nie. Kiedy przyjdzie…"
+  1475.55, // [113] conf 0.98  "Były to jedyne właściwe słowa, zgodne z t…"
+  1493.77, // [114] conf 1.00  "— Nie wątpię, że gazety poświęcą panu wów…"
+  1504.27, // [115] conf 1.00  "I kto wie, czy się pan nie narazi na tę p…"
+  1515.85, // [116] conf 0.97  "Komisarz Heat czuł należytą pogardę dla u…"
+  1531.33, // [117] conf 0.97  "Mrok wąskiej uliczki nabrał czegoś złowie…"
+  1549.99, // [118] conf 1.00  "odniósł bowiem wrażenie, że gdyby miał ni…"
+  1565.19, // [119] conf 0.95  "Gwar miejskiego życia, zgłuszony turkot k…"
+  1582.80, // [120] conf 1.00  "Ale był także mężczyzną i nie mógł puścić…"
+  1589.33, // [121] conf 1.00  "— Wszystko to są strachy na Lachy — rzekł…"
+  1596.92, // [122] conf 1.00  "To było powiedziane bardzo dobrze, bez po…"
+  1603.14, // [123] conf 0.97  "— Nie wątpię o tym — brzmiała odpowiedź —…"
+  1619.46, // [124] conf 1.00  "Nie ma nawet kota w pobliżu, a z tych sta…"
+  1636.40, // [125] conf 0.96  "— Pan nie wie, do kogo pan mówi — rzekł k…"
+  1647.03, // [126] conf 1.00  "— Aha! Więc to o prawidła gry panu chodzi!"
+  1651.33, // [127] conf 0.94  "— Zapewniam pana, że w końcu nasza strona…"
+  1667.69, // [128] conf 1.00  "Na tej drodze nigdy nic nie osiągniecie."
+  1671.40, // [129] conf 1.00  "— A tymczasem wy nieźle na swej grze wych…"
+  1686.32, // [130] conf 0.87  "— Do czegóż więc dążycie? — spytał komisa…"
+  1694.62, // [131] conf 0.95  "Wzorowy anarchista uśmiechnął się w odpow…"
+  1704.72, // [132] conf 1.00  "— Bez względu na to jaki jest wasz cel, z…"
+  1720.08, // [133] conf 0.95  "Zastygłe w uśmiechu wargi Profesora drgnę…"
+  1729.21, // [134] conf 0.97  "— Nie wierzy mi pan, co? Więc niech się p…"
+  1745.27, // [135] conf 1.00  "Poczucie, że za plecami tego człowieka tk…"
+  1765.69, // [136] conf 1.00  "Wargi Profesora drżały jakiś czas, nim zd…"
+  1771.66, // [137] conf 1.00  "— Robię swoje lepiej niż wy."
+  1774.62, // [138] conf 0.95  "— Dość tego — przerwał śpiesznie komisarz…"
+  1793.64, // [139] conf 0.96  "szedł bezsilnym krokiem wciąż dalej i dal…"
+  1802.10, // [140] conf 0.97  "Natomiast komisarz Heat, popatrzywszy za…"
+  1818.82, // [141] conf 1.00  "Mieszkańcy olbrzymiego miasta, ludność ca…"
+  1834.68, // [142] conf 1.00  "Świadomość powszechnego poparcia dodała m…"
+  1840.22, // [143] conf 0.97  "Najbliższe zadanie oczekujące komisarza p…"
+  1856.25, // [144] conf 0.97  "Mówiąc szczerze, komisarz Heat nie miał w…"
+  1870.57, // [145] conf 0.97  "że jest nieobyczajnością, której nie przy…"
+  1886.75, // [146] conf 0.94  "Inspektor Heat przypomniał sobie Profesor…"
+  1895.00, // [147] conf 1.00  "— Wariat."
+  1896.34, // [148] conf 1.00  "Pościg za złodziejami to zupełnie inna sp…"
+  1911.96, // [149] conf 0.97  "I właśnie to przejęło Heata niesmakiem. C…"
+  1927.60, // [150] conf 1.00  "Przebiegał myślą wszystkich anarchistów z…"
+  1938.95, // [151] conf 1.00  "W centrali komisarz został wpuszczony od…"
+  1954.67, // [152] conf 0.95  "Tuby głosowe⁴⁸ podobne do węży były przym…"
+  1973.31, // [153] conf 1.00  "Oświadczył, że raporty już wpłynęły; spra…"
+  1980.35, // [154] conf 1.00  "Spuścił oczy, podpisał się szybko na dwóc…"
+  1995.69, // [155] conf 1.00  "— Sądzę, że pan miał rację — rzekł nadins…"
+  2008.78, // [156] conf 1.00  "Ale znów jeśli chodzi o publiczność, spra…"
+  2015.04, // [157] conf 0.94  "Nadinspektor mówił powoli, rzekłbyś, ostr…"
+  2029.73, // [158] conf 1.00  "— Chyba że przywiózł mi pan z Greenwich c…"
+  2035.25, // [159] conf 1.00  "Komisarz zaczął natychmiast zdawać sprawę…"
+  2052.97, // [160] conf 0.90  "Gdy w końcu pochylił z wolna czarną jak h…"
+  2061.03, // [161] conf 0.93  "Komisarz Heat czekał, na pozór przeżuwają…"
+  2073.11, // [162] conf 1.00  "— Sądzi pan, że tam było dwóch ludzi?"
+  2075.92, // [163] conf 0.98  "Zdaniem komisarza było to więcej niż praw…"
+  2094.14, // [164] conf 1.00  "Zdaje się, że przyprowadził na miejsce to…"
+  2099.24, // [165] conf 0.96  "Zestawiwszy czas, w którym staruszka widz…"
+  2119.90, // [166] conf 0.92  "— Doszczętnie w całym tego słowa znaczeni…"
+  2126.42, // [167] conf 1.00  "Komisarz opisał w paru jędrnych słowach w…"
+  2131.00, // [168] conf 1.00  "— Komisja stwierdzająca śmierć będzie mia…"
+  2136.72, // [169] conf 1.00  "Nadinspektor odsłonił oczy."
+  2139.90, // [170] conf 1.00  "— Nie będziemy mogli dać im żadnych wyjaś…"
+  2145.36, // [171] conf 1.00  "Spojrzał w górę i przez chwilę śledził wy…"
+  2160.34, // [172] conf 1.00  "Jego kariera rozpoczęła się w kolonii pod…"
+  2178.50, // [173] conf 1.00  "Sądząc po światowemu, stanowili z żoną ba…"
+  2196.97, // [174] conf 1.00  "Czuł się zależny od zbyt wielu podwładnyc…"
+  2210.17, // [175] conf 1.00  "Nie ulega wątpliwości, że przez brak dośw…"
+  2231.70, // [176] conf 1.00  "Jałowość pracy biurowej gnębiła go szczeg…"
+  2239.08, // [177] conf 0.98  "Wstał, rozprostował się w całej długości…"   // start word fuzzy-corrected
+  2258.94, // [178] conf 1.00  "Dzień bardzo był przykry, najpierw zdławi…"
+  2272.62, // [179] conf 0.94  "A górnolotne pretensje ludzkości, gnębion…"
+  2284.29, // [180] conf 0.97  "„Co za ohydny czas!” — rozmyślał nadinspe…"
+  2305.52, // [181] conf 1.00  "— Czy kazał pan śledzić tamtego drugiego…"
+  2310.84, // [182] conf 0.97  "Nie wątpił, że wszystko, co trzeba, zosta…"
+  2326.84, // [183] conf 0.98  "Kilka pytań zwróconych do urzędników odbi…"
+  2345.46, // [184] conf 0.94  "Więc też komisarz odrzekł, że wszystko to…"
+  2353.56, // [185] conf 0.97  "— Stamtąd właśnie przyjechali — ciągnął d…"
+  2371.84, // [186] conf 1.00  "Ten duży wysiadł tyłem z przedziału trzec…"
+  2386.18, // [187] conf 0.94  "Nadinspektor, ciągle zwrócony ku oknu, wy…"
+  2400.00, // [188] conf 1.00  "Nie było to źródło pewne, chyba że na sta…"
+  2408.04, // [189] conf 1.00  "— Niechże pan powie szczerze, czyżby napr…"
+  2421.26, // [190] conf 1.00  "Nie odwrócił się nawet gdy usłyszał słowo…"
+  2440.86, // [191] conf 1.00  "— Widziałem wyraźnie strzępy i odłamki ja…"
+  2447.92, // [192] conf 0.98  "— A ci dwaj mężczyźni przyjechali z tamte…"
+  2466.02, // [193] conf 1.00  "Trzecim pasażerem był przekupień z Graves…"
+  2483.03, // [194] conf 0.91  "Lecz nadinspektor patrzył dalej przez szy…"
+  2487.83, // [195] conf 1.00  "— Dwóch obcych anarchistów przybywających…"
+  2496.15, // [196] conf 1.00  "— Tak, panie nadinspektorze. Ale byłoby t…"
+  2505.48, // [197] conf 0.92  "Na dźwięk nazwiska, które padło niespodzi…"
+  2516.34, // [198] conf 0.96  "Było to najbardziej krzepiące z jego przy…"
+  2526.40, // [199] conf 1.00  "Grywał w klubie od piątej do siódmej, prz…"
+  2541.14, // [200] conf 1.00  "Partnerami jego byli: wydawca sławnego pr…"
+  2560.38, // [201] conf 1.00  "Nadinspektor spotykał się z tymi ludźmi w…"
+  2573.10, // [202] conf 1.00  "i co dzień, w chwili gdy słońce staczało…"
+  2588.42, // [203] conf 0.93  "A teraz to przyjemne uczucie zagasło w ni…"
+  2603.72, // [204] conf 1.00  "najlepiej można by je określić jako nagłą…"
+];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const AUDIO_URL = "audio/chapter-05.webm";
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+let audioObjectUrl = null;
+async function loadAudio(url) {
+  // Browsers block fetch() from file:// pages; direct media loading still works there.
+  if (location.protocol === "file:") {
+    audio.src = url;
+    audio.load();
+    return;
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Audio request failed (${response.status})`);
+    const blob = await response.blob();
+    audioObjectUrl = URL.createObjectURL(blob);
+    audio.src = audioObjectUrl;
+    audio.load();
+  } catch (error) {
+    console.error("Could not load chapter audio:", error);
+    showBanner();
+  }
+}
+loadAudio(AUDIO_URL);
+window.addEventListener("pagehide", () => {
+  if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+}, { once: true });
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  enOpen: false,
+  uaOpen: false,
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function appendTooltipText(parent, text) {
+  // Render table emphasis safely; never interpret annotation cells as HTML.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function setStudyText(element, text) {
+  // Preserve unsupported superscripts literally, and decorate known note numbers.
+  const footnote = /<sup>(\d+)<\/sup>|([⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g;
+  const superscriptDigits = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const numberValue = match[1] || Array.from(match[2], digit => String(superscriptDigits.indexOf(digit))).join("");
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[numberValue];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${numberValue}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = numberValue;
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      const definition = document.createElement("span");
+      definition.className = "note-pl";
+      appendTooltipText(definition, note.definition);
+      tooltip.appendChild(definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = numberValue;
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- EN / UA toggle chips --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const enChip = document.createElement("button");
+    enChip.type = "button";
+    enChip.className = "chip";
+    enChip.textContent = "EN ▾";
+    enChip.setAttribute("aria-expanded", "false");
+    enChip.setAttribute("aria-controls", "en-" + i);
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+
+    toggles.append(enChip, uaChip);
+
+    /* --- hidden EN block --- */
+    const enBox = document.createElement("div");
+    enBox.className = "stack en";
+    enBox.id = "en-" + i;
+    enBox.hidden = true;
+    const enLbl = document.createElement("span");
+    enLbl.className = "lbl";
+    enLbl.textContent = "English";
+    const enP = document.createElement("p");
+    enP.lang = "en";
+    setStudyText(enP, unit.en);
+    enBox.append(enLbl, enP);
+
+    /* --- hidden UA block --- */
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, enBox, uaBox, pbar);
+
+    enChip.addEventListener("click", () => setEn(i, enBox.hidden));
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, enChip, uaChip, enBox, uaBox, pbar: pbar.firstElementChild };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: ${AUDIO_URL}`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = (box.classList.contains("en") ? "EN " : "UA ") + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setEn(i, open) { setChip(els[i].enChip, els[i].enBox, open); }
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+function markPlaying() {
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    const nxt = nextPlayable(from);
+    if (nxt !== -1) {
+      playSection(nxt);
+      scrollToCard(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const toggleEnEl = document.getElementById("toggleEn");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("change", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  store.set(LS.rate, rateEl.value);
+});
+
+function setAll(kind, open) {
+  const key = kind === "en" ? "enOpen" : "uaOpen";
+  state[key] = open;
+  els.forEach((e, i) => (kind === "en" ? setEn(i, open) : setUa(i, open)));
+  const btn = kind === "en" ? toggleEnEl : toggleUaEl;
+  btn.textContent = (open ? "Hide all " : "Reveal all ") + kind.toUpperCase();
+  btn.setAttribute("aria-pressed", String(open));
+  btn.classList.toggle("is-on", open);
+}
+
+toggleEnEl.addEventListener("click", () => setAll("en", !state.enOpen));
+toggleUaEl.addEventListener("click", () => setAll("ua", !state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+// If metadata never arrives (missing file / unsupported codec), tell the user.
+setTimeout(() => { if (audio.readyState < 1) showBanner(); }, 2500);
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "e" || ev.key === "E") {
+    setAll("en", !state.enOpen);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll("ua", !state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  const r = store.get(LS.rate);
+  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  state.rate = Number(rateEl.value);
+  audio.volume = state.volume;
+
+  render();
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

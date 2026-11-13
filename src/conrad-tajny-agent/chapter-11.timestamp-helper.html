@@ -1,0 +1,2013 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to conrad-tajny-agent_012_xi.mp3 (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-11.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tajny agent · Rozdział XI — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Tajny agent · Rozdział XI · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="conrad-tajny-agent_012_xi.mp3" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Po wyjściu komisarza Heata pan Verloc krążył po saloniku. Przez otwarte drzwi od czasu do czasu spoglądał na żonę.",
+  "start": 1.57
+ },
+ {
+  "i": 1,
+  "pl": "„Wie już o wszystkim” — myślał z ulgą, pełen współczucia dla jej smutku. Dusza pana Verloca, której może zbywało na wielkości, była zdolna do tkliwych uczuć. Robiło mu się zimno i gorąco na myśl, że musi zawiadomić żonę o tym, co zaszło. Tymczasem komisarz Heat uwolnił go od tego zadania.",
+  "start": 9.69
+ },
+ {
+  "i": 2,
+  "pl": "Było to do pewnego stopnia pomyślne. Teraz pozostało mu już tylko być świadkiem jej bólu.",
+  "start": 29.96
+ },
+ {
+  "i": 3,
+  "pl": "Pan Verloc nie spodziewał się wcale, że jego żona będzie musiała cierpieć z powodu śmierci, katastrofy, na którą nie poradzą ani wymowne argumenty, ani wyszukane rozumowanie. Nie leżało w jego zamiarach, aby Stevie zginął śmiercią tak gwałtowną.",
+  "start": 36.16
+ },
+ {
+  "i": 4,
+  "pl": "Nie leżało w jego zamiarach, aby Stevie w ogóle zginął. Stevie po śmierci sprawiał znacznie więcej kłopotu niż za życia.",
+  "start": 51.32
+ },
+ {
+  "i": 5,
+  "pl": "Pan Verloc przewidywał pomyślny skutek swego przedsięwzięcia, licząc nie na inteligencję chłopca, bo inteligencja płata niekiedy ludziom dziwne figle, lecz na jego ślepe posłuszeństwo i oddanie. Pan Verloc nie był biegły w psychologii, przeniknął jednak skłonność chłopca do głębokiego fanatyzmu.",
+  "start": 58.64
+ },
+ {
+  "i": 6,
+  "pl": "Cieszył się nadzieją, że Stevie odejdzie zdrów i cały spod murów obserwatorium, tak jak mu polecono, że pójdzie drogą, którą mu przedtem pan Verloc kilka razy pokazał, i że poza obrębem parku połączy się ze swym mądrym i dobrym szwagrem.",
+  "start": 78.57
+ },
+ {
+  "i": 7,
+  "pl": "Piętnaście minut powinno było wystarczyć największemu idiocie do podłożenia bomby i wycofania się. A Profesor zaręczył, że wybuch nastąpi najprędzej po upływie piętnastu minut. Lecz Stevie potknął się w pięć minut po chwili, gdy się rozstali.",
+  "start": 93.29
+ },
+ {
+  "i": 8,
+  "pl": "Pan Verloc był moralnie zmiażdżony. Przewidywał wszystko, prócz tego, co się stało. Przewidywał, że Stevie straci głowę i zbłądzi — że on, Verloc, będzie musiał szukać chłopca i znajdzie go wreszcie na posterunku policji lub w którymś z prowincjonalnych przytułków.",
+  "start": 108.95
+ },
+ {
+  "i": 9,
+  "pl": "Przewidywał, że Steviego zaaresztują — i wcale się tego nie obawiał, gdyż pokładał w nim wielkie zaufanie, a podczas licznych spacerów wpoił mu starannie zasadę, że milczenie w całej tej sprawie jest wręcz nieodzowne.",
+  "start": 125.15
+ },
+ {
+  "i": 10,
+  "pl": "Wędrując wzdłuż ulic londyńskich niby filozof perypatetyk⁸⁰, pan Verloc zmienił pogląd Steviego na policję za pomocą rozmów pełnych subtelnych rozumowań. Żaden mędrzec nie miał ucznia bardziej uważnego i pełnego podziwu.",
+  "start": 137.75
+ },
+ {
+  "i": 11,
+  "pl": "Oddanie chłopca i jego uwielbienie były takie widoczne, że pan Verloc zaczął dla niego odczuwać coś w rodzaju sympatii. W żadnym zaś wypadku nie przewidywał, iż związek jego, Verloca, z tą sprawą zostanie tak szybko wykryty.",
+  "start": 152.35
+ },
+ {
+  "i": 12,
+  "pl": "Nie miał najlżejszego pojęcia, że jego żona powzięła myśli, aby umieścić adres chłopca na podszewce palta. Niepodobieństwem⁸¹ jest wszystko przewidzieć. A więc to dlatego Winnie mu oświadczyła, że się nie potrzebuje kłopotać, gdyby zgubił Steviego podczas spaceru!",
+  "start": 166.97
+ },
+ {
+  "i": 13,
+  "pl": "Zapewniła go, że chłopiec się znajdzie. No i znalazł się, rzeczywiście!",
+  "start": 184.31
+ },
+ {
+  "i": 14,
+  "pl": "— Hm, hm — dziwował się pan Verloc. W jakim celu ona to zrobiła? Aby mu oszczędzić kłopotu czuwania nad Steviem? Z pewnością miała dobre zamiary. Tylko powinna była uprzedzić męża o tym środku ostrożności.",
+  "start": 193.76
+ },
+ {
+  "i": 15,
+  "pl": "Pan Verloc poszedł za ladę. Nie miał zamiaru czynić żonie gorzkich wymówek. Pan Verloc nie czuł rozgoryczenia. Niezwykły rozwój wypadków uczynił z niego fatalistę. Teraz nic już nie można było poradzić. Rzekł:",
+  "start": 206.79
+ },
+ {
+  "i": 16,
+  "pl": "— Ja nie chciałem chłopca skrzywdzić.",
+  "start": 223.08
+ },
+ {
+  "i": 17,
+  "pl": "Pani Verloc wstrząsnęła się, usłyszawszy głos męża. Nie odsłoniła twarzy. Zaufany tajny agent nieboszczyka barona Stott-Wartenheima patrzył na nią jakiś czas uporczywie poważnym, tępym wzrokiem. Rozdarta wieczorna gazeta leżała u jej stóp. Chyba niewiele się z niej dowiedziała.",
+  "start": 226.11
+ },
+ {
+  "i": 18,
+  "pl": "Pan Verloc czuł potrzebę rozmowy z żoną.",
+  "start": 245.45
+ },
+ {
+  "i": 19,
+  "pl": "— To ten przeklęty Heat, co? To on wytrącił cię z równowagi. Co za bydlę, żeby kobiecie tak wszystko wygarnąć. Namyślałem się bez końca, jak ci to powiedzieć, ledwie mi głowa nie pękła. Przesiedziałem długie godziny w „Cheshire Cheese”⁸², nie wiedząc, jak się do tego wziąć.",
+  "start": 247.98
+ },
+ {
+  "i": 20,
+  "pl": "Chyba rozumiesz, że za nic nie chciałem, aby chłopcu stała się krzywda.",
+  "start": 268.37
+ },
+ {
+  "i": 21,
+  "pl": "Pan Verloc, tajny agent, mówił prawdę. Ten przedwczesny wybuch ugodził przede wszystkim w jego miłość do żony.",
+  "start": 272.58
+ },
+ {
+  "i": 22,
+  "pl": "— Niezbyt mi było wesoło, kiedym tam siedział, myśląc o tobie — dodał.",
+  "start": 280.16
+ },
+ {
+  "i": 23,
+  "pl": "Zauważył znów, że żona wstrząsnęła się z lekka i to go dotknęło w przykry sposób. Ponieważ nie odejmowała rąk od twarzy, pomyślał, że lepiej zostawić ją samą na chwilę. Pod wpływem tych delikatnych uczuć wycofał się znów do saloniku, gdzie płomyk gazu mruczał jak zadowolony kot.",
+  "start": 285.75
+ },
+ {
+  "i": 24,
+  "pl": "Pani Verloc w swej małżeńskiej przezorności zostawiła na stole zimną pieczeń wraz z nożem do krajania i widelcem oraz pół bochenka chleba na kolację dla męża. Zauważył to teraz po raz pierwszy; ukrajawszy kawałek chleba i mięsa, zaczął jeść.",
+  "start": 303.91
+ },
+ {
+  "i": 25,
+  "pl": "Jego apetyt nie dowodził zatwardziałości serca. Tego dnia pan Verloc nie jadł wcale śniadania. Wyszedł z domu na czczo. Nie był człowiekiem energicznym i siłę do czynu czerpał z nerwowego podniecenia, które, rzekłbyś, trzymało go za gardło. Nie mógł nic przełknąć.",
+  "start": 319.83
+ },
+ {
+  "i": 26,
+  "pl": "A domek Michaelisa był równie ogołocony z zapasów żywności jak cela więzienna; wypuszczony zza krat apostoł żywił się odrobiną mleka i skórkami czerstwego chleba. Przy tym, kiedy pan Verloc się zjawił, Michaelis był już po skromnym śniadaniu i znajdował się na piętrze.",
+  "start": 336.75
+ },
+ {
+  "i": 27,
+  "pl": "Pogrążony w znoju i rozkoszy literackiej twórczości, wcale panu Verlocowi nie odpowiedział, gdy ten krzyknął, stojąc u stóp ciasnej klatki schodowej:",
+  "start": 354.63
+ },
+ {
+  "i": 28,
+  "pl": "— Zabieram tego młodzieńca na parę dni do domu.",
+  "start": 363.98
+ },
+ {
+  "i": 29,
+  "pl": "Prawdę powiedziawszy, pan Verloc nie czekał na odpowiedź, lecz wyszedł zaraz z domku, a za nim posłuszny Stevie.",
+  "start": 367.73
+ },
+ {
+  "i": 30,
+  "pl": "Teraz, gdy już było po wszystkim, gdy losy pana Verloca wymknęły mu się z rąk tak szybko i niespodzianie, poczuł, że jest straszliwie głodny. Krajał mięso, krajał chleb i pożerał kolację, stojąc przy stole i rzucając od czasu do czasu wzrokiem na żonę.",
+  "start": 374.61
+ },
+ {
+  "i": 31,
+  "pl": "Winnie siedziała wciąż bez ruchu i to przeszkadzało mu posilać się spokojnie. Wrócił do sklepu i podszedł blisko do żony. Jej ból i zasłonięta twarz niepokoiły pana Verloca. Spodziewał się naturalnie, że Winnie będzie bardzo zgnębiona, ale pragnął, aby się opanowała.",
+  "start": 390.87
+ },
+ {
+  "i": 32,
+  "pl": "Potrzebował jej pomocy i jej oddania wobec nowych warunków, z którymi w swym fatalizmie już się pogodził.",
+  "start": 406.96
+ },
+ {
+  "i": 33,
+  "pl": "— Nie ma na to rady — rzekł tonem ponurego współczucia. — No, Winnie, trzeba myśleć o jutrze. Będziesz musiała mieć głowę na karku, kiedy mnie zabiorą.",
+  "start": 414.94
+ },
+ {
+  "i": 34,
+  "pl": "Umilkł. Pierś pani Verloc zakołysała się gwałtownie. Nie wpłynęło to kojąco na pana Verloca; uważał, że położenie, jakie się wytworzyło, wymaga od nich obojga spokoju, stanowczości oraz innych cech niedających się pogodzić z rozprzężeniem ducha właściwym gwałtownemu bólowi.",
+  "start": 426.7
+ },
+ {
+  "i": 35,
+  "pl": "Pan Verloc miał wrażliwe serce; wracając do domu, postanowił uszanować w całej rozciągłości siostrzane uczucia żony. Ale nie rozumiał ani rodzaju tych uczuć, ani ich siły. Należało mu to wybaczyć, bo musiałby przestać być sobą, aby pojąć miłość Winnie do brata.",
+  "start": 445.32
+ },
+ {
+  "i": 36,
+  "pl": "Czuł się zaskoczony, rozczarowany, i to ujawniło się w jego słowach pewną szorstkością tonu.",
+  "start": 462.84
+ },
+ {
+  "i": 37,
+  "pl": "— Mogłabyś przynajmniej na mnie spojrzeć — zauważył po chwili.",
+  "start": 470.52
+ },
+ {
+  "i": 38,
+  "pl": "Zgłuszona, niemal żałosna odpowiedź jakby przedarła się gwałtem poprzez ręce zakrywające twarz pani Verloc:",
+  "start": 474.64
+ },
+ {
+  "i": 39,
+  "pl": "— Nie chcę cię już nigdy widzieć.",
+  "start": 481.95
+ },
+ {
+  "i": 40,
+  "pl": "— Co? Jak to?",
+  "start": 484.76
+ },
+ {
+  "i": 41,
+  "pl": "Pan Verloc przestraszył się tylko powierzchownej i dosłownej treści tego oświadczenia. Sprzeczne z rozsądkiem, było po prostu okrzykiem przesadnego bólu. Rzucił nań zasłonę małżeńskiej pobłażliwości. Jego umysłowi brakowało głębi.",
+  "start": 487.4
+ },
+ {
+  "i": 42,
+  "pl": "Miał fałszywe wyobrażenie, że wartość jednostek polega na tym, czym są same przez się, i nie był w stanie zrozumieć, jaką wartość przedstawiał Stevie dla pani Verloc. Pomyślał w duchu, że ona bierze to jednak zbyt tragicznie. A wszystkiemu winien ten przeklęty Heat. Po co ją wytrącił z równowagi?",
+  "start": 503.56
+ },
+ {
+  "i": 43,
+  "pl": "Dla jej własnego dobra nie można pozwolić, aby się zachowywała w ten sposób, bo w końcu zupełnie straci władzę nad sobą.",
+  "start": 522.21
+ },
+ {
+  "i": 44,
+  "pl": "— Posłuchaj! Nie możesz tkwić tu w sklepie bez końca — rzekł z udaną surowością, w której było i trochę prawdziwego rozdrażnienia, gdyż musiał omówić z żoną różne naglące sprawy, choćby przyszło obojgu całą noc przesiedzieć. — Ktoś może tu wejść lada chwila — dodał i znów czekał.",
+  "start": 530.15
+ },
+ {
+  "i": 45,
+  "pl": "Nie odniosło to żadnego skutku. W czasie tej pauzy nasunęła się panu Verlocowi myśl o nieodwołalności śmierci. Zmienił ton. — Daj spokój, Winnie. Nie przywrócisz go do życia — rzekł łagodnie, gotów wziąć ją w ramiona i przycisnąć do piersi, w której sąsiadowały z sobą współczucie i niecierpliwość.",
+  "start": 549.24
+ },
+ {
+  "i": 46,
+  "pl": "Panią Verloc wstrząsnął krótki dreszcz, ale poza tym wydała się zupełnie obojętna na siłę tego straszliwego truizmu. Natomiast pan Verloc poczuł się wzruszony. W prostocie ducha spróbował skłonić Winnie do zapanowania nad sobą, podkreślając swe własne prawa.",
+  "start": 570.55
+ },
+ {
+  "i": 47,
+  "pl": "— No, Winnie, bądźże rozsądna. Co by to było, gdybyś mnie utraciła?",
+  "start": 588.8
+ },
+ {
+  "i": 48,
+  "pl": "Miał nikłą nadzieję, że jego słowa wywołają okrzyk na usta żony. Lecz ani drgnęła. Odchyliła się nieco w tył i zastygła w zupełnym, nieprzeniknionym bezruchu. Serce pana Verloca zaczęło bić szybciej z rozjątrzenia i jakby niepokoju. Położył rękę na jej ramieniu, mówiąc:",
+  "start": 593.66
+ },
+ {
+  "i": 49,
+  "pl": "— Dosyć tych głupstw, Winnie.",
+  "start": 611.8
+ },
+ {
+  "i": 50,
+  "pl": "Nie dała znaku życia. Niepodobna dogadać się z kobietą, której twarzy się nie widzi. Pan Verloc chwycił żonę za ręce, ale były jakby przyrośnięte do twarzy. Pochyliła się naprzód pod jego szarpnięciem i niemal zsunęła się z krzesła.",
+  "start": 614.59
+ },
+ {
+  "i": 51,
+  "pl": "Zaskoczony jej bezsilnością, Verloc starał się posadzić żonę z powrotem, lecz nagle zesztywniała, wyrwała mu się i pobiegła przez salonik do kuchni. To się stało bardzo szybko. Ujrzał przelotnie jej twarz, oczy i wiedział, że nie spojrzała na niego.",
+  "start": 631.09
+ },
+ {
+  "i": 52,
+  "pl": "Wszystko to wyglądało jak walka o krzesło, bo pan Verloc w mgnieniu oka siadł na nim. Nie zakrył twarzy rękami, ale mroczna zaduma przesłoniła mu rysy. Nie mógł uniknąć więzienia. I unikać go nie chciał.",
+  "start": 647.16
+ },
+ {
+  "i": 53,
+  "pl": "Więzienie było miejscem zabezpieczającym przed bezprawną zemstą równie niezawodnie jak grób, z tą różnicą, że więzienie nie wykluczało nadziei.",
+  "start": 660.58
+ },
+ {
+  "i": 54,
+  "pl": "Tedy pan Verloc widział przed sobą najpierw więzienie, a potem szybkie odzyskanie wolności i życie gdzieś za granicą, co już przewidywał na wypadek, gdyby mu się nie powiodło. No więc nie powiodło mu się, ale to niepowodzenie wyglądało inaczej, niż sobie wyobrażał.",
+  "start": 669.52
+ },
+ {
+  "i": 55,
+  "pl": "Znajdował się już tak blisko pomyślnego wyniku, który by przeraził pana Władimira tajemniczą sprawnością, a przy tym położyłby kres okrutnym drwinom sekretarza. Tak się przynajmniej zdawało panu Verlocowi.",
+  "start": 686.49
+ },
+ {
+  "i": 56,
+  "pl": "Byłby się postawił nadzwyczajnie wobec ambasady, gdyby… gdyby jego żona nie wpadła na ten nieszczęsny pomysł, aby przyszyć do palta adres Steviego.",
+  "start": 699.03
+ },
+ {
+  "i": 57,
+  "pl": "Pan Verloc nie był głupi i spostrzegł w lot, że jego wpływ na szwagra ma w sobie coś niezwykłego, choć nie zdawał sobie dokładnie sprawy ze źródła tego wpływu — które to źródło stanowiła doktryna o nieporównanej mądrości i dobroci pana Verloca, wpojona Steviemu przez troskające się o niego kobiety.",
+  "start": 709.52
+ },
+ {
+  "i": 58,
+  "pl": "Przewidując wszelkie możliwe ewentualności, pan Verloc liczył słusznie na wrodzoną prawość Steviego i jego niewzruszoną dyskrecję. Ale wypadek, którego nie przewidział, wstrząsnął nim jako człowiekiem humanitarnym i kochającym małżonkiem.",
+  "start": 727.56
+ },
+ {
+  "i": 59,
+  "pl": "Ze wszystkich zaś innych względów była to ewentualność raczej korzystna. Nic nie dorówna wieczystemu milczeniu śmierci.",
+  "start": 743.76
+ },
+ {
+  "i": 60,
+  "pl": "Pan Verloc mimo woli zdał sobie z tego sprawę, gdy siedział znękany i przerażony w małej salce baru „Cheshire Cheese”, albowiem uczuciowość nie przeszkadzała mu patrzeć jasno na rzeczy, Wprawdzie gwałtowna śmierć Steviego była faktem przykrym, lecz ustalała powodzenie zamachu,",
+  "start": 751.86
+ },
+ {
+  "i": 61,
+  "pl": "bo przecież panu Władimirowi chodziło nie o zwalenie ściany, lecz o wstrząśnięcie społeczeństwem.",
+  "start": 769.78
+ },
+ {
+  "i": 62,
+  "pl": "Można było uznać, że to zostało osiągnięte kosztem wielu zabiegów i strapień pana Verloca.",
+  "start": 775.24
+ },
+ {
+  "i": 63,
+  "pl": "Gdy jednak najnieoczekiwaniej cała sprawa wróciła do swego punktu wyjścia na Brett Street, pan Verloc, który szamotał się niby w strasznym śnie, chcąc ocalić swoje stanowisko, poddał się w końcu ciosowi jak człowiek wierzący w przeznaczenie. Utracił stanowisko właściwie z niczyjej winy.",
+  "start": 780.84
+ },
+ {
+  "i": 64,
+  "pl": "Przyczynił się do tego drobny fakt bez znaczenia. Wyglądało to tak, jakby ktoś pośliznął się w ciemności na odrobinie pomarańczowej skórki i złamał nogę.",
+  "start": 800.3
+ },
+ {
+  "i": 65,
+  "pl": "Pan Verloc westchnął ciężko. Nie żywił do żony najmniejszej urazy. Pomyślał: „Będzie musiała pilnować sklepu, kiedy się znajdę pod kluczem”. Pomyślał także, jak dotkliwie będzie jej z początku brakowało Steviego, i ogarnęła go wielka troska o jej zdrowie i nerwy.",
+  "start": 809.94
+ },
+ {
+  "i": 66,
+  "pl": "Jakże ona wytrzyma to odosobnienie, sama jedna w całym domu? Byłoby to fatalne, gdyby się rozchorowała, podczas gdy on będzie siedział w więzieniu. Co by się wówczas stało ze sklepem? Sklep przedstawiał pewną wartość.",
+  "start": 828.11
+ },
+ {
+  "i": 67,
+  "pl": "Choć pan Verloc dzięki swemu fatalizmowi pogodził się z utratą stanowiska tajnego agenta, nie miał zamiaru dopuścić do swej zupełnej ruiny, przede wszystkim — trzeba to przyznać — ze względu na żonę.",
+  "start": 841.41
+ },
+ {
+  "i": 68,
+  "pl": "Winnie była w kuchni poza zasięgiem jego wzroku i milczała wciąż, co go przestraszało. Gdyby przynajmniej miała przy sobie matkę. Ale ta stara idiotka… Gniew i popłoch ogarnęły pana Verloca. Musi się rozmówić z żoną.",
+  "start": 854.87
+ },
+ {
+  "i": 69,
+  "pl": "Trzeba jej wytłumaczyć, że w pewnych warunkach człowiek może być doprowadzony do ostateczności. Ale nie poszedł do żony natychmiast, aby jej udzielić owej informacji. Przede wszystkim uznał, że ten wieczór nie nadaje się do przyjmowania klientów.",
+  "start": 870.72
+ },
+ {
+  "i": 70,
+  "pl": "Wstał, aby zamknąć drzwi od ulicy i zgasić gaz w sklepie.",
+  "start": 886.33
+ },
+ {
+  "i": 71,
+  "pl": "Zapewniwszy tym samym zaciszność domowemu ognisku, pan Verloc znalazł się w saloniku i rzucił wzrokiem w głąb kuchni.",
+  "start": 891.05
+ },
+ {
+  "i": 72,
+  "pl": "Pani Verloc siedziała na miejscu Steviego, tam gdzie nieborak sadowił się pod wieczór z papierem i ołówkiem, aby się zabawiać rysowaniem połyskliwych, niezliczonych kół przywodzących na myśl chaos i wieczność. Ramiona Winnie leżały na stole, a głowa spoczywała na ramionach.",
+  "start": 899.39
+ },
+ {
+  "i": 73,
+  "pl": "Pan Verloc patrzył jakiś czas na jej plecy i węzeł włosów, a potem odszedł od drzwi kuchni. Filozoficzny, niemal pogardliwy brak ciekawości charakteryzujący panią Verloc, grunt ich wspólnego pożycia, sprawiał, że bardzo było trudno nawiązać z nią kontakt teraz, kiedy zaszła tragiczna tego potrzeba.",
+  "start": 916.61
+ },
+ {
+  "i": 74,
+  "pl": "Pan Verloc odczuwał tę trudność dotkliwie. Chodził po saloniku naokoło stołu, podobny jak zwykle do wielkiego zwierza w klatce.",
+  "start": 936.99
+ },
+ {
+  "i": 75,
+  "pl": "Ponieważ ciekawość jest jedną z form, które ujawniają ludzką naturę, osoba nieokazująca nigdy ciekawości jest zawsze trochę tajemnicza. Za każdym razem, gdy pan Verloc przechodził obok drzwi kuchennych, spoglądał niespokojnie na żonę.",
+  "start": 945.31
+ },
+ {
+  "i": 76,
+  "pl": "Nie można powiedzieć, aby się jej lękał — wyobrażał sobie przecież, że ta kobieta go kocha — ale nie był przyzwyczajony do zwierzania się żonie. A zwierzenie, które chciał teraz uczynić, sięgało w głąb jego psychiki.",
+  "start": 961.2
+ },
+ {
+  "i": 77,
+  "pl": "Jakże wypowiedzieć to, co sam czuł bardzo mętnie: że czasem los sprzysięgnie się na człowieka; że nieraz jakaś myśl póty rozrasta się w duszy, póki nie zacznie żyć życiem własnym, oderwanym i wreszcie staje się siłą od nas niezależną, a zarazem wnikliwym podszeptem.",
+  "start": 976.08
+ },
+ {
+  "i": 78,
+  "pl": "Nie mógł zwierzyć się żonie, że czyjaś twarz — pulchna, dowcipna, wygolona — może prześladować człowieka do tego stopnia, iż w końcu najszaleńszy sposób pozbycia się jej wydaje się aktem mądrości.",
+  "start": 992.96
+ },
+ {
+  "i": 79,
+  "pl": "Na myśl o pierwszym sekretarzu potężnej ambasady pan Verloc zatrzymał się we drzwiach i patrząc z góry w głąb kuchni z gniewną twarzą i zaciśniętymi pięściami, powiedział do żony:",
+  "start": 1005.57
+ },
+ {
+  "i": 80,
+  "pl": "— Ty nie wiesz, z jakim ja bydlęciem musiałem się mozolić.",
+  "start": 1017.09
+ },
+ {
+  "i": 81,
+  "pl": "Obszedł znów naokoło stół; znalazłszy się z powrotem u drzwi, przystanął, spoglądając nienawistnie z wysokości dwóch schodków:",
+  "start": 1021.82
+ },
+ {
+  "i": 82,
+  "pl": "— Ten bałwan, ten kpiarz, groźny bydlak bez piątej klepki… Żeby po tylu latach!… takiego człowieka jak ja! Przecież to była gra bardzo dla mnie niebezpieczna. Ty nie wiedziałaś o niczym. I tak być powinno.",
+  "start": 1030.24
+ },
+ {
+  "i": 83,
+  "pl": "Po co miałem ci mówić, że przez tych siedem lat, odkąd się pobraliśmy, byłem każdej chwili narażony na żgnięcie nożem. To się po mnie nie pokaże, żebym dręczył kobietę, która jest do mnie przywiązana. Nie powinnaś była o tym wiedzieć.",
+  "start": 1043.84
+ },
+ {
+  "i": 84,
+  "pl": "Pan Verloc w przypływie gniewu obszedł znowu salonik.",
+  "start": 1058.79
+ },
+ {
+  "i": 85,
+  "pl": "— Jadowita bestia — podjął, znalazłszy się z powrotem u drzwi. — Dla kaprysu wyrzucił mnie na bruk, żebym zdechł z głodu. Takiego człowieka jak ja! Widziałem dobrze, że uważa to za świetny kawał. Posłuchaj, Winnie!",
+  "start": 1063.23
+ },
+ {
+  "i": 86,
+  "pl": "Wśród najpotężniejszych władców są tacy, którzy tylko dzięki mnie chodzą zdrowi i cali po świecie. Widzisz, kogo masz za męża, moje dziecko!",
+  "start": 1077.89
+ },
+ {
+  "i": 87,
+  "pl": "Spostrzegł, że żona wyprostowała się. Jej ręce w dalszym ciągu leżały wyciągnięte na stole. Pan Verloc wpatrzył się w plecy żony, jakby mógł z nich wnioskować o skutku swoich słów.",
+  "start": 1087.69
+ },
+ {
+  "i": 88,
+  "pl": "— W ciągu ostatnich jedenastu lat wciąż narażałem życie, zapobiegając wszystkim morderczym zamachom. Wysyłałem w świat mnóstwo tych, psiakrew, rewolucjonistów z bombami w kieszeni, po to, żeby ich wyłapywali na granicy. Stary baron wiedział dobrze, jak się zasłużyłem jego krajowi.",
+  "start": 1100.05
+ },
+ {
+  "i": 89,
+  "pl": "A tu nagle zjawia się taka świnia… zarozumiała świnia, która o niczym nie ma pojęcia!",
+  "start": 1116.34
+ },
+ {
+  "i": 90,
+  "pl": "Pan Verloc zszedł powoli z dwóch schodków, wszedł do kuchni, wziął z półki szklankę i trzymając ją w ręku, podszedł do zlewu, nie patrząc wcale na żonę.",
+  "start": 1121.3
+ },
+ {
+  "i": 91,
+  "pl": "— Stary baron nie był złośliwym idiotą, żeby mnie wzywać o jedenastej rano! Jest tu paru ludzi w mieście, którzy by nie robili sobie ze mną ceremonii, zobaczywszy, że wchodzę do ambasady; dostałbym od nich po łbie wcześniej czy później.",
+  "start": 1130.41
+ },
+ {
+  "i": 92,
+  "pl": "Cóż to za idiotyczne okrucieństwo, żeby narażać niepotrzebnie takiego człowieka jak ja!",
+  "start": 1144.94
+ },
+ {
+  "i": 93,
+  "pl": "Pan Verloc odkręcił kurek nad zlewem i raz po raz wlał sobie do gardła trzy szklanki wody, chcąc ugasić żar swego oburzenia. Postępowanie pana Władimira padło jak zarzewie w głąb duszy Verloca, rozpalając w nim gwałtowny gniew. Nie mógł się uspokoić nad krzywdzącym obejściem sekretarza.",
+  "start": 1149.92
+ },
+ {
+  "i": 94,
+  "pl": "Pan Verloc unikał wszystkich uciążliwych zadań, którymi społeczeństwo obarcza skromniejszych obywateli, lecz wykonywał swe tajne rzemiosło z niewyczerpanym oddaniem. Nie brakowało mu pewnego rodzaju lojalności. Był wierny swym chlebodawcom oraz sprawie równowagi społecznej.",
+  "start": 1167.78
+ },
+ {
+  "i": 95,
+  "pl": "Był także wierny swym przywiązaniom. Postawiwszy szklankę w zlewie, dał wyraz tej wierności, odwracając się do żony ze słowami:",
+  "start": 1186.04
+ },
+ {
+  "i": 96,
+  "pl": "— Gdyby nie myśl o tobie, byłbym złapał za gardło tego wściekłego bydlaka i wpakował go w ogień na kominku. Dałbym sobie radę jak nic z tym różowiuchnym, wygolonym…",
+  "start": 1193.58
+ },
+ {
+  "i": 97,
+  "pl": "Pan Verloc nie dokończył zdania, jakby końcowe słowo żadnych wątpliwości nie nasuwało. Po raz pierwszy w życiu zwierzał się żonie, kobiecie pozbawionej ciekawości. Osobliwość tego faktu oraz siła i ważkość uczuć pobudzonych ową spowiedzią wymazały doszczętnie z jego pamięci los Steviego.",
+  "start": 1204.14
+ },
+ {
+  "i": 98,
+  "pl": "Istnienie jąkającego się chłopca, wypełnione lękiem i oburzeniem, oraz gwałtowny jego koniec znikły na pewien czas ze świadomości pana Verloca. Dlatego też został zaskoczony szczególnym wyrazem oczu Winnie.",
+  "start": 1223.91
+ },
+ {
+  "i": 99,
+  "pl": "Nie były błędne ani roztargnione, ale baczny ich wzrok zrobił na panu Verlocu wrażenie dziwaczne i przykre, ponieważ tkwił jakby gdzieś poza jego osobą. To wrażenie podziałało nań tak silnie, że się obejrzał. Nie było za nim nic oprócz bielonej ściany.",
+  "start": 1237.27
+ },
+ {
+  "i": 100,
+  "pl": "Wzorowy małżonek Winnie Verloc nie ujrzał na tej ścianie żadnego napisu⁸³. Zwrócił się znowu do żony, powtarzając z naciskiem:",
+  "start": 1255.25
+ },
+ {
+  "i": 101,
+  "pl": "— Byłbym go chwycił za gardło. Gdyby nie pamięć o tobie, jakem żyw, przydusiłbym łotra porządnie, nimbym go puścił. I nie myśl, że wołałby na policję. Nie śmiałby wołać. A rozumiesz dlaczego?",
+  "start": 1262.61
+ },
+ {
+  "i": 102,
+  "pl": "Mrugnął znacząco.",
+  "start": 1275.67
+ },
+ {
+  "i": 103,
+  "pl": "— Nie — rzekła bezdźwięcznie pani Verloc, wcale na niego nie patrząc. — O czym ty mówisz?",
+  "start": 1278.27
+ },
+ {
+  "i": 104,
+  "pl": "Wielkie zniechęcenie — skutek fizycznego wyczerpania — ogarnęło pana Verloca. Miał dzień pełen wrażeń; jego nerwy były przemęczone do ostateczności. Po miesiącu dokuczliwej udręki, zakończonej nagłą katastrofą, miotany burzą duch pana Verloca tęsknił za wytchnieniem.",
+  "start": 1286.52
+ },
+ {
+  "i": 105,
+  "pl": "Jego kariera tajnego agenta zakończyła się w sposób, którego nikt nie byłby przewidział; może teraz nareszcie będzie mógł spokojnie przespać noc. Ale zwątpił o tym, spojrzawszy na żonę. Brała tę sprawę bardzo tragicznie — wcale nie tak, jak można się było spodziewać.",
+  "start": 1305.93
+ },
+ {
+  "i": 106,
+  "pl": "Uczynił wysiłek, aby do niej przemówić:",
+  "start": 1323.95
+ },
+ {
+  "i": 107,
+  "pl": "— Będziesz musiała nad sobą zapanować, moje dziecko — rzekł współczująco. — Co się stało, to się nie odstanie.",
+  "start": 1326.56
+ },
+ {
+  "i": 108,
+  "pl": "Winnie wzdrygnęła się lekko, choć ani jeden muskuł nie drgnął na jej zbielałej twarzy. Pan Verloc ciągnął dalej tępym głosem:",
+  "start": 1335.72
+ },
+ {
+  "i": 109,
+  "pl": "— A teraz idź spać. Dobrze by ci zrobiło, gdybyś się porządnie wypłakała.",
+  "start": 1344.54
+ },
+ {
+  "i": 110,
+  "pl": "Za tym zdaniem pana Verloca przemawiało tylko jedno: jest to zdanie całej ludzkości. Jakby kobiece wzruszenia były czymś równie nieistotnym jak sunące po niebie opary, uważa się za pewnik, że każde z tych wzruszeń musi zakończyć się deszczem.",
+  "start": 1349.07
+ },
+ {
+  "i": 111,
+  "pl": "I bardzo możliwe, że gdyby Stevie umarł na swym łóżku, w oczach zrozpaczonej siostry, otoczony jej opiekuńczymi ramionami, ból Winnie znalazłby ujście w potoku gorzkich, czystych łez.",
+  "start": 1365.67
+ },
+ {
+  "i": 112,
+  "pl": "Pani Verloc, podobnie jak inne ludzkie istoty, posiadała pewien zasób podświadomej rezygnacji, wystarczający dla stawienia czoła normalnym przejawom ludzkiej doli. Nie brała nic zbytnio do serca, zdając sobie sprawę, że „życie nie znosi, aby zanadto je zgłębiać”.",
+  "start": 1378.46
+ },
+ {
+  "i": 113,
+  "pl": "Lecz straszne warunki w jakich Stevie zginął — warunki, które dla pana Verloca były tylko epizodem wielkiej klęski — właśnie one sprawiły, że łzy Winnie wyschły u samego źródła, jakby przesunięto jej po oczach rozpalonym do białości żelazem.",
+  "start": 1395.6
+ },
+ {
+  "i": 114,
+  "pl": "Jednocześnie zaś jej serce, stwardniałe, zastygłe w kawał lodu, przejmowało ją wewnętrznym drżeniem i ścięło mroźną, nieruchomą zadumą rysy zwrócone ku bielonej ścianie — na której nie było napisu.",
+  "start": 1412.18
+ },
+ {
+  "i": 115,
+  "pl": "Gdy Winnie odrzucała swą filozoficzną powściągliwość, jej usposobienie było macierzyńskie i gwałtowne; ponosiło ją teraz i sprawiało, że myśli kłębiły się w jej nieruchomej głowie. Myśli te wcielały się raczej w obrazy niż w słowa.",
+  "start": 1426.4
+ },
+ {
+  "i": 116,
+  "pl": "Pani Verloc była dziwnie małomówna i w życiu domowym, i w stosunku do klientów. Ze wściekłością i przerażeniem kobiety oszukanej widziała teraz przed sobą całe swe życie w wizjach związanych głównie z egzystencją Steviego, ciężką od samego początku.",
+  "start": 1442.58
+ },
+ {
+  "i": 117,
+  "pl": "Życie Winnie było przeniknięte jednym celem i natchnione jedną szlachetną myślą, podobnie jak te nieliczne żywoty, które wycisnęły piętno na myślach i uczuciach rodzaju ludzkiego. Ale obrazy przesuwające się przed panią Verloc nie były ani wspaniałe, ani imponujące.",
+  "start": 1458.46
+ },
+ {
+  "i": 118,
+  "pl": "Widziała siebie kładącą chłopca do łóżka przy jednej świeczce, na opustoszałym poddaszu wielkiej kamienicy mieszczącej prawie same sklepy i biura, ciemnej u góry i jarzącej się na poziomie ulicy od świateł i kryształowych szyb. Ten handlowy przepych był jedyną wspaniałością w wizjach pani Verloc.",
+  "start": 1476.66
+ },
+ {
+  "i": 119,
+  "pl": "Potem zobaczyła siebie czeszącą chłopca, wiążącą mu fartuszek (sama chodziła wówczas jeszcze w fartuszku); zobaczyła, jak małe, przerażone stworzonko pociesza drugie trochę mniejsze i jeszcze bardziej przerażone; poczuła razy, przed którymi często własną głową zasłaniała Steviego;",
+  "start": 1495.1
+ },
+ {
+  "i": 120,
+  "pl": "poczuła straszny wysiłek, z jakim podparła kiedyś zamknięte drzwi, aby ochronić braciszka przed rozjuszonym mężczyzną (nie na długo sił jej starczyło); ujrzała lecący pogrzebacz (rzucony z niewielkiej odległości) i odczuła głuchą, straszną ciszę, jaka zapadła wówczas niby po uderzeniu pioruna.",
+  "start": 1512.89
+ },
+ {
+  "i": 121,
+  "pl": "A wszystkie te gwałtowne sceny odbywały się przy akompaniamencie ordynarnych wymyślań, przy wrzaskach mężczyzny, który oznajmiał, zraniony w swej ojcowskiej dumie, że jest widać przeklęty, kiedy jedno z jego dzieci jest „zaślinionym idiotą”, a drugie „wściekłą diablicą”.",
+  "start": 1532.54
+ },
+ {
+  "i": 122,
+  "pl": "Te ostatnie słowa odnosiły się przed wielu laty do Winnie.",
+  "start": 1550.74
+ },
+ {
+  "i": 123,
+  "pl": "Dotarły do niej teraz widmowym echem, a potem mroczny cień belgrawijskiego domu przygniótł jej barki.",
+  "start": 1554.68
+ },
+ {
+  "i": 124,
+  "pl": "Było to wspomnienie przytłaczające, nużąca wizja niezliczonych tac ze śniadaniem noszonych w górę i na dół po schodach bez liku, ciągłego targowania się o pensy, ciągłej harówki — zamiatania, ścierania kurzu, czyszczenia od sutereny aż do poddasza;",
+  "start": 1561.64
+ },
+ {
+  "i": 125,
+  "pl": "niedołężna matka Winnie, utykając na spuchniętych nogach, gotowała w brudnej kuchni, a nieborak Stevie, nieświadoma przyczyna ich znoju, czyścił lokatorom buty w kredensie.",
+  "start": 1577.98
+ },
+ {
+  "i": 126,
+  "pl": "Ale od tej wizji powiało gorącym latem londyńskim, a centralną jej postacią był młodzian w odświętnym ubraniu, w słomkowym kapeluszu na ciemnej głowie, z drewnianą fajką w zębach.",
+  "start": 1589.18
+ },
+ {
+  "i": 127,
+  "pl": "Serdeczny, wesoły, był wymarzonym towarzyszem podróży po iskrzącym się strumieniu życia — ale jego łódź była bardzo mała. Mogła się w niej pomieścić tylko współtowarzyszka u wiosła, lecz brakowało miejsca dla pasażerów.",
+  "start": 1601.34
+ },
+ {
+  "i": 128,
+  "pl": "Nie zatrzymano młodzieńca; prąd uniósł go z progu belgrawijskiego domu, a Winnie odwróciła oczy pełne łez. Młodzieniec ów nie był lokatorem.",
+  "start": 1616.82
+ },
+ {
+  "i": 129,
+  "pl": "Natomiast był nim pan Verloc; leniwy, opieszały, wracał późno do domu, rano zaś dowcipkował sennie spod kołdry, patrząc na Winnie z wyrazem zadurzenia w ociężałych oczach, a pieniędzy nie brakowało mu nigdy. Leniwy strumień jego życia nie iskrzył się blaskiem. Płynął przez miejsca tajemne.",
+  "start": 1627.62
+ },
+ {
+  "i": 130,
+  "pl": "Ale łódź pana Verloca wyglądała okazale, a jego milcząca wspaniałomyślność godziła się bez zastrzeżeń na pasażerów.",
+  "start": 1646.9
+ },
+ {
+  "i": 131,
+  "pl": "Potem przed oczami pani Verloc przesunęła się wizja siedmiu lat, w czasie których Stevie zażywał bezpieczeństwa, uczciwie przez nią opłaconego.",
+  "start": 1655.57
+ },
+ {
+  "i": 132,
+  "pl": "Z czasem poczucie bezpieczeństwa zmieniło się w ufność, w przywiązanie do własnego domu, senne i głębokie jak spokojny staw;",
+  "start": 1664.43
+ },
+ {
+  "i": 133,
+  "pl": "jego powierzchnia wzdrygała się nieznacznie tylko wówczas, gdy w pobliżu znalazł się Ossipon, krzepki anarchista o bezwstydnie wyzywających oczach, których niedwuznaczne spojrzenie było zrozumiałe dla każdej kobiety z wyjątkiem skończonych idiotek.",
+  "start": 1673.06
+ },
+ {
+  "i": 134,
+  "pl": "W kilka sekund po ostatnich słowach wypowiedzianych w kuchni pani Verloc miała już przed oczami epizod sprzed paru tygodni. Utkwiła rozszerzone źrenice w wizji męża oraz nieboraka Steviego: szli obok siebie po Brett Street, oddalając się od sklepu.",
+  "start": 1688.65
+ },
+ {
+  "i": 135,
+  "pl": "Była to ostatnia scena z życia stworzonego przez panią Verloc, tego życia, które — wyzbyte z wdzięku, uroku, piękna i niemal przyzwoitości — budziło podziw trwałością uczuć i uporczywością w dążeniu do celu.",
+  "start": 1704.45
+ },
+ {
+  "i": 136,
+  "pl": "A ta ostatnia wizja miała w sobie tyle plastyki i taką dokładność w szczegółach, że pani Verloc wyrwał się żałosny, cichy szept, zawierający najpiękniejsze ze złudzeń jej życia — struchlały szept, który zamarł na pobielałych wargach:",
+  "start": 1718.35
+ },
+ {
+  "i": 137,
+  "pl": "— Zupełnie jak ojciec z synem.",
+  "start": 1735.02
+ },
+ {
+  "i": 138,
+  "pl": "Pan Verloc przystanął i podniósł znękaną twarz.",
+  "start": 1737.52
+ },
+ {
+  "i": 139,
+  "pl": "— Co? Co ty mówisz? — zapytał.",
+  "start": 1741.32
+ },
+ {
+  "i": 140,
+  "pl": "Nie otrzymawszy odpowiedzi, wrócił do swej ponurej wędrówki. Nagle wybuchnął, potrząsając groźnie wielką, tłustą pięścią.",
+  "start": 1744.74
+ },
+ {
+  "i": 141,
+  "pl": "— Cóż to za dranie, ta banda z ambasady! Nie minie tydzień, a tak ich urządzę, że lepiej by się zapadli pod ziemię. Co ty mówisz?",
+  "start": 1751.98
+ },
+ {
+  "i": 142,
+  "pl": "Spojrzał na żonę spode łba, nie podnosząc głowy. Wpatrywała się w bieloną ścianę. Ścianę pustą, zupełnie pustą. Taką pustą, że brała ochota rozpędzić się i głowę sobie o nią roztrzaskać. Pani Verloc zastygła w bezruchu.",
+  "start": 1760.54
+ },
+ {
+  "i": 143,
+  "pl": "Tak samo skamieniałaby połowa mieszkańców globu w zdumieniu i rozpaczy, gdyby słońce zgasło nagle na letnim niebie za sprawą jakiejś zdradliwej opatrzności darzonej zaufaniem.",
+  "start": 1775.82
+ },
+ {
+  "i": 144,
+  "pl": "— Ambasada — zaczął znowu pan Verloc, błysnąwszy kłami jak wilk. — Chciałbym się tam dostać z pałką w ręku na jakieś pół godziny. Póty bym walił, póki bym tej hołocie nie poprzetrącał wszystkich kości.",
+  "start": 1786.96
+ },
+ {
+  "i": 145,
+  "pl": "Ja ich jeszcze nauczę, czym to pachnie, kiedy się takiego jak ja człowieka wyrzuca na bruk, żeby zdechł z głodu. Mam język w gębie. Cały świat się dowie, co dla nich zrobiłem. Nie boję się. Gwiżdżę na nich. Wszystko się wyda. Wszystkie ich wstrętne łajdactwa. Niech się strzegą!",
+  "start": 1799.94
+ },
+ {
+  "i": 146,
+  "pl": "W takich oto słowach wypowiedział pan Verloc swą żądzę zemsty. Była to zemsta bardzo dla niego odpowiednia.",
+  "start": 1817.3
+ },
+ {
+  "i": 147,
+  "pl": "Harmonizując z popędami pana Verloca, miała także tę dobrą stronę, że nie przekraczała zakresu jego możliwości i że łatwo mógł ją przystosować do swych praktyk życiowych, które polegały właśnie na zdradzaniu tajemnic i niedozwolonych postępków jego bliźnich.",
+  "start": 1824.26
+ },
+ {
+  "i": 148,
+  "pl": "Czy chodziło o anarchistów, czy też o dyplomatów, to było mu obojętne. Pan Verloc miał dla bliźnich wrodzony brak szacunku. Obdzielał równomierną pogardą każdego, z kim się zetknął na terenie swej działalności.",
+  "start": 1840.6
+ },
+ {
+  "i": 149,
+  "pl": "Ale jako członek rewolucyjnego proletariatu — którym był niewątpliwie — żywił dość wrogie uczucia wobec jednostek wyróżnionych przez społeczeństwo.",
+  "start": 1855.36
+ },
+ {
+  "i": 150,
+  "pl": "— Teraz już nic mnie nie wstrzyma — dodał i umilkł, patrząc w żonę, która patrzyła w pustą ścianę.",
+  "start": 1865.04
+ },
+ {
+  "i": 151,
+  "pl": "Cisza w kuchni przedłużała się i pan Verloc uczuł rozczarowanie. Miał nadzieję, że jego żona coś powie. Ale usta pani Verloc, zachowując swą zwykłą linię, trwały w bezruchu, tak jak i cała jej twarz. Pan Verloc był rozczarowany.",
+  "start": 1872.34
+ },
+ {
+  "i": 152,
+  "pl": "Lecz przyznawał, że w danych okolicznościach nie mógł wymagać od żony, aby go bawiła rozmową. Była małomówna. Dla przyczyn wynikających z najgłębszych podstaw jego psychiki, pan Verloc skłonny był pokładać ufność w każdej kobiecie, która mu się oddała. Dlatego też ufał żonie.",
+  "start": 1888.05
+ },
+ {
+  "i": 153,
+  "pl": "Pożycie ich było idealnie zgodne, ale nie opierało się na ścisłym porozumieniu. Wynikało z niemej ugody, dogadzającej obojętności pani Verloc oraz nawykom jej męża, który był skryty i opieszały. Oboje wstrzymywali się od zgłębiania faktów i przyczyn.",
+  "start": 1906.64
+ },
+ {
+  "i": 154,
+  "pl": "Ta powściągliwość, świadcząca w pewnej mierze o głębokim wzajemnym zaufaniu, wprowadzała jednocześnie coś niepewnego do ich zażyłości. Żaden system małżeńskiego pożycia nie jest doskonały. Pan Verloc sądził, że Winnie go rozumie, ale pragnął wiedzieć, co w owej chwili myślała.",
+  "start": 1923.2
+ },
+ {
+  "i": 155,
+  "pl": "Byłoby to dla niego pociechą.",
+  "start": 1940.18
+ },
+ {
+  "i": 156,
+  "pl": "Pociechy tej nie zaznał z kilku przyczyn. Zachodziła tu przeszkoda fizyczna: pani Verloc czuła, że nie panuje nad głosem. Mając do wyboru tylko krzyk lub milczenie, instynktownie wybrała milczenie; Winnie Verloc była z natury osobą milczącą.",
+  "start": 1942.46
+ },
+ {
+  "i": 157,
+  "pl": "A poza tym obezwładniła ją okrutna myśl, która nią zawładnęła. Twarz Winnie była blada jak ściana, usta zszarzały na popiół, jej zupełny bezruch zdumiewał. Nie patrząc na pana Verloca, myślała: „Ten człowiek zabrał chłopca, żeby go zamordować. Zabrał chłopca z domu, żeby go zamordować.",
+  "start": 1957.88
+ },
+ {
+  "i": 158,
+  "pl": "Zabrał mi chłopca, żeby go zamordować!”.",
+  "start": 1976.72
+ },
+ {
+  "i": 159,
+  "pl": "Ta niewiarygodna myśl, doprowadzająca do szału, torturowała całe jestestwo pani Verloc. Tkwiła w jej żyłach, w jej kościach, w korzeniach jej włosów. Winnie widziała siebie w postawie biblijnej żałobnicy o zasłoniętej twarzy, o podartym odzieniu; krzyki lamentu i zawodzenia przepełniały jej głowę.",
+  "start": 1979.4
+ },
+ {
+  "i": 160,
+  "pl": "Ale zęby były zacięte, a suche oczy gorzały wściekłością, gdyż nie odznaczała się uległym charakterem. Opieka, jaką roztoczyła nad bratem, wynikła z gwałtownego oburzenia. Winnie kochała go miłością wojowniczą. Walczyła za niego — nawet przeciw samej sobie.",
+  "start": 1997.4
+ },
+ {
+  "i": 161,
+  "pl": "Utrata Steviego miała w sobie gorycz klęski i rozpacz zawiedzionej namiętności. Nie był to zwykły cios śmierci. Co więcej, to nie śmierć zabrała jej brata. Zabrał go pan Verloc. Widziała to na własne oczy. Patrzyła, jak go zabierał i nawet nie kiwnęła palcem.",
+  "start": 2014.28
+ },
+ {
+  "i": 162,
+  "pl": "Nie zapobiegła temu jak — jak idiotka — jak ślepa idiotka. A ten człowiek, zamordowawszy go, wrócił do niej do domu. Po prostu wrócił do domu, jak każdy mąż wraca do żony.",
+  "start": 2030.86
+ },
+ {
+  "i": 163,
+  "pl": "Pani Verloc mruknęła do ściany przez zaciśnięte zęby:",
+  "start": 2042.18
+ },
+ {
+  "i": 164,
+  "pl": "— A ja myślałam, że się zaziębił.",
+  "start": 2046.94
+ },
+ {
+  "i": 165,
+  "pl": "Pan Verloc posłyszał te słowa i wziął je do siebie.",
+  "start": 2049.48
+ },
+ {
+  "i": 166,
+  "pl": "— Nic podobnego — rzekł posępnie. — Byłem taki roztrzęsiony. I to z twojego powodu.",
+  "start": 2053.1
+ },
+ {
+  "i": 167,
+  "pl": "Pani Verloc odwróciła powoli twarz i przeniosła wzrok ze ściany na postać męża. Pan Verloc przygryzał końce palców i patrzył w ziemię.",
+  "start": 2060.1
+ },
+ {
+  "i": 168,
+  "pl": "— Nie ma na to rady — mruknął, opuszczając rękę. — Trzeba się opanować. Będziesz musiała teraz mieć głowę na karku. To ty naprowadziłaś na nas policję. No ale trudno, nie powiem już ani słowa — ciągnął wspaniałomyślnie. — Nie mogłaś przecież wiedzieć.",
+  "start": 2069.8
+ },
+ {
+  "i": 169,
+  "pl": "— Nie mogłam — szepnęła Winnie. Był to jakby szept trupa. Pan Verloc wrócił do swych rozważań.",
+  "start": 2086.08
+ },
+ {
+  "i": 170,
+  "pl": "— Nie mam ci tego za złe. Ja im teraz pokażę! Kiedy już się znajdę pod kluczem, będę mógł mówić bezpiecznie… rozumiesz? Musisz przygotować się na to, że będziemy rozłączeni przez dwa lata — ciągnął tonem szczerej troski. — Łatwiej to zniesiesz ode mnie. Będziesz miała coś do roboty, podczas gdy ja…",
+  "start": 2096.64
+ },
+ {
+  "i": 171,
+  "pl": "Posłuchaj mnie, Winnie: przez dwa lata musisz sama prowadzić ten interes. Znasz się na tym dostatecznie. Masz dobrą głowę. Dam ci znać, kiedy przyjdzie czas na sprzedaż sklepu. Trzeba wziąć się do tego nadzwyczaj ostrożnie. Towarzysze będą cię przez cały czas mieli na oku.",
+  "start": 2115.28
+ },
+ {
+  "i": 172,
+  "pl": "Musisz być zręczna, tak jak ty to potrafisz, i milcząca jak grób. Nie zdradzisz się przed nikim. Nie mam ochoty, żeby mi dali po łbie albo żgnęli mnie w plecy, gdy wyjdę z więzienia.",
+  "start": 2130.6
+ },
+ {
+  "i": 173,
+  "pl": "Tak przemawiał pan Verloc, wytężając umysł, aby rozwiązać zręcznie i przezornie zagadnienia przyszłości. Jego głos był ponury, albowiem pan Verloc miał trafne wyczucie położenia. Stało się wszystko to, czego chciał uniknąć. Przyszłość wyglądała niepewnie.",
+  "start": 2141.92
+ },
+ {
+  "i": 174,
+  "pl": "Widać stracił chwilowo głowę, zastraszony okrutnym wybrykiem pana Władimira.",
+  "start": 2159.46
+ },
+ {
+  "i": 175,
+  "pl": "Ale cóż w tym dziwnego, gdy mężczyzna mający już po czterdziestce wpada w rozterkę ze strachu przed utratą posady, zwłaszcza jeśli jest tajnym agentem politycznym i jeśli się czuł zupełnie bezpieczny, świadom swych niepoślednich walorów oraz szacunku wysoko postawionych osobistości.",
+  "start": 2164.36
+ },
+ {
+  "i": 176,
+  "pl": "Więc nie można było panu Verlocowi się dziwić.",
+  "start": 2181.59
+ },
+ {
+  "i": 177,
+  "pl": "A teraz wszystko skończyło się katastrofą. Pan Verloc panował nad sobą, ale nie był pogodny. Tajny agent, który przez zemstę zrywa z tajnością i chełpi się publicznie swymi czynami, staje się przedmiotem zaciekłego, krwiożerczego oburzenia.",
+  "start": 2185.01
+ },
+ {
+  "i": 178,
+  "pl": "Nie przesadzając grożących mu niebezpieczeństw, pan Verloc starał się uwydatnić je plastycznie przed żoną. Powtórzył, że nie ma zamiaru pozwolić, aby rewolucjoniści go sprzątnęli.",
+  "start": 2200.63
+ },
+ {
+  "i": 179,
+  "pl": "Spojrzał żonie prosto w oczy. Rozszerzone źrenice Winnie przyjęły jego wzrok w swe bezdenne głębie.",
+  "start": 2211.95
+ },
+ {
+  "i": 180,
+  "pl": "— Zanadto cię na to kocham — rzekł z krótkim, nerwowym śmiechem.",
+  "start": 2218.9
+ },
+ {
+  "i": 181,
+  "pl": "Lekki rumieniec zabarwił śmiertelnie bladą, nieruchomą twarz pani Verloc. Wizje przeszłości już ją opuściły; nie tylko usłyszała, ale i zrozumiała słowa wypowiedziane przez męża. Były tak rażąco sprzeczne ze stanem jej ducha, że na chwilę zbrakło jej tchu.",
+  "start": 2224.31
+ },
+ {
+  "i": 182,
+  "pl": "Stan jej ducha odznaczał się chwalebną prostotą, ale brakowało mu równowagi, ponieważ Winnie była opanowana przez jedną jedyną myśl. Ta myśl przeniknęła do każdego włókna jej mózgu.",
+  "start": 2241.47
+ },
+ {
+  "i": 183,
+  "pl": "Oto człowiek, z którym żyła bez wstrętu przez siedem lat, zabrał jej „biednego chłopca”, aby go zabić; człowiek, do którego przyzwyczaiła się cieleśnie i duchowo, któremu ufała, zabrał jej chłopca, aby go zabić!",
+  "start": 2253.19
+ },
+ {
+  "i": 184,
+  "pl": "Ta myśl — w swym kształcie, w swej treści, w swych skutkach, nieobliczalnych, bo zmieniających nawet wygląd rzeczy martwych — była tego rodzaju, że można było od niej osłupieć na zawsze. Pani Verloc siedziała bez ruchu.",
+  "start": 2268.53
+ },
+ {
+  "i": 185,
+  "pl": "A pan Verloc, jak zwykle w palcie i kapeluszu, chodził tam i sam — wcale nie po kuchni, lecz właśnie po tej myśli, tratując butami mózg żony. Pan Verloc zapewne coś mówił, ale myśl Winnie prawie ciągle przesłaniała jej głos męża.",
+  "start": 2281.61
+ },
+ {
+  "i": 186,
+  "pl": "Niekiedy jednak ten głos docierał do jej uszu. Od czasu do czasu wyłaniały się pojedyncze zdania. Treść ich była na ogół pełna otuchy. Wówczas rozszerzone źrenice Winnie powracały z oddali, śledząc ruchy pana Verloca z ponurą troską i nieprzeniknioną uwagą.",
+  "start": 2295.79
+ },
+ {
+  "i": 187,
+  "pl": "Pan Verloc znał na wskroś wszelkie sprawy dotyczące swego tajnego zawodu i był dobrej myśli co do własnych planów i kombinacji. Wierzył naprawdę, że w gruncie rzeczy łatwo mu będzie ujść przed nożem rozwścieczonych towarzyszy.",
+  "start": 2312.43
+ },
+ {
+  "i": 188,
+  "pl": "Tak często zdarzało mu się wyolbrzymiać (ze względów zawodowych) potęgę rewolucjonistów i jej zasięg, że miał dokładne wyczucie sytuacji. Bo aby przesadzać w sposób wiarygodny, trzeba najpierw rzecz dokładnie zbadać.",
+  "start": 2326.22
+ },
+ {
+  "i": 189,
+  "pl": "Wiedział również, ile dobrodziejstw, a także i nikczemności ulatnia się z pamięci w ciągu dwóch lat — dwóch długich lat. Ta pierwsza jego poufna rozmowa z żoną płynęła z wrodzonego mu optymizmu, przy czym uznał za stosowne okazać największą pewność siebie, na jaką mógł się zdobyć.",
+  "start": 2340.41
+ },
+ {
+  "i": 190,
+  "pl": "Chciał dodać biednej kobiecie odwagi. Po jego uwolnieniu, które zgodnie z zasadniczą linią jego życia miało oczywiście nastąpić po kryjomu, natychmiast oboje znikną. Co się tyczyło zatarcia za nimi śladów, zapewnił Winnie, iż można na nim polegać. Potrafi to zrobić tak, że nawet sam diabeł…",
+  "start": 2358.95
+ },
+ {
+  "i": 191,
+  "pl": "Machnął ręką. Wszystko to wyglądało, jakby się przechwalał, a tymczasem on chciał tylko dodać żonie odwagi. Zamiary miał dobre, lecz niestety nie było porozumienia między nim a jego audytorium.",
+  "start": 2377.15
+ },
+ {
+  "i": 192,
+  "pl": "Samochwalczy ton męża przyciągnął uwagę Winnie, która puszczała większość słów mimo uszu — bo cóż ją słowa mogły teraz obchodzić? Co mogły jej uczynić dobrego lub złego w obliczu władającej nią myśli?",
+  "start": 2391.33
+ },
+ {
+  "i": 193,
+  "pl": "Śledziła mrocznym spojrzeniem tego człowieka, który stwierdzał swoją bezkarność — człowieka, który zabrał z domu jej biednego chłopca, aby go zabić. Nie mogła sobie przypomnieć, gdzie go zabił, ale serce jej zaczęło bić bardzo wyraźnie.",
+  "start": 2403.73
+ },
+ {
+  "i": 194,
+  "pl": "Pan Verloc łagodnym małżeńskim tonem wyrażał teraz głębokie przeświadczenie, że mają jeszcze przed sobą dobrych kilka lat spokojnego życia. Nie poruszał kwestii środków pieniężnych.",
+  "start": 2417.81
+ },
+ {
+  "i": 195,
+  "pl": "Będą musieli przywarować i niejako gnieździć się w cieniu, ukryci śród ludzi, którzy zastąpią im gąszcz trawy; ich życie musi być skromne jak życie fiołków. Pan Verloc określił to słowami: „Trzeba będzie się na chwilę przytaić”. Oczywiście gdzieś daleko od Anglii.",
+  "start": 2428.67
+ },
+ {
+  "i": 196,
+  "pl": "Nie było jasne, czy pan Verloc ma na myśli Hiszpanię, czy Amerykę Południową; w każdym razie miało to być gdzieś za granicą.",
+  "start": 2447.38
+ },
+ {
+  "i": 197,
+  "pl": "Ostatnie słowo wpadło w ucho pani Verloc i wywarło pewne określone wrażenie. Ten człowiek mówi o wyjeździe za granicę. Wrażenie to było zupełnie oderwane; a siła przyzwyczajenia jest tak wielka, że pani Verloc natychmiast machinalnie zapytała siebie: „A co będzie ze Steviem?”.",
+  "start": 2456.0
+ },
+ {
+  "i": 198,
+  "pl": "Było to pewnego rodzaju roztargnienie; w mig zdała sobie sprawę, że nie potrzebuje się o brata niepokoić. Nigdy już nie będzie o niego się niepokoić. Został uprowadzony i zabity. Nie żyje.",
+  "start": 2473.56
+ },
+ {
+  "i": 199,
+  "pl": "Ten wstrząsający dowód roztargnienia pobudził umysł pani Verloc. Zaczęła sobie uprzytamniać pewne wyłaniające się konsekwencje tego, co się stało, konsekwencje, które by zaskoczyły jej męża.",
+  "start": 2486.47
+ },
+ {
+  "i": 200,
+  "pl": "Nie potrzebowała już zostać tutaj, w tej kuchni, w tym domu, z tym człowiekiem — bo chłopiec odszedł na zawsze. Nic jej tu nie zatrzymywało. Na tę myśl wstała jakby tknięta sprężyną. Ale jednocześnie poczuła, że w ogóle nie istnieje nic, co by ją wiązało ze światem.",
+  "start": 2498.96
+ },
+ {
+  "i": 201,
+  "pl": "To poczucie osadziło ją na miejscu. Pan Verloc przypatrywał się Winnie z mężowską troskliwością.",
+  "start": 2517.06
+ },
+ {
+  "i": 202,
+  "pl": "— Przyszłaś trochę do siebie — rzekł niespokojnie.",
+  "start": 2524.92
+ },
+ {
+  "i": 203,
+  "pl": "Coś szczególnego w złowrogim spojrzeniu żony mąciło jego optymizm. W tej właśnie chwili pani Verloc zaczęła się uważać za wyzwoloną ze wszystkich ziemskich więzów. Odzyskała wolność. Jej umowa z życiem, które uosabiał ten stojący przed nią mężczyzna, dobiegła końca. Była wolna.",
+  "start": 2529.08
+ },
+ {
+  "i": 204,
+  "pl": "Gdyby pan Verloc był mógł w jakiś sposób przeniknąć jej myśli, zgorszyłby się niepomiernie. W stosunku do kobiet, które mu się podobały, był zawsze rozrzutny, ale mimo to nie miał nigdy wątpliwości, że jest kochany dla siebie samego.",
+  "start": 2550.23
+ },
+ {
+  "i": 205,
+  "pl": "Co do tego był niepoprawny, ponieważ jego poglądy etyczne zgadzały się z jego próżnością. Że ich, Verloców, cnotliwy i legalny związek opierał się na wzajemnej miłości, tego najzupełniej był pewien.",
+  "start": 2565.14
+ },
+ {
+  "i": 206,
+  "pl": "Pan Verloc postarzał się, utył, stał się ociężały, zachowując przeświadczenie, że nie zbywa mu na uroku i że można go kochać bezinteresownie. Gdy zobaczył, iż pani Verloc zrywa się i wychodzi z kuchni bez słowa, uczuł rozczarowanie.",
+  "start": 2579.1
+ },
+ {
+  "i": 207,
+  "pl": "— Dokąd idziesz? — zawołał na nią dość ostro. — Na górę?",
+  "start": 2594.95
+ },
+ {
+  "i": 208,
+  "pl": "Usłyszawszy to, pani Verloc odwróciła się we drzwiach.",
+  "start": 2599.55
+ },
+ {
+  "i": 209,
+  "pl": "Instynktowna ostrożność zrodzona ze strachu, z okropnego strachu, aby ten mężczyzna nie zbliżył się i jej nie dotknął, skłoniła ją do leciutkiego skinienia głową (z wysokości dwóch schodków) i do poruszenia ustami; mężowski optymizm pana Verloca wziął to za nikły, niepewny uśmiech.",
+  "start": 2603.33
+ },
+ {
+  "i": 210,
+  "pl": "— Doskonale — zachęcał ją szorstko. — Wypoczynek i cisza, tego ci właśnie trzeba. Idź, idź. Zaraz tam do ciebie przyjdę.",
+  "start": 2622.71
+ },
+ {
+  "i": 211,
+  "pl": "Pani Verloc, kobieta wolna, nie miała właściwie pojęcia dokąd idzie; usłuchała go ze sztywnym spokojem.",
+  "start": 2631.83
+ },
+ {
+  "i": 212,
+  "pl": "Pan Verloc śledził jej ruchy. Znikła na schodach. Poczuł się rozczarowany. Takie już miał usposobienie, że byłby wołał, aby mu się rzuciła na szyję. Ale wspaniałomyślność i pobłażliwość wzięły w nim górę. Winnie była zawsze powściągliwa i milcząca.",
+  "start": 2638.61
+ },
+ {
+  "i": 213,
+  "pl": "Zresztą i w naturze pana Verloca nie leżało szafowanie słowami oraz czułościami. Ale to nie był zwykły wieczór. W takich okolicznościach mężczyzna potrzebuje, aby go krzepić jawnymi dowodami współczucia i przywiązania. Pan Verloc westchnął i zakręcił gaz w kuchni.",
+  "start": 2655.34
+ },
+ {
+  "i": 214,
+  "pl": "Jego współczucie dla żony było szczere i silne. O mało co łzy nie zaćmiły mu oczu, gdy stał w saloniku, rozmyślając nad grożącą jej samotnością. Nastrojony na smutną nutę, poczuł dotkliwie, jak bardzo mu brakuje Steviego na tym kłopotliwym świecie. Medytował ponuro o śmierci chłopca.",
+  "start": 2671.76
+ },
+ {
+  "i": 215,
+  "pl": "Czemuż on tak idiotycznie pozbawił się życia!",
+  "start": 2691.15
+ },
+ {
+  "i": 216,
+  "pl": "Pan Verloc poczuł znowu nieprzeparty głód; zdarza się to nawet ludziom odeń wytrzymalszym i jest skutkiem wielkiego napięcia nerwów, które towarzyszy wykonaniu ryzykownego zamysłu. Pieczeń na półmisku, jakby przygotowana na stypę po pogrzebie Steviego⁸⁴, przyciągnęła uwagę pana Verloca.",
+  "start": 2695.16
+ },
+ {
+  "i": 217,
+  "pl": "I znów się zaczął posilać. Jadł żarłocznie, bez opanowania ani przyzwoitości, krając sobie grube kawały dużym ostrym nożem i połykając je bez chleba. W ciągu tego posiłku przyszło mu na myśl, że nie słyszy, aby żona krzątała się po sypialni, jak się tego spodziewał.",
+  "start": 2713.42
+ },
+ {
+  "i": 218,
+  "pl": "Myśl, że może zastanie ją siedzącą na łóżku w ciemnościach, odebrała mu nie tylko apetyt, ale i chęć pójścia na górę za jej przykładem. Odłożywszy nóż do krajania mięsa, pan Verloc zaczął nasłuchiwać z twarzą uważną i zatroskaną.",
+  "start": 2729.68
+ },
+ {
+  "i": 219,
+  "pl": "Wreszcie posłyszał z ulgą, że się poruszyła. Przeszła nagle przez pokój i otworzyła gwałtownie okno. Po okresie ciszy, w czasie której wyobrażał sobie, że stoi wychylona na dwór, usłyszał, że powoli okno zamknęła. Potem uczyniła kilka kroków i siadła.",
+  "start": 2744.59
+ },
+ {
+  "i": 220,
+  "pl": "Każdy odgłos był znany panu Verlocowi, który lubił przesiadywać w domu. Kiedy znów posłyszał kroki żony nad głową, wiedział — zupełnie jakby na to patrzył — że zmienia trzewiki.",
+  "start": 2760.65
+ },
+ {
+  "i": 221,
+  "pl": "Wzruszył z lekka ramionami na ten niepokojący objaw i odszedłszy od stołu, stanął tyłem do kominka z głową przechyloną na ramię, gryząc końce palców. Orientował się w poruszeniach żony według dochodzących go odgłosów. Chodziła gwałtownie tu i tam, przystając raptem to przed komodą, to przed szafą.",
+  "start": 2771.13
+ },
+ {
+  "i": 222,
+  "pl": "Olbrzymi ciężar znużenia, plon całego dnia wstrząsów i niespodzianek, przytłoczył energię pana Verloca.",
+  "start": 2789.55
+ },
+ {
+  "i": 223,
+  "pl": "Nie podniósł oczu, dopóki nie usłyszał, że żona schodzi ze schodów. Tak jak przewidywał, ubrała się do wyjścia.",
+  "start": 2796.01
+ },
+ {
+  "i": 224,
+  "pl": "Pani Verloc była kobietą wolną. Otwarła okno w sypialni, żeby krzyknąć: „Morderstwo! Na pomoc!” — albo żeby się przez nie rzucić. Nie wiedziała bowiem dokładnie, co za użytek zrobić ze swej wolności.",
+  "start": 2804.45
+ },
+ {
+  "i": 225,
+  "pl": "Jej istota była jakby rozdarta na dwie części, których czynności umysłowe niezbyt się z sobą zgadzały. Ulica, niema i bezludna, wzbudziła w pani Verloc odrazę, ponieważ zdawała się sprzyjać temu człowiekowi, który był taki pewien, iż kara go nie dosięgnie.",
+  "start": 2817.19
+ },
+ {
+  "i": 226,
+  "pl": "Winnie bała się, że na jej krzyk nikt nie przyjdzie. Nikt — z całą pewnością. A jej instynkt samozachowawczy zadrżał przed rzuceniem się jakby w przepaścisty rów z błotem na dnie. Zamknęła okno i ubrała się, aby inną drogą znaleźć się na ulicy. Była kobietą wolną.",
+  "start": 2833.35
+ },
+ {
+  "i": 227,
+  "pl": "Ubrała się do wyjścia starannie, włożyła nawet woalkę. Gdy się pojawiła w świetle saloniku, pan Verloc zauważył, że i torebka wisi u jej lewej ręki… Oczywiście chce uciec do matki.",
+  "start": 2851.57
+ },
+ {
+  "i": 228,
+  "pl": "W jego znużonym umyśle pojawiła się myśl, że kobiety umieją jednak dokuczyć. Ale był zbyt szlachetny, aby żywić taką myśl przez dłuższą chwilę.",
+  "start": 2864.21
+ },
+ {
+  "i": 229,
+  "pl": "Ten mężczyzna, zraniony okrutnie w swej miłości własnej, postępował w dalszym ciągu wspaniałomyślnie, nie pozwalając sobie na zadośćuczynienie w postaci gorzkiego uśmiechu lub pogardliwego machnięcia ręką.",
+  "start": 2873.21
+ },
+ {
+  "i": 230,
+  "pl": "Z prawdziwą wielkodusznością tylko spojrzał na drewniany zegar ścienny i rzekł tonem zupełnie spokojnym, lecz energicznym:",
+  "start": 2886.87
+ },
+ {
+  "i": 231,
+  "pl": "— Dwadzieścia pięć minut po ósmej, Winnie. Nie ma sensu, żebyś szła do matki tak późno. Nie mogłabyś wrócić na noc do domu.",
+  "start": 2894.98
+ },
+ {
+  "i": 232,
+  "pl": "Pani Verloc stanęła jak wryta przed jego wyciągniętą ręką. Dodał z powagą:",
+  "start": 2902.35
+ },
+ {
+  "i": 233,
+  "pl": "— Twoja matka pójdzie spać, zanim tam dojedziesz. Z tego rodzaju wiadomością nie trzeba się śpieszyć.",
+  "start": 2907.26
+ },
+ {
+  "i": 234,
+  "pl": "Pani Verloc ani myślała jechać do matki. Wzdrygnęła się na samą myśl o tym, a poczuwszy za sobą krzesło, poddała się jego kontaktowi i siadła. Chciała po prostu wyjść z domu i nigdy nie wrócić.",
+  "start": 2913.62
+ },
+ {
+  "i": 235,
+  "pl": "Uczucie to było zrozumiałe, lecz przybrało w jej duszy kształt pospolity, zgodny z jej pochodzeniem i stanowiskiem: „Wolałabym chodzić po ulicy do końca życia” — pomyślała.",
+  "start": 2926.9
+ },
+ {
+  "i": 236,
+  "pl": "Ale była zależna od drobnostek, od przypadkowych zetknięć, bo jej duch doznał wstrząsu, dla którego próżno by szukać porównania w świecie materii; najgwałtowniejsze w dziejach trzęsienie ziemi byłoby słabym i nieudolnym odpowiednikiem tego wstrząsu. Winnie siadła.",
+  "start": 2937.61
+ },
+ {
+  "i": 237,
+  "pl": "W kapeluszu i woalce wyglądała jak gość, jakby zaszła na chwilę z wizytą. Natychmiastowa powolność żony dodała panu Verlocowi odwagi, lecz podrażniło go jej milczenie i jakby chwilowe tylko posłuszeństwo.",
+  "start": 2954.85
+ },
+ {
+  "i": 238,
+  "pl": "— Pozwól sobie powiedzieć — rzekł władczym tonem — że dziś powinnaś tutaj pozostać. Do diabła z tym wszystkim! Przecież to ty naprowadziłaś na mnie tę przeklęta policję. Nie robię ci wyrzutów, ale swoją drogą to twoja sprawka. Zdejmże ten przeklęty kapelusz.",
+  "start": 2969.37
+ },
+ {
+  "i": 239,
+  "pl": "Nie mogę na to pozwolić, abyś teraz wyszła, kochanie — dodał łagodniej.",
+  "start": 2987.87
+ },
+ {
+  "i": 240,
+  "pl": "Umysł pani Verloc uczepił się jego słów z chorobliwą uporczywością. Ten człowiek nie pozwoli jej wyjść — ten sam człowiek, który zabrał sprzed jej oczu Steviego, aby go zamordować w jakimś miejscu… nie pamiętała jego nazwy. Naturalnie, że nie pozwoli jej wyjść.",
+  "start": 2992.59
+ },
+ {
+  "i": 241,
+  "pl": "Teraz, kiedy zamordował Steviego, nigdy już nie wypuści jej z domu. Będzie chciał ją trzymać przy sobie — za darmo. I rozprzężony umysł pani Verloc zaczął działać pod wpływem tego charakterystycznego rozumowania, które miało siłę jakiejś obłędnej logiki.",
+  "start": 3009.2
+ },
+ {
+  "i": 242,
+  "pl": "Mogłaby przesunąć się obok męża, otworzyć drzwi, wybiec na ulicę. Ale on by rzucił się za nią, schwytałby ją wpół, wciągnąłby ją z powrotem do sklepu. Mogłaby go drapać, kopać, gryźć — mogłaby także pchnąć go nożem; ale na to trzeba mieć nóż.",
+  "start": 3024.94
+ },
+ {
+  "i": 243,
+  "pl": "Pani Verloc siedziała nieruchomo we własnym domu, zasłonięta czarną woalką jak zamaskowany, tajemniczy gość o nieprzeniknionych zamiarach.",
+  "start": 3040.4
+ },
+ {
+  "i": 244,
+  "pl": "Wielkoduszność pana Verloca miała granice. Żona doprowadziła go w końcu do ostateczności.",
+  "start": 3048.74
+ },
+ {
+  "i": 245,
+  "pl": "— Czemu się nie odezwiesz? Ty to masz sposoby, żeby człowiekowi dokuczyć. Jeszcze jak! Potrafisz udawać głuchą i niemą. Dałaś mi się już nieraz we znaki. A ja właśnie dzisiaj tego nie zniosę. Przede wszystkim zdejm tę, psiakrew, woalkę. Człowiek nie wie, czy mówi do mumii, czy do żywej kobiety.",
+  "start": 3056.06
+ },
+ {
+  "i": 246,
+  "pl": "Zbliżył się i wyciągnąwszy rękę, zdarł żonie woalkę, odsłaniając nieporuszoną twarz, o którą jego rozjątrzenie rozbiło się jak szklana bańka o skałę.",
+  "start": 3075.26
+ },
+ {
+  "i": 247,
+  "pl": "— Tak jest lepiej — rzekł, aby pokryć przelotny niepokój, i wycofał się na dawne stanowisko przy kominku. Nawet nie przeszło mu przez myśl, aby żona mogła go rzucić. Zawstydził się trochę, albowiem był szlachetny i czułego serca. Cóż miał począć? Wszystko już jej powiedział.",
+  "start": 3084.96
+ },
+ {
+  "i": 248,
+  "pl": "Zaczął gorąco ją przekonywać:",
+  "start": 3101.44
+ },
+ {
+  "i": 249,
+  "pl": "— Szukałem na wszystkie strony, żeby znaleźć kogoś do tej przeklętej roboty, słowo ci daję! Narażałem się na to, że się zdradzę. I powtarzam, że nikogo znaleźć nie mogłem. Nikt nie był na to dość głupi albo dość głodny. Za kogo ty mnie bierzesz — za mordercę, czy co?",
+  "start": 3103.78
+ },
+ {
+  "i": 250,
+  "pl": "No więc stało się, chłopiec nie żyje. Czy myślisz, że ja chciałem, aby się wysadził w powietrze? Nie żyje — skończyły się jego troski. A nasze troski dopiero teraz się zaczną, właśnie dlatego, że on się wysadził w powietrze. Ja ciebie nie potępiam.",
+  "start": 3120.41
+ },
+ {
+  "i": 251,
+  "pl": "Ale postaraj się tylko zrozumieć, że to był czysty przypadek; taki sam przypadek, jakby chłopiec przechodził przez ulicę i jakby go przejechał omnibus.",
+  "start": 3135.69
+ },
+ {
+  "i": 252,
+  "pl": "Jego wspaniałomyślność miała granice, ponieważ był człowiekiem, a nie potworem, za jakiego miała go pani Verloc.",
+  "start": 3144.35
+ },
+ {
+  "i": 253,
+  "pl": "Umilkł; skurcz wargi — niby warknięcie — podniósł mu z jednej strony wąsy, odsłaniając połysk białych zębów, i nadał mu wyraz myślącego zwierzęcia, niezbyt niebezpiecznego; wyglądał jak ociężałe zwierzę o gładkiej głowie i chrapliwym głosie, podobne do foki, tylko bardziej ponure.",
+  "start": 3150.55
+ },
+ {
+  "i": 254,
+  "pl": "— A w gruncie rzeczy ty zawiniłaś akurat tyle, co i ja. Tak jest. Możesz wytrzeszczać na mnie oczy, ile ci się żywnie podoba. Znam się na twoich sposobach. Niech tu padnę trupem, jeśli kiedy zaświtało mi w głowie, aby chłopca do tego użyć.",
+  "start": 3170.9
+ },
+ {
+  "i": 255,
+  "pl": "A ty ciągle pod nos mi go podsuwałaś, kiedy odchodziłem od zmysłów i łamałem sobie głowę, co począć, żeby nas wszystkich ocalić. Co cię u licha napadło? Mógłby kto pomyśleć, żeś to robiła umyślnie. I nie dałbym dwóch groszy, czy tak nie było.",
+  "start": 3185.14
+ },
+ {
+  "i": 256,
+  "pl": "Któż zgadnie, co ty potrafisz wywąchać z tą twoją obojętną miną niewiniątka, które nic nie widzi i pary z ust nie puszcza…",
+  "start": 3200.27
+ },
+ {
+  "i": 257,
+  "pl": "Chrapliwy jego głos zamilkł na chwilę. Pani Verloc nic nie odpowiedziała. Wobec tej ciszy zawstydził się swoich słów. Ale, jak się to często zdarza ludziom spokojnym w czasie sprzeczek domowych, pan Verloc, czując się zawstydzony, wysunął nowe zarzuty.",
+  "start": 3207.24
+ },
+ {
+  "i": 258,
+  "pl": "— Ty czasem zatniesz się w taki nieznośny sposób — podjął znów, nie podnosząc głosu. — Można wprost oszaleć. Twoje szczęście, że nie tak łatwo daję się wyprowadzić z równowagi przez te fochy i udawanie niemowy. Tak, jestem do ciebie przywiązany. Ale co zanadto, to niezdrowo.",
+  "start": 3224.61
+ },
+ {
+  "i": 259,
+  "pl": "Chwila nie jest wcale po temu. Powinniśmy zastanowić się nad tym, co robić. Nie mogę cię puścić do matki, żebyś poleciała opowiadać jej o mnie jakieś bzdury. Jeszcze czego! I zdaj sobie jasno z tego sprawę: jeśli myślisz, że to ja zabiłem chłopca, wiedz o tym, że równie dobrze ty go zabiłaś.",
+  "start": 3241.84
+ },
+ {
+  "i": 260,
+  "pl": "Pod względem szczerości uczuć i otwartego ich wyznania słowa te przeszły wszystko, co się kiedykolwiek powiedziało w tym domu, prowadzonym za dochody z tajnego zajęcia, pomnażane sprzedażą mniej lub więcej tajnych przedmiotów —",
+  "start": 3259.62
+ },
+ {
+  "i": 261,
+  "pl": "lichych środków wynalezionych przez ludzkość dla ochrony niedoskonałego społeczeństwa przed groźbą duchowego i fizycznego zepsucia, także poniekąd tajnego.",
+  "start": 3272.42
+ },
+ {
+  "i": 262,
+  "pl": "Pan Verloc wypowiedział te słowa, bo czuł się naprawdę skrzywdzony; lecz dyskretna przyzwoitość jego domu pozostała na pozór niezamącona — przyzwoitość domowego ogniska gnieżdżącego się w mrocznej ulicy za sklepem nigdy nie nawiedzanym przez słońce.",
+  "start": 3281.46
+ },
+ {
+  "i": 263,
+  "pl": "Pani Verloc, wysłuchawszy męża w sposób najzupełniej poprawny, wstała z krzesła w kapeluszu i żakiecie, niby gość przy końcu wizyty. Zaczęła iść w stronę pana Verloca z wyciągniętą ręką, jakby chcąc pożegnać się z nim w milczeniu.",
+  "start": 3297.04
+ },
+ {
+  "i": 264,
+  "pl": "Woalka uczepiona końcem z lewej strony twarzy raziła nieporządkiem przy konwencjonalnych, powściągliwych ruchach pani Verloc. Lecz gdy Winnie zbliżyła się do dywanu leżącego przed kominkiem, pana Verloca już tam nie było.",
+  "start": 3312.52
+ },
+ {
+  "i": 265,
+  "pl": "Odszedł ze spuszczonym wzrokiem w stronę kanapy, nie sprawdzając, jaki skutek wywarła jego tyrada. Był znużony i pełen typowo mężowskiej rezygnacji. Ale był też dotknięty w najczulsze miejsce swej ukrytej słabości. Jeżeli żona ma ochotę dąsać się wśród strasznie napiętej ciszy — to niech się dąsa.",
+  "start": 3326.08
+ },
+ {
+  "i": 266,
+  "pl": "Jest mistrzynią w tej domowej sztuce. Rzucił się ciężko na kanapę, obojętny jak zwykle na los swego kapelusza, który widać przyzwyczaił się dbać o siebie i potoczył się do bezpiecznego schronienia pod stołem.",
+  "start": 3345.36
+ },
+ {
+  "i": 267,
+  "pl": "Pan Verloc czuł się zmęczony. Reszta jego nerwowych sił została zużyta wśród niespodzianek i udręk dnia pełnego nieoczekiwanych klęsk, pieczętujących cały miesiąc bezsenności i snucia planów. Był zmęczony. Przecież człowiek nie jest z kamienia. Niech diabli wezmą to wszystko!",
+  "start": 3357.69
+ },
+ {
+  "i": 268,
+  "pl": "Spoczywał w swej charakterystycznej pozie, ubrany jak do wyjścia. Jedna poła jego otwartego palta leżała na podłodze. Ułożył się wygodnie na plecach. Ale tęsknił za wypoczynkiem bardziej zupełnym — za snem — za kilku godzinami rozkosznego zapomnienia. To przyjdzie później.",
+  "start": 3376.29
+ },
+ {
+  "i": 269,
+  "pl": "A tymczasem wypoczywał spokojnie. I myślał:",
+  "start": 3393.73
+ },
+ {
+  "i": 270,
+  "pl": "— Żeby ona już dała spokój tym nieznośnym wybrykom. Można się wściec.",
+  "start": 3397.8
+ },
+ {
+  "i": 271,
+  "pl": "Poczucie odzyskanej wolności, jakie ogarnęło panią Verloc, musiało być niezupełne. Zamiast podejść ku drzwiom, wsparła się plecami o gzyms kominka, niby wędrowiec, który wypoczywa wsparty o płot.",
+  "start": 3402.66
+ },
+ {
+  "i": 272,
+  "pl": "W jej wyglądzie było coś z obłędu: woalka zwisała na policzek jak łachman, w nieruchomych oczach światło gubiło się bez najlżejszego błysku.",
+  "start": 3414.7
+ },
+ {
+  "i": 273,
+  "pl": "Ta kobieta zdolna do zawarcia transakcji, której samo przypuszczenie zgorszyłoby dotkliwie pana Verloca, żywiącego tak idealne wyobrażenie o miłości —",
+  "start": 3423.56
+ },
+ {
+  "i": 274,
+  "pl": "zatrzymała się teraz miotana niepewnością, jakby czując, że jeszcze nie wypełniła czegoś, co jest konieczne dla zasadniczego zerwania owej transakcji.",
+  "start": 3433.12
+ },
+ {
+  "i": 275,
+  "pl": "Pan Verloc poruszył plecami, aby się ułożyć wygodniej, i z pełni serca wypowiedział życzenie równie zbożne jak źródło, z którego płynęło:",
+  "start": 3441.58
+ },
+ {
+  "i": 276,
+  "pl": "— Bodaj bym nie był widział na oczy tego przeklętego parku w Greenwich — burknął chrypliwie.",
+  "start": 3451.16
+ },
+ {
+  "i": 277,
+  "pl": "Matowy odgłos tych słów napełnił salonik dźwiękiem umiarkowanym, harmonizującym ze skromną treścią wypowiedzianego życzenia.",
+  "start": 3457.38
+ },
+ {
+  "i": 278,
+  "pl": "Fale powietrzne odpowiedniej długości, rozchodzące się według ścisłych formuł matematycznych, opłynęły wszystkie martwe przedmioty w pokoju i odbiły się od głowy pani Verloc, jakby ta głowa była z kamienia. Oczy Winnie stały się, rzekłbyś, jeszcze większe, choć to wydawało się niemożliwe.",
+  "start": 3465.26
+ },
+ {
+  "i": 279,
+  "pl": "Życzenie, które, pan Verloc wypowiedział spod serca, zapełniło lukę w pamięci jego żony. Park w Greenwich! Park! To tam chłopiec został zabity. Park… zmiażdżone gałęzie, poszarpane liście, żwir, kawałki ciała i kości brata — wszystko to wytrysło naraz jak fajerwerk.",
+  "start": 3482.98
+ },
+ {
+  "i": 280,
+  "pl": "Winnie przypomniała sobie, co o tym mówili, i zobaczyła to w szeregu obrazów. Trzeba było zgarniać go szuflą… Dygocąc na całym ciele, zobaczyła przed sobą szuflę pełną zebranej z ziemi potwornej miazgi.",
+  "start": 3501.32
+ },
+ {
+  "i": 281,
+  "pl": "Zamknęła rozpaczliwie oczy, chroniąc się przed wizją za mroczną zasłonę powiek; ale na tej zasłonie ujrzała najpierw opadające jak deszcz poszarpane szczątki Steviego, a potem jego głowę, samotną, niknącą z wolna jak ostatnia gwiazda fajerwerku.",
+  "start": 3514.64
+ },
+ {
+  "i": 282,
+  "pl": "Pani Verloc otworzyła oczy. Jej twarz nie była już kamienna. Każdy spostrzegłby subtelną zmianę w jej rysach, w spojrzeniu, zmianę nadającą twarzy wyraz nowy i niepokojący. Taki wyraz rzadko obserwują eksperci w warunkach spokoju i bezpieczeństwa, które są niezbędne dla dokładności badań.",
+  "start": 3530.38
+ },
+ {
+  "i": 283,
+  "pl": "Znaczenie owego wyrazu łatwo było przeniknąć na pierwszy rzut oka. Znikły wątpliwości pani Verloc co do zakończenia transakcji; jej myśli nie były już rozstrzelone i pracowały pod strażą woli. Ale pan Verloc niczego nie zauważył.",
+  "start": 3548.02
+ },
+ {
+  "i": 284,
+  "pl": "Wypoczywał w nastroju wzruszającego optymizmu, który jest następstwem wyczerpania. Nie chciał już niczym się dręczyć, a przede wszystkim dość miał kłopotów z żoną. Usprawiedliwił się przed nią tak dobitnie, że nic mu na to nie mogła powiedzieć. Ona go kocha.",
+  "start": 3562.86
+ },
+ {
+  "i": 285,
+  "pl": "Milczenie Winnie tłumaczył na swoją korzyść. Oto chwila odpowiednia, aby z nią się pogodzić. Dość tego milczenia. Przerwał je, wołając półgłosem: — Winnie.",
+  "start": 3577.7
+ },
+ {
+  "i": 286,
+  "pl": "— Idę — odrzekła posłusznie pani Verloc, kobieta wolna. Odzyskała panowanie nad mózgiem, nad głosem; czuła, że włada ze sprawnością wręcz nadnaturalną każdym włóknem ciała. Należała już tylko do siebie, bo transakcja była rozwiązana. Winnie widziała teraz wszystko. Zrobiła się przebiegła.",
+  "start": 3590.88
+ },
+ {
+  "i": 287,
+  "pl": "Miała w tym swój cel, odpowiadając mężowi tak szybko. Nie życzyła sobie, aby zmienił pozę na kanapie, bo ta poza dogadzała jej w tych warunkach. Życzeniu Winnie stało się zadość — pan Verloc ani drgnął. Ale, odpowiedziawszy mu, pozostała oparta niedbale o kominek w postawie odpoczywającego wędrowca.",
+  "start": 3609.38
+ },
+ {
+  "i": 288,
+  "pl": "Nie śpieszyło się jej. Twarz miała niezamąconą. Głowa i barki pana Verloca były zasłonięte wysoką poręczą kanapy. Utkwiła oczy w jego nogach.",
+  "start": 3627.44
+ },
+ {
+  "i": 289,
+  "pl": "Stała tak w tajemniczej ciszy i nagłym skupieniu, dopóki pan Verloc nie przemówił tonem mężowskim, rozkazującym, przy czym poruszył się z lekka, aby zrobić dla niej miejsce na brzegu kanapy.",
+  "start": 3637.56
+ },
+ {
+  "i": 290,
+  "pl": "— Chodź tutaj — rzekł tonem szczególnym, który mógł się wydać brutalny, lecz znany był dobrze pani Verloc jako ton małżeńskiej czułości.",
+  "start": 3648.62
+ },
+ {
+  "i": 291,
+  "pl": "Ruszyła z miejsca od razu, jakby wciąż jeszcze była wierną małżonką, związaną z tym człowiekiem nienaruszonym kontraktem. Prawą ręką musnęła lekko koniec stołu i szła dalej w stronę kanapy, a nóż do krajania mięsa, leżący obok półmiska, znikł bezszelestnie.",
+  "start": 3657.8
+ },
+ {
+  "i": 292,
+  "pl": "Pan Verloc usłyszał z zadowoleniem, że deska skrzypnęła w podłodze. Czekał. Winnie zbliżała się.",
+  "start": 3672.62
+ },
+ {
+  "i": 293,
+  "pl": "Jak gdyby bezdomny duch Steviego znalazł schronienie w piersi siostry i opiekunki, podobieństwo jej do brata wzrastało z każdym krokiem, zaznaczyło się nawet w opadnięciu dolnej szczęki i w lekkiej rozbieżności spojrzenia. Ale pan Verloc tego nie widział. Leżał na wznak i patrzył w górę.",
+  "start": 3678.94
+ },
+ {
+  "i": 294,
+  "pl": "Zobaczył, częścią na suficie, a częścią na ścianie, sunący cień ramienia i nóż w zaciśniętej dłoni. Cień mignął w górę i w dół. Sunął wolno. Tak wolno, że pan Verloc mógł rozpoznać rękę i broń.",
+  "start": 3696.64
+ },
+ {
+  "i": 295,
+  "pl": "Tak wolno, że pan Verloc mógł w pełni pojąć złowrogie zjawisko i poczuć smak śmierci podchodzący mu pod gardło. Szał ogarnął jego żonę — szał mordu.",
+  "start": 3710.1
+ },
+ {
+  "i": 296,
+  "pl": "Cień ręki sunął tak wolno, że pierwsze, obezwładniające wrażenie tego odkrycia ustąpiło i pan Verloc powziął niezłomną decyzję: wyjdzie zwycięsko ze straszliwej walki z uzbrojoną wariatką.",
+  "start": 3719.66
+ },
+ {
+  "i": 297,
+  "pl": "Cień sunął tak wolno, że pan Verloc obmyślił plan obrony: skoczy za stół i zwali z nóg tę kobietę ciosem ciężkiego drewnianego krzesła.",
+  "start": 3733.34
+ },
+ {
+  "i": 298,
+  "pl": "Ale cień nie sunął tak wolno, aby pan Verloc zdążył ruszyć ręką lub nogą. W jego piersi utkwił nóż. Nie napotkał na opór. Traf bywa czasem bardzo dokładny.",
+  "start": 3741.98
+ },
+ {
+  "i": 299,
+  "pl": "W ten gwałtowny cios, zadany nad poręczą kanapy, pani Verloc włożyła całe swe dziedzictwo po nieznanych, pradawnych przodkach, prostą dzikość epoki jaskiniowej i porywczą, nerwową wściekłość wieku barów.",
+  "start": 3753.9
+ },
+ {
+  "i": 300,
+  "pl": "Pan Verloc, tajny agent, przechylił się z lekka na bok od siły ciosu i wyzionął ducha, nawet nie drgnąwszy, szepcząc „Nie…” na znak protestu.",
+  "start": 3767.52
+ },
+ {
+  "i": 301,
+  "pl": "Pani Verloc puściła nóż i jej niezwykłe podobieństwo do zmarłego brata zaczęło niknąć, stało się znowu normalne. Odetchnęła głęboko, odetchnęła po raz pierwszy swobodnie, odkąd komisarz Heat pokazał jej napis na strzępie oddartym od palta Steviego.",
+  "start": 3778.83
+ },
+ {
+  "i": 302,
+  "pl": "Pochyliła się nad poręczą kanapy, wsparta na zgiętych ramionach. Obrała tę wygodną pozę nie po to, aby czuwać nad ciałem pana Verloca lub rozkoszować się jego śmiercią; pochyliła się wskutek falistych, rozkołysanych ruchów saloniku, który przez pewien czas miotał się jak na morzu w czas burzy.",
+  "start": 3793.69
+ },
+ {
+  "i": 303,
+  "pl": "Pani Verloc kręciło się w głowie, ale była spokojna. Stała się kobietą wolną, osiągnęła wolność doskonałą, która pozbawiła ją wszelkich pragnień i wszelkich pobudek, ponieważ Steviego nie było i nikt już nie potrzebował jej poświęcenia.",
+  "start": 3809.47
+ },
+ {
+  "i": 304,
+  "pl": "Winnie myślała obrazami, ale teraz wizje opuściły ją, bo przestała w ogóle myśleć. Zastygła w bezruchu. Rozkoszowała się zupełnym brakiem odpowiedzialności i swobodą bez granic — prawie tak jakby już nie żyła. Przestała się ruszać, przestała myśleć.",
+  "start": 3825.55
+ },
+ {
+  "i": 305,
+  "pl": "Śmiertelny zewłok świętej pamięci pana Verloca, spoczywający na kanapie, nie poruszył się również.",
+  "start": 3840.67
+ },
+ {
+  "i": 306,
+  "pl": "Gdyby nie to, że pani Verloc oddychała, idealna harmonia łączyłaby tych dwoje — owa harmonia polegająca na ostrożnej powściągliwości wystrzegającej się zbytecznych słów i gestów, powściągliwości, na której się opierało ich przyzwoite pożycie.",
+  "start": 3846.49
+ },
+ {
+  "i": 307,
+  "pl": "Albowiem pożycie ich było przyzwoite; osłaniało milczeniem pełnym obyczajności sprawy mogące się wyłonić z praktykowania tajnego zawodu i handlu podejrzanym towarem.",
+  "start": 3861.11
+ },
+ {
+  "i": 308,
+  "pl": "Zachowano wszelkie pozory aż do ostatka, nie zakłócając ich nieprzystojnymi krzykami lub jakimś innym wybuchem szczerości nie na miejscu. Nawet zadanie ciosu nie naruszyło przyzwoitości; bezruch i milczenie wciąż trwały.",
+  "start": 3871.77
+ },
+ {
+  "i": 309,
+  "pl": "Wreszcie pani Verloc podniosła z wolna głowę i spojrzała na zegar badawczo, niedowierzająco. Zdała sobie sprawę, że coś tyka w pokoju. Słyszała to coraz wyraźniej, choć pamiętała dobrze, iż ścienny zegar szedł cicho. Co mu się stało, że zaczął nagle tak głośno tykać?",
+  "start": 3886.13
+ },
+ {
+  "i": 310,
+  "pl": "Wskazówki pokazywały dziewięć minut do dziesiątej. Godzina nic pani Verloc nie obchodziła, a tykanie rozlegało się dalej.",
+  "start": 3902.57
+ },
+ {
+  "i": 311,
+  "pl": "Doszła do przekonania, że to nie może być zegar; obiegła ściany ponurym wzrokiem, który zachwiał się i przesłonił mgłą w chwili, gdy wytężyła słuch, aby zbadać, skąd pochodzi dźwięk. Tyk, tyk, tyk.",
+  "start": 3910.33
+ },
+ {
+  "i": 312,
+  "pl": "Wsłuchiwała się jeszcze czas jakiś i opuściła powoli oczy na ciało pana Verloca. Leżało w zwykłej pozie wypoczynku, tak dobrze jej znanej, że mogła patrzeć na męża ze swobodą, jakby w ich domowym życiu żadna zmiana nie zaszła. Wypoczywał jak co dzień. Było mu widać wygodnie.",
+  "start": 3924.32
+ },
+ {
+  "i": 313,
+  "pl": "W tej pozycji twarz pana Verloca nie była widoczna dla owdowiałej pani Verloc. Jej piękne, senne oczy, wędrując w dół śladem dźwięku, zatrzymały się na płaskim przedmiocie z kości wystającym trochę za brzeg kanapy.",
+  "start": 3941.76
+ },
+ {
+  "i": 314,
+  "pl": "Był to trzonek dużego noża i tylko to w nim dziwiło, że tkwił prostopadle w kamizelce pana Verloca i że coś spod niego ciekło. Ciemne krople padały na linoleum jedna za drugą z odgłosem tykania, które stawało się szybkie i wściekłe niby tętno obłąkanego zegara.",
+  "start": 3954.82
+ },
+ {
+  "i": 315,
+  "pl": "Wśród największego natężenia szybkości tykanie zmieniło się w nieustanny szmer jakby wody płynącej wątłym strumykiem. Pani Verloc śledziła tę zmianę, a po twarzy jej przelatywał niepokój. Coś płynęło ciurkiem… ciemne, chyże… Krew!",
+  "start": 3971.72
+ },
+ {
+  "i": 316,
+  "pl": "Wobec tej nieprzewidzianej okoliczności pani Verloc porzuciła pozę leniwą i obojętną.",
+  "start": 3989.16
+ },
+ {
+  "i": 317,
+  "pl": "Uniosła nagle sukni i ze słabym okrzykiem rzuciła się ku drzwiom, jakby posłyszany odgłos zwiastował niszczącą powódź.",
+  "start": 3994.72
+ },
+ {
+  "i": 318,
+  "pl": "Natknąwszy się na stół, odepchnęła go oburącz niby coś żywego z taką siłą, że przez chwilę sunął na czterech nogach z głośnym zgrzytem, a duży półmisek z pieczenią trzasnął głośno o podłogę.",
+  "start": 4001.62
+ },
+ {
+  "i": 319,
+  "pl": "Potem wszystko się uciszyło. Pani Verloc, dopadłszy drzwi, stanęła. Melonik, wydobyty z ukrycia przez odsunięcie stołu, kołysał się lekko rondem do góry w powiewie wznieconym jej ucieczką.",
+  "start": 4012.96
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>
