@@ -114,11 +114,12 @@ def load_annotations(path: Optional[Path]) -> Dict[str, Dict[str, str]]:
 def chapter_annotations(units, annotations: Dict[str, Dict[str, str]]) -> Dict[str, Dict[str, str]]:
     """Embed only notes referenced by this chapter's study text."""
     superscript_digits = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
+    marker = re.compile(r"<sup>(\d+)</sup>|([⁰¹²³⁴⁵⁶⁷⁸⁹]+)")
     referenced = {
-        number or unicode_number.translate(superscript_digits)
+        (match.group(1) or match.group(2).translate(superscript_digits))
         for unit in units
         for text in (unit.get("en", ""), unit.get("pl", ""), unit.get("ua", ""))
-        for number, unicode_number in re.findall(r"<sup>(\d+)</sup>|([⁰¹²³⁴⁵⁶⁷⁸⁹]+)", text)
+        for match in marker.finditer(text)
     }
     return {number: annotations[number] for number in sorted(referenced, key=int)
             if number in annotations}

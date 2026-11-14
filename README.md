@@ -4,6 +4,7 @@ Bookcast is a collection of books to read, listen to, and study. Each book has a
 
 ## Books
 
+- **Baśnie** — bilingual study edition (PL → UA)
 - **The Hound of the Baskervilles** — trilingual study edition (EN → PL → UA)
 - **Lalka** — bilingual study edition (PL → UA)
 - **Tajny agent** — trilingual study edition (EN → PL → UA)

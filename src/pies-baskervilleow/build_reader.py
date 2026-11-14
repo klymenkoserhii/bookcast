@@ -17,12 +17,21 @@ this script just keeps CHAPTER in sync with the Markdown so you never hand-copy
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
 from align_audio import LOW_CONFIDENCE, parse_markdown, preview
+
+
+def load_words(asr_json: Optional[Path]) -> List[Dict]:
+    """ASR word stream ({norm, start, end}) written by align_audio.py."""
+    if asr_json is None or not asr_json.exists():
+        return []
+    data = json.loads(asr_json.read_text(encoding="utf-8"))
+    return data.get("words", [])
 
 
 def load_times(chapter: Path, asr_json: Optional[Path], times_js: Optional[Path]):
@@ -71,6 +80,93 @@ def js_array_with_comments(times: Sequence[Optional[float]], units, meta) -> str
         )
     lines.append("];")
     return "\n".join(lines)
+
+
+_TOKEN_SPLIT = re.compile(r"[\W_]+", re.UNICODE)
+
+
+def display_tokens(text: str) -> List[str]:
+    """Spoken PL tokens; footnote markers are not part of the narration."""
+    text = re.sub(r"<sup>\d+</sup>|[⁰¹²³⁴⁵⁶⁷⁸⁹]+", "", text)
+    return re.sub(r"<[^>]+>", " ", text).split()
+
+
+def _fill_silent(spans: List[Optional[List[float]]]) -> List[List[float]]:
+    """Punctuation and unmatched tokens borrow the silence around them.
+
+    A dash nobody speaks gets the gap between the previous word's end and the
+    next word's start, so the underline never jumps backwards over a pause.
+    """
+    n = len(spans)
+    k, prev_end = 0, None
+    while k < n:
+        if spans[k] is not None:
+            prev_end = spans[k][1]  # type: ignore[union-attr]
+            k += 1
+            continue
+        j = k
+        while j < n and spans[j] is None:
+            j += 1
+        next_start = spans[j][0] if j < n and spans[j] else None
+        start = prev_end if prev_end is not None else (next_start if next_start is not None else 0.0)
+        end = next_start if next_start is not None else start
+        if end < start:
+            end = start
+        for x in range(k, j):
+            spans[x] = [round(start, 2), round(end, 2)]
+        prev_end = end
+        k = j
+    return spans  # type: ignore[return-value]
+
+
+def word_timings(units, asr_words: Sequence[Dict]) -> Optional[List[List[List[float]]]]:
+    """Per unit: one [start, end] pair per PL token the reader displays.
+
+    The narration is Polish, so the underline tracks the PL study text; EN and
+    UA have no word timings.
+
+    One global LCS of every display token against the ASR word stream — the same
+    strategy align_audio.py uses for section timestamps, because a single global
+    alignment cannot be stolen by a word that repeats inside a sentence.
+
+    Returns None when the sidecar has no word stream, so chapters aligned before
+    word timings existed keep building exactly as before.
+    """
+    if not asr_words:
+        return None
+    asr_norm = [w["norm"] for w in asr_words]
+
+    tokens = [display_tokens(u["pl"]) for u in units]
+    flat: List[str] = []
+    owner: List[int] = []          # display-token index each normalized part belongs to
+    g = 0
+    for unit_tokens in tokens:
+        for tok in unit_tokens:
+            parts = [p for p in _TOKEN_SPLIT.split(tok.lower()) if p]
+            flat.extend(parts)
+            owner.extend([g] * len(parts))
+            g += 1
+
+    sm = difflib.SequenceMatcher(None, asr_norm, flat, autojunk=False)
+    token_words: Dict[int, List[int]] = {}
+    for a0, b0, size in sm.get_matching_blocks():
+        for k in range(size):
+            token_words.setdefault(owner[b0 + k], []).append(a0 + k)
+
+    result: List[List[List[float]]] = []
+    g = 0
+    for unit_tokens in tokens:
+        spans: List[Optional[List[float]]] = []
+        for _ in unit_tokens:
+            idxs = token_words.get(g, [])
+            g += 1
+            if idxs:
+                spans.append([round(asr_words[idxs[0]]["start"], 2),
+                              round(asr_words[idxs[-1]]["end"], 2)])
+            else:
+                spans.append(None)
+        result.append(_fill_silent(spans) if spans else [])
+    return result
 
 
 def chapter_json(units, times) -> str:
@@ -140,7 +236,9 @@ def main() -> int:
     ap.add_argument("--subtitle", default="trilingual study edition: EN → PL → UA",
                     help='e.g. "Arthur Conan Doyle · trilingual study edition: EN → PL → UA"')
     ap.add_argument("--chapter-name", default="", help="chapter title shown under the book title")
-    ap.add_argument("--audio", default=None, help="relative path to the mp3")
+    ap.add_argument("--audio", default=None, help="audio URL relative to the generated reader")
+    ap.add_argument("--helper-audio", default=None,
+                    help="audio URL relative to the timestamp helper (default: --audio)")
     ap.add_argument("--index", default=None, metavar="HREF",
                     help='add a "← Contents" link to the header, e.g. --index index.html (default: no link)')
     ap.add_argument("--annotations", type=Path, default=None,
@@ -160,12 +258,15 @@ def main() -> int:
     times = [round(t, 2) if isinstance(t, (int, float)) else None for t in times]
 
     stem = args.markdown.stem
+    asr_path = args.asr or args.markdown.with_suffix(".asr.json")
+    word_times = word_timings(units, load_words(asr_path))
     if args.title is None:
         first = next((l for l in args.markdown.read_text(encoding="utf-8").splitlines()
                       if l.startswith("#")), "")
         args.title = first.lstrip("# ").strip() or stem
     audio_src = args.audio or f"{stem}.mp3"
     out = args.out or args.markdown.with_suffix(".html")
+    out.parent.mkdir(parents=True, exist_ok=True)
 
     tpl_path = args.here / "reader.template.html"
     html = fill(tpl_path.read_text(encoding="utf-8"), {
@@ -180,16 +281,19 @@ def main() -> int:
             chapter_annotations(units, annotations), ensure_ascii=False
         ).replace("</", "<\\/"),
         "__AUDIO_TIMES_JS__": js_array_with_comments(times, units, meta),
+        "__WORD_TIMES_JSON__": json.dumps(word_times, ensure_ascii=False),
     })
     out.write_text(html, encoding="utf-8")
-    print(f"wrote {out}  ({len(units)} units, {sum(t is not None for t in times)} timed)")
+    print(f"wrote {out}  ({len(units)} units, {sum(t is not None for t in times)} timed"
+          + (f", word timings for {sum(1 for w in word_times if w)} units)"
+             if word_times else ", no word timings)"))
 
     helper_tpl = args.here / "timestamphelper.template.html"
     if helper_tpl.exists():
         sections = [{"i": i, "pl": u["pl"], "start": times[i]} for i, u in enumerate(units)]
         helper = fill(helper_tpl.read_text(encoding="utf-8"), {
             "__SECTIONS_JSON__": json.dumps(sections, ensure_ascii=False, indent=1).replace("</", "<\\/"),
-            "__AUDIO_SRC__": audio_src,
+            "__AUDIO_SRC__": args.helper_audio or audio_src,
             "__TITLE__": args.title,
             "__CHAPTER_NAME__": args.chapter_name,
             "__STEM__": stem,

@@ -1,0 +1,1271 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in __STEM__.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py __STEM__.md __AUDIO_SRC__
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to __STEM__.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py __STEM__.md
+     It reads __STEM__.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path __AUDIO_SRC__, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>__TITLE__</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative; cursor: help; color: var(--accent);
+    text-decoration: underline dotted; text-underline-offset: 2px; outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none; position: fixed; z-index: 20; left: 12px; top: 12px;
+    width: min(360px, calc(100vw - 36px)); max-height: calc(100vh - 24px);
+    overflow: auto; box-sizing: border-box; padding: 11px 13px;
+    border: 1px solid var(--line-strong); border-radius: 9px;
+    background: var(--bg); color: var(--ink); box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans); text-align: left; white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-pl { display: block; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* progress mode 2: underline the word being spoken (replaces the hairline) */
+  .w { border-radius: 3px; }
+  html[data-progress="word"] .unit.has-words .pbar { display: none; }
+  html[data-progress="word"] .unit.is-playing .w.is-current {
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--accent);
+  }
+
+  /* Ukrainian reveal block */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      __INDEX_LINK__
+      <h1>__TITLE__</h1>
+      <p class="chapter-name">__CHAPTER_NAME__</p>
+      <p>__SUBTITLE__</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="vol" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <input id="rate" type="range" min="0.5" max="1" step="0.1" value="1" aria-label="Playback speed">
+        <output id="rateOut" for="rate">1×</output>
+      </label>
+
+      <label class="ctl" id="progressCtl" title="Progress display">
+        <span aria-hidden="true">◍</span>
+        <select id="progress" aria-label="Progress display"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="section">Section</option>
+          <option value="word">Word</option>
+        </select>
+      </label>
+
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>__AUDIO_SRC__</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="progressHelp" hidden><strong>Progress</strong> in the header switches between the
+     section hairline and underlining each word as it is spoken.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (PL → UA, in reading order)  */
+/*    Generated from __STEM__.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = __CHAPTER_JSON__;
+const ANNOTATIONS = __ANNOTATIONS_JSON__;
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into __AUDIO_SRC__, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+__AUDIO_TIMES_JS__
+
+/* Word-level [start, end] pairs, one per displayed token of each unit — the
+   underline of progress mode 2. null when the chapter has no word timings. */
+const WORD_TIMES = __WORD_TIMES_JSON__;
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const AUDIO_URL = "__AUDIO_SRC__";
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+let audioObjectUrl = null;
+async function loadAudio(url) {
+  // Browsers block fetch() from file:// pages; direct media loading still works there.
+  if (location.protocol === "file:") {
+    audio.src = url;
+    audio.load();
+    return;
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Audio request failed (${response.status})`);
+    const blob = await response.blob();
+    audioObjectUrl = URL.createObjectURL(blob);
+    audio.src = audioObjectUrl;
+    audio.load();
+  } catch (error) {
+    console.error("Could not load chapter audio:", error);
+    showBanner();
+  }
+}
+loadAudio(AUDIO_URL);
+window.addEventListener("pagehide", () => {
+  if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+}, { once: true });
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             progress: "reader.progress",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  uaOpen: false,
+  progress: "section", // progress display mode: "section" hairline or "word" underline
+  wordEl: null,        // <span class="w"> currently underlined
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+/* Word timings exist only when the chapter was built from an alignment sidecar
+   that carries the ASR word stream. */
+const HAS_WORD_TIMES = Array.isArray(WORD_TIMES) && WORD_TIMES.some((u) => u && u.length);
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function appendTooltipText(parent, text) {
+  // Render table emphasis safely; never interpret annotation cells as HTML.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function setStudyText(element, text) {
+  // Preserve unsupported superscripts literally, and decorate known note numbers.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      const definition = document.createElement("span");
+      definition.className = "note-pl";
+      appendTooltipText(definition, note.definition);
+      tooltip.appendChild(definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+/**
+ * Split the rendered PL text into one <span class="w"> per token, in DOM order.
+ * Footnote tooltips are skipped: they are not study text, and they are not in
+ * the Markdown the timings were computed from. Returns the spans.
+ */
+function wrapWords(root) {
+  const textNodes = [];
+  (function walk(node) {
+    for (const child of node.childNodes) {
+      if (child.nodeType === 3) textNodes.push(child);
+      else if (child.nodeType === 1 && !child.classList.contains("footnote-tooltip")) walk(child);
+    }
+  })(root);
+
+  const spans = [];
+  for (const node of textNodes) {
+    const parts = node.nodeValue.split(/(\s+)/);
+    const frag = document.createDocumentFragment();
+    for (const part of parts) {
+      if (!part) continue;
+      if (/^\s+$/.test(part)) {
+        frag.appendChild(document.createTextNode(part));
+        continue;
+      }
+      const span = document.createElement("span");
+      span.className = "w";
+      span.textContent = part;
+      spans.push(span);
+      frag.appendChild(span);
+    }
+    node.parentNode.replaceChild(frag, node);
+  }
+  return spans;
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    /* --- word spans for progress mode 2, kept only when they line up --- */
+    let wordSpans = null;
+    let wordTimes = null;
+    const unitWordTimes = WORD_TIMES && WORD_TIMES[i];
+    if (unitWordTimes && unitWordTimes.length) {
+      const spans = wrapWords(pl);
+      if (spans.length === unitWordTimes.length) {
+        wordSpans = spans;
+        wordTimes = unitWordTimes;
+        card.classList.add("has-words");
+      } else {
+        pl.replaceChildren();          // tokenisation mismatch: plain text, no underline
+        setStudyText(pl, unit.pl);
+      }
+    }
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- Ukrainian reveal chip and block --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+    toggles.append(uaChip);
+
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, uaBox, pbar);
+
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, uaChip, uaBox, pbar: pbar.firstElementChild,
+               words: wordSpans, wordTimes: wordTimes };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: ${audio.getAttribute("src")}`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = "UA " + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+/* --- word underline (progress mode 2) --------------------------------- */
+function clearWord() {
+  if (state.wordEl) {
+    state.wordEl.classList.remove("is-current");
+    state.wordEl = null;
+  }
+}
+
+/** Underline the word the audio is inside right now (binary search, then only
+ *  touch the DOM when the word actually changed). */
+function updateWord(i, t) {
+  const e = els[i];
+  if (!e || !e.words || !e.wordTimes) { clearWord(); return; }
+  const times = e.wordTimes;
+  let lo = 0, hi = times.length - 1, k = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (times[mid][0] <= t) { k = mid; lo = mid + 1; } else { hi = mid - 1; }
+  }
+  // Before the section's first word (the boundary fires a hair early, or the
+  // narrator pauses) keep the upcoming word marked instead of dropping it.
+  if (k < 0) k = 0;
+  const span = e.words[k];
+  if (state.wordEl === span) return;
+  clearWord();
+  span.classList.add("is-current");
+  state.wordEl = span;
+}
+
+function markPlaying() {
+  clearWord();
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+  // Re-apply the underline at once: without this the next rAF would leave the
+  // word unmarked for one frame every time the section changes.
+  if (state.playing && state.progress === "word" && state.index != null) {
+    updateWord(state.index, audio.currentTime);
+  }
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  clearWord();
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  // Already inside this section and audible: pressing Continuous again (or
+  // re-pressing play) must let the audio keep flowing instead of rewinding.
+  const resumeInPlace = state.playing && state.index === i;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    // Re-assigning currentTime restarts decoding of the segment, which is what
+    // made card-to-card playback hiccup. Only seek when we are not already at
+    // (or a whisker away from) this section's first word.
+    if (!resumeInPlace && Math.abs(audio.currentTime - start) > 0.2) {
+      try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+  if (state.progress === "word") updateWord(i, t);
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+/**
+ * Move the "current section" markers to unit i WITHOUT touching the audio.
+ * Continuous play calls this at a section boundary: the file never pauses and
+ * never re-seeks, so playback is gapless and the highlighted card simply
+ * follows whatever the audio is playing.
+ */
+function advanceSection(i) {
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  scrollToCard(i);
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    // The audio is already running through this boundary: follow it to the
+    // next card instead of restarting playback (no pause, no seek, no gap).
+    const t = audio.currentTime;
+    let nxt = nextPlayable(from);
+    // Skip any section whose audio is already behind us (degenerate timestamps).
+    while (nxt !== -1 && endOf(nxt) <= t + 0.03) nxt = nextPlayable(nxt);
+    if (nxt !== -1 && nxt !== from) {
+      advanceSection(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const rateOut = document.getElementById("rateOut");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+const progressEl = document.getElementById("progress");
+const progressCtl = document.getElementById("progressCtl");
+
+/* Speed label: "1×" at the top of the range, "0.9×" below it. */
+function fmtRate(r) {
+  return (Math.round(r * 10) / 10) + "×";
+}
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("input", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  rateOut.textContent = fmtRate(state.rate);
+  store.set(LS.rate, rateEl.value);
+});
+
+/* --- progress display mode -------------------------------------------- */
+function setProgressMode(mode) {
+  if (mode !== "word" || HAS_WORD_TIMES) state.progress = mode;
+  progressEl.value = state.progress;
+  document.documentElement.dataset.progress = state.progress;
+  store.set(LS.progress, state.progress);
+  if (state.progress !== "word") clearWord();
+}
+
+progressEl.addEventListener("change", () => setProgressMode(progressEl.value));
+
+function setAll(open) {
+  state.uaOpen = open;
+  els.forEach((e, i) => setUa(i, open));
+  toggleUaEl.textContent = (open ? "Hide all UA" : "Reveal all UA");
+  toggleUaEl.setAttribute("aria-pressed", String(open));
+  toggleUaEl.classList.toggle("is-on", open);
+}
+
+toggleUaEl.addEventListener("click", () => setAll(!state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll(!state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  // The slider owns the allowed values now: clamp an old stored preference
+  // (0.75/1.25 from the previous dropdown) onto the 0.5–1.0, 0.1 grid.
+  const rawRate = store.get(LS.rate);
+  const r = rawRate == null ? NaN : Number(rawRate);
+  if (Number.isFinite(r)) {
+    rateEl.value = String(Math.min(1, Math.max(0.5, Math.round(r * 10) / 10)));
+    if (rateEl.value !== rawRate) store.set(LS.rate, rateEl.value);
+  }
+  state.rate = Number(rateEl.value);
+  rateOut.textContent = fmtRate(state.rate);
+  audio.volume = state.volume;
+
+  render();
+
+  // Progress display mode: shared across chapters, word mode needs timings.
+  // Word underline is the default; an explicit stored choice always wins.
+  progressCtl.hidden = !HAS_WORD_TIMES;
+  document.getElementById("progressHelp").hidden = !HAS_WORD_TIMES;
+  const storedProgress = store.get(LS.progress);
+  setProgressMode(HAS_WORD_TIMES && storedProgress !== "section" ? "word" : "section");
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

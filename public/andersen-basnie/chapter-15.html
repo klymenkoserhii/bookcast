@@ -1,0 +1,1532 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-15.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-15.md audio/chapter-15.webm
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-15.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-15.md
+     It reads chapter-15.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path audio/chapter-15.webm, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Baśnie · Rozdział XV</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .brand { flex: 1 1 240px; min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative; cursor: help; color: var(--accent);
+    text-decoration: underline dotted; text-underline-offset: 2px; outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none; position: fixed; z-index: 20; left: 12px; top: 12px;
+    width: min(360px, calc(100vw - 36px)); max-height: calc(100vh - 24px);
+    overflow: auto; box-sizing: border-box; padding: 11px 13px;
+    border: 1px solid var(--line-strong); border-radius: 9px;
+    background: var(--bg); color: var(--ink); box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans); text-align: left; white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-pl { display: block; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* progress mode 2: underline the word being spoken (replaces the hairline) */
+  .w { border-radius: 3px; }
+  html[data-progress="word"] .unit.has-words .pbar { display: none; }
+  html[data-progress="word"] .unit.is-playing .w.is-current {
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--accent);
+  }
+
+  /* Ukrainian reveal block */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    .clock { display: none; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Baśnie · Rozdział XV</h1>
+      <p class="chapter-name">Ślimak i róża</p>
+      <p>Hans Christian Andersen · bilingual study edition: PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="vol" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <input id="rate" type="range" min="0.5" max="1" step="0.1" value="1" aria-label="Playback speed">
+        <output id="rateOut" for="rate">1×</output>
+      </label>
+
+      <label class="ctl" id="progressCtl" title="Progress display">
+        <span aria-hidden="true">◍</span>
+        <select id="progress" aria-label="Progress display"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="section">Section</option>
+          <option value="word">Word</option>
+        </select>
+      </label>
+
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>audio/chapter-15.webm</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="progressHelp" hidden><strong>Progress</strong> in the header switches between the
+     section hairline and underlining each word as it is spoken.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (PL → UA, in reading order)  */
+/*    Generated from chapter-15.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "pl": "Nad rowem wyrósł szpaler leszczynowy, poza nim rozciągały się łąki i pola, a z drugiej strony był ogród, a w ogrodzie zakwitł krzak róży.",
+  "ua": "Над ровом виріс ряд ліщин, за ним розтягувалися луки та поля, а з іншого боку був сад, і в саду зацвів кущ троянди.",
+  "para": 0,
+  "start": 9.68
+ },
+ {
+  "pl": "Pod krzakiem siedział ślimak i myślał o sobie.",
+  "ua": "Під кущем сидів равлик і думав про себе.",
+  "para": 1,
+  "start": 21.62
+ },
+ {
+  "pl": "— Zaczekaj — mówił — przyjdzie czas i na mnie, a wtedy się okaże moja wartość. Na coś lepszego jestem przeznaczony, niż dawać światu róże lub orzechy, a choćby mleko, jak krowy i owce.",
+  "ua": "— Зачекайте, — говорив він, — прийде час і на мене, і тоді стане очевидною моя цінність. Для чогось кращого я призначений, ніж давати світу троянди чи горіхи, а хоча б молоко, як корови та вівці.",
+  "para": 2,
+  "start": 25.64
+ },
+ {
+  "pl": "— Bardzo bym chciała widzieć — rzekła róża — co pan da światu. Kiedyż to nastąpi?",
+  "ua": "— Дуже хотіла б побачити, — сказала троянда, — що пан дасть світу. А коли це станеться?",
+  "para": 3,
+  "start": 39.28
+ },
+ {
+  "pl": "— Nie potrzebuję się śpieszyć — odparł ślimak. — Wam tylko zawsze pilno. Zaczekajcie.",
+  "ua": "— Мені нема чого поспішати, — відповів равлик. — Вам лише завжди пір. Зачекайте.",
+  "para": 4,
+  "start": 45.7
+ },
+ {
+  "pl": "W następnym roku ślimak siedział znów pod krzakiem róży, wygrzewając się na słońcu. Nad nim zwieszały się pączki i róże, pełne, świeże, pachnące.",
+  "ua": "Наступного року равлик знову сидів під кущем троянди, гріючись на сонці. Над ним звисали бутони та троянди — повні, свіжі, пахучі.",
+  "para": 5,
+  "start": 53.02
+ },
+ {
+  "pl": "Ślimak wysunął się ze swego domku, wyciągnął różki i schował je znowu.",
+  "ua": "Висунувся равлик зі своєї хатинки, витяг ріжки й знову їх заховав.",
+  "para": 6,
+  "start": 64.68
+ },
+ {
+  "pl": "— Wszystko jak w zeszłym roku — rzekł niechętnie — żadnej zmiany ani postępu. Krzak różany wydaje róże i nic więcej!",
+  "ua": "— Усе як і торік, — сказав він неохоче, — жодних змін ані поступу. Трояндовий кущ випускає троянди — і більше нічого!",
+  "para": 7,
+  "start": 71.04
+ },
+ {
+  "pl": "Róże kwitły przez lato, do późnej jesieni, dopóki śnieg nie upadł. Wtedy krzaczek zasnął, a ślimak skrył się w ziemi.",
+  "ua": "Троянди цвіли все літо, аж до пізньої осені, доки не впав сніг. Тоді кущ заснув, а равлик сховався в землі.",
+  "para": 8,
+  "start": 82.44
+ },
+ {
+  "pl": "Znów zawitał rok nowy, róże się rozwinęły, ślimak usiadł na słońcu, pod różanym krzakiem.",
+  "ua": "Знову прийшов новий рік, троянди розпустилися, равлик всівся на сонці під трояндовим кущем.",
+  "para": 9,
+  "start": 91.4
+ },
+ {
+  "pl": "— Zestarzałeś się — rzekł, kiwając głową. — Zapewne uschniesz wkrótce, bo oddałeś światu wszystko, co mu dać mogłeś.",
+  "ua": "— Ти постарів, — сказав він, хитаючи головою. — Певно, незабаром зів'янеш, бо віддав світові все, що міг дати.",
+  "para": 10,
+  "start": 99.3
+ },
+ {
+  "pl": "Nie mam czasu się zastanawiać, czy twoje dary miały jakąś wartość, to tylko jasne jest dla mnie, że sam z siebie nie zrobiłeś nic nowego, pozostałeś tym samym kijem, jakim byłeś.",
+  "ua": "Мені нема коли замислюватися, чи мали твої дари якусь цінність; для мене ясно лише те, що сам по собі ти нічого нового не зробив — залишився тим самим держаком, яким був.",
+  "para": 11,
+  "start": 107.8
+ },
+ {
+  "pl": "Żadnej zmiany, ani postępu. Czy mię rozumiesz dobrze?",
+  "ua": "Жодних змін ані поступу. Чи добре ти мене розумієш?",
+  "para": 12,
+  "start": 119.58
+ },
+ {
+  "pl": "— Przerażasz mnie, ślimaku! — rzekła róża. — Nigdy się jeszcze nad tem nie zastanawiałam.",
+  "ua": "— Ти мене жахаєш, равлику! — сказала троянда. — Я ще ніколи над цим не замислювалася.",
+  "para": 13,
+  "start": 126.05
+ },
+ {
+  "pl": "— Zdaje mi się, że w ogóle nie zastanawiasz się nigdy nad niczym — zauważył ślimak obojętnie. — Czy np. pomyślałaś kiedy o tym, po co kwitniesz?",
+  "ua": "— Здається, ти взагалі ніколи ні про що не думаєш, — зауважив равлик байдуже. — Наприклад, чи коли-небудь думала, для чого ти цвітеш?",
+  "para": 14,
+  "start": 133.29
+ },
+ {
+  "pl": "Jakim sposobem kwitniesz? I dlaczego w taki sposób, a nie inny?",
+  "ua": "Як ти цвітеш? І чому саме так, а не інакше?",
+  "para": 15,
+  "start": 143.19
+ },
+ {
+  "pl": "— Nie — rzekła róża. — Kwitnę, bo kwitnąć muszę, bo to jest szczęściem, życiem. Słońce świeci i grzeje, powietrze mnie żywi, deszcz i rosa poi.",
+  "ua": "— Ні, — сказала троянда. — Я цвіту, бо мушу цвісти, бо це щастя, життя. Сонце світить і гріє, повітря мене живить, дощ і роса поять.",
+  "para": 16,
+  "start": 148.03
+ },
+ {
+  "pl": "Oddycham, czuję, żyję! Z ziemi płynie we mnie jakaś nowa siła, ożywcza i potężna; czuję się coraz szczęśliwsza i muszę kwitnąć. Inaczej bym nie żyła.",
+  "ua": "Дихаю, відчуваю, живу! З землі тече в мене якась нова сила, життєдайна й могутня; я почуваюся дедалі щасливішою і мушу цвісти. Інакше я б не жила.",
+  "para": 17,
+  "start": 159.75
+ },
+ {
+  "pl": "— Być może. Widzę, że ci dość wygodnie żyć w taki sposób, nic nie rozumiejąc.",
+  "ua": "— Може бути. Бачу, що тобі досить зручно жити так, нічого не розуміючи.",
+  "para": 18,
+  "start": 172.43
+ },
+ {
+  "pl": "— Dobrze mi — rzekła róża — tak wiele mi dano! Choć panu dano więcej. Zdaje mi się, że należysz do tych genialnych istot, których myśli świat zdumiewają.",
+  "ua": "— Мені добре, — сказала троянда. — Мені дали так багато! Хоча пану дали більше. Здається, ви належите до тих геніальних істот, чиї думки дивують світ.",
+  "para": 19,
+  "start": 177.7
+ },
+ {
+  "pl": "— Mało sobie z tego robię — odparł ślimak. — Cóż mnie ten świat obchodzi? W sobie samym mam dosyć skarbów.",
+  "ua": "— Мені це байдуже, — відповів равлик. — Мені яка різниця до цього світу? У самому собі я маю досить скарбів.",
+  "para": 20,
+  "start": 189.14
+ },
+ {
+  "pl": "— Tak, zapewne — szepnęła róża — ale czyż wszyscy nie dajemy światu, co w nas jest najlepszego, na co możemy się zdobyć? Ja dawałam mu tylko róże, bo nic innego nie mam.",
+  "ua": "— Так, певно, — прошепотіла троянда. — Але чи ж не всі ми даємо світові те, що в нас найкраще, на що здатні? Я давала йому лише троянди, бо іншого не маю.",
+  "para": 21,
+  "start": 197.56
+ },
+ {
+  "pl": "Ale pan, który posiadasz tak wiele, co oddasz światu?",
+  "ua": "Але пан, який маєте так багато, що ви віддасте світу?",
+  "para": 22,
+  "start": 209.4
+ },
+ {
+  "pl": "— Ja? Ja mu nic nie dam. A cóż on mnie obchodzi? Oddawaj sobie, moja droga, swoje róże, a leszczyna — orzechy, a owce — mleko; każde z was pragnie pochwał i wdzięczności, każde chce sobie zdobyć wielbicieli.",
+  "ua": "— Я? Я йому нічого не дам. І яка він мені різниця? Віддавай собі, моя дорога, свої троянди, ліщина — горіхи, а вівці — молоко; кожна з вас прагне похвал і вдячності, кожна хоче здобути собі прихильників.",
+  "para": 23,
+  "start": 213.81
+ },
+ {
+  "pl": "A ja tym gardzę. Ja jestem sam w sobie. Co mam, to dla siebie i sam to ocenić najlepiej potrafię. Świat dla mnie nie istnieje i nie obchodzi mnie wcale.",
+  "ua": "А я цим гордую. Я сам по собі. Що маю — те для себе, і сам найкраще вмію це оцінити. Світ для мене не існує і зовсім мене не цікавить.",
+  "para": 24,
+  "start": 228.97
+ },
+ {
+  "pl": "To powiedziawszy, schował się do swego domku i otwór zasłonił śliną.",
+  "ua": "Сказавши це, він сховався у своїй хатинці й заткнув отвір слиною.",
+  "para": 25,
+  "start": 241.82
+ },
+ {
+  "pl": "— Jaki on mądry! — rzekła róża w zamyśleniu. Szkoda, że nie bardzo go rozumiem. Ale to nic dziwnego, nie mam przecież takiej głowy.",
+  "ua": "— Який він мудрий! — сказала троянда задумавшись. Шкода, що я його не дуже розумію. Але це й не дивно, мені ж не така голова.",
+  "para": 26,
+  "start": 247.43
+ },
+ {
+  "pl": "Nie mogę się też schować jak on do swego domku i muszę tu stać ciągle pod otwartym niebem i oddawać światu róże. Biedne róże!",
+  "ua": "Я теж не можу сховатися, як він, у свою хатинку, і мушу постійно тут стояти під відкритим небом і віддавати світу троянди. Бідні троянди!",
+  "para": 27,
+  "start": 257.99
+ },
+ {
+  "pl": "Więdną, tracą wonne płatki i wiatr nimi pomiata. Ale jedną śliczna dziewczyna włożyła do książki o złoconych brzegach, w której muszą być także piękne kwiaty, bo kiedy ją czytała, widziałam uśmiech na jej twarzy, a łzy przejrzyste w oczach.",
+  "ua": "В'януть, втрачають запашні пелюстки, і вітер ними кидає. Але одну красуня-дівчина вклала до книги із золотими краями, у якій мають бути й красиві квіти, бо коли вона її читала, я бачила усмішку на її лиці та прозорі сльози в очах.",
+  "para": 28,
+  "start": 267.45
+ },
+ {
+  "pl": "A drugą różę przypięła do piersi i dobrze jej tam było na gorącym sercu. A trzecią różę całowało dziecię i oddało ją matce. Czwartą złożono na trumnie staruszka, co kochał kwiaty.",
+  "ua": "Другу троянду приколола до грудей, і добре їй там було на гарячому серці. Третю троянду цілувала дитина і віддала її матері. Четверду поклали на труну старенького, що любив квіти.",
+  "para": 29,
+  "start": 285.26
+ },
+ {
+  "pl": "To wszystko daje mi radość i szczęście, krąży koło mnie jak błogosławieństwo. Lubię wspominać o tym — to jest życie!",
+  "ua": "Усе це дає мені радість і щастя, крутиться навколо мене як благословення. Я люблю згадувати про це — ось воно життя!",
+  "para": 30,
+  "start": 298.55
+ },
+ {
+  "pl": "Róża kwitła co roku i oddawała światu kwiaty swoje, tylko myśleć nie mogła, bo nie miała głowy, jak ślimak.",
+  "ua": "Троянда цвіла щороку й віддавала світові свої квіти, тільки думати не могла, бо не мала голови, як равлик.",
+  "para": 31,
+  "start": 308.43
+ },
+ {
+  "pl": "A ślimak siedział w swoim ciasnym domku i rozmyślał o sobie. Świat nic go nie obchodził.",
+  "ua": "А равлик сидів у своїй вузькій хатинці й роздумував про себе. Світ його зовсім не цікавив.",
+  "para": 32,
+  "start": 316.48
+ },
+ {
+  "pl": "Wiele lat upłynęło.",
+  "ua": "Минуло багато років.",
+  "para": 33,
+  "start": 324.43
+ },
+ {
+  "pl": "Ślimak żyć przestał i w proch się zamienił. Przestała żyć i róża, a jej krzaczek także spróchniał, w proch się zamienił.",
+  "ua": "Перестав жити равлик і обернувся на прах. Перестала жити й троянда, а її кущ також згнив і обернувся на прах.",
+  "para": 34,
+  "start": 326.63
+ },
+ {
+  "pl": "Została po nim jedna tylko róża w książce ze złoconymi brzegami.",
+  "ua": "Залишилася по ній одна-єдина троянда в книзі із золотими краями.",
+  "para": 35,
+  "start": 335.44
+ },
+ {
+  "pl": "W ogrodzie jednak kwitną inne róże, a ślimaki wygrzewają się na słońcu i rozmyślają o swojej wartości. Świat nic ich nie obchodzi.",
+  "ua": "У саду ж цвітуть інші троянди, а равлики гріються на сонці й роздумують про свою цінність. Світ їх зовсім не цікавить.",
+  "para": 36,
+  "start": 342.07
+ }
+];
+const ANNOTATIONS = {};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into audio/chapter-15.webm, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  9.68,    // [ 0] conf 1.00  "Nad rowem wyrósł szpaler leszczynowy, poz…"
+  21.62,   // [ 1] conf 1.00  "Pod krzakiem siedział ślimak i myślał o s…"
+  25.64,   // [ 2] conf 1.00  "— Zaczekaj — mówił — przyjdzie czas i na…"
+  39.28,   // [ 3] conf 1.00  "— Bardzo bym chciała widzieć — rzekła róż…"
+  45.70,   // [ 4] conf 0.82  "— Nie potrzebuję się śpieszyć — odparł śl…"
+  53.02,   // [ 5] conf 1.00  "W następnym roku ślimak siedział znów pod…"
+  64.68,   // [ 6] conf 1.00  "Ślimak wysunął się ze swego domku, wyciąg…"
+  71.04,   // [ 7] conf 1.00  "— Wszystko jak w zeszłym roku — rzekł nie…"
+  82.44,   // [ 8] conf 1.00  "Róże kwitły przez lato, do późnej jesieni…"
+  91.40,   // [ 9] conf 1.00  "Znów zawitał rok nowy, róże się rozwinęły…"
+  99.30,   // [10] conf 1.00  "— Zestarzałeś się — rzekł, kiwając głową.…"
+  107.80,  // [11] conf 1.00  "Nie mam czasu się zastanawiać, czy twoje…"
+  119.58,  // [12] conf 0.75  "Żadnej zmiany, ani postępu. Czy mię rozum…"
+  126.05,  // [13] conf 0.92  "— Przerażasz mnie, ślimaku! — rzekła róża…"
+  133.29,  // [14] conf 0.96  "— Zdaje mi się, że w ogóle nie zastanawia…"
+  143.19,  // [15] conf 1.00  "Jakim sposobem kwitniesz? I dlaczego w ta…"
+  148.03,  // [16] conf 1.00  "— Nie — rzekła róża. — Kwitnę, bo kwitnąć…"
+  159.75,  // [17] conf 1.00  "Oddycham, czuję, żyję! Z ziemi płynie we…"
+  172.43,  // [18] conf 1.00  "— Być może. Widzę, że ci dość wygodnie ży…"
+  177.70,  // [19] conf 1.00  "— Dobrze mi — rzekła róża — tak wiele mi…"
+  189.14,  // [20] conf 1.00  "— Mało sobie z tego robię — odparł ślimak…"
+  197.56,  // [21] conf 1.00  "— Tak, zapewne — szepnęła róża — ale czyż…"
+  209.40,  // [22] conf 1.00  "Ale pan, który posiadasz tak wiele, co od…"
+  213.81,  // [23] conf 1.00  "— Ja? Ja mu nic nie dam. A cóż on mnie ob…"
+  228.97,  // [24] conf 1.00  "A ja tym gardzę. Ja jestem sam w sobie. C…"
+  241.82,  // [25] conf 1.00  "To powiedziawszy, schował się do swego do…"
+  247.43,  // [26] conf 1.00  "— Jaki on mądry! — rzekła róża w zamyślen…"
+  257.99,  // [27] conf 0.96  "Nie mogę się też schować jak on do swego…"
+  267.45,  // [28] conf 1.00  "Więdną, tracą wonne płatki i wiatr nimi p…"
+  285.26,  // [29] conf 0.97  "A drugą różę przypięła do piersi i dobrze…"
+  298.55,  // [30] conf 1.00  "To wszystko daje mi radość i szczęście, k…"
+  308.43,  // [31] conf 1.00  "Róża kwitła co roku i oddawała światu kwi…"
+  316.48,  // [32] conf 1.00  "A ślimak siedział w swoim ciasnym domku i…"
+  324.43,  // [33] conf 1.00  "Wiele lat upłynęło."
+  326.63,  // [34] conf 1.00  "Ślimak żyć przestał i w proch się zamieni…"
+  335.44,  // [35] conf 1.00  "Została po nim jedna tylko róża w książce…"
+  342.07,  // [36] conf 1.00  "W ogrodzie jednak kwitną inne róże, a śli…"
+];
+
+/* Word-level [start, end] pairs, one per displayed token of each unit — the
+   underline of progress mode 2. null when the chapter has no word timings. */
+const WORD_TIMES = [[[9.8, 10.92], [10.92, 11.36], [11.36, 11.88], [11.88, 12.38], [12.38, 13.16], [13.46, 14.02], [14.02, 14.18], [14.18, 14.86], [14.86, 15.02], [15.02, 15.48], [15.48, 15.66], [15.66, 16.04], [16.18, 16.6], [16.6, 16.8], [16.8, 17.08], [17.08, 17.5], [17.5, 17.76], [17.76, 18.22], [18.34, 18.72], [18.72, 18.84], [18.84, 19.26], [19.26, 20.2], [20.2, 20.64], [20.64, 21.32]], [[21.74, 22.18], [22.18, 22.64], [22.64, 23.08], [23.08, 23.66], [23.66, 23.88], [23.88, 24.32], [24.32, 24.54], [24.54, 24.8]], [[25.76, 25.76], [25.76, 26.6], [26.6, 26.74], [26.74, 27.3], [27.3, 27.44], [27.44, 28.1], [28.1, 28.48], [28.48, 28.66], [28.66, 28.82], [28.82, 29.02], [29.28, 29.48], [29.48, 29.84], [29.84, 30.08], [30.08, 30.5], [30.5, 30.82], [30.82, 31.42], [31.42, 32.1], [32.1, 32.32], [32.32, 32.78], [32.78, 33.1], [33.1, 33.84], [33.84, 34.12], [34.12, 34.54], [34.54, 34.94], [34.94, 35.32], [35.32, 35.62], [35.62, 36.2], [36.34, 36.74], [36.74, 37.12], [37.12, 37.56], [37.56, 37.88], [37.88, 38.36], [38.36, 38.5], [38.5, 38.88]], [[39.4, 39.4], [39.4, 40.08], [40.08, 40.32], [40.32, 40.62], [40.62, 41.04], [41.04, 41.2], [41.2, 41.78], [41.78, 42.1], [42.1, 42.5], [42.5, 42.7], [42.7, 42.88], [42.88, 43.02], [43.02, 43.48], [43.96, 44.52], [44.52, 44.64], [44.64, 45.2]], [[45.82, 45.82], [45.82, 46.32], [46.32, 46.88], [46.88, 47.04], [47.04, 47.86], [47.04, 47.86], [47.86, 48.48], [48.48, 48.94], [48.94, 49.26], [49.26, 49.52], [49.52, 49.76], [49.76, 50.16], [50.16, 50.7], [51.16, 51.84]], [[53.14, 53.62], [53.62, 54.16], [54.16, 54.48], [54.48, 55.28], [55.28, 55.64], [55.64, 55.96], [55.96, 56.14], [56.14, 56.54], [56.54, 56.82], [56.94, 57.54], [57.54, 57.66], [57.66, 57.8], [57.8, 58.26], [58.36, 59.36], [59.36, 59.6], [59.6, 60.38], [60.38, 60.54], [60.54, 61.14], [61.14, 61.46], [61.46, 61.94], [61.94, 62.6], [62.8, 63.22], [63.34, 63.98]], [[64.8, 65.3], [65.3, 65.92], [65.92, 66.04], [66.04, 66.2], [66.2, 66.5], [66.5, 66.88], [67.32, 67.9], [67.9, 68.3], [68.3, 68.58], [68.58, 68.98], [68.98, 69.16], [69.16, 69.6]], [[71.16, 71.16], [71.16, 71.98], [71.98, 72.24], [72.24, 72.38], [72.38, 72.84], [72.84, 73.2], [73.2, 73.58], [73.58, 74.38], [74.38, 74.98], [74.98, 75.58], [75.58, 76.4], [76.4, 77.08], [77.08, 77.32], [77.32, 78.06], [78.76, 79.38], [79.38, 79.86], [79.86, 80.18], [80.18, 80.64], [80.64, 80.78], [80.78, 81.0], [81.0, 81.48]], [[82.56, 82.92], [82.92, 83.36], [83.36, 83.62], [83.62, 83.98], [83.98, 84.18], [84.18, 84.66], [84.66, 85.12], [85.34, 85.88], [85.88, 86.24], [86.24, 86.38], [86.38, 86.78], [87.44, 87.8], [87.8, 88.28], [88.28, 88.82], [88.96, 89.06], [89.06, 89.62], [89.62, 90.24], [90.24, 90.38], [90.38, 90.5], [90.5, 90.74]], [[91.52, 92.24], [92.24, 92.74], [92.74, 92.98], [92.98, 93.32], [93.78, 94.0], [94.0, 94.14], [94.14, 94.82], [94.96, 95.46], [95.46, 95.84], [95.84, 95.98], [95.98, 96.5], [96.5, 97.06], [97.06, 97.54], [97.54, 98.02]], [[99.42, 99.42], [99.42, 100.14], [100.14, 100.4], [100.4, 101.04], [101.04, 101.46], [101.46, 101.98], [101.98, 102.4], [102.4, 102.9], [102.9, 103.62], [103.62, 104.18], [104.18, 104.88], [105.08, 105.2], [105.2, 105.86], [105.86, 106.24], [106.24, 106.7], [106.7, 106.96], [106.96, 107.1], [107.1, 107.3], [107.3, 107.72]], [[107.92, 108.4], [108.4, 108.6], [108.6, 108.92], [108.92, 109.08], [109.08, 109.82], [109.9, 110.04], [110.04, 110.42], [110.42, 110.74], [110.74, 111.1], [111.1, 111.48], [111.48, 112.04], [112.24, 112.52], [112.52, 112.8], [112.8, 113.18], [113.18, 113.42], [113.42, 113.74], [113.74, 113.96], [114.14, 114.34], [114.34, 114.72], [114.72, 114.88], [114.88, 115.14], [115.14, 115.36], [115.36, 115.9], [115.9, 116.1], [116.1, 116.52], [116.52, 117.56], [117.56, 117.7], [117.7, 118.12], [118.12, 118.5], [118.56, 118.78], [118.78, 119.26]], [[119.7, 120.26], [120.26, 120.72], [120.9, 121.32], [121.32, 121.9], [121.9, 123.11], [121.9, 123.11], [123.11, 123.59], [123.59, 123.87]], [[126.17, 126.17], [126.17, 126.73], [126.73, 126.99], [127.13, 127.61], [127.61, 127.83], [127.83, 128.69], [128.69, 129.05], [129.05, 129.29], [129.29, 129.85], [129.85, 130.03], [130.03, 130.35], [130.35, 130.59], [130.59, 130.79], [130.79, 130.95], [130.95, 131.79]], [[133.41, 133.41], [133.41, 133.97], [133.97, 134.15], [134.15, 134.35], [134.51, 134.65], [134.65, 134.89], [134.89, 135.11], [135.11, 135.29], [135.29, 135.97], [135.97, 136.11], [136.11, 136.39], [136.39, 136.59], [136.59, 136.99], [136.99, 137.65], [137.65, 138.21], [138.21, 138.59], [138.59, 139.19], [139.19, 139.59], [139.59, 140.09], [140.09, 140.51], [140.51, 141.33], [141.35, 141.57], [141.57, 141.77], [141.77, 142.03], [142.15, 142.27], [142.27, 142.43], [142.43, 143.05]], [[143.31, 143.65], [143.65, 144.35], [144.35, 145.01], [145.01, 145.27], [145.27, 145.65], [145.65, 145.79], [145.79, 145.97], [145.97, 146.39], [146.45, 146.57], [146.57, 146.65], [146.65, 147.03]], [[148.15, 148.15], [148.15, 148.27], [148.27, 148.77], [148.77, 149.47], [149.47, 149.85], [149.85, 150.45], [150.45, 150.99], [151.07, 151.17], [151.17, 151.83], [151.83, 152.25], [152.37, 152.53], [152.53, 152.79], [152.79, 153.07], [153.07, 153.87], [153.93, 154.39], [154.67, 155.31], [155.31, 155.75], [155.75, 155.89], [155.89, 156.31], [156.45, 156.91], [156.91, 157.11], [157.11, 157.57], [157.81, 158.13], [158.13, 158.29], [158.29, 158.67], [158.67, 159.05]], [[159.87, 160.51], [160.67, 160.93], [161.09, 161.45], [161.75, 162.25], [162.25, 162.55], [162.55, 162.93], [162.93, 163.07], [163.07, 163.25], [163.25, 163.67], [163.67, 163.99], [163.99, 164.31], [164.49, 165.23], [165.23, 165.37], [165.37, 165.99], [166.25, 166.81], [166.81, 167.05], [167.05, 167.39], [167.39, 168.29], [168.29, 168.43], [168.43, 168.77], [168.77, 169.37], [169.81, 170.45], [170.45, 170.65], [170.65, 170.79], [170.79, 171.11]], [[172.55, 172.55], [172.55, 172.77], [172.77, 173.05], [173.29, 173.75], [173.79, 173.91], [173.91, 174.03], [174.03, 174.29], [174.29, 174.85], [174.85, 175.09], [175.09, 175.19], [175.19, 175.37], [175.37, 175.77], [175.83, 176.05], [176.05, 176.19], [176.19, 176.93]], [[177.82, 177.82], [177.82, 178.26], [178.26, 178.48], [178.48, 178.88], [178.88, 179.5], [179.5, 179.82], [179.82, 180.22], [180.22, 180.36], [180.36, 180.64], [180.64, 180.84], [180.84, 181.2], [181.64, 182.1], [182.1, 182.48], [182.48, 182.7], [182.7, 183.08], [183.5, 183.98], [183.98, 184.14], [184.14, 184.32], [184.4, 184.5], [184.5, 184.98], [184.98, 185.14], [185.14, 185.34], [185.34, 185.96], [185.96, 186.46], [186.64, 186.9], [186.9, 187.42], [187.42, 187.78], [187.78, 188.5]], [[189.26, 189.26], [189.26, 189.6], [189.6, 189.88], [189.88, 190.02], [190.02, 190.22], [190.22, 190.62], [190.62, 191.02], [191.02, 191.48], [191.48, 191.92], [191.92, 192.81], [192.81, 193.03], [193.03, 193.19], [193.19, 193.35], [193.35, 193.59], [193.59, 194.09], [194.53, 194.89], [194.89, 195.13], [195.13, 195.47], [195.47, 195.67], [195.67, 196.07], [196.07, 196.63]], [[197.68, 197.68], [197.68, 197.98], [198.16, 198.74], [198.74, 199.24], [199.24, 199.88], [199.88, 200.22], [200.22, 200.66], [200.66, 200.84], [200.84, 201.18], [201.18, 201.64], [201.64, 201.86], [201.86, 202.18], [202.18, 202.6], [202.6, 202.78], [202.78, 202.9], [202.9, 203.04], [203.04, 203.34], [203.34, 204.16], [204.34, 204.5], [204.5, 204.68], [204.68, 205.06], [205.06, 205.22], [205.22, 205.78], [206.16, 206.68], [206.68, 207.16], [207.16, 207.34], [207.34, 207.72], [207.72, 208.1], [208.28, 208.62], [208.62, 208.82], [208.82, 209.14], [209.14, 209.3], [209.3, 209.44]], [[209.52, 209.7], [209.7, 210.0], [210.42, 210.66], [210.66, 211.2], [211.2, 211.32], [211.32, 211.6], [211.74, 211.84], [211.84, 212.24], [212.24, 212.64]], [[213.93, 213.93], [213.93, 214.19], [214.81, 215.33], [215.33, 215.49], [215.49, 215.73], [215.73, 215.91], [215.91, 216.13], [216.33, 216.63], [216.63, 216.87], [216.87, 217.05], [217.05, 217.23], [217.23, 217.73], [218.23, 218.83], [218.83, 219.09], [219.09, 219.39], [219.39, 219.77], [219.77, 220.09], [220.09, 220.51], [220.65, 220.81], [220.81, 221.39], [221.39, 221.39], [221.39, 221.97], [222.09, 222.35], [222.35, 222.85], [222.85, 222.85], [222.85, 223.31], [223.67, 224.27], [224.27, 224.41], [224.41, 224.53], [224.53, 225.07], [225.07, 225.55], [225.55, 225.71], [225.71, 226.51], [226.71, 227.19], [227.19, 227.35], [227.35, 227.63], [227.63, 228.09], [228.09, 228.75]], [[229.09, 229.37], [229.37, 229.49], [229.49, 229.69], [229.69, 230.21], [230.63, 231.05], [231.05, 231.39], [231.39, 231.71], [231.71, 231.87], [231.87, 232.15], [232.79, 233.15], [233.15, 233.45], [233.55, 233.87], [233.87, 234.07], [234.07, 234.39], [234.61, 234.97], [234.97, 235.15], [235.15, 235.31], [235.31, 235.75], [235.75, 236.17], [236.17, 236.69], [236.95, 237.53], [237.53, 237.77], [237.77, 238.01], [238.01, 238.27], [238.27, 238.95], [238.95, 239.19], [239.19, 239.39], [239.39, 239.83], [239.83, 240.03], [240.03, 240.43]], [[241.94, 241.94], [241.94, 242.62], [242.8, 243.08], [243.08, 243.28], [243.28, 243.42], [243.42, 243.74], [243.74, 244.12], [244.12, 244.34], [244.34, 244.84], [244.84, 245.46], [245.46, 245.86]], [[247.55, 247.55], [247.55, 247.99], [247.99, 248.17], [248.17, 248.85], [248.85, 249.68], [249.68, 250.28], [250.28, 250.56], [250.56, 250.64], [250.64, 251.24], [252.21, 252.61], [252.69, 252.79], [252.79, 252.93], [252.93, 253.27], [253.27, 253.41], [253.41, 253.95], [254.63, 254.73], [254.73, 254.87], [254.87, 255.05], [255.05, 255.61], [255.85, 256.29], [256.29, 256.51], [256.51, 256.93], [256.93, 257.19], [257.19, 257.71]], [[258.11, 258.35], [258.35, 258.61], [258.61, 258.77], [258.77, 258.95], [258.95, 259.55], [259.55, 259.81], [259.81, 260.13], [260.19, 260.29], [260.29, 260.75], [260.75, 261.23], [261.23, 261.73], [261.73, 262.13], [262.13, 262.27], [262.27, 262.63], [262.63, 263.05], [263.05, 263.27], [263.27, 263.81], [263.81, 264.13], [264.13, 264.29], [264.29, 264.81], [264.81, 265.17], [265.17, 265.53], [265.99, 266.65], [266.65, 267.05]], [[267.57, 268.23], [268.49, 268.85], [268.85, 269.27], [269.27, 269.87], [269.87, 270.11], [270.11, 270.55], [270.55, 270.79], [270.79, 271.35], [271.35, 272.43], [273.13, 273.59], [273.59, 274.13], [274.13, 274.63], [274.63, 275.07], [275.07, 275.21], [275.21, 275.73], [275.73, 275.87], [275.87, 276.43], [276.43, 276.91], [277.11, 277.41], [277.41, 277.61], [277.61, 277.93], [277.93, 278.11], [278.11, 278.37], [278.37, 278.83], [278.83, 279.21], [279.33, 279.45], [279.45, 279.75], [279.75, 279.93], [279.93, 280.41], [280.63, 281.51], [281.51, 281.89], [281.89, 282.03], [282.03, 282.17], [282.17, 282.63], [282.81, 282.91], [282.91, 283.31], [283.31, 283.95], [283.95, 284.07], [284.07, 284.43]], [[285.38, 285.76], [285.76, 286.16], [286.16, 286.5], [286.5, 286.98], [286.98, 287.18], [287.18, 287.62], [287.62, 288.2], [288.2, 288.48], [288.48, 288.72], [288.72, 288.9], [288.9, 289.2], [289.2, 289.44], [289.44, 290.06], [290.06, 290.48], [290.98, 291.58], [291.58, 291.96], [291.96, 292.32], [292.32, 292.86], [292.86, 293.32], [293.32, 293.52], [293.52, 294.04], [294.04, 294.22], [294.22, 294.72], [295.35, 296.11], [296.11, 296.61], [296.61, 296.77], [296.77, 297.23], [297.23, 297.77], [297.85, 297.95], [297.95, 298.29], [298.29, 298.67]], [[298.67, 299.63], [299.98, 300.36], [300.36, 300.66], [300.66, 300.82], [300.82, 301.18], [301.18, 301.28], [301.28, 301.78], [301.9, 302.26], [302.26, 302.54], [302.54, 302.74], [302.74, 302.98], [302.98, 303.92], [304.74, 305.0], [305.0, 305.62], [305.62, 305.76], [305.76, 305.86], [305.86, 305.96], [305.96, 306.04], [306.04, 306.22], [306.22, 306.76]], [[308.55, 308.99], [308.99, 309.45], [309.45, 309.61], [309.61, 309.87], [309.87, 310.07], [310.07, 310.61], [310.61, 311.05], [311.05, 311.43], [311.43, 311.83], [312.19, 312.69], [312.69, 313.17], [313.17, 313.31], [313.31, 313.69], [313.79, 313.97], [313.97, 314.23], [314.23, 314.51], [314.51, 314.87], [315.05, 315.55], [315.55, 316.07]], [[316.6, 317.1], [317.1, 317.6], [317.6, 317.98], [317.98, 318.08], [318.08, 318.48], [318.48, 318.96], [318.96, 319.42], [319.42, 319.7], [319.7, 320.36], [320.36, 320.56], [320.56, 320.82], [321.78, 322.44], [322.44, 322.72], [322.72, 322.88], [322.88, 323.02], [323.02, 323.66]], [[324.55, 325.25], [325.25, 325.51], [325.51, 326.15]], [[326.75, 327.47], [327.47, 327.69], [327.69, 328.25], [328.25, 328.39], [328.39, 328.51], [328.51, 328.71], [328.71, 328.85], [328.85, 329.37], [330.15, 330.63], [330.63, 330.85], [330.85, 330.95], [330.95, 331.25], [331.35, 331.49], [331.49, 331.73], [331.73, 332.27], [332.27, 332.55], [332.55, 333.25], [333.61, 333.99], [333.99, 334.23], [334.23, 334.39], [334.39, 334.97]], [[335.56, 336.36], [336.36, 336.58], [336.58, 336.72], [336.72, 337.24], [337.24, 337.68], [337.68, 338.3], [338.3, 338.42], [338.42, 339.02], [339.02, 339.3], [339.3, 340.02], [340.02, 340.56]], [[342.19, 342.79], [342.79, 343.19], [343.19, 343.63], [343.63, 344.23], [344.23, 344.69], [344.69, 345.05], [345.27, 345.69], [345.69, 346.27], [346.27, 346.91], [346.91, 347.05], [347.05, 347.19], [347.19, 347.71], [347.71, 347.91], [347.91, 348.63], [348.63, 348.79], [348.79, 349.11], [349.11, 349.61], [350.14, 350.94], [350.94, 351.72], [351.72, 351.96], [351.96, 352.12], [352.12, 352.66]]];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const AUDIO_URL = "audio/chapter-15.webm";
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+let audioObjectUrl = null;
+async function loadAudio(url) {
+  // Browsers block fetch() from file:// pages; direct media loading still works there.
+  if (location.protocol === "file:") {
+    audio.src = url;
+    audio.load();
+    return;
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Audio request failed (${response.status})`);
+    const blob = await response.blob();
+    audioObjectUrl = URL.createObjectURL(blob);
+    audio.src = audioObjectUrl;
+    audio.load();
+  } catch (error) {
+    console.error("Could not load chapter audio:", error);
+    showBanner();
+  }
+}
+loadAudio(AUDIO_URL);
+window.addEventListener("pagehide", () => {
+  if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+}, { once: true });
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             progress: "reader.progress",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  uaOpen: false,
+  progress: "section", // progress display mode: "section" hairline or "word" underline
+  wordEl: null,        // <span class="w"> currently underlined
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+/* Word timings exist only when the chapter was built from an alignment sidecar
+   that carries the ASR word stream. */
+const HAS_WORD_TIMES = Array.isArray(WORD_TIMES) && WORD_TIMES.some((u) => u && u.length);
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function appendTooltipText(parent, text) {
+  // Render table emphasis safely; never interpret annotation cells as HTML.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function setStudyText(element, text) {
+  // Preserve unsupported superscripts literally, and decorate known note numbers.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      const definition = document.createElement("span");
+      definition.className = "note-pl";
+      appendTooltipText(definition, note.definition);
+      tooltip.appendChild(definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+/**
+ * Split the rendered PL text into one <span class="w"> per token, in DOM order.
+ * Footnote tooltips are skipped: they are not study text, and they are not in
+ * the Markdown the timings were computed from. Returns the spans.
+ */
+function wrapWords(root) {
+  const textNodes = [];
+  (function walk(node) {
+    for (const child of node.childNodes) {
+      if (child.nodeType === 3) textNodes.push(child);
+      else if (child.nodeType === 1 && !child.classList.contains("footnote-tooltip")) walk(child);
+    }
+  })(root);
+
+  const spans = [];
+  for (const node of textNodes) {
+    const parts = node.nodeValue.split(/(\s+)/);
+    const frag = document.createDocumentFragment();
+    for (const part of parts) {
+      if (!part) continue;
+      if (/^\s+$/.test(part)) {
+        frag.appendChild(document.createTextNode(part));
+        continue;
+      }
+      const span = document.createElement("span");
+      span.className = "w";
+      span.textContent = part;
+      spans.push(span);
+      frag.appendChild(span);
+    }
+    node.parentNode.replaceChild(frag, node);
+  }
+  return spans;
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    /* --- word spans for progress mode 2, kept only when they line up --- */
+    let wordSpans = null;
+    let wordTimes = null;
+    const unitWordTimes = WORD_TIMES && WORD_TIMES[i];
+    if (unitWordTimes && unitWordTimes.length) {
+      const spans = wrapWords(pl);
+      if (spans.length === unitWordTimes.length) {
+        wordSpans = spans;
+        wordTimes = unitWordTimes;
+        card.classList.add("has-words");
+      } else {
+        pl.replaceChildren();          // tokenisation mismatch: plain text, no underline
+        setStudyText(pl, unit.pl);
+      }
+    }
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- Ukrainian reveal chip and block --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+    toggles.append(uaChip);
+
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, uaBox, pbar);
+
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, uaChip, uaBox, pbar: pbar.firstElementChild,
+               words: wordSpans, wordTimes: wordTimes };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: ${audio.getAttribute("src")}`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = "UA " + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+/* --- word underline (progress mode 2) --------------------------------- */
+function clearWord() {
+  if (state.wordEl) {
+    state.wordEl.classList.remove("is-current");
+    state.wordEl = null;
+  }
+}
+
+/** Underline the word the audio is inside right now (binary search, then only
+ *  touch the DOM when the word actually changed). */
+function updateWord(i, t) {
+  const e = els[i];
+  if (!e || !e.words || !e.wordTimes) { clearWord(); return; }
+  const times = e.wordTimes;
+  let lo = 0, hi = times.length - 1, k = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (times[mid][0] <= t) { k = mid; lo = mid + 1; } else { hi = mid - 1; }
+  }
+  // Before the section's first word (the boundary fires a hair early, or the
+  // narrator pauses) keep the upcoming word marked instead of dropping it.
+  if (k < 0) k = 0;
+  const span = e.words[k];
+  if (state.wordEl === span) return;
+  clearWord();
+  span.classList.add("is-current");
+  state.wordEl = span;
+}
+
+function markPlaying() {
+  clearWord();
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+  // Re-apply the underline at once: without this the next rAF would leave the
+  // word unmarked for one frame every time the section changes.
+  if (state.playing && state.progress === "word" && state.index != null) {
+    updateWord(state.index, audio.currentTime);
+  }
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  clearWord();
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  // Already inside this section and audible: pressing Continuous again (or
+  // re-pressing play) must let the audio keep flowing instead of rewinding.
+  const resumeInPlace = state.playing && state.index === i;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    // Re-assigning currentTime restarts decoding of the segment, which is what
+    // made card-to-card playback hiccup. Only seek when we are not already at
+    // (or a whisker away from) this section's first word.
+    if (!resumeInPlace && Math.abs(audio.currentTime - start) > 0.2) {
+      try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+  if (state.progress === "word") updateWord(i, t);
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+/**
+ * Move the "current section" markers to unit i WITHOUT touching the audio.
+ * Continuous play calls this at a section boundary: the file never pauses and
+ * never re-seeks, so playback is gapless and the highlighted card simply
+ * follows whatever the audio is playing.
+ */
+function advanceSection(i) {
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  scrollToCard(i);
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    // The audio is already running through this boundary: follow it to the
+    // next card instead of restarting playback (no pause, no seek, no gap).
+    const t = audio.currentTime;
+    let nxt = nextPlayable(from);
+    // Skip any section whose audio is already behind us (degenerate timestamps).
+    while (nxt !== -1 && endOf(nxt) <= t + 0.03) nxt = nextPlayable(nxt);
+    if (nxt !== -1 && nxt !== from) {
+      advanceSection(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const rateOut = document.getElementById("rateOut");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+const progressEl = document.getElementById("progress");
+const progressCtl = document.getElementById("progressCtl");
+
+/* Speed label: "1×" at the top of the range, "0.9×" below it. */
+function fmtRate(r) {
+  return (Math.round(r * 10) / 10) + "×";
+}
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("input", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  rateOut.textContent = fmtRate(state.rate);
+  store.set(LS.rate, rateEl.value);
+});
+
+/* --- progress display mode -------------------------------------------- */
+function setProgressMode(mode) {
+  if (mode !== "word" || HAS_WORD_TIMES) state.progress = mode;
+  progressEl.value = state.progress;
+  document.documentElement.dataset.progress = state.progress;
+  store.set(LS.progress, state.progress);
+  if (state.progress !== "word") clearWord();
+}
+
+progressEl.addEventListener("change", () => setProgressMode(progressEl.value));
+
+function setAll(open) {
+  state.uaOpen = open;
+  els.forEach((e, i) => setUa(i, open));
+  toggleUaEl.textContent = (open ? "Hide all UA" : "Reveal all UA");
+  toggleUaEl.setAttribute("aria-pressed", String(open));
+  toggleUaEl.classList.toggle("is-on", open);
+}
+
+toggleUaEl.addEventListener("click", () => setAll(!state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll(!state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  // The slider owns the allowed values now: clamp an old stored preference
+  // (0.75/1.25 from the previous dropdown) onto the 0.5–1.0, 0.1 grid.
+  const rawRate = store.get(LS.rate);
+  const r = rawRate == null ? NaN : Number(rawRate);
+  if (Number.isFinite(r)) {
+    rateEl.value = String(Math.min(1, Math.max(0.5, Math.round(r * 10) / 10)));
+    if (rateEl.value !== rawRate) store.set(LS.rate, rateEl.value);
+  }
+  state.rate = Number(rateEl.value);
+  rateOut.textContent = fmtRate(state.rate);
+  audio.volume = state.volume;
+
+  render();
+
+  // Progress display mode: shared across chapters, word mode needs timings.
+  // Word underline is the default; an explicit stored choice always wins.
+  progressCtl.hidden = !HAS_WORD_TIMES;
+  document.getElementById("progressHelp").hidden = !HAS_WORD_TIMES;
+  const storedProgress = store.get(LS.progress);
+  setProgressMode(HAS_WORD_TIMES && storedProgress !== "section" ? "word" : "section");
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
+  const hdrEl = document.querySelector("header.topbar");
+  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

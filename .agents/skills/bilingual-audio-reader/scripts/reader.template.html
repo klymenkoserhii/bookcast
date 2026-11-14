@@ -305,6 +305,18 @@
   .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
   .unit.is-playing .pbar span { width: var(--p, 0%); }
 
+  /* progress mode 2: underline the word being spoken (replaces the hairline) */
+  .w { border-radius: 3px; }
+  html[data-progress="word"] .unit.has-words .pbar { display: none; }
+  html[data-progress="word"] .unit.is-playing .w.is-current {
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--accent);
+  }
+
   /* Ukrainian reveal block */
   .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
   .chip {
@@ -385,14 +397,18 @@
         <output id="volumeOut" for="volume">100%</output>
       </label>
 
-      <label class="ctl" title="Playback speed">
+      <label class="vol" title="Playback speed">
         <span aria-hidden="true">⏱</span>
-        <select id="rate" aria-label="Playback speed"
+        <input id="rate" type="range" min="0.5" max="1" step="0.1" value="1" aria-label="Playback speed">
+        <output id="rateOut" for="rate">1×</output>
+      </label>
+
+      <label class="ctl" id="progressCtl" title="Progress display">
+        <span aria-hidden="true">◍</span>
+        <select id="progress" aria-label="Progress display"
                 style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
-          <option value="0.5">0.5×</option>
-          <option value="0.75">0.75×</option>
-          <option value="1" selected>1×</option>
-          <option value="1.25">1.25×</option>
+          <option value="section">Section</option>
+          <option value="word">Word</option>
         </select>
       </label>
 
@@ -421,6 +437,8 @@
   <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
      you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
      off last time. Click section 1 to start over.</p>
+  <p id="progressHelp" hidden><strong>Progress</strong> in the header switches between the
+     section hairline and underlining each word as it is spoken.</p>
   <p id="stats"></p>
 </footer>
 
@@ -445,6 +463,10 @@ let footnoteTooltipIndex = 0;
 /*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
 /* ===================================================================== */
 __AUDIO_TIMES_JS__
+
+/* Word-level [start, end] pairs, one per displayed token of each unit — the
+   underline of progress mode 2. null when the chapter has no word timings. */
+const WORD_TIMES = __WORD_TIMES_JSON__;
 
 /* ===================================================================== */
 /* 3. STATE + HELPERS                                                    */
@@ -486,6 +508,7 @@ window.addEventListener("pagehide", () => {
 // the previous chapter's section number selected.
 const PAGE = location.pathname;
 const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             progress: "reader.progress",
              selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
 
 /* localStorage can throw on file:// in private windows — degrade gracefully. */
@@ -503,9 +526,15 @@ const state = {
   rate: 1,
   volume: 1,
   uaOpen: false,
+  progress: "section", // progress display mode: "section" hairline or "word" underline
+  wordEl: null,        // <span class="w"> currently underlined
   selected: null,     // card picked as the next starting point
   lastIndex: null,    // last section that was actually played
 };
+
+/* Word timings exist only when the chapter was built from an alignment sidecar
+   that carries the ASR word stream. */
+const HAS_WORD_TIMES = Array.isArray(WORD_TIMES) && WORD_TIMES.some((u) => u && u.length);
 
 // CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
 CHAPTER.forEach((u, i) => {
@@ -630,6 +659,41 @@ function setStudyText(element, text) {
   element.appendChild(document.createTextNode(text.slice(cursor)));
 }
 
+/**
+ * Wrap each spoken token once, keeping inline superscript markers inside the
+ * surrounding word span so annotation markup cannot shift word timings.
+ */
+function wrapWords(root) {
+  const spans = [];
+  let activeWord = null;
+  for (const node of Array.from(root.childNodes)) {
+    if (node.nodeType === 1 && node.tagName === "SUP") {
+      if (activeWord) activeWord.appendChild(node);
+      continue;
+    }
+    if (node.nodeType !== 3) continue;
+    const parts = node.nodeValue.split(/(\s+)/);
+    const frag = document.createDocumentFragment();
+    for (const part of parts) {
+      if (!part) continue;
+      if (/^\s+$/.test(part)) {
+        frag.appendChild(document.createTextNode(part));
+        activeWord = null;
+        continue;
+      }
+      if (!activeWord) {
+        activeWord = document.createElement("span");
+        activeWord.className = "w";
+        spans.push(activeWord);
+        frag.appendChild(activeWord);
+      }
+      activeWord.appendChild(document.createTextNode(part));
+    }
+    node.parentNode.replaceChild(frag, node);
+  }
+  return spans;
+}
+
 function render() {
   const frag = document.createDocumentFragment();
   let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
@@ -672,6 +736,22 @@ function render() {
     pl.id = "pl-" + i;
     pl.lang = "pl";
     setStudyText(pl, unit.pl);
+
+    /* --- word spans for progress mode 2, kept only when they line up --- */
+    let wordSpans = null;
+    let wordTimes = null;
+    const unitWordTimes = WORD_TIMES && WORD_TIMES[i];
+    if (unitWordTimes && unitWordTimes.length) {
+      const spans = wrapWords(pl);
+      if (spans.length === unitWordTimes.length) {
+        wordSpans = spans;
+        wordTimes = unitWordTimes;
+        card.classList.add("has-words");
+      } else {
+        pl.replaceChildren();          // tokenisation mismatch: plain text, no underline
+        setStudyText(pl, unit.pl);
+      }
+    }
 
     row.append(btn, pl);
 
@@ -724,7 +804,8 @@ function render() {
       toggleSection(i);
     });
 
-    els[i] = { card, btn, uaChip, uaBox, pbar: pbar.firstElementChild };
+    els[i] = { card, btn, uaChip, uaBox, pbar: pbar.firstElementChild,
+               words: wordSpans, wordTimes: wordTimes };
     frag.appendChild(card);
   });
 
@@ -746,7 +827,37 @@ function setChip(chip, box, open) {
 
 function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
 
+/* --- word underline (progress mode 2) --------------------------------- */
+function clearWord() {
+  if (state.wordEl) {
+    state.wordEl.classList.remove("is-current");
+    state.wordEl = null;
+  }
+}
+
+/** Underline the word the audio is inside right now (binary search, then only
+ *  touch the DOM when the word actually changed). */
+function updateWord(i, t) {
+  const e = els[i];
+  if (!e || !e.words || !e.wordTimes) { clearWord(); return; }
+  const times = e.wordTimes;
+  let lo = 0, hi = times.length - 1, k = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (times[mid][0] <= t) { k = mid; lo = mid + 1; } else { hi = mid - 1; }
+  }
+  // Before the section's first word (the boundary fires a hair early, or the
+  // narrator pauses) keep the upcoming word marked instead of dropping it.
+  if (k < 0) k = 0;
+  const span = e.words[k];
+  if (state.wordEl === span) return;
+  clearWord();
+  span.classList.add("is-current");
+  state.wordEl = span;
+}
+
 function markPlaying() {
+  clearWord();
   els.forEach((e, i) => {
     const on = i === state.index && state.playing;
     e.card.classList.toggle("is-playing", on);
@@ -758,6 +869,11 @@ function markPlaying() {
       : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
     if (!on) e.card.style.setProperty("--p", "0%");
   });
+  // Re-apply the underline at once: without this the next rAF would leave the
+  // word unmarked for one frame every time the section changes.
+  if (state.playing && state.progress === "word" && state.index != null) {
+    updateWord(state.index, audio.currentTime);
+  }
 }
 
 /** Pick the card that Continuous play should start from. */
@@ -775,6 +891,7 @@ function stop(resetButton = true) {
   state.playing = false;
   state.index = null;
   cancelAnimationFrame(state.raf);
+  clearWord();
   audio.pause();
   if (resetButton) markPlaying();
   updateContinuousButton();
@@ -787,6 +904,10 @@ function stop(resetButton = true) {
 function playSection(i) {
   const start = startOf(i);
   if (start == null) return;
+
+  // Already inside this section and audible: pressing Continuous again (or
+  // re-pressing play) must let the audio keep flowing instead of rewinding.
+  const resumeInPlace = state.playing && state.index === i;
 
   state.index = i;
   state.playing = true;
@@ -802,7 +923,12 @@ function playSection(i) {
   audio.volume = state.volume;
 
   const begin = () => {
-    try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    // Re-assigning currentTime restarts decoding of the segment, which is what
+    // made card-to-card playback hiccup. Only seek when we are not already at
+    // (or a whisker away from) this section's first word.
+    if (!resumeInPlace && Math.abs(audio.currentTime - start) > 0.2) {
+      try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    }
     audio.play().catch(() => {
       state.playing = false;
       markPlaying();
@@ -837,11 +963,34 @@ function tick() {
   const span = Math.max(0.001, state.endAt - startOf(i));
   const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
   els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+  if (state.progress === "word") updateWord(i, t);
 
   if (t >= state.endAt - 0.03) {
     onSegmentEnd();
     return;
   }
+  state.raf = requestAnimationFrame(tick);
+}
+
+/**
+ * Move the "current section" markers to unit i WITHOUT touching the audio.
+ * Continuous play calls this at a section boundary: the file never pauses and
+ * never re-seeks, so playback is gapless and the highlighted card simply
+ * follows whatever the audio is playing.
+ */
+function advanceSection(i) {
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  scrollToCard(i);
   state.raf = requestAnimationFrame(tick);
 }
 
@@ -852,10 +1001,14 @@ function onSegmentEnd() {
 
   const from = state.index;
   if (state.continuous) {
-    const nxt = nextPlayable(from);
-    if (nxt !== -1) {
-      playSection(nxt);
-      scrollToCard(nxt);
+    // The audio is already running through this boundary: follow it to the
+    // next card instead of restarting playback (no pause, no seek, no gap).
+    const t = audio.currentTime;
+    let nxt = nextPlayable(from);
+    // Skip any section whose audio is already behind us (degenerate timestamps).
+    while (nxt !== -1 && endOf(nxt) <= t + 0.03) nxt = nextPlayable(nxt);
+    if (nxt !== -1 && nxt !== from) {
+      advanceSection(nxt);
       return;
     }
   }
@@ -884,9 +1037,17 @@ function scrollToCard(i) {
 const volumeEl = document.getElementById("volume");
 const volumeOut = document.getElementById("volumeOut");
 const rateEl = document.getElementById("rate");
+const rateOut = document.getElementById("rateOut");
 const toggleUaEl = document.getElementById("toggleUa");
 const continuousEl = document.getElementById("continuous");
 const themeEl = document.getElementById("theme");
+const progressEl = document.getElementById("progress");
+const progressCtl = document.getElementById("progressCtl");
+
+/* Speed label: "1×" at the top of the range, "0.9×" below it. */
+function fmtRate(r) {
+  return (Math.round(r * 10) / 10) + "×";
+}
 
 volumeEl.addEventListener("input", () => {
   state.volume = Number(volumeEl.value) / 100;
@@ -895,11 +1056,23 @@ volumeEl.addEventListener("input", () => {
   store.set(LS.volume, volumeEl.value);
 });
 
-rateEl.addEventListener("change", () => {
+rateEl.addEventListener("input", () => {
   state.rate = Number(rateEl.value);
   audio.playbackRate = state.rate;
+  rateOut.textContent = fmtRate(state.rate);
   store.set(LS.rate, rateEl.value);
 });
+
+/* --- progress display mode -------------------------------------------- */
+function setProgressMode(mode) {
+  if (mode !== "word" || HAS_WORD_TIMES) state.progress = mode;
+  progressEl.value = state.progress;
+  document.documentElement.dataset.progress = state.progress;
+  store.set(LS.progress, state.progress);
+  if (state.progress !== "word") clearWord();
+}
+
+progressEl.addEventListener("change", () => setProgressMode(progressEl.value));
 
 function setAll(open) {
   state.uaOpen = open;
@@ -1049,12 +1222,26 @@ document.addEventListener("keydown", (ev) => {
   // Volume / rate preferences.
   const v = store.get(LS.volume);
   if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
-  const r = store.get(LS.rate);
-  if (r != null && [...rateEl.options].some((o) => o.value === r)) rateEl.value = r;
+  // The slider owns the allowed values now: clamp an old stored preference
+  // (0.75/1.25 from the previous dropdown) onto the 0.5–1.0, 0.1 grid.
+  const rawRate = store.get(LS.rate);
+  const r = rawRate == null ? NaN : Number(rawRate);
+  if (Number.isFinite(r)) {
+    rateEl.value = String(Math.min(1, Math.max(0.5, Math.round(r * 10) / 10)));
+    if (rateEl.value !== rawRate) store.set(LS.rate, rateEl.value);
+  }
   state.rate = Number(rateEl.value);
+  rateOut.textContent = fmtRate(state.rate);
   audio.volume = state.volume;
 
   render();
+
+  // Progress display mode: shared across chapters, word mode needs timings.
+  // Word underline is the default; an explicit stored choice always wins.
+  progressCtl.hidden = !HAS_WORD_TIMES;
+  document.getElementById("progressHelp").hidden = !HAS_WORD_TIMES;
+  const storedProgress = store.get(LS.progress);
+  setProgressMode(HAS_WORD_TIMES && storedProgress !== "section" ? "word" : "section");
 
   // Resume point: last played section, else last selected card (survives reload).
   const asIndex = (raw) => {
