@@ -107,7 +107,11 @@
     align-items: center;
     gap: 10px 14px;
   }
-  .brand { flex: 1 1 240px; min-width: 0; }
+  /* The collapse button always shares the title row, flush right: a fixed
+     slot is left for it here so it stays at the right at every viewport
+     width (a fixed 240px basis used to let it drop onto its own row at the
+     left on medium screens). */
+  .brand { flex: 1 1 calc(100% - 52px); min-width: 0; }
   .brand h1 {
     margin: 0;
     font-family: var(--serif);
@@ -166,6 +170,34 @@
 
   .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
            padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* Collapsed header: brand and the display controls fold away, leaving the
+     audio time, the Continuous play button and the expand button in one slim
+     row (the clock must stay visible here even on narrow screens, where it
+     is normally hidden). */
+  .topbar-collapse {
+    flex: none;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .topbar-collapse:hover { border-color: var(--line-strong); }
+  /* Visual order at every width: title, then the collapse button beside it,
+     then the controls on their own row below. */
+  .topbar-collapse { order: 1; }
+  .controls { order: 2; }
+  .topbar.is-collapsed .topbar-inner { flex-wrap: nowrap; padding-top: 7px; padding-bottom: 7px; }
+  .topbar.is-collapsed .brand { display: none; }
+  .topbar.is-collapsed .controls { flex: 1 1 auto; width: auto; min-width: 0; }
+  .topbar.is-collapsed .controls > *:not(.clock):not(#continuous) { display: none; }
+  .topbar.is-collapsed .clock { display: inline; order: -1; }
+  .topbar.is-collapsed .topbar-collapse { order: 3; }
 
   /* ------------------------------------------------------------------ */
   /*  Audio problem banner                                              */
@@ -392,7 +424,10 @@
     .controls { gap: 6px; width: 100%; }
     .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
     .vol input[type="range"] { width: 58px; }
-    .clock { display: none; }
+    /* The clock stays visible when expanded, parked at the right edge of the
+       controls row (it used to be hidden entirely on narrow screens). */
+    .clock { display: inline; }
+    .topbar:not(.is-collapsed) .clock { margin-left: auto; }
     main { padding: 12px 12px 96px; }
     .unit { padding: 14px 14px 12px; }
     .pl { font-size: 1.02rem; }
@@ -439,6 +474,9 @@
       <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
       <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
     </div>
+
+    <button id="collapse" class="topbar-collapse" type="button" aria-expanded="true"
+            aria-label="Collapse header" title="Collapse header">▲</button>
   </div>
 </header>
 
@@ -2092,6 +2130,7 @@ window.addEventListener("pagehide", () => {
 // the previous chapter's section number selected.
 const PAGE = location.pathname;
 const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             collapsed: "reader.collapsed",
              progress: "reader.progress",
              selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
 
@@ -2763,6 +2802,28 @@ themeEl.addEventListener("click", () => {
   applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 });
 
+/* --- header collapse -------------------------------------------------- */
+const topbarEl = document.querySelector("header.topbar");
+const collapseEl = document.getElementById("collapse");
+
+/* The anchor offset (--hdr) follows the header height, so it is re-measured
+   whenever the header collapses or expands. */
+const setHdr = () => document.documentElement.style.setProperty("--hdr", topbarEl.offsetHeight + "px");
+
+function applyCollapsed(collapsed) {
+  topbarEl.classList.toggle("is-collapsed", collapsed);
+  collapseEl.setAttribute("aria-expanded", String(!collapsed));
+  const label = collapsed ? "Expand header" : "Collapse header";
+  collapseEl.setAttribute("aria-label", label);
+  collapseEl.title = label;
+  collapseEl.textContent = collapsed ? "▼" : "▲";
+  store.set(LS.collapsed, collapsed ? "1" : "0");
+  setHdr();
+}
+collapseEl.addEventListener("click", () => {
+  applyCollapsed(!topbarEl.classList.contains("is-collapsed"));
+});
+
 /* --- audio state ------------------------------------------------------ */
 function showBanner() { banner.hidden = false; }
 
@@ -2876,9 +2937,9 @@ document.addEventListener("keydown", (ev) => {
   markPlaying();
   updateContinuousButton();
 
-  // Measure the sticky header (it wraps taller on narrow screens) for the anchor offset.
-  const hdrEl = document.querySelector("header.topbar");
-  const setHdr = () => document.documentElement.style.setProperty("--hdr", hdrEl.offsetHeight + "px");
+  // Restore the collapsed/expanded header choice, then measure the sticky
+  // header (it wraps taller on narrow screens) for the anchor offset.
+  applyCollapsed(store.get(LS.collapsed) === "1");
   setHdr(); addEventListener("resize", setHdr);
 
   // Deep link (#u-N from a vocabulary page or the index): select and show that card.
