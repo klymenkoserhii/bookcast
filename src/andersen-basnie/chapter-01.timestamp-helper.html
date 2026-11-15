@@ -1,0 +1,2243 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to ../../public/andersen-basnie/audio/chapter-01.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-01.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baśnie · Rozdział I — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Baśnie · Rozdział I · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="../../public/andersen-basnie/audio/chapter-01.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Czarodziejskie zwierciadło",
+  "start": 6.56
+ },
+ {
+  "i": 1,
+  "pl": "Żył sobie niegdyś bardzo złośliwy czarodziej. Całą jego przyjemnością było dokuczać ludziom, czynić źle, ze wszystkiego się wyśmiewać i każdą rzecz przedstawiać z najgorszej strony.",
+  "start": 10.32
+ },
+ {
+  "i": 2,
+  "pl": "Wymyślił wreszcie i zrobił takie sztuczne zwierciadło<sup>1<\/sup>, iż wszystkie rzeczy piękne i dobre wyglądały w nim szkaradnie, a nawet śmiesznie, ponieważ były wykrzywione, zamazane, niewyraźne — za to złe rzeczy widać w nim było doskonale.",
+  "start": 23.98
+ },
+ {
+  "i": 3,
+  "pl": "Tym sposobem cały świat w tym zwierciadle był brzydki i zły, a nic na nim nie było pięknego. Czarodziej klaskał w dłonie i śmiał się ze swego figla, a źli jego uczniowie porwali zwierciadło i biegali z nim wszędzie, podstawiając je ludziom znienacka przed oczy i cieszyli się, i śmiali,",
+  "start": 40.22
+ },
+ {
+  "i": 4,
+  "pl": "kiedy przerażony człowiek zasłaniał oczy ręką; a potem nieraz sam nie wiedział, który świat jest prawdziwy: czy ten, który ogląda co dzień, czy tamten, który ujrzał w zaklętym zwierciadle?",
+  "start": 58.63
+ },
+ {
+  "i": 5,
+  "pl": "I tacy ludzie byli bardzo nieszczęśliwi, a było ich coraz więcej.",
+  "start": 70.21
+ },
+ {
+  "i": 6,
+  "pl": "Cieszył się zły czarodziej, ale to mu nie wystarczało. Uczniowie jego postanowili zanieść zwierciadło aż do nieba. Niechże i aniołowie spojrzą w nie choć raz jeden. To byłaby uciecha! A może i sam Pan Bóg — —",
+  "start": 77.84
+ },
+ {
+  "i": 7,
+  "pl": "I zaczęli lecieć do góry. Bardzo im było trudno, a jeszcze z tak ciężkim zwierciadłem — zaledwie mogli utrzymać je w rękach... O, daleko do nieba! Aż im pot okrył czoła, a ręce drżeć zaczęły. Wtem, trrrach! I ciężkie lustro z takiej wysokości brzdęk aż na ziemię!",
+  "start": 92.83
+ },
+ {
+  "i": 8,
+  "pl": "Naturalnie w mgnieniu oka rozprysnęło się na miliony, miliony drobnych szczątków, na nieskończoną ilość czarodziejskiego pyłku, który rozleciał się na wszystkie strony.",
+  "start": 115.36
+ },
+ {
+  "i": 9,
+  "pl": "Ale to właśnie było najgorsze nieszczęście!",
+  "start": 125.88
+ },
+ {
+  "i": 10,
+  "pl": "Zamiast jednego lustra, były ich teraz miliony; rozproszyły się wszędzie, a w każdym najmniejszym kawałeczku, choćby drobnym jak ziarnko piasku, widać było świat cały szkaradny, śmieszny, wykrzywiony.",
+  "start": 130.33
+ },
+ {
+  "i": 11,
+  "pl": "Jeżeli taki proszek wpadł komu do oka, to człowiek ten wszystko już widział zmienione i nie mógł dostrzec koło siebie nic dobrego, nic pięknego! Za to najgorsze rzeczy widział jasno i wyraźnie, więc wszystko złem było dla niego.",
+  "start": 145.54
+ },
+ {
+  "i": 12,
+  "pl": "Gorzej jeszcze, jeżeli okruszyna lustra wpadła komu do serca. Nieszczęśliwy tracił uczucie: serce jego stawało się kawałkiem lodu, nikogo kochać nie mógł, wszyscy byli dla niego obcy, obojętni.",
+  "start": 163.13
+ },
+ {
+  "i": 13,
+  "pl": "Z większych kawałków porobiono szyby, z innych szkła do okularów, a mnóstwo jeszcze krążyło w powietrzu — wiatr je roznosił wciąż dalej i dalej, i naturalnie coraz więcej ludzi stawało się nieszczęśliwymi kalekami.",
+  "start": 179.64
+ },
+ {
+  "i": 14,
+  "pl": "A niegodziwych pyłków ciągle jeszcze pełno i zobaczymy, co z tego wynikło.",
+  "start": 194.33
+ },
+ {
+  "i": 15,
+  "pl": "Sąsiedzi",
+  "start": 202.21
+ },
+ {
+  "i": 16,
+  "pl": "W pewnym bardzo starym mieście, w bardzo wysokim domu na poddaszu mieszkało dwoje dzieci, każde u swoich rodziców — był to Kaj i Gerda.",
+  "start": 203.61
+ },
+ {
+  "i": 17,
+  "pl": "W tym mieście było tyle ludzi, że nie mógł każdy dla siebie mieć osobnego domku, a cóż dopiero myśleć o własnym ogródku. Ale że dobrzy ludzie bardzo lubią kwiaty, więc wszyscy hodowali je w doniczkach. I tym sposobem w każdym prawie oknie był ogródek; ale najładniej było u Kaja i Gerdy.",
+  "start": 216.88
+ },
+ {
+  "i": 18,
+  "pl": "Bo posłuchajcie tylko: w tym wysokim domu na poddaszu każda rodzina miała własną izdebkę z dużym oknem, przez które w lecie można było wyjść na dach albo — wcale nie schodząc ze schodów — przejść z jednego mieszkania do drugiego. Można tu było bawić się na płaskim dachu.",
+  "start": 238.88
+ },
+ {
+  "i": 19,
+  "pl": "Gdy Gerda wyjrzała oknem, widziała Kaja w izbie naprzeciwko. Kiedy słonko przygrzało, dzieci wybiegały na dach i bawiły się doskonale albo siadały na małych stołeczkach i rozmawiały o wszystkim, co je zajmowało.",
+  "start": 259.08
+ },
+ {
+  "i": 20,
+  "pl": "Były to bardzo dobre dzieci i kochały się jak brat i siostra.",
+  "start": 275.08
+ },
+ {
+  "i": 21,
+  "pl": "Na wiosnę rodzice Kaja i Gerdy ustawiali na brzegu dachu długie skrzynie, napełnione ziemią; w nich zasiewali potrzebne warzywa i wiele pięknych kwiatów. Tak więc kawałek dachu przed oknami zamieniał się w śliczny, maleńki ogródek.",
+  "start": 280.61
+ },
+ {
+  "i": 22,
+  "pl": "Im mocniej dogrzewało złote słonko, tym piękniej było w ogródku na dachu.",
+  "start": 296.69
+ },
+ {
+  "i": 23,
+  "pl": "Zielone festony roślin pokrywały drewniane skrzynie i spadały aż na mur domu: różnobarwne powoje otwierały śliczne kielichy pełne rosy; różowy groszek ciekawie wyglądał na wszystkie strony; aksamitne bratki szeroko otwierały wielkie oczy, a drobne stokrotki uśmiechały się wesoło.",
+  "start": 302.27
+ },
+ {
+  "i": 24,
+  "pl": "Oprócz tego w każdej skrzyni rósł wysoki różany krzaczek niby drzewko. Na wiosnę stroił się w zielone listki, a już w maju okrywał ślicznymi kwiatami, których woń rozpływała się w powietrzu.",
+  "start": 321.92
+ },
+ {
+  "i": 25,
+  "pl": "Gałązki róż ciekawie zaglądały w okna, szeptały cicho drobnymi listkami i kołysały się lekko pod tchnieniem wietrzyka.",
+  "start": 336.65
+ },
+ {
+  "i": 26,
+  "pl": "Ślicznie tu było w lecie.",
+  "start": 345.72
+ },
+ {
+  "i": 27,
+  "pl": "Ale w zimie wszystko znikało. Biały śnieg pokrywał dachy, a zamknięte okna często zamarzały; wtedy mróz kładł na nie delikatne białe kwiaty, ale nic przez nie widzieć nie było można. A dzieci chciały się widzieć, chciały ciągle wiedzieć o sobie.",
+  "start": 348.39
+ },
+ {
+  "i": 28,
+  "pl": "Więc rozgrzewały pieniądz na piecu i kładły go na szybę. Wtedy wśród białych liści i gałązek tworzył się mały i przezroczysty otwór, w którym zaraz mrugnęło śmiejące się oko Kaja albo Gerdy.",
+  "start": 365.55
+ },
+ {
+  "i": 29,
+  "pl": "— Pójdź tu do nas! — mówiło oko.",
+  "start": 379.28
+ },
+ {
+  "i": 30,
+  "pl": "— Dobrze, dobrze!",
+  "start": 382.15
+ },
+ {
+  "i": 31,
+  "pl": "W lecie tak łatwo było przejść z jednego mieszkania do drugiego, ale w zimie musiały dzieci zbiegać na dół i znów wchodzić na schody tak wysoko! A tam na dole śnieg i wicher!",
+  "start": 384.21
+ },
+ {
+  "i": 32,
+  "pl": "— Patrz, patrz! Białe pszczoły wyleciały z ula — mówiła stara babka, ukazując wnuczce chwiejące się w powietrzu płatki śniegu.",
+  "start": 396.64
+ },
+ {
+  "i": 33,
+  "pl": "— Pszczoły, pszczoły — powtarzała wesoło Gerda. — A czy mają swoją królową?",
+  "start": 405.02
+ },
+ {
+  "i": 34,
+  "pl": "— Rozumie się, że mają — odpowiedziała babka. — Największy ze wszystkich płatków, a zawsze tam leci, gdzie śnieg najgęściej pada. Jeśli spadnie na ziemię, wzbija się natychmiast znowu ku ciemnym chmurom i nigdy nie spocznie.",
+  "start": 410.58
+ },
+ {
+  "i": 35,
+  "pl": "Czasem przebiega nocą po ulicach miasta i zagląda do okien, a wtedy wyrastają na nich śnieżne kwiaty i brylantowe liście.",
+  "start": 426.34
+ },
+ {
+  "i": 36,
+  "pl": "— Tak! Tak! Widzieliśmy! — wołały dzieci, zachwycone słowami babki.",
+  "start": 435.89
+ },
+ {
+  "i": 37,
+  "pl": "— A czy królowa śniegu mogłaby przyjść tutaj? — zapytała Gerda.",
+  "start": 441.68
+ },
+ {
+  "i": 38,
+  "pl": "— Ach, niech no tylko przyjdzie! — krzyknął Kaj wesoło. — Posadziłbym ją zaraz przy piecu i roztopiłaby się! Ha, ha, ha!",
+  "start": 446.19
+ },
+ {
+  "i": 39,
+  "pl": "Babka pogłaskała go lekko po głowie i zaczęła opowiadać co innego.",
+  "start": 454.04
+ },
+ {
+  "i": 40,
+  "pl": "Raz wieczorem Kaj już na wpół rozebrany wszedł na stołek i wyjrzał przez okrągły otwór na zamarzniętej szybie.",
+  "start": 458.94
+ },
+ {
+  "i": 41,
+  "pl": "W powietrzu kołysało się mnóstwo płatków śniegu, a jeden bardzo duży uczepił się na brzegu skrzynki kwiatowej, zaczął rosnąć prędko, coraz większy, wyższy, aż stał się cudną panią w długiej, białej szacie z cieniutkiego, przezroczystego muślinu, obsypanej milionami śnieżnych gwiazdek.",
+  "start": 465.26
+ },
+ {
+  "i": 42,
+  "pl": "Ciało jej było z przezroczystego lodu, białe i połyskujące, a jednak ona żyła. Patrzyła się na Kaja i uśmiechała się do niego, a oczy jej jaśniały jak brylanty. Na koniec skinęła ręką, jak gdyby wzywała go z sobą.",
+  "start": 484.45
+ },
+ {
+  "i": 43,
+  "pl": "Kaj przeląkł się bardzo, zeskoczył z krzesła i uciekł w głąb izdebki, ale zdawało mu się, że wielki ptak jakiś przeleciał koło okna.",
+  "start": 500.91
+ },
+ {
+  "i": 44,
+  "pl": "Nazajutrz dzień był jasny, pogodny i mroźny, ale wkrótce nastąpiła odwilż, wiatr przyniósł wieść radosną, że wiosna już blisko, słońce dogrzewało mocniej, śniegi zniknęły bez śladu, trawa pozieleniała, pączki zaczęły pękać,",
+  "start": 509.17
+ },
+ {
+  "i": 45,
+  "pl": "przyleciały jaskółki do gniazd przeszłorocznych i znowu dzieci siedziały na dachu, w ślicznym, maleńkim, wiszącym ogrodzie.",
+  "start": 527.35
+ },
+ {
+  "i": 46,
+  "pl": "Groszek pachnący spadał w festonach<sup>2<\/sup> na skrzynie, powoje otwierały śliczne kielichy do słońca, a róże tego roku kwitły bardzo pięknie i drzewka były nimi obsypane.",
+  "start": 535.23
+ },
+ {
+  "i": 47,
+  "pl": "Gerda z Kajem siedzieli pod krzaczkiem i śpiewali razem ulubioną swoją piosenkę.",
+  "start": 547.02
+ },
+ {
+  "i": 48,
+  "pl": "Co ja kocham na tym świecie?",
+  "start": 552.18
+ },
+ {
+  "i": 49,
+  "pl": "Złote słonko, cudne kwiecie!",
+  "start": 555.52
+ },
+ {
+  "i": 50,
+  "pl": "Boże ptaszki śpiewające,",
+  "start": 558.02
+ },
+ {
+  "i": 51,
+  "pl": "Jasne rosy, w kwiatach drżące,",
+  "start": 559.44
+ },
+ {
+  "i": 52,
+  "pl": "Błękit nieba i obłoki,",
+  "start": 561.72
+ },
+ {
+  "i": 53,
+  "pl": "Cały piękny świat szeroki,",
+  "start": 564.14
+ },
+ {
+  "i": 54,
+  "pl": "I chatynkę pobielaną,",
+  "start": 565.8
+ },
+ {
+  "i": 55,
+  "pl": "I mateczkę ukochaną! —",
+  "start": 567.56
+ },
+ {
+  "i": 56,
+  "pl": "Wszystko kocham serca biciem,",
+  "start": 569.72
+ },
+ {
+  "i": 57,
+  "pl": "A przestanę chyba z życiem.",
+  "start": 571.88
+ },
+ {
+  "i": 58,
+  "pl": "Razu jednego dzieci siedziały w ogródku i oglądały bardzo ładną książkę z obrazkami, w której były malowane ptaki i zwierzęta. Na wieżowym zegarze zaczęła bić piąta.",
+  "start": 575.54
+ },
+ {
+  "i": 59,
+  "pl": "— Aj! — zawołał Kaj nagle. — Coś mnie ukłuło w serce! Coś mi do oka wpadło!",
+  "start": 585.95
+ },
+ {
+  "i": 60,
+  "pl": "— Może ukłuł cię kolec róży? — rzekła troskliwie Gerda. — Czekaj, zobaczę, co ci wpadło w oko! Nic — nic nie ma.",
+  "start": 592.3
+ },
+ {
+  "i": 61,
+  "pl": "— Pewno już wyleciało — rzekł Kaj niecierpliwie i odsunął się od dziewczynki.",
+  "start": 601.14
+ },
+ {
+  "i": 62,
+  "pl": "Niestety, nie wyleciało. Był to właśnie drobniutki pyłek stłuczonego zwierciadła czarodzieja; utkwił mu w oku i zmienił świat cały, nie pozwalając widzieć na nim nic pięknego, nic dobrego. A co gorsza, pyłek taki wpadł mu w serce, które nagle stało się zimne i twarde, przestało czuć i kochać.",
+  "start": 605.92
+ },
+ {
+  "i": 63,
+  "pl": "— Czegóż beczysz? — zapytał opryskliwie. — Żebyś wiedziała, jaka jesteś brzydka! A jaka śmieszna, ha, ha, ha! Cóż to za zgniła róża? Pfe! I ta szkaradna! Cała ta skrzynia — stare, brzydkie pudło, tylko ją zrzucić z dachu.",
+  "start": 628.77
+ },
+ {
+  "i": 64,
+  "pl": "Kopnął skrzynię, zerwał różę i rozdeptał.",
+  "start": 646.54
+ },
+ {
+  "i": 65,
+  "pl": "— Kaju! — zawołała z przestrachem dziewczynka.",
+  "start": 650.31
+ },
+ {
+  "i": 66,
+  "pl": "Widząc jej przerażenie, roześmiał się szkaradnie, zerwał jeszcze jedną różę, rzucił ją i wskoczył do swojego okna.",
+  "start": 653.98
+ },
+ {
+  "i": 67,
+  "pl": "Od tej chwili Kaj zmienił się zupełnie. Kiedy Gerda chciała oglądać z nim obrazki, wzruszał ramionami, mówił, że są brzydkie i wyśmiewał się z każdego. W końcu powiedział, że nie chce się z nią bawić, bo jest głupia jak małe dziecko.",
+  "start": 661.81
+ },
+ {
+  "i": 68,
+  "pl": "Nawet bajki babuni nie podobały mu się; mówił, że są niedorzeczne, zawsze miał jakieś: ale. Nieraz stawał za staruszką, kładł na nos jej okulary i naśladował jej miny i słowa. Tak samo zaczął naśladować innych i nauczył się wkrótce najbrzydszych grymasów i wykrzywiań.",
+  "start": 676.55
+ },
+ {
+  "i": 69,
+  "pl": "W gruncie rzeczy Kaj nic temu nie był winien, tylko szkaradny pyłek szkła czarodziejskiego, które tkwiło mu w sercu. Z tego to powodu nikogo nie kochał i dokuczał Gerdzie, która była dla niego taka dobra.",
+  "start": 696.76
+ },
+ {
+  "i": 70,
+  "pl": "Ludzie zaczęli mówić, że Kaj jest złym chłopcem i mieli zupełną słuszność, tylko nie wiedzieli, dlaczego jest taki.",
+  "start": 710.58
+ },
+ {
+  "i": 71,
+  "pl": "Razu jednego w zimie, gdy śnieg padał, przyniósł Kaj na podwórze szkło powiększające i przez nie patrzył na gwiazdki śniegowe, które pokrywały mu ubranie.",
+  "start": 718.22
+ },
+ {
+  "i": 72,
+  "pl": "— Spojrzyj, Gerdo — rzekł — jakie ogromne! Niby kwiaty, niby gwiazdy, a jakie sztuczne! To ciekawsze przecież od kwiatów prawdziwych! Tak równo, doskonale ułożone. Szkoda tylko, że topnieją.",
+  "start": 729.29
+ },
+ {
+  "i": 73,
+  "pl": "Nagle pobiegł na górę, przyniósł swoje saneczki i ciepłe rękawice, oznajmił Gerdzie, że idzie pojeździć saneczkami po rynku i natychmiast zniknął za bramą.",
+  "start": 745.3
+ },
+ {
+  "i": 74,
+  "pl": "Na rynku była wesoła zabawa. Chłopcy ślizgali się po śniegu w swoich sankach, najśmielsi przywiązywali je do sań wieśniaków i jechali tym sposobem spory kawałek drogi. A co przy tym śmiechu i wrzawy!",
+  "start": 755.84
+ },
+ {
+  "i": 75,
+  "pl": "Wtem wjechały na rynek duże, białe sanie zaprzężone białymi końmi. Osoba siedząca w saniach otulona była w ogromne białe futro, a na głowie miała białą futrzaną czapkę. Sanie dwa razy objechały rynek, a tymczasem udało się Kajowi przywiązać do nich z tyłu swoje małe saneczki.",
+  "start": 771.8
+ },
+ {
+  "i": 76,
+  "pl": "Teraz pomknął jak strzała po utartej drodze i wyjechał za miasto. Osoba w sankach odwróciła głowę i przyjaźnie uśmiechnęła się do niego.",
+  "start": 791.93
+ },
+ {
+  "i": 77,
+  "pl": "Kaj doznawał wielkiej przyjemności, bo nigdy jeszcze nie jechał tak prędko; nie chciał jednak zanadto oddalić się od miasta i po niejakim czasie pragnął odwiązać swoje sanki. Wtedy osoba w saniach odwróciła się znowu i spojrzała tak przyjaźnie, że Kaj zapomniał o wszystkim.",
+  "start": 802.53
+ },
+ {
+  "i": 78,
+  "pl": "I tak powtórzyło się parę razy.",
+  "start": 821.98
+ },
+ {
+  "i": 79,
+  "pl": "Śnieg zaczął padać gęsty, pociemniało, Kaj nie widział już nic dookoła prócz kręcących się białych płatków. Puścił sznurek, aby odczepić swoje sanki, ale one jak gdyby przymarzły do wielkich, mknęły jak wiatr za nimi, dalej, dalej, dalej!",
+  "start": 825.6
+ },
+ {
+  "i": 80,
+  "pl": "Kaj krzyknął przerażony, ale nikt mu nie odpowiedział, jakby go nikt nie słyszał. Sanki pędziły ciągle, a śnieg sypał, nic już widać nie było. Chwilami uderzały się o coś gwałtownie, to znów spadały na dół, przeskakiwały jakieś nieznane przeszkody i sunęły po białej drodze w świat nieznany.",
+  "start": 843.0
+ },
+ {
+  "i": 81,
+  "pl": "Kaj chciał się przeżegnać, zmówić pacierz, lecz w żaden sposób przypomnieć sobie nie mógł słów Ojcze nasz i przychodziła mu na myśl tylko tabliczka mnożenia.",
+  "start": 863.63
+ },
+ {
+  "i": 82,
+  "pl": "Płatki śniegu padały coraz większe, wyglądały na koniec niby białe ptaszki. Zdawało mu się, że dookoła niego biegną gołębie, kury, gęsi — całym tłumem.",
+  "start": 873.18
+ },
+ {
+  "i": 83,
+  "pl": "Naraz konie stanęły, sanie się zatrzymały, a siedząca w nich osoba podniosła się i Kaj spostrzegł, że futro jej i czapka były ze śniegu. Była to wysoka dama, wysmukła, olśniewającej białości: królowa śniegu!",
+  "start": 886.37
+ },
+ {
+  "i": 84,
+  "pl": "— Dobrze jedziemy! — rzekła. — Ale po co masz tam marznąć? Chodź pod moje niedźwiedzie.",
+  "start": 904.06
+ },
+ {
+  "i": 85,
+  "pl": "Posadziła go w saniach obok siebie, nakryła białym futrem, a jemu się zdawało, że zapada w górę śnieżną.",
+  "start": 912.22
+ },
+ {
+  "i": 86,
+  "pl": "— Jeszcze ci zimno? — rzekła i pocałowała go w czoło.",
+  "start": 920.2
+ },
+ {
+  "i": 87,
+  "pl": "Huu! Jakiż to był zimny pocałunek! Uczuł lód aż w głębi serca, które — jak wiemy — już miał na wpół zlodowaciałe; przez mgnienie oka zdawało mu się, że umiera, ale to minęło bardzo prędko i zrobiło mu się lepiej. Nie czuł już wcale zimna.",
+  "start": 923.63
+ },
+ {
+  "i": 88,
+  "pl": "— Moje saneczki! Moje saneczki! — zawołał z wielką trwogą, aby nie stracić ulubionej zabawki. Więc rzucono sznurek od nich białej kurze, aby biegła obok, ciągnąc je za sobą.",
+  "start": 942.3
+ },
+ {
+  "i": 89,
+  "pl": "Królowa śniegu pochyliła się nad Kajem i pocałowała go powtórnie, a w tej chwili chłopiec zapomniał już o wszystkim: o rodzicach, domu, babce i Gerdzie.",
+  "start": 954.46
+ },
+ {
+  "i": 90,
+  "pl": "Teraz nie bał się wcale pięknej pani, nie wydawała mu się straszna. Opowiadał jej, co umie, o jakich się uczył krajach i miastach, jak wybornie liczy na pamięć — a ona uśmiechała się do niego.",
+  "start": 967.18
+ },
+ {
+  "i": 91,
+  "pl": "Wreszcie wzięła go na ręce i wzleciała z nim razem wysoko, wysoko, ku ciemnym chmurom, które szarpał wiatr świszczący.",
+  "start": 979.36
+ },
+ {
+  "i": 92,
+  "pl": "Przelatywali ponad ciemnymi lasami, nad górami, morzami i lądami. Zimny wicher huczał pod nimi w przepaściach, biały śnieg połyskiwał, wyły wilki głodne, krakały stada czarnych kruków — a ponad nimi świecił jasny księżyc.",
+  "start": 988.57
+ },
+ {
+  "i": 93,
+  "pl": "I tak płynęła długa noc zimowa, a gdy nastąpił ranek, Kaj spał u nóg królowej śniegu.",
+  "start": 1004.87
+ },
+ {
+  "i": 94,
+  "pl": "W ogródku wróżki",
+  "start": 1012.25
+ },
+ {
+  "i": 95,
+  "pl": "Jakże smutno i strasznie było biednej Gerdzie, kiedy wieczorem Kaj nie wrócił do domu!",
+  "start": 1016.9
+ },
+ {
+  "i": 96,
+  "pl": "Nikt nie wiedział, gdzie się podział i co się z nim stało. Chłopcy opowiadali, że jeździł po rynku, a potem swoje saneczki uczepił do wielkich sań, które pomknęły za miasto. Tyle go widziano.",
+  "start": 1023.17
+ },
+ {
+  "i": 97,
+  "pl": "Płakali rodzice, babka i Gerda, bo myśleli, że z mostu zsunął się w rzekę i utonął. Gerda płakała gorzko całą zimę.",
+  "start": 1035.65
+ },
+ {
+  "i": 98,
+  "pl": "Wreszcie nadeszła wiosna, zajaśniało piękne słoneczko.",
+  "start": 1045.59
+ },
+ {
+  "i": 99,
+  "pl": "— Kaj nie żyje! — rzekła do niego Gerda.",
+  "start": 1050.95
+ },
+ {
+  "i": 100,
+  "pl": "— Albo to prawda! — odpowiedziało słońce.",
+  "start": 1054.79
+ },
+ {
+  "i": 101,
+  "pl": "Powróciły jaskółki do gniazd zeszłorocznych.",
+  "start": 1058.76
+ },
+ {
+  "i": 102,
+  "pl": "— Kaj nie żyje! — oznajmiła im Gerda.",
+  "start": 1062.42
+ },
+ {
+  "i": 103,
+  "pl": "— Nieprawda! — odpowiedziały jaskółki.",
+  "start": 1065.72
+ },
+ {
+  "i": 104,
+  "pl": "A wtedy i Gerda przestała w to wierzyć.",
+  "start": 1068.83
+ },
+ {
+  "i": 105,
+  "pl": "— Włożę czerwone buciki, których Kaj jeszcze nie widział i pójdę do rzeki zapytać o niego — pomyślała pewnego ranka.",
+  "start": 1072.84
+ },
+ {
+  "i": 106,
+  "pl": "Było bardzo wcześnie, ale wstała zaraz, ubrała się cichutko, żeby nie obudzić babki, włożyła swoje czerwone buciki, leciuchno pocałowała babunię i pobiegła do rzeki.",
+  "start": 1079.1
+ },
+ {
+  "i": 107,
+  "pl": "— Czy to prawda, że zabrałaś mi mojego Kaja? — zapytała niespokojnie. — Oddaj mi go, a dam ci śliczne czerwone buciki.",
+  "start": 1089.39
+ },
+ {
+  "i": 108,
+  "pl": "Zdawało jej się, że fale zaszemrały jakoś dziwnie, jakby się zgadzały na ten układ. Więc co prędzej zdjęła buciki, śliczne, ukochane, czerwone buciki i rzuciła je w wodę.",
+  "start": 1097.39
+ },
+ {
+  "i": 109,
+  "pl": "Buciki upadły niedaleko, a fala wyniosła je na brzeg z powrotem. Rzeka nie chciała przyjąć tej ofiary, gdyż nie mogła oddać Kaja, lecz Gerda inaczej to sobie tłumaczyła.",
+  "start": 1108.5
+ },
+ {
+  "i": 110,
+  "pl": "Zdawało jej się, że za blisko brzegu wrzuciła trzewiczki i aby je rzucić dalej, weszła do małego czółenka, które kołysało się na wodzie. Poszła na przeciwny koniec łódki i rzuciła buciki z całej siły, jak tylko mogła najdalej.",
+  "start": 1119.81
+ },
+ {
+  "i": 111,
+  "pl": "Tak idąc i poruszając się, mimowolnie chwiała czółenkiem, które nie było przywiązane i zaczęło oddalać się od brzegu. Gerda spostrzegła to i chciała wyskoczyć, lecz była już za daleko. Łódka, porwana prądem, szybko płynęła z biegiem wody.",
+  "start": 1133.77
+ },
+ {
+  "i": 112,
+  "pl": "Wtedy Gerda przelękła się bardzo i zaczęła głośno płakać. Ale nikt jej nie słyszał, tylko gromadka wróbli, które nie mogły dopomóc jej w niczym. Biegły jednak wzdłuż brzegu, jakby ją chciały pocieszyć i wołały bezustannie:",
+  "start": 1150.84
+ },
+ {
+  "i": 113,
+  "pl": "— Ćwir! Ćwir! Ćwir! Jesteśmy tutaj! Nie bój się! Jesteśmy tutaj.",
+  "start": 1164.54
+ },
+ {
+  "i": 114,
+  "pl": "I Gerda uspokoiła się powoli. Czółenko płynęło z prądem, a ona siedziała cichutko, w samych pończoszkach i patrzyła w wodę. Czerwone trzewiczki płynęły za łódką, lecz nie mogły jej dogonić, ponieważ prąd bardzo szybko ją unosił.",
+  "start": 1170.19
+ },
+ {
+  "i": 115,
+  "pl": "Prześlicznie wyglądały brzegi rzeki; na zielonych, kwiecistych łąkach pasły się stada owiec, krowy poważnie skubały świeżą, soczystą paszę, stare drzewa rozwijały młode listki, wszystko uśmiechało się w blasku słonecznym.",
+  "start": 1186.16
+ },
+ {
+  "i": 116,
+  "pl": "— Może mnie rzeka zaniesie do Kaja — pomyślała Gerda i przestała się smucić. Usiadła na ławeczce i patrzyła długo na zielone brzegi, które przesuwały się przed nią.",
+  "start": 1202.08
+ },
+ {
+  "i": 117,
+  "pl": "Właśnie ujrzała wielki sad wiśniowy, pełen kwitnących drzew, a między nimi malutki domek pod słomianą strzechą<sup>3<\/sup>, z czerwonymi, żółtymi i niebieskimi okienkami. Dwóch drewnianych żołnierzy stało przed ganeczkiem z bronią w ręku.",
+  "start": 1212.95
+ },
+ {
+  "i": 118,
+  "pl": "Gerda pomyślała, że to żywi ludzie i wołała ratunku, ale naturalnie nikt jej nie odpowiedział. Prąd niósł ją prosto do brzegu, więc zaczęła znów wołać jeszcze głośniej.",
+  "start": 1228.12
+ },
+ {
+  "i": 119,
+  "pl": "Wtem drzwi domku się otworzyły i wyszła z niego zgarbiona staruszka, podpierając się kijkiem i drepcząc ku furtce. Na głowie miała duży słomiany kapelusz, pomalowany w bardzo piękne kwiaty.",
+  "start": 1239.84
+ },
+ {
+  "i": 120,
+  "pl": "— Ach, biedne dziecko! — zawołała stara. — Skądże się wzięłaś na tej bystrej rzece, która cię tak daleko w świat uniosła?",
+  "start": 1253.28
+ },
+ {
+  "i": 121,
+  "pl": "Drepcząc prędko, staruszka zbliżyła się do brzegu, zaczepiła o czółno swoim zakrzywionym kijkiem i przyciągnęła je do lądu. Podała dziewczynce rękę i pomogła jej wyskoczyć na ziemię.",
+  "start": 1261.82
+ },
+ {
+  "i": 122,
+  "pl": "Ach, jak przyjemnie zrobiło się Gerdzie, gdy znów uczuła pod nogami twardą ziemię! Bała się jednak trochę nieznajomej staruszki.",
+  "start": 1274.03
+ },
+ {
+  "i": 123,
+  "pl": "— Kto jesteś, moje dziecko i skąd się tu wzięłaś? — pytała znów kobieta, uważnie patrząc na dziewczynkę.",
+  "start": 1284.33
+ },
+ {
+  "i": 124,
+  "pl": "Wtedy Gerda opowiedziała jej wszystko i pytała, czy nie wie co o Kaju.",
+  "start": 1291.76
+ },
+ {
+  "i": 125,
+  "pl": "Staruszka nie wiedziała, ale była tego zdania, że Kaj może się znaleźć, a tymczasem zaprosiła dziewczynkę do ogródka, pozwoliła jej zrywać kwiaty i jeść wiśnie, żeby tylko nie była smutna.",
+  "start": 1296.63
+ },
+ {
+  "i": 126,
+  "pl": "Potem weszły do domku. Przez wysokie okienka czerwone, żółte i niebieskie, dziwne światło wpadało do izdebki. Na stole w dużych koszach stały prześliczne wiśnie, a staruszka pozwoliła jeść Gerdzie, ile tylko zechce.",
+  "start": 1308.76
+ },
+ {
+  "i": 127,
+  "pl": "Wiśnie były wyborne, Gerda głodna, więc jadła, uśmiechając się z zadowolenia. Staruszka złotym grzebieniem czesała jej złote włosy.",
+  "start": 1325.56
+ },
+ {
+  "i": 128,
+  "pl": "Czesała je długo, długo, w dziwnym blasku czerwonych i niebieskich szybek, a Gerda zapominała o Kaju, babce i rodzicach, bo grzebień był zaczarowany, staruszka ta zaś była wróżką.",
+  "start": 1336.01
+ },
+ {
+  "i": 129,
+  "pl": "— Dawno już mieć pragnęłam taką miłą, dobrą dziewczynkę — mówiła łagodnym głosem — zobaczysz, jak ci u mnie dobrze będzie.",
+  "start": 1352.53
+ },
+ {
+  "i": 130,
+  "pl": "Potem Gerda została w izdebce, a staruszka wyszła sama do ogródka, dotknęła swoim kijem każdego krzaczka różanego i wszystkie natychmiast zapadły się w ziemię. Zrobiła to dlatego, ażeby Gerda na widok róż nie przypomniała sobie Kaja.",
+  "start": 1361.43
+ },
+ {
+  "i": 131,
+  "pl": "Teraz dziewczynka wybiegła także do ogródka. Ach, jak tu było ślicznie i przyjemnie! Tyle kwiatów, a każdy inny! Tyle barw, blasku, woni. Prawdziwie był to czarodziejski ogród: rosły w nim wszystkie kwiaty, jakie tylko są na świecie i wszystkie kwitły jednocześnie.",
+  "start": 1378.42
+ },
+ {
+  "i": 132,
+  "pl": "Gerda biegała pomiędzy grządkami, śmiała się i śpiewała, dopóki słońce nie skryło się poza wielką, starą wiśnię. Wtedy położyła się spać w czystym łóżeczku, na czerwonej jedwabnej poduszeczce, na której wyhaftowane były piękne, błękitne fiołki.",
+  "start": 1398.49
+ },
+ {
+  "i": 133,
+  "pl": "Zasnęła też spokojnie, jak królewna, a w nocy śniła sny słodkie i miłe.",
+  "start": 1415.53
+ },
+ {
+  "i": 134,
+  "pl": "Nazajutrz z rana obudziła się wesoło i bawiła znowu cały dzień w ogródku, wśród najpiękniejszych kwiatów, w ciepłym blasku słońca — i tak upływały dni jeden po drugim.",
+  "start": 1422.59
+ },
+ {
+  "i": 135,
+  "pl": "Gerda znała teraz wszystkie kwiatki, ale chociaż miała ich tutaj tak wiele, ciągle jej się zdawało, że jeszcze jakiegoś brakuje. Tylko nie mogła sobie przypomnieć którego.",
+  "start": 1436.68
+ },
+ {
+  "i": 136,
+  "pl": "Wtem raz na słomianym kapeluszu wróżki spostrzegła malowaną różę. Zdziwiona i szczęśliwa, zaczęła natychmiast szukać w ogródku kochanego kwiatka: rozglądała się wokoło, pochylała nad grządkami, lecz ani jednej różyczki nie było.",
+  "start": 1447.27
+ },
+ {
+  "i": 137,
+  "pl": "Wówczas gorzko płakać zaczęła. Jej łzy gorące padały na ziemię i przesiąkły przez nią, aż zwilżyły ukryty w tym miejscu krzak róży. I nagle cudny, świeży, okryty wonnym kwieciem, wystrzelił znów nad ziemię, a Gerda objęła go rączkami, pieściła i całowała śliczne róże.",
+  "start": 1463.46
+ },
+ {
+  "i": 138,
+  "pl": "I przypomniała sobie tamten krzaczek na poddaszu i przypomniała sobie znowu Kaja.",
+  "start": 1483.36
+ },
+ {
+  "i": 139,
+  "pl": "— Och, jakże dawno ja tu jestem! — zawołała. — A miałam szukać Kaja. Moje śliczne różyczki, czyż nie wiecie, gdzie on się podział? Czy myślicie, że umarł?",
+  "start": 1489.47
+ },
+ {
+  "i": 140,
+  "pl": "— O, nie! — odparły róże. — Byłyśmy przecie pod ziemią, tam go nie ma.",
+  "start": 1501.74
+ },
+ {
+  "i": 141,
+  "pl": "— Dziękuję wam — zawołała uszczęśliwiona Gerda i pobiegła do innych kwiatków, aby się czegoś o Kaju dowiedzieć.",
+  "start": 1508.6
+ },
+ {
+  "i": 142,
+  "pl": "Lecz daremnie pytała. Kwiatki uśmiechały się wszystkie do słońca i śpiewały mu swoje pieśni i opowiadały mu swoje powieści, które podobały się bardzo dziewczynce, lecz o Kaju nie dowiedziała się niczego.",
+  "start": 1515.27
+ },
+ {
+  "i": 143,
+  "pl": "— Na próżno je pytam — pomyślała wreszcie. — One kochają tylko swoje powieści i pieśni, nie mam tu na co czekać.",
+  "start": 1528.27
+ },
+ {
+  "i": 144,
+  "pl": "Podniosła spódniczkę, aby lepiej biec mogła i pośpieszyła do furtki.",
+  "start": 1538.64
+ },
+ {
+  "i": 145,
+  "pl": "Ale furtka zamknięta była na klucz. Wtedy zaczęła mocno szarpać klamkę, aż zardzewiały zamek ustąpił pod naciskiem i drzwi się otworzyły. Gerda wyszła prędko i bosymi nóżkami biegła co tchu po twardej, kamienistej drodze, obawiając się pogoni.",
+  "start": 1544.18
+ },
+ {
+  "i": 146,
+  "pl": "Trzy razy obejrzała się za siebie, a nie widząc nikogo, usiadła na chwilę na wielkim kamieniu, kiedy jej sił zabrakło.",
+  "start": 1560.08
+ },
+ {
+  "i": 147,
+  "pl": "Teraz dopiero obejrzała się dokoła: lato minęło dawno, późna jesień była na świecie, powiędły kwiaty i pożółkły łąki, ale w ogrodzie wróżki, gdzie kwiaty kwitną wiecznie, nic o tym nie wiedziała.",
+  "start": 1568.39
+ },
+ {
+  "i": 148,
+  "pl": "— Boże! Boże! Ileż ja czasu straciłam — narzekała Gerda. — Oto już późna jesień, trzeba spieszyć bardzo, zanim zima powróci.",
+  "start": 1582.58
+ },
+ {
+  "i": 149,
+  "pl": "I wstała, by iść dalej.",
+  "start": 1593.65
+ },
+ {
+  "i": 150,
+  "pl": "Szła bosymi nóżkami po kamienistej drodze, a dokoła było smutno i ponuro. Czuła wielkie zmęczenie, ale się nie zatrzymywała. Z wierzb przydrożnych padały długie, żółte liście lub ciężkie krople chłodnej rosy. Na tarninowych krzakach były jeszcze jagody, ale tak cierpkie, że wykrzywiały usta.",
+  "start": 1596.18
+ },
+ {
+  "i": 151,
+  "pl": "Szaro i smutno było na szerokim świecie, otulonym w szare, ciężkie, ołowiane chmury.",
+  "start": 1617.89
+ },
+ {
+  "i": 152,
+  "pl": "U księżniczki",
+  "start": 1623.39
+ },
+ {
+  "i": 153,
+  "pl": "Długo szła tak Gerda, w końcu zmęczyła się bardzo i usiadła znowu pod drzewem. Właśnie pierwszy śnieg pokrył ziemię i bose nożyny dziewczynki poczerwieniały z zimna. Wtem tuż przed nią stanęła duża, szara wrona: popatrzyła na nią, pokręciła łebkiem, podleciała w prawo i w lewo i zawołała: „Kra!",
+  "start": 1629.02
+ },
+ {
+  "i": 154,
+  "pl": "Kra!”",
+  "start": 1652.5
+ },
+ {
+  "i": 155,
+  "pl": "Znaczyło to: „Dzień dobry, kochana dziewczynko, musisz być bardzo biedna, kiedy w takie zimno sama idziesz w świat szeroki. Gdzież ty idziesz, dziewczynko? Czego szukasz?”",
+  "start": 1653.64
+ },
+ {
+  "i": 156,
+  "pl": "Gerda zrozumiała, co chce powiedzieć wrona i tak jej była wdzięczna za współczucie, tak się jej ciepło zrobiło w serduszku, że natychmiast opowiedziała jej całą historię i spytała zarazem, czy nic nie wie o Kaju.",
+  "start": 1665.9
+ },
+ {
+  "i": 157,
+  "pl": "Wrona kręciła łebkiem w zamyśleniu, podlatywała na prawo i lewo i powtarzała jak gdyby do siebie:",
+  "start": 1678.67
+ },
+ {
+  "i": 158,
+  "pl": "— A może? A być może? A kto wie? Kto wie? Kto wie?",
+  "start": 1686.6
+ },
+ {
+  "i": 159,
+  "pl": "— Widziałaś go! — zawołała uszczęśliwiona Gerda i zaczęła całować i ściskać wronę tak gwałtownie, że o mało jej nie udusiła.",
+  "start": 1692.68
+ },
+ {
+  "i": 160,
+  "pl": "— Spokojnie! Spokojnie! — powtarzała wrona. — Powiedziałam: kto wie! Może — może! — ale on dawno zapomniał o tobie. I przy tym tak mi trudno mówić twoim językiem. Co innego, gdybyś mogła rozmawiać ze mną po wroniemu, wtedy bym ci dokładnie opowiedziała wszystko.",
+  "start": 1701.77
+ },
+ {
+  "i": 161,
+  "pl": "— Ach, nie umiem! — z żalem szepnęła Gerda. — Babka umiała dobrze, ale się nie nauczyłam. Czemuż się nie nauczyłam!",
+  "start": 1720.38
+ },
+ {
+  "i": 162,
+  "pl": "— Kra! Kra! Nic nie szkodzi — rzekła wrona. — I tak się rozumiemy. Będę mówiła, jak potrafię.",
+  "start": 1730.86
+ },
+ {
+  "i": 163,
+  "pl": "I zaczęła opowiadać:",
+  "start": 1738.19
+ },
+ {
+  "i": 164,
+  "pl": "— W tym państwie, gdzie jesteśmy, rządzi bardzo mądra, bardzo mądra księżniczka. Razu jednego przyszło jej do głowy, aby sobie wybrać męża. Ale chciała takiego męża, który by umiał odpowiadać na wszystkie jej pytania, a nie nudnego mruka, co się odezwać nie umie i tylko udaje pana.",
+  "start": 1740.62
+ },
+ {
+  "i": 165,
+  "pl": "Gdy powiedziała o tym swoim damom dworu, ucieszyły się wszystkie i wychwalały ją za ten mądry pomysł. Wtedy ogłoszono w gazetach, że każdy młodzieniec, który pragnie się ożenić z księżniczką, może przyjść do pałacu, a jeśli potrafi odpowiedzieć na jej pytania, może zostać jej mężem.",
+  "start": 1759.12
+ },
+ {
+  "i": 166,
+  "pl": "Oj, żebyś wiedziała, co się wtedy działo, jakie tłumy cisnęły się do zamku! Ale cóż, nikomu jakoś się nie wiodło. Na ulicy wszyscy rozmawiali głośno, kłócili się, krzyczeli, obracali językami, jakby mieli za to obiecaną nagrodę, ale ktokolwiek minął zamkowe podwórze, zobaczył straż wspaniałą,",
+  "start": 1777.06
+ },
+ {
+  "i": 167,
+  "pl": "postrojoną służbę, wielką tronową salę i piękną księżniczkę, zapominał języka w gębie, stawał jak słup niemy i zamiast odpowiedzi, powtarzał pytania księżniczki. To naturalnie było bardzo nudne, więc żadnego wybrać nie chciała.",
+  "start": 1797.31
+ },
+ {
+  "i": 168,
+  "pl": "— A Kaj? — przerwała nieśmiała Gerda.",
+  "start": 1813.51
+ },
+ {
+  "i": 169,
+  "pl": "— Otóż właśnie, moja kochana, dwa dni tak upłynęły, aż trzeciego przyszedł pieszo chłopczyk z ogorzałą twarzyczką, długimi włosami, bardzo biednie ubrany.",
+  "start": 1817.39
+ },
+ {
+  "i": 170,
+  "pl": "— To Kaj! — zawołała, klaszcząc w ręce, Gerda.",
+  "start": 1827.61
+ },
+ {
+  "i": 171,
+  "pl": "— Na plecach miał tornister — ciągnęła dalej wrona.",
+  "start": 1831.17
+ },
+ {
+  "i": 172,
+  "pl": "— Ach, nie, to były pewno jego sanki. Właśnie z sankami zginął.",
+  "start": 1835.09
+ },
+ {
+  "i": 173,
+  "pl": "— Ha, może sanki — zgodziła się wrona. — Dobrze się nie przyglądałam. Poszedł śmiało ku schodom, a gdy zobaczył straże, spojrzał zdziwiony i zaraz powiedział: „To musi być okropnie nudno, tak stać tu ciągle!” Następnie wszedł do sali.",
+  "start": 1840.68
+ },
+ {
+  "i": 174,
+  "pl": "Buty jego skrzypiały strasznie, ale widać było, że sobie z tego nic nie robi.",
+  "start": 1859.78
+ },
+ {
+  "i": 175,
+  "pl": "— O, to z pewnością Kaj! — krzyknęła Gerda. — Właśnie miał skrzypiące buty, jeszcze nowe, które mu babka kupiła.",
+  "start": 1865.47
+ },
+ {
+  "i": 176,
+  "pl": "— Bardzo być może — potwierdziła wrona. — Szedł do samej księżniczki i nie zmieszał się wcale, chociaż ogromna sala pełna była dworzan, urzędników i dygnitarzy<sup>4<\/sup>, każdemu umiał odpowiedzieć, no i dostał księżniczkę.",
+  "start": 1874.03
+ },
+ {
+  "i": 177,
+  "pl": "— To z pewnością Kaj — rzekła uszczęśliwiona Gerda. — On był zawsze ogromnie mądry, umiał liczyć na pamięć nawet z ułamkami. O, zaprowadź mnie do pałacu!",
+  "start": 1889.89
+ },
+ {
+  "i": 178,
+  "pl": "— Bah! — zakrakała wrona. — Łatwo to powiedzieć. Przecież takiej obdartej i bosej dziewczynki nie wpuszczą do królewskiego pałacu!",
+  "start": 1901.19
+ },
+ {
+  "i": 179,
+  "pl": "— Powiedz tylko Kajowi, że tu jestem, a sam przyjdzie po mnie natychmiast.",
+  "start": 1911.5
+ },
+ {
+  "i": 180,
+  "pl": "— Zaczekaj tu przy płocie — rzekła wrona i poleciała do pałacu.",
+  "start": 1916.35
+ },
+ {
+  "i": 181,
+  "pl": "Ciemno już było, kiedy powróciła.",
+  "start": 1921.22
+ },
+ {
+  "i": 182,
+  "pl": "— To wszystko na nic — rzekła. — Boso cię tu nie wpuszczą, straż i lokaje bardzo zważają na nogi. Ale nie płacz. Poradzimy jakoś na to. Mam w pałacu krewnego, który jest w wielkich łaskach u księżniczki i zna wszystkie zakątki jak swoje własne gniazdo.",
+  "start": 1924.58
+ },
+ {
+  "i": 183,
+  "pl": "On otworzy ci małą furtkę i ukrytymi schodami zaprowadzi prosto do sypialni księstwa.",
+  "start": 1942.58
+ },
+ {
+  "i": 184,
+  "pl": "— O, moja droga wrono! — cicho szepnęła Gerda, idąc do zamku długą, cienistą aleją, w której liście spadały z drzew jak krople deszczu. A kiedy w zamku pogaszono światła, weszły przez małą furtkę, tylko przymkniętą z lekka.",
+  "start": 1949.46
+ },
+ {
+  "i": 185,
+  "pl": "Serce Gerdy uderzało mocno z niepokoju i szczęścia. Czasem zdawało jej się, że robi coś złego, ale chciała się tylko przekonać, czy to naprawdę Kaj. Chyba nie rozgniewa się na nią, ale będzie szczęśliwy, że aż tutaj do niego przyszła, że opowie mu o rodzicach.",
+  "start": 1965.11
+ },
+ {
+  "i": 186,
+  "pl": "Na koniec weszła z wroną na małe boczne schodki. Na szafie w korytarzu stała nocna lampa, a na pierwszych schodkach krewny wrony, kruk czarnopióry. Gerda ukłoniła mu się, jak umiała.",
+  "start": 1980.94
+ },
+ {
+  "i": 187,
+  "pl": "Kruk uważnie popatrzył na nią i odezwał się wreszcie:",
+  "start": 1995.17
+ },
+ {
+  "i": 188,
+  "pl": "— Pójdę naprzód, a wy za mną. Droga prosta i nikogo na niej nie spotkamy.",
+  "start": 2000.24
+ },
+ {
+  "i": 189,
+  "pl": "— A mnie się zdaje, że ktoś za nami idzie — powiedziała Gerda i obejrzała się z trwogą. W istocie przesunęło się coś szybko po ścianie jak gdyby cienie jeźdźców, psów i koni.",
+  "start": 2007.11
+ },
+ {
+  "i": 190,
+  "pl": "— To sny o polowaniu śpieszą do księcia pana i księżniczki — uspokoił ją kruk natychmiast.",
+  "start": 2018.92
+ },
+ {
+  "i": 191,
+  "pl": "Mijali szereg przepysznych<sup>5<\/sup> pokoi, których ściany obite były czerwonym, błękitnym lub żółtym atłasem<sup>6<\/sup>, sztuczne kwiaty pokrywały je wieńcami, wszędzie lśniły kosztowne sprzęty i klejnoty; wreszcie stanęli w królewskiej sypialni.",
+  "start": 2025.66
+ },
+ {
+  "i": 192,
+  "pl": "Tu sufit przypominał piękną koronę<sup>7<\/sup> palmy o wspaniałych, szklanych liściach, a na środku, na grubej łodydze ze złota, wisiały dwa łóżeczka w kształcie lilii: jedno białe, gdzie spoczywała księżniczka, drugie purpurowe, gdzie może Kaj sypiał.",
+  "start": 2042.68
+ },
+ {
+  "i": 193,
+  "pl": "Gerda pochyliła się nad nim ciekawie i zobaczyła jego opaloną szyję. Ucieszona, krzyknęła głośno; sny natychmiast pomknęły wzdłuż ściany z pokoju, a książę się obudził, podniósł głowę i — to nie był Kaj.",
+  "start": 2060.02
+ },
+ {
+  "i": 194,
+  "pl": "Z drugiej lilii wychyliła się główka księżniczki, która patrzyła także, co się stało.",
+  "start": 2074.98
+ },
+ {
+  "i": 195,
+  "pl": "Gerda zaczęła płakać i opowiedziała wszystko od początku, nie zapominając o wielkiej przysłudze, jaką oddali jej kruk i wrona.",
+  "start": 2080.95
+ },
+ {
+  "i": 196,
+  "pl": "— Biedne dziecię — rzekła z litością księżniczka. — Nie martw się, nie gniewamy się na ciebie, ani na wronę, ani na kruka. Chcę nawet wynagrodzić ich za dobre serce.",
+  "start": 2089.68
+ },
+ {
+  "i": 197,
+  "pl": "Odtąd mają prawo przebywania w zamku i otrzymają żywność z naszej kuchni, ale muszą nam przyrzec, że bez naszej wiedzy nie wprowadzą więcej nikogo do zamku.",
+  "start": 2101.88
+ },
+ {
+  "i": 198,
+  "pl": "Książę oddał Gerdzie swoje własne łóżko i życzył, żeby w nim spała spokojnie, a zmęczona dziewczynka na wygodnej, ciepłej pościeli przytuliła znużoną główkę do poduszki, złożyła rączki i szepnęła tylko:",
+  "start": 2113.53
+ },
+ {
+  "i": 199,
+  "pl": "— O, jacyż dobrzy ludzie i zwierzęta! — i w tej chwili zasnęła.",
+  "start": 2127.88
+ },
+ {
+  "i": 200,
+  "pl": "Nazajutrz księżniczka dała jej prześliczną aksamitną suknię i prosiła bardzo, żeby na zawsze została w pałacu. Ale Gerda poprosiła tylko o wózek i konika, a także o parę bucików, gdyż musiała wędrować dalej i szukać Kaja po szerokim świecie.",
+  "start": 2134.15
+ },
+ {
+  "i": 201,
+  "pl": "Więc dostała ciepłe ubranie, buciki i mufkę<sup>8<\/sup>, a gdy się posiliła, stanęła przed bramą śliczna złocona kareta, zaprzężona w pięknego konia, woźnica i lokaj mieli złote korony na liberii<sup>9<\/sup>. Sam książę i księżniczka umieścili ją w karecie i żegnali, życząc wszystkiego dobrego.",
+  "start": 2150.35
+ },
+ {
+  "i": 202,
+  "pl": "A Gerda płakała i dobra wrona także. Usiadła obok dziewczynki w karecie i odprowadziła ją prawie trzy mile. Dalej bała się jechać, więc sfrunęła na gałąź wysokiego drzewa i trzepotała skrzydłami tak długo, póki mogła dojrzeć złocistą karetę błyszczącą w promieniach słońca.",
+  "start": 2170.01
+ },
+ {
+  "i": 203,
+  "pl": "Gerda jechała dalej sama jedna, lecz się nie obawiała głodu ani zimna, gdyż kareta zaopatrzona była w żywność; stały w niej kosze ciastek, pierników, owoców — dzielny konik biegł szybko, więc myślała sobie, że chyba teraz musi znaleźć Kaja.",
+  "start": 2188.68
+ },
+ {
+  "i": 204,
+  "pl": "Mała zbójniczka",
+  "start": 2207.11
+ },
+ {
+  "i": 205,
+  "pl": "Złocista kareta wjechała do ciemnego lasu i między drzewami świeciła jak słońce. Zobaczyli to rozbójnicy i wybiegli z gęstwiny.",
+  "start": 2211.03
+ },
+ {
+  "i": 206,
+  "pl": "— Złoto! Złoto! — krzyczeli i rzucili się na karetę, uchwycili konia za cugle<sup>10<\/sup>, pozabijali służbę i wyciągnęli na drogę przerażoną Gerdę.",
+  "start": 2220.07
+ },
+ {
+  "i": 207,
+  "pl": "— Ach, jaka biała, tłusta, orzeszkami karmiona! — zawołała chciwie stara rozbójnica z rozczochraną głową, strasznymi oczyma i żółtą, pomarszczoną twarzą. — Musi być smaczna jak młode jagniątko, to będzie dopiero uczta.",
+  "start": 2230.11
+ },
+ {
+  "i": 208,
+  "pl": "Wyciągnęła zza pasa wielki nóż błyszczący i podniosła rękę, aby zabić biedną Gerdę — lecz w tej chwili krzyknęła okropnie, gdyż mała rozbójniczka, jej córeczka, którą niosła na plecach, do krwi ugryzła ją w ucho i bijąc matkę nogami po plecach, krzyczała przeraźliwie:",
+  "start": 2246.14
+ },
+ {
+  "i": 209,
+  "pl": "— Nie dam jej zabić! Nie zabijaj! — wołało dzikie, rozpuszczone dziecko. — Ja chcę, żeby się ona ze mną bawiła! Ja chcę jej mufki i ładnej sukienki i chcę, żeby ze mną spała.",
+  "start": 2262.88
+ },
+ {
+  "i": 210,
+  "pl": "Stara zbójnica pozwalała swojej córeczce na wszystko, więc schowała na powrót nóż na dawne miejsce, otarła z krwi ucho i umieściła dziką dziewczynkę w karecie razem z Gerdą.",
+  "start": 2275.28
+ },
+ {
+  "i": 211,
+  "pl": "Potem jeden ze zbójców siadł na koźle<sup>11<\/sup>, zaciął konia i popędzili jak wiatr po kamieniach, dołach, górach, między drzewami, zaczepiając o gałęzie i nie zważając na nic.",
+  "start": 2285.81
+ },
+ {
+  "i": 212,
+  "pl": "Mała zbójniczka śmiała się głośno z radości i tupała nogami. Była ona w tym samym wieku, co Gerda, ale większa i tęższa, z dużą i czerwoną twarzą, czarnymi włosami i czarnymi, błyszczącymi oczyma. Kiedy nacieszyła się jazdą, objęła wpół Gerdę i powiedziała wesoło:",
+  "start": 2297.74
+ },
+ {
+  "i": 213,
+  "pl": "— Nie bój się, nie dam cię zabić, chyba że się na ciebie rozgniewam. Oni muszą mnie słuchać! Ty pewno jesteś księżniczka?",
+  "start": 2316.22
+ },
+ {
+  "i": 214,
+  "pl": "— Nie — odrzekła dziewczynka i ze łzami w oczach opowiedziała jej swoją historię: jak bardzo Kaja kocha i pragnie go znaleźć, ale nie wie zupełnie, gdzie go szukać.",
+  "start": 2325.83
+ },
+ {
+  "i": 215,
+  "pl": "Mała zbójniczka słuchała ciekawie, a oczy jej świeciły jak dwa ognie. W tej chwili powóz stanął, gdyż wjechali na dziedziniec zbójeckiego zamku.",
+  "start": 2336.23
+ },
+ {
+  "i": 216,
+  "pl": "Był to wielki budynek, stary, brudny, odrapany, pełen dziur i szczelin, w których gnieździły się kruki i wrony.",
+  "start": 2346.57
+ },
+ {
+  "i": 217,
+  "pl": "Ogromne buldogi, straszne potwory z otwartymi paszczami, jakby chciały natychmiast rozszarpać i pożreć przybyłych, biegały i skakały po podwórzu, ale żaden nie szczekał, bo im nie było wolno.",
+  "start": 2354.92
+ },
+ {
+  "i": 218,
+  "pl": "W zamku, w olbrzymiej okopconej sali o czarnych ścianach i kamiennej podłodze, płonął wielki ogień, a dym kłębami wznosił się do góry i osiadał na suficie, poczerniałych ścianach i dziurami w murze wychodził na zewnątrz.",
+  "start": 2367.38
+ },
+ {
+  "i": 219,
+  "pl": "Przy ogniu w dużym kotle gotowała się zupa, a zające i króliki piekły się na rożnach.",
+  "start": 2383.15
+ },
+ {
+  "i": 220,
+  "pl": "— Dziś będziesz spała ze mną i z moimi zwierzątkami! — rzekła zbójniczka, gdy się obie z Gerdą najadły i napiły, a potem poszły do swego kącika, gdzie było posłanie ze słomy przykryte kobiercami.",
+  "start": 2389.5
+ },
+ {
+  "i": 221,
+  "pl": "Nad nimi we framugach i na grzędach gnieździły się stada gołębi, które udawały śpiące, lecz poruszyły się trochę i każdy jednym okiem spojrzał na dziewczynki.",
+  "start": 2401.65
+ },
+ {
+  "i": 222,
+  "pl": "— To moje leśne gołębie — rzekła rozbójniczka. — Wszystko to moje, co tu wkoło widzisz. — I wzięła w rękę jednego gołębia, potrząsając go i dmuchając, aż zaczął trzepotać skrzydłami.",
+  "start": 2411.54
+ },
+ {
+  "i": 223,
+  "pl": "— A to mój ren<sup>12<\/sup> kochany — dodała, pokazując ogromnego rena, przywiązanego na sznurze uczepionym do błyszczącej miedzianej obrączki, którą miał na szyi. — Co wieczór udaję, że go chcę zabić moim nożem, a on bardzo się tego boi.",
+  "start": 2423.19
+ },
+ {
+  "i": 224,
+  "pl": "Wyjęła zaraz wielki nóż świecący, wyostrzyła go o ścianę i pociągnęła renowi po szyi. Zwierzę stało spokojnie ze spuszczoną głową.",
+  "start": 2436.79
+ },
+ {
+  "i": 225,
+  "pl": "— Czy ty sypiasz z tym nożem? — spytała z obawą Gerda.",
+  "start": 2446.94
+ },
+ {
+  "i": 226,
+  "pl": "— Zawsze sypiam z nożem w ręku — odparła zbójniczka.— Nikt nie wie, co się może zdarzyć w nocy. A teraz mi opowiedz raz jeszcze historię o małym Kaju i o tym, jak go szukasz po szerokim świecie.",
+  "start": 2450.16
+ },
+ {
+  "i": 227,
+  "pl": "I Gerda znowu zaczęła opowiadać. Leśne gołębie słuchały ciekawie, a zbójniczka oparła głowę na kolanach dziewczynki i trzymając nóż w ręku, zasnęła tak mocno, że chrapała, aż się rozlegało.",
+  "start": 2462.65
+ },
+ {
+  "i": 228,
+  "pl": "Gerda nie mogła zasnąć: nie wiedziała przecież, czy jej nie zabiją, a prócz tego przy ognisku w drugim kącie sali zbójcy krzyczeli, śpiewali, pili, przeklinali, a stara rozbójnica podkasała suknie, tańczyła, wykrzykiwała straszne słowa i fikała koziołki.",
+  "start": 2475.29
+ },
+ {
+  "i": 229,
+  "pl": "Okropny to był obraz i Gerda patrzyła nań z przerażeniem.",
+  "start": 2493.17
+ },
+ {
+  "i": 230,
+  "pl": "— Grr! Grr! — zagruchały tymczasem gołębie. — Widziałyśmy twojego Kaja. Biała kura ciągnęła jego sanki, a on z królową śniegu siedział w wielkich saniach i pędził jak wicher przez las ku północy, kiedy spałyśmy w gniazdach.",
+  "start": 2497.35
+ },
+ {
+  "i": 231,
+  "pl": "Królowa śniegu tchnęła na nas mrozem i oprócz nas dwojga wszystkie gołębie pomarły. — Grr! Grr!",
+  "start": 2512.72
+ },
+ {
+  "i": 232,
+  "pl": "— Co wy mówicie? — spytała Gerda. — Jaka królowa śniegu? Czy naprawdę wiecie co o Kaju?",
+  "start": 2519.45
+ },
+ {
+  "i": 233,
+  "pl": "— Jechała lasem do krainy lodów, gdzie wiecznie śnieg i zimno, i mróz nieustanny. Tam ma swoje królestwo. Spytaj rena.",
+  "start": 2525.34
+ },
+ {
+  "i": 234,
+  "pl": "— Tak, tak — potwierdził ren, wstrząsając głową. — Śnieg i lód, białe pola, wielkie białe pola, lód bez końca, błyszczący i przejrzysty, piękny, wspaniały kraj!",
+  "start": 2534.76
+ },
+ {
+  "i": 235,
+  "pl": "Tam na samej północy, na biegunie<sup>13<\/sup> jest stolica królowej śniegu; tam jej lodowy pałac, lśniący jak brylanty, przejrzysty jak kryształ.",
+  "start": 2546.2
+ },
+ {
+  "i": 236,
+  "pl": "— O, Kaju! Kaju! Kaju! — zawołała dziewczynka, aż obudziła zbójniczkę, która pogroziła jej pięścią ze złości.",
+  "start": 2556.17
+ },
+ {
+  "i": 237,
+  "pl": "— Będziesz ty cicho — mruknęła z gniewem. — Czy chcesz, żebym cię zabiła nożem?",
+  "start": 2562.65
+ },
+ {
+  "i": 238,
+  "pl": "Dopiero gdy dzień się zrobił, opowiedziała Gerda wszystko, co słyszała w nocy, a zbójniczka wysłuchała opowieści uważnie i w zamyśleniu potrząsała głową.",
+  "start": 2568.3
+ },
+ {
+  "i": 239,
+  "pl": "— Może — może — szeptała. — Czy to prawda, renie? Czy znasz kraj wiecznych lodów?",
+  "start": 2576.98
+ },
+ {
+  "i": 240,
+  "pl": "— A któż go może znać lepiej ode mnie — odparł ten z błyszczącymi jak ogień oczyma. Tam przecież się urodziłem i wyrosłem, tam biegałem po wielkich, śnieżnych polach.",
+  "start": 2583.9
+ },
+ {
+  "i": 241,
+  "pl": "— Słuchaj — rzekła zbójniczka do Gerdy — wszyscy nasi ludzie poszli na wyprawę, matka została w domu, ale ona się upije przy śniadaniu i mocno zaśnie. Wtedy będę mogła zrobić coś dla ciebie.",
+  "start": 2594.32
+ },
+ {
+  "i": 242,
+  "pl": "I tak się wszystko stało. Przy śniadaniu stara zbójnica napiła się z wielkiej flaszki i natychmiast usnęła. Wtedy zbójniczka zbliżyła się z nożem do rena i rzekła:",
+  "start": 2606.59
+ },
+ {
+  "i": 243,
+  "pl": "— Lubię cię straszyć, dotykając nożem twojej szyi, dziś jednak zrobię co innego. Oto przetnę twój powróz i wypuszczę cię na wolność, abyś wrócił do kraju wiecznych lodów; ale musisz zanieść tę dziewczynkę do pałacu królowej śniegu, gdzie znajdzie swego Kaja.",
+  "start": 2617.56
+ },
+ {
+  "i": 244,
+  "pl": "Wiesz dobrze, o co chodzi, bo wczoraj opowiadała głośno tę historię, a ty lubisz słuchać, co mówią.",
+  "start": 2633.46
+ },
+ {
+  "i": 245,
+  "pl": "Ren podskoczył z radości i gotów był zaraz do drogi. Więc zbójniczka zaczęła ubierać Gerdę.",
+  "start": 2638.92
+ },
+ {
+  "i": 246,
+  "pl": "— Masz tu swoje buciki — powiedziała. — Nie możesz jechać boso, bo zmarzłabyś. Są one bardzo ciepłe, wykładane futrem. Mufki ci nie oddam, ponieważ jest bardzo ładna i ogromnie mi się podoba, ale masz za to wielkie rękawice matki, które ci osłonią ręce aż po łokcie. Włóż je tylko.",
+  "start": 2644.56
+ },
+ {
+  "i": 247,
+  "pl": "Gerda chciała dziękować zbójniczce, lecz rozpłakała się z wielkiej radości.",
+  "start": 2663.08
+ },
+ {
+  "i": 248,
+  "pl": "— Tylko mi nie becz, bo tego nie lubię! — zawołała dzika dziewczynka. — Masz tutaj zamiast siodła wygodną poduszkę, a żebyś nie była głodna, dam ci na drogę szynkę i dwa bochenki chleba. Wszystko to przymocowałam do rena. I ciebie też przywiążę bardzo mocno, żebyś z niego nie spadła.",
+  "start": 2667.91
+ },
+ {
+  "i": 249,
+  "pl": "Tylko mi zaraz miej wesołą minę, bo nie cierpię głupich beków.",
+  "start": 2686.3
+ },
+ {
+  "i": 250,
+  "pl": "Posadziła Gerdę na poduszce i przywiązała ją mocno do rena, potem otworzyła drzwi, zawołała na buldogi, a gdy weszły do sali, myśląc, że jeść dostaną, przecięła sznur, na którym ren był uwiązany i zawołała głośno:",
+  "start": 2691.06
+ },
+ {
+  "i": 251,
+  "pl": "— No, teraz w drogę! Hop! Hop! Z całej siły! A pamiętaj sobie, żeby Gerdzie się co nie stało.",
+  "start": 2704.06
+ },
+ {
+  "i": 252,
+  "pl": "Gerda na pożegnanie wyciągnęła do niej małe rączki w ogromnych rękawicach, a ren ruszył z kopyta i pędził jak huragan przez lasy i pola, płoty, rowy, zarośla, bagniska i stepy, dalej, dalej i dalej...",
+  "start": 2711.65
+ },
+ {
+  "i": 253,
+  "pl": "Wilki wyły, wrony i kruki krakały, na niebie błyszczały gwiazdy i księżyc, a daleko na północy ukazywało się czerwone światło, pełne dziwnego blasku.",
+  "start": 2727.28
+ },
+ {
+  "i": 254,
+  "pl": "— Widzisz zorzę północną<sup>14<\/sup>, która płonie tam w moim kraju, w kraju wiecznego lodu! — szeptał ren zachwycony i pędził jeszcze szybciej, dzień i noc bez wytchnienia.",
+  "start": 2738.44
+ },
+ {
+  "i": 255,
+  "pl": "Na koniec, kiedy chleby zostały zjedzone, a z szynki nie pozostało ani śladu, ukazał się przed nimi biały kraj wiecznego lodu.",
+  "start": 2748.86
+ },
+ {
+  "i": 256,
+  "pl": "Laponka i Eskimoska",
+  "start": 2758.52
+ },
+ {
+  "i": 257,
+  "pl": "Zatrzymali się nagle przed niepozornym domkiem. Była to chatka tak niska, że dach opierał się na ziemi, a drzwi stanowił otwór, przez który mieszkańcy musieli wpełzać do środka na brzuchu. W chatce nie było nikogo oprócz starej Laponki<sup>15<\/sup>, która gotowała rybę nad lampą napełnioną tranem.",
+  "start": 2762.65
+ },
+ {
+  "i": 258,
+  "pl": "Ren opowiedział jej swoją historię, która wydawała mu się najważniejszą, a potem zaczął mówić o Gerdzie, ponieważ dziewczynka była tak zziębnięta, że sama opowiadać nie mogła.",
+  "start": 2781.74
+ },
+ {
+  "i": 259,
+  "pl": "— Ach, biedaki! — rzekła Laponka, wysłuchawszy wszystkiego uważnie. — Daleka, bardzo daleka jeszcze przed wami droga.",
+  "start": 2792.06
+ },
+ {
+  "i": 260,
+  "pl": "Więcej niż sto mil lecieć musicie na północ, bo tam dopiero, na samym biegunie królowa śniegu ma swój pyszny<sup>16<\/sup> zamek, w którym zorza północna pali się co wieczór wspaniałymi ogniami.",
+  "start": 2800.38
+ },
+ {
+  "i": 261,
+  "pl": "Nie mam w domu papieru, więc na suszonym sztokfiszu<sup>17<\/sup> napiszę wam list do pewnej bardzo mądrej Eskimoski<sup>18<\/sup>, która mieszka niedaleko pałacu królowej i może wam więcej dopomóc ode mnie.",
+  "start": 2811.4
+ },
+ {
+  "i": 262,
+  "pl": "Potem dała Gerdzie jeść, pić, a gdy dziewczynka posiliła się i ogrzała, Laponka napisała list na suszonym sztokfiszu, oddała go Gerdzie i kazała dobrze pilnować. Następnie przywiązała ją znowu do rena, a ten szybko puścił się w drogę.",
+  "start": 2822.09
+ },
+ {
+  "i": 263,
+  "pl": "I pędzili znowu na północ bez wytchnienia i odpoczynku. Drogę wskazywały im wspaniałe blaski ogni, płonących w pałacu królowej, które na ciemnym niebie rozlewały się w zorzę czerwoną.",
+  "start": 2836.49
+ },
+ {
+  "i": 264,
+  "pl": "Wreszcie stanęli przed chatką Eskimoski. Tu drzwi nie było wcale, więc musieli zapukać do komina. Wpuszczono ich niezwłocznie.",
+  "start": 2849.61
+ },
+ {
+  "i": 265,
+  "pl": "Wewnątrz chaty było tak strasznie gorąco, że Eskimoska, mała, tłusta i bardzo brudna kobiecina, chodziła w lekkiej sukni. Zaraz też rozwiązała Gerdzie jej sukienkę, zdjęła jej buciki i ciepłe rękawice, a renowi położyła na głowie kawał lodu, gdyż inaczej nie mogliby tu wytrzymać.",
+  "start": 2859.62
+ },
+ {
+  "i": 266,
+  "pl": "Potem wzięła rybę i zaczęła czytać list Laponki.",
+  "start": 2877.79
+ },
+ {
+  "i": 267,
+  "pl": "Przeczytała go raz i drugi i zamyśliła się głęboko. Ren zbliżył się do niej i mówił z prośbą w głosie.",
+  "start": 2881.96
+ },
+ {
+  "i": 268,
+  "pl": "— Wiem, że jesteś bardzo mądra i masz wielką władzę, że rozkazujesz wiatrom, które są ci posłuszne, daj więc Gerdzie takiego napoju, żeby była silniejsza od dwunastu mężczyzn i mogła pokonać królową śniegu.",
+  "start": 2889.74
+ },
+ {
+  "i": 269,
+  "pl": "— Siłę dwunastu mężczyzn! — powtórzyła Eskimoska z uśmiechem, kiwając głową. — Na cóż by się to zdało? Czyż królową śniegu pokona siła dwunastu mężczyzn?",
+  "start": 2903.42
+ },
+ {
+  "i": 270,
+  "pl": "Potem wzięła z półki duży kawał zwiniętej skóry, rozłożyła ją z wielką uwagą i patrzyła na dziwaczne znaki i litery, które ją pokrywały, z takim natężeniem, że grube krople potu wystąpiły na jej czoło.",
+  "start": 2914.44
+ },
+ {
+  "i": 271,
+  "pl": "Ren kręcił się koło niej nieustannie, potrącał ją rogami, ocierał się bokiem i patrzył w oczy błagalnie, aż Eskimoska zaprowadziła go wreszcie do kąta, a kładąc mu na głowę świeży kawał lodu, szepnęła bardzo cicho:",
+  "start": 2928.55
+ },
+ {
+  "i": 272,
+  "pl": "— Kaj jest naprawdę u królowej śniegu, ale jemu tam dobrze. Zdaje mu się, że jest w najpiękniejszym kraju, i że mu nigdzie lepiej być nie może. Wszystko to stąd pochodzi, że drobne okruszyny czarodziejskiego zwierciadła utkwiły mu w oku i w sercu.",
+  "start": 2941.97
+ },
+ {
+  "i": 273,
+  "pl": "A dopóki tkwić tam będą, nikt go nie uratuje, bo królowa śniegu ma nad nim władzę i może go zatrzymać gwałtem. A zresztą choćby i wrócił do ludzi, to będzie dla nich obcy, bo nic dla nich nie ma; nie potrafi nawet być wdzięcznym Gerdzie za jej miłość i poświęcenie.",
+  "start": 2958.0
+ },
+ {
+  "i": 274,
+  "pl": "— Więc cóż począć? — rzekł ren strapiony.",
+  "start": 2976.01
+ },
+ {
+  "i": 275,
+  "pl": "— Trzeba go uleczyć, trzeba wyjąć mu z serca i z oka szczątki czarodziejskiego zwierciadła.",
+  "start": 2979.9
+ },
+ {
+  "i": 276,
+  "pl": "— A jak to zrobić?",
+  "start": 2985.18
+ },
+ {
+  "i": 277,
+  "pl": "— Nie wiem. To nie moja sprawa.",
+  "start": 2987.54
+ },
+ {
+  "i": 278,
+  "pl": "— Więc nie chcesz pomóc Gerdzie? Nie możesz jej dać żadnej władzy?",
+  "start": 2990.54
+ },
+ {
+  "i": 279,
+  "pl": "— Zmiłuj się, renie, powiedz, cóż ja jej więcej dać mogę nad tę władzę, którą sama posiada? Czyż nie widzisz jej siły i potęgi? Czyż nie widzisz, że ludzie i zwierzęta służą jej i wypełniają jej wolę?",
+  "start": 2995.81
+ },
+ {
+  "i": 280,
+  "pl": "Czyż nie widzisz, że bosa i uboga, pół świata już przebyła, a wszyscy jej pomagają i nic się jej oprzeć nie może? Takiej władzy my jej nie damy.",
+  "start": 3008.77
+ },
+ {
+  "i": 281,
+  "pl": "Takiej władzy nie może dać jej nikt na świecie i od nas ona jej nie potrzebuje, bo źródło potęgi ma we własnym swym sercu, a tym źródłem jest dobroć, miłość i niewinność. Jeśli te trzy klucze nie otworzą przed nią pałacu królowej śniegu i nie ocalą Kaja, to my także uczynić tego nie zdołamy.",
+  "start": 3018.7
+ },
+ {
+  "i": 282,
+  "pl": "A teraz słuchaj jeszcze, co ci powiem. O dwie mile stąd zaczyna się ogród królowej. Tam zaniesiesz dziewczynkę i zostawisz ją przy dużym krzaku, który stoi na śniegu, okryty czerwonymi jagodami. Ale już z nią nie rozmawiaj i wracaj tu co prędzej.",
+  "start": 3039.04
+ },
+ {
+  "i": 283,
+  "pl": "Eskimoska posadziła Gerdę na renie, przywiązała ją dobrze, a poczciwe zwierzę pomknęło natychmiast.",
+  "start": 3055.8
+ },
+ {
+  "i": 284,
+  "pl": "— Ach, moje buciki! Moje rękawice! — zawołała Gerda, gdy mróz ostry owiał jej bose nożyny i zatamował prawie oddech w piersi.",
+  "start": 3062.66
+ },
+ {
+  "i": 285,
+  "pl": "Ale ren nie śmiał się wrócić, ani zatrzymać i biegł naprzód, co miał siły, aż stanął na granicy ogrodu królowej, przy wielkim krzaku okrytym czerwonymi jagodami.",
+  "start": 3071.2
+ },
+ {
+  "i": 286,
+  "pl": "Tu zsadził Gerdę na ziemię i pocałował ją w usta, a z oczu popłynęły mu wielkie łzy.",
+  "start": 3082.21
+ },
+ {
+  "i": 287,
+  "pl": "Potem zawrócił i znów biegł przed siebie, wcale się nie oglądając.",
+  "start": 3088.8
+ },
+ {
+  "i": 288,
+  "pl": "A biedna Gerda została na śniegu sama jedna, bosa, bez rękawic i bucików, wśród wichru i strasznego mrozu.",
+  "start": 3093.7
+ },
+ {
+  "i": 289,
+  "pl": "Zaczęła biec naprzód, jak mogła najprędzej. Ale natychmiast zastąpił jej drogę cały tłum płatków śnieżnych. Nie spadały one z nieba, gdyż niebo było jasne i pogodne, oświetlone płonącą zorzą, lecz unosiły się nisko nad ziemią i powiększały się coraz bardziej w miarę jak zbliżały się ku niej.",
+  "start": 3102.53
+ },
+ {
+  "i": 290,
+  "pl": "Wtedy przypomniała sobie dziewczynka, jak oglądała z Kajem płatki śniegu przez szkło powiększające. Tamte jednak były inne i nie takie wielkie. Te wyglądały strasznie, jak żywe istoty: były to rzeczywiście przednie straże królowej śniegu.",
+  "start": 3123.32
+ },
+ {
+  "i": 291,
+  "pl": "Ich postaci były dziwaczne i groźne: niby ogromne, białe i kolczaste jeże — to kłęby żmij i wężów o syczących paszczach — to niby małe, grube niedźwiedziątka o nastroszonej sierści. A wszystkie białe, lekkie, świecące, ruchliwe, budzące strach brzydotą i tym, że żywe, a przecież to płatki śniegu.",
+  "start": 3139.42
+ },
+ {
+  "i": 292,
+  "pl": "Dziwne, szkaradne wojsko.",
+  "start": 3161.71
+ },
+ {
+  "i": 293,
+  "pl": "Gerda w trwodze zaczęła się modlić. Ale mróz był tak wielki, iż własny jej oddech, wychodząc z ust, stawał się dla niej widzialny, zmieniał się w gęstą parę i otaczał ją jakby obłokiem.",
+  "start": 3165.52
+ },
+ {
+  "i": 294,
+  "pl": "I nagle w tym obłoku ujrzała małe aniołki, które krążyły koło niej, spuszczały się ku ziemi, a gdy jej dotknęły, rosły szybko i otaczały ją jak groźne wojsko. Każdy miał hełm na głowie, w ręku tarczę i włócznię.",
+  "start": 3178.42
+ },
+ {
+  "i": 295,
+  "pl": "Było ich coraz więcej, a kiedy Gerda skończyła pacierz, już otaczał ją cały legion tego cudownego wojska. Teraz rozpoczął się bój z potwornymi płatkami śniegu.",
+  "start": 3192.83
+ },
+ {
+  "i": 296,
+  "pl": "Wojsko anielskie rąbało i siekło na drobne szczątki szkaradne istoty, które zaczęły się cofać w popłochu i Gerda biec mogła prędzej bez przeszkody. Aniołkowie głaskali jej nóżki i ręce i nie czuła już mrozu, aż stanęła przed samym pałacem królowej.",
+  "start": 3203.53
+ },
+ {
+  "i": 297,
+  "pl": "A tymczasem zobaczmy, co tam robił Kaj. O Gerdzie nie myślał wcale i nie przypuszczał, że stoi w śniegu przed pałacem.",
+  "start": 3220.72
+ },
+ {
+  "i": 298,
+  "pl": "W pałacu królowej śniegu",
+  "start": 3228.92
+ },
+ {
+  "i": 299,
+  "pl": "Ściany pałacu były z olbrzymich zasp śnieżnych, w których wichry wywierciły drzwi i okna. Przeszło sto sal znajdowało się w tym gmachu, a największa miała kilka mil długości.",
+  "start": 3232.86
+ },
+ {
+  "i": 300,
+  "pl": "Oświetlała je piękna zorza, kładąc na białym śniegu czerwone i żółte blaski, toteż w wielkich komnatach było pusto, cicho, jasno i mroźno.",
+  "start": 3244.75
+ },
+ {
+  "i": 301,
+  "pl": "Nigdy w tej białej olbrzymiej przestrzeni nie słyszano śmiechu ani wesołego głosu, nie było tu nigdy rozgłośnej zabawy, choć północne niedźwiadki i inne stworzenia mogły wyprawiać najświetniejsze bale w takich wspaniałych salach przy muzyce wichru. Nie wchodziły tu jednak nigdy — nigdy!",
+  "start": 3256.79
+ },
+ {
+  "i": 302,
+  "pl": "W pałacu królowej śniegu było pusto i zawsze cicho. Cicho codziennie o jednej godzinie zapalała się zorza, a następnie gasła, cicho błyszczały białe, śnieżne ściany, cicho w środku leżało wielkie lodowe jezioro.",
+  "start": 3275.11
+ },
+ {
+  "i": 303,
+  "pl": "Przejrzysty lód spękany był w tysiące kawałków, ale wszystkie były podobne do siebie, zupełnie jednakowe. A na środku jeziora, na wysokim lodowym tronie siedziała królowa śniegu, gdy gościła w swoim królestwie.",
+  "start": 3293.27
+ },
+ {
+  "i": 304,
+  "pl": "Mały Kaj był siny z zimna, prawie czarny, ale nie wiedział o tym i nie czuł wcale chłodu, gdyż królowa śniegu zamroziła pocałunkami nawet dreszcze w jego ciele, a serce jego stało się kawałkiem lodu.",
+  "start": 3307.4
+ },
+ {
+  "i": 305,
+  "pl": "Biały, zimny, śnieżny pałac wydawał mu się najwspanialszym królestwem na świecie, z podziwem patrzył na wysoki tron lodowy i bawił się u stóp jego, układając z kawałków lodu wszystko, co mu się tylko podobało. Tak właśnie dzieci bawią się klockami, budując wieże i przeróżne gmachy.",
+  "start": 3319.82
+ },
+ {
+  "i": 306,
+  "pl": "Kajowi klocków nie zabrakło nigdy; były przejrzyste, o ostrych krawędziach, zimne i jednakowe; mógł je układać całe życie w rozmaite figury, litery, desenie, a wszystko, co ułożył, wydawało mu się mądre i doskonałe i nic w tym nie chciał zmienić, ani zepsuć.",
+  "start": 3339.59
+ },
+ {
+  "i": 307,
+  "pl": "Więc były na lodzie kwadraty, trójkąty, liczby i wyrazy: śnieg, jezioro, królowa i bardzo wiele innych. Nie mógł tylko ułożyć wyrazu „kocham”, choć królowa mu powiedziała:",
+  "start": 3359.41
+ },
+ {
+  "i": 308,
+  "pl": "— Jeśli zdołasz ułożyć ten wyraz, będziesz wolny, a ja daruję ci cały świat i nowe łyżwy.",
+  "start": 3373.56
+ },
+ {
+  "i": 309,
+  "pl": "Więc Kaj pragnął bardzo ułożyć dziwne słowo, a nie umiał. On, taki mądry, nie wiedział, jak zacząć.",
+  "start": 3380.4
+ },
+ {
+  "i": 310,
+  "pl": "Tymczasem ciepły wiatr wionął z południa i królowa śniegu wstała z wysokiego tronu.",
+  "start": 3387.78
+ },
+ {
+  "i": 311,
+  "pl": "— Muszę śpieszyć do ciepłych krajów — powiedziała — trzeba znowu nakryć moje czarne garnki (to znaczy: wulkany). Pobielę im trochę głowy, a cytryny i winogrona poumierają na ten widok.",
+  "start": 3393.39
+ },
+ {
+  "i": 312,
+  "pl": "I zniknęła w tumanach<sup>19<\/sup> śniegu.",
+  "start": 3405.75
+ },
+ {
+  "i": 313,
+  "pl": "Kaj został sam w olbrzymiej, pustej sali. Zrobił sobie z kawałków lodu wygodne siedzenie, usiadł, patrzył na ułożone przed sobą litery, milczał, myślał i siedział nieruchomy, sztywny, zimny i siny, jak zamarznięty.",
+  "start": 3408.81
+ },
+ {
+  "i": 314,
+  "pl": "Wtedy właśnie Gerda weszła do pałacu. Ostry wicher z przeciągłym jękiem rzucił się ku niej, aby ją zatrzymać, ale zaczęła modlić się goręcej i wiatr ucichł, i przypadł spokojnie ku ziemi, jakby kładł się do snu.",
+  "start": 3425.39
+ },
+ {
+  "i": 315,
+  "pl": "Gerda weszła do olbrzymiej sali, pustej, białej i cichej. Nagle zobaczyła Kaja. Poznała go natychmiast. Z okrzykiem radości pobiegła ku niemu, obie ręce zarzuciła mu na szyję i mocno przyciskając go do serca, wołała uradowana:",
+  "start": 3439.16
+ },
+ {
+  "i": 316,
+  "pl": "— Kaju! Kochany Kaju! Znalazłam cię przecież!",
+  "start": 3454.72
+ },
+ {
+  "i": 317,
+  "pl": "Lecz Kaj siedział cichy, sztywny, nieruchomy — a taki zimny!",
+  "start": 3458.44
+ },
+ {
+  "i": 318,
+  "pl": "Gerda wybuchnęła płaczem. Jej łzy gorące padały mu na piersi, przenikały mu do serca, roztopiły lodową bryłę i spłukały z niej okruszynę czarodziejskiego zwierciadła, które było przyczyną całego nieszczęścia.",
+  "start": 3464.02
+ },
+ {
+  "i": 319,
+  "pl": "I nagle serce zabiło mu mocniej, zimny dreszcz przebiegł ciało, zdumiony podniósł oczy na Gerdę, a ona zaczęła śpiewać:",
+  "start": 3477.2
+ },
+ {
+  "i": 320,
+  "pl": "Co ja kocham na tym świecie?",
+  "start": 3486.35
+ },
+ {
+  "i": 321,
+  "pl": "Złote słonko, jasne kwiecie!",
+  "start": 3488.23
+ },
+ {
+  "i": 322,
+  "pl": "Boże ptaszki śpiewające...",
+  "start": 3490.31
+ },
+ {
+  "i": 323,
+  "pl": "A kiedy wymówiła słowa: „Wszystko kocham serca biciem, a przestanę chyba z życiem!” — Kaj przypomniał sobie nagle krzaczek róży, dom, rodziców, babkę, Gerdę i wszystko, co się stało i zrobiło mu się tak smutno, tak smutno w tej wielkiej, białej, pustej, strasznej sali, że wybuchnął ogromnym płaczem,",
+  "start": 3491.95
+ },
+ {
+  "i": 324,
+  "pl": "a ze łzami spłynął natychmiast i drugi okruch szkła czarodziejskiego, który mu tkwił w oku.",
+  "start": 3513.32
+ },
+ {
+  "i": 325,
+  "pl": "Wówczas dopiero poznał naprawdę Gerdę i wydawała mu się tak piękną jak dawniej i uczuł, że ją kocha tak mocno jak dawniej i aż krzyknął z radości i objął ją także rękami. I ściskali się serdecznie oboje, płacząc i śmiejąc się razem ze szczęścia.",
+  "start": 3518.18
+ },
+ {
+  "i": 326,
+  "pl": "Po raz pierwszy w białym pałacu, u stóp tronu królowej śniegu rozległy się nieznane tu głosy wesela; toteż zdumione lodowe jezioro pękać zaczęło z wielkiego podziwu, a kawałeczki lodu, dotąd nieruchome, kręciły się w szalonym tańcu, podskakując i uderzając o siebie,",
+  "start": 3535.02
+ },
+ {
+  "i": 327,
+  "pl": "aż zmęczone upadły znowu i same ułożyły się w ten dziwny wyraz, za który Kaj miał otrzymać wolność, świat cały i nowe łyżwy.",
+  "start": 3553.25
+ },
+ {
+  "i": 328,
+  "pl": "W pałacu królowej śniegu, na lodowym jeziorze, u stóp wysokiego lodowatego tronu, jaśniał w blaskach zorzy północnej nieznany tu, tajemniczy wyraz:",
+  "start": 3561.77
+ },
+ {
+  "i": 329,
+  "pl": "»Kocham«.",
+  "start": 3573.36
+ },
+ {
+  "i": 330,
+  "pl": "A dzieci stały przy nim uśmiechnięte, opromienione złotem i różowym światłem.",
+  "start": 3575.24
+ },
+ {
+  "i": 331,
+  "pl": "Gerda pocałowała Kaja w twarz — a sina twarz jego stała się rumianą — pocałowała go w oczy i stały się znowu jasne i błyszczące — całowała mu ręce i stały się silne — całowała mu nogi i utraciły sztywność i stały się zdrowe, i Kaj powstał z lodowego krzesła, raźny, zdrów, silny i dobry jak niegdyś.",
+  "start": 3580.82
+ },
+ {
+  "i": 332,
+  "pl": "Teraz mogła powrócić i królowa śniegu; był zupełnie wolny! Wolność jego jaśniała u stóp wysokiego tronu tajemniczym wyrazem w blaskach północnej zorzy.",
+  "start": 3602.3
+ },
+ {
+  "i": 333,
+  "pl": "Dzieci wzięły się za ręce i wyszły z okropnego pałacu. Rozmawiały o domu, rodzicach i babce, o kwiatach na dachu i o krzaczku róży, a gdzie się zwróciły, uciszały się wiatry i słońce wychylało się z ciemnych obłoków.",
+  "start": 3612.94
+ },
+ {
+  "i": 334,
+  "pl": "Gdy stanęły przy krzaku z czerwonymi jagodami, zastały tam dwa reny: stary ren przyprowadził towarzysza.",
+  "start": 3629.69
+ },
+ {
+  "i": 335,
+  "pl": "Dobre zwierzęta zaniosły Gerdę i Kaja najpierw do starej Eskimoski, gdzie dzieci wygrzały się w gorącej izbie, a następnie do Laponki, która przygotowała im na drogę nowe suknie<sup>20<\/sup> i powiedziała, którędy iść mają.",
+  "start": 3636.77
+ },
+ {
+  "i": 336,
+  "pl": "Oba reny odprowadziły dzieci do granicy swego kraju i pożegnały tam, gdzie zniknęły śniegi, a ziemię i lasy okrywa świeża zieloność.",
+  "start": 3648.94
+ },
+ {
+  "i": 337,
+  "pl": "— Bądźcie zdrowi! — Bądźcie zdrowi! — powiedziały sobie nawzajem.",
+  "start": 3657.82
+ },
+ {
+  "i": 338,
+  "pl": "W powietrzu zaświergotały małe ptaszki, las zaszemrał młodymi listeczkami i na małym, ślicznym koniku wyjechała spomiędzy drzew jakaś dziewczynka w czerwonej czapeczce i z pistoletem za pasem.",
+  "start": 3662.76
+ },
+ {
+  "i": 339,
+  "pl": "Była to mała zbójniczka na kucyku, którego Gerda dostała od księżniczki wraz ze złocistą karetą.",
+  "start": 3675.18
+ },
+ {
+  "i": 340,
+  "pl": "Gerda i zbójniczka poznały się natychmiast i wydały okrzyk radości.",
+  "start": 3681.39
+ },
+ {
+  "i": 341,
+  "pl": "— Znalazłaś Kaja! — wołała ucieszona zbójniczka.",
+  "start": 3686.11
+ },
+ {
+  "i": 342,
+  "pl": "— Powracamy do domu! — odpowiedziała szczęśliwa Gerda. — Dziękujemy ci za wszystko. Chciałabym podziękować też księżniczce, wronie i krukowi.",
+  "start": 3690.1
+ },
+ {
+  "i": 343,
+  "pl": "— Księżniczka wyjechała w daleką podróż.",
+  "start": 3699.2
+ },
+ {
+  "i": 344,
+  "pl": "— A wrona?",
+  "start": 3702.12
+ },
+ {
+  "i": 345,
+  "pl": "— Wrona nie żyje. Kruk nosi po niej żałobę.",
+  "start": 3703.26
+ },
+ {
+  "i": 346,
+  "pl": "— Pozdrów go od nas — rzekła ze smutkiem Gerda.",
+  "start": 3706.89
+ },
+ {
+  "i": 347,
+  "pl": "— Bądźcie zdrowi! — rzekła zbójniczka i serdecznie uściskała małych wędrowców.",
+  "start": 3710.34
+ },
+ {
+  "i": 348,
+  "pl": "A dzieci szły, trzymając się za ręce i rozmawiając o tym, co kochały. Dokoła nich budziła się ze snu przyroda, na niebie jaśniało słońce, na łąkach pachniały kwiaty, na polach kołysały się zielone fale zboża, las szumiał, świergotały ptaki.",
+  "start": 3714.2
+ },
+ {
+  "i": 349,
+  "pl": "Tak zbliżyły się do wielkiego miasta. Dzwony odezwały się z wieży kościelnej i dzieci poznały ten dobrze znany głos. I poznały ulice, domy, sklepy, bramy.",
+  "start": 3731.32
+ },
+ {
+  "i": 350,
+  "pl": "Ściskając się za ręce, biegły do swego domu, po znanych schodach, na znane poddasze, do izdebki, gdzie upłynęło im dzieciństwo.",
+  "start": 3744.6
+ },
+ {
+  "i": 351,
+  "pl": "Nic się tu nic zmieniło: sprzęty stały na swoim miejscu, na zegarze posuwały się wskazówki, a wahadło biegało w tę i ową stronę, powtarzając tym samym jednostajnym głosem: tik–tak!",
+  "start": 3752.25
+ },
+ {
+  "i": 352,
+  "pl": "Wchodząc we drzwi, zauważyły dopiero, jak urosły w przeciągu tego czasu. A tam, przy oknie, stały ich małe krzesełka! Babunia siedziała na starym fotelu i modliła się z książki, a słońce oblewało złotym blaskiem jej siwą głowę.",
+  "start": 3767.16
+ },
+ {
+  "i": 353,
+  "pl": "Jak tu ślicznie, jak jasno, jak wesoło!",
+  "start": 3782.04
+ },
+ {
+  "i": 354,
+  "pl": "O pałacu królowej śniegu zapomnieli. Usiedli znowu na małych stołeczkach jak dawniej i spojrzeli na drewnianą skrzynkę, w której rosły powoje i groszki pachnące. Na krzaczkach róż rozwinęły się prześliczne kwiaty i zdawały się uśmiechać do nich, nachylając różane główki w stronę okna.",
+  "start": 3785.84
+ },
+ {
+  "i": 355,
+  "pl": "A dzieci zaśpiewały razem:",
+  "start": 3803.47
+ },
+ {
+  "i": 356,
+  "pl": "Co ja kocham na tym świecie?",
+  "start": 3806.7
+ },
+ {
+  "i": 357,
+  "pl": "Złote słonko, cudne kwiecie!",
+  "start": 3809.8
+ },
+ {
+  "i": 358,
+  "pl": "Boże ptaszki śpiewające,",
+  "start": 3812.1
+ },
+ {
+  "i": 359,
+  "pl": "Jasne rosy, w kwiatach drżące,",
+  "start": 3814.74
+ },
+ {
+  "i": 360,
+  "pl": "Błękit nieba i obłoki,",
+  "start": 3817.88
+ },
+ {
+  "i": 361,
+  "pl": "Cały piękny świat szeroki,",
+  "start": 3820.08
+ },
+ {
+  "i": 362,
+  "pl": "I chatynkę pobielaną,",
+  "start": 3822.82
+ },
+ {
+  "i": 363,
+  "pl": "I mateńkę ukochaną!",
+  "start": 3824.4
+ },
+ {
+  "i": 364,
+  "pl": "Wszystko kocham serca biciem,",
+  "start": 3826.98
+ },
+ {
+  "i": 365,
+  "pl": "A przestanę chyba z życiem!",
+  "start": 3829.48
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

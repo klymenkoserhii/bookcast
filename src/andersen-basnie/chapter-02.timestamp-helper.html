@@ -1,0 +1,938 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to ../../public/andersen-basnie/audio/chapter-02.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-02.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baśnie · Rozdział II — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Baśnie · Rozdział II · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="../../public/andersen-basnie/audio/chapter-02.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Studnia była głęboka i na długim sznurze musiano spuszczać wiadro, aby dosięgło wody; ciężko też było pełne wyciągnąć do góry i ręka zabolała, zanim stanęło na zrębie.",
+  "start": 39.14
+ },
+ {
+  "i": 1,
+  "pl": "Woda w studni była chłodna, a przezroczysta, jak kryształ, ale słońce w jej zwierciadle nie przeglądało się nigdy; żaden promyk nie dosięgał do dna studni, choć zaglądał do środka ciekawie, podziwiając zielony mech i wodorosty, którymi porastały kamienne jej ściany.",
+  "start": 52.51
+ },
+ {
+  "i": 2,
+  "pl": "W studni mieszkała z dawna cała rodzina ropuch. Dostały się tu przed laty przypadkiem, dzięki babce, która przyjechała w wiadrze i nie miały zamiaru powracać na ziemię.",
+  "start": 75.45
+ },
+ {
+  "i": 3,
+  "pl": "Zielone żabki, które jeszcze dawniej założyły tutaj swoje państwo, gościnnie powitały przybyszów, uznały w nich krewnych i nazwały ich gośćmi.",
+  "start": 90.62
+ },
+ {
+  "i": 4,
+  "pl": "Ale goście osiedlili się jakoś na dobre utrzymując, że nie tak łatwo o przyjemniejsze mieszkanie na świecie, że tutaj mają zupełną swobodę, mogąc przebywać z równym bezpieczeństwem i w wodzie i na lądzie. Lądem nazywały one wilgotne i porosłe mchem kamienie, stanowiące ściany studni.",
+  "start": 102.78
+ },
+ {
+  "i": 5,
+  "pl": "Razu jednego babka ich, stara ropucha, dostała się przypadkiem wraz z wodą do wiadra. Nie wiedziała, co począć, kiedy ciągnięto ją w górę.",
+  "start": 126.9
+ },
+ {
+  "i": 6,
+  "pl": "Nagle oślepiający blask słońca pozbawił ją prawie wzroku, uczuła ból w oczach, a więc przerażona wyskoczyła z wiadra, uderzyła o kamień i z wielkim pluskiem i hałasem wpadła znowu do wody. Przez trzy dni po tym wypadku leżała chora na ból krzyża, ale przyszła do siebie i odzyskała zdrowie.",
+  "start": 138.48
+ },
+ {
+  "i": 7,
+  "pl": "Rozumie się, że niewiele mogła ona opowiedzieć wnukom o tej podróży i o nieznanym świecie, który się rozpoczynał poza studnią, to wiedziała jednakże, czego się domyślały zresztą wszystkie żaby, że świat inny istnieje tam na górze.",
+  "start": 165.32
+ },
+ {
+  "i": 8,
+  "pl": "Mogłaby ona coś o nim powiedzieć, gdyby naprawdę chciała, ale nie lubiła mówić i nawet na pytania zwykle odpowiadała milczeniem.",
+  "start": 183.12
+ },
+ {
+  "i": 9,
+  "pl": "— Gruba, niezgrabna, brzydka — mówiły o niej żabki zielone z niechęcią — z pewnością i jej dzieci będą kiedyś takie.",
+  "start": 193.86
+ },
+ {
+  "i": 10,
+  "pl": "— Być może — odpowiedziała urażona ropucha, lecz w głowie jednej w nas mieści się klejnot niezmiernej ceny, może w mojej własnej. A z was żadna nie posiada nic takiego.",
+  "start": 204.26
+ },
+ {
+  "i": 11,
+  "pl": "Żabki zielone szeroko otworzyły oczy, słuchając o drogocennym klejnocie, ale spostrzegłszy, że młode ropuchy patrzą na nie z wielką dumą, wykrzywiły się pogardliwie i umknęły w głąb studni.",
+  "start": 222.28
+ },
+ {
+  "i": 12,
+  "pl": "Ropuszęta tymczasem kiwały głowami i wyciągały tylne nogi na znak zadowolenia; każde myślało, że zapewne ono ma w głowie drogi klejnot i postanawiało bardzo ostrożnie obchodzić się ze swoją osobą.",
+  "start": 238.7
+ },
+ {
+  "i": 13,
+  "pl": "Przez kilka dni zaledwie ośmielały się skakać, a karki tak im zesztywniały od prostego trzymania głowy, że długo znieść tego nie mogły. Otoczyły więc babkę i zaczęły pytać: co to jest klejnot? dlaczego tak drogi? i dlaczego dumne być z niego powinny?",
+  "start": 256.88
+ },
+ {
+  "i": 14,
+  "pl": "— Klejnot — odparła babka — jest to coś tak wspaniałego, że się wcale opisać nie da. — Temu, kto go posiada, sprawia rozkosz niewymowną, w innych zaś budzi zazdrość. Zresztą nie pytajcie mnie więcej, bo nie już nie odpowiem.",
+  "start": 279.76
+ },
+ {
+  "i": 15,
+  "pl": "— To już wiem teraz, że ja nie mam w głowie klejnotu — zawołała najmłodsza i najbrzydsza z ropuch, tak szkaradna, że trudno było patrzeć na nią. Skąd by się we mnie wzięła rzecz tak droga? A jeżeli w innych ma to budzić zazdrość, to mnie by nie cieszyło.",
+  "start": 303.98
+ },
+ {
+  "i": 16,
+  "pl": "Nie chcę żadnego klejnotu, wolałabym wydostać się tam, na brzeg studni i świat zobaczyć. To musi być coś cudownego!",
+  "start": 325.38
+ },
+ {
+  "i": 17,
+  "pl": "— Zostań, gdzie jesteś, kiedy ci tu dobrze — odrzekła stara — tu przynajmniej znasz wszystko i nie potrzebujesz się niczego obawiać. Uważaj tylko, żeby wiadro cię nie potrąciło, bo mogłoby cię zabić, a gdyby cię przypadkiem zaczerpnęli z wodą, pilnuj się dobrze, żebyś nie wypadła.",
+  "start": 337.94
+ },
+ {
+  "i": 18,
+  "pl": "Nie każdy umie tak, jak ja, zręcznie wyskoczyć, a złamać nogę niewielka przyjemność.",
+  "start": 360.81
+ },
+ {
+  "i": 19,
+  "pl": "— Kwak, kwak! — potwierdziła mała ropucha, co znaczyło w jej języku: — Ach, ach, moja babciu!",
+  "start": 369.45
+ },
+ {
+  "i": 20,
+  "pl": "Z każdym dniem jednak goręcej pragnęła wydostać się na górę; tęsknota do jasnego, nieznanego świata, który olśniewa blaskiem — jak mówiła babka — wzrastała w niej codziennie, snu ją pozbawiała, nie dawała spokoju.",
+  "start": 378.2
+ },
+ {
+  "i": 21,
+  "pl": "Toteż gdy dnia pewnego pełne wody wiadro zatrzymało się na minutę przy kamieniu, gdzie żabka rozmyślała, siedząc na mchu zielonym, nie zawahała się ani sekundy i wskoczyła do wody.",
+  "start": 396.4
+ },
+ {
+  "i": 22,
+  "pl": "Nie miała nawet czasu zastanowić się nad tym, co zrobiła, gdy olśnił ją blask wielki i jednocześnie prawie wyleciała z wiadra na wilgotną ziemię.",
+  "start": 409.84
+ },
+ {
+  "i": 23,
+  "pl": "— Tfy, cóż za potwór! — zawołał parobek, który wylewał wodę.",
+  "start": 422.39
+ },
+ {
+  "i": 24,
+  "pl": "I kopnął ropuchę butem z drewnianą podeszwą tak mocno, że ogłuszona upadła o kilka kroków, między gęste pokrzywy.",
+  "start": 428.47
+ },
+ {
+  "i": 25,
+  "pl": "Kiedy przyszła do siebie, ujrzała dokoła las cienkich łodyg i zielonych liści, przez które przedzierały się plamki złociste. I zrobiło jej się tak miło, jak ludziom, kiedy w cienistym lesie widzą złote słońce, przeświecające przez gęstwinę liści.",
+  "start": 438.11
+ },
+ {
+  "i": 26,
+  "pl": "— O, tu ładniej, niż w studni! — zawołała zachwycona — tutaj chciałabym przebyć całe życie.",
+  "start": 458.14
+ },
+ {
+  "i": 27,
+  "pl": "I położyła się na mokrej ziemi, pod liśćmi pokrzywy. Tak przeleżała godzinę, dwie prawie. Ale ciekawość znowu budzić się zaczęła.",
+  "start": 467.32
+ },
+ {
+  "i": 28,
+  "pl": "— Co też tam dalej być może? — myślała. — Kiedy aż tutaj doszłam, muszę spróbować jeszcze zajść i trochę dalej. Czemuż bym nie miała poznać całego świata?",
+  "start": 480.38
+ },
+ {
+  "i": 29,
+  "pl": "I posuwając się szybko, jak mogła, doszła do drogi.",
+  "start": 494.76
+ },
+ {
+  "i": 30,
+  "pl": "Oblało ją słońce gorące, jasne, kurz obsypał całą, kiedy na drugą stronę w poprzek przechodziła.",
+  "start": 499.79
+ },
+ {
+  "i": 31,
+  "pl": "— Tutaj to prawdziwie sucho — rzekła do siebie. — Strasznie sucho. Aż dusi!",
+  "start": 509.09
+ },
+ {
+  "i": 32,
+  "pl": "Przedostała się wreszcie na drugą stronę drogi, gdzie był rów dość wilgotny i głęboki. Nad rowem rosły niezapominajki, spireje, białe ciernie, a na płocie pięły się dzikie powoje, osypane bladoróżowymi kwiatami. Motyl zleciał z kwiatka i usiadł na drugim.",
+  "start": 517.42
+ },
+ {
+  "i": 33,
+  "pl": "Ropucha myślała, że to kwiat oderwał się od łodygi i wzleciał do góry, aby z wysoka lepiej świat obejrzeć. To wydawało jej się całkiem naturalne.",
+  "start": 538.08
+ },
+ {
+  "i": 34,
+  "pl": "— O, gdybym ja tak unosić się mogła! — pomyślała z zazdrością. — Kwak, co za wspaniałości! Jakże ten świat piękny.",
+  "start": 551.02
+ },
+ {
+  "i": 35,
+  "pl": "Osiem dni szczęśliwych przebyła ropucha w rozkosznym rowie, gdzie nie brakowało żywności ani wygód. Dziewiątego dnia jednak powiedziała sobie: — Pójdźmy dalej. — Wprawdzie — czyż mogła znaleźć coś na świecie piękniejszego i wspanialszego? Czegóż jej tu brakowało?",
+  "start": 566.49
+ },
+ {
+  "i": 36,
+  "pl": "Chyba towarzyszki, choćby zielonej żabki. Właśnie ostatniej nocy wydawało jej się, że wiatr przynosi dobrze znane głosy, zwiastujące bliskość krewniaków.",
+  "start": 589.03
+ },
+ {
+  "i": 37,
+  "pl": "— Co to za życie! — rozmyślała sobie. — Wydostać się ze studni, odpocząć w pokrzywach, przebyć taką suchą i palącą drogę, wreszcie ten rów wspaniały! Ale to nie dosyć. Dalej, naprzód! Muszę odnaleźć ropuchy, albo zielone żabki; sama natura wystarczyć nie może, każdy potrzebuje towarzystwa!",
+  "start": 602.05
+ },
+ {
+  "i": 38,
+  "pl": "I wyruszyła dalej.",
+  "start": 631.69
+ },
+ {
+  "i": 39,
+  "pl": "Przez łąkę doszła do dużego stawu, zarosłego trzciną i zaczęła przechadzać się dookoła.",
+  "start": 634.33
+ },
+ {
+  "i": 40,
+  "pl": "Inne żabki zauważyły ją wkrótce.",
+  "start": 641.61
+ },
+ {
+  "i": 41,
+  "pl": "— Dzień dobry. Jak się tu pani podoba? Przepraszam, może panu? Zresztą to wszystko jedno, każdy gość mile jest u nas witany.",
+  "start": 644.76
+ },
+ {
+  "i": 42,
+  "pl": "Zaprosiły ją zaraz na wieczorny koncert w domowym kółku. Amatorskie siły, wiele zapału, na drobiazgi trzeba być wyrozumiałym. Co się tyczy przyjęcia: staw pełen czystej wody i co sobie kto znajdzie. Jak w domu, bez ceremonii.",
+  "start": 655.9
+ },
+ {
+  "i": 43,
+  "pl": "I znowu zabawiła ropucha dni kilka, w przyjemnym towarzystwie. Po czym zapragnęła iść dalej. Czuła dziwną tęsknotę do czegoś lepszego a nieznanego.",
+  "start": 674.86
+ },
+ {
+  "i": 44,
+  "pl": "— W drogę! — rzekła sobie.",
+  "start": 687.94
+ },
+ {
+  "i": 45,
+  "pl": "Tyle rzeczy miała jeszcze do poznania! Nad nią świeciły gwiazdy jak złote iskierki, księżyc i słońce wypływały na niebiosa, posuwały się wyżej, wysoko i zniżały na powrót.",
+  "start": 691.26
+ },
+ {
+  "i": 46,
+  "pl": "— Kto wie, czy ja i teraz nie jestem w studni — myślała żaba — prawda, większej i piękniejszej, ale zawsze głębokiej. Chciałabym się znowu wydostać tam, na górę! Och, jak tego pragnę! Jaka tęsknota pociąga mnie; dalej, wyżej, bez końca!",
+  "start": 706.8
+ },
+ {
+  "i": 47,
+  "pl": "Spojrzała na błyszczący, jasny księżyc w pełni i pomyślała znowu:",
+  "start": 734.42
+ },
+ {
+  "i": 48,
+  "pl": "— A może to jest wiadro, które się spuszcza na dół? Gdybym w nie skoczyć mogła, gdzie by mnie wyniosło? A może słońce jest tym wielkim wiadrem?",
+  "start": 739.64
+ },
+ {
+  "i": 49,
+  "pl": "Takie błyszczące i takie ogromne! Tam mogłybyśmy pomieścić się wszystkie. Trzeba tylko nie ominąć sposobności i uważać. Trudno to dosyć, bo oślepia blaskiem, ale kto chce coś poznać...",
+  "start": 751.52
+ },
+ {
+  "i": 50,
+  "pl": "O tak mi w głowie coś świeci chwilami! Jaśniej niż klejnot, o którym mówiła nam babka. Tego nie mam z pewnością, ale co mi po nim? Nie rozumiem, jaką rozkosz sprawiać może. Ach, i nie myślę o nim wcale. Dalej, dalej w drogę, do szczęścia, do światła!",
+  "start": 768.86
+ },
+ {
+  "i": 51,
+  "pl": "Czuję w sobie wielką wiarę, chociaż i obawę razem. Co mnie znów czeka? Byle naprzód, prosto!",
+  "start": 791.84
+ },
+ {
+  "i": 52,
+  "pl": "Posuwając się z wolna, jak każda ropucha, nasza znajoma znalazła się wreszcie na drodze, wzdłuż której po obu stronach ciągnęły się ludzkie mieszkania, otoczone kwiatowymi i warzywnymi ogródkami. Zatrzymała się na grządce kapusty, aby odpocząć trochę.",
+  "start": 802.41
+ },
+ {
+  "i": 53,
+  "pl": "— Co tu stworzeń na świecie, których nie znałam dotąd! — mówiła sobie — i jaki ten świat niezmierzony! A jaki piękny! Nie powinien tylko siedzieć wciąż na jednym miejscu, kto chce go poznać. Jak tu zielono! — dodała wesoło, rozglądając się po główkach kapusty.",
+  "start": 821.69
+ },
+ {
+  "i": 54,
+  "pl": "— Wiem o tym — odpowiedziała gąsienica, siedząca na młodej główce. — Mój liść jest tu największy, zasłania pół świata, ale mnie to nic nie szkodzi.",
+  "start": 844.35
+ },
+ {
+  "i": 55,
+  "pl": "— Ko, ko, ko! — zagdakały kury, zbliżając się do grzędy i obchodząc ją wkoło. Kogut szedł na czele, a że wzrok miał doskonały, z daleka ujrzał grubą gąsienicę na pomarszczonym liściu i dziobnął ją zaraz tak mocno, że upadła na ziemię i wiła się z bólu.",
+  "start": 856.71
+ },
+ {
+  "i": 56,
+  "pl": "Kogut spojrzał na nią najprzód jednym okiem, następnie drugiem, gdyż nie wiedział, co to ma znaczyć i co może wyniknąć z takiego kręcenia.",
+  "start": 876.05
+ },
+ {
+  "i": 57,
+  "pl": "— To mimowolnie — pomyślał na koniec i podniósł głowę, aby ją dziobnąć raz drugi Przestraszona ropucha pośpieszyła biedaczce na pomoc i znalazła się nagle przed dziobem koguta.",
+  "start": 888.07
+ },
+ {
+  "i": 58,
+  "pl": "— A to co? — rzekł ptak zdziwiony. Cóż za potwór? Nędzne stworzenie ma widać obrońców!",
+  "start": 901.09
+ },
+ {
+  "i": 59,
+  "pl": "I odwrócił się pogardliwie.",
+  "start": 910.43
+ },
+ {
+  "i": 60,
+  "pl": "— Nie ma się o co dobijać — dodał jeszcze, odchodząc. — Zielony jakiś okruch. A kręci się... jeszcze by mnie w gardle drapało.",
+  "start": 913.01
+ },
+ {
+  "i": 61,
+  "pl": "Tak mądre zdanie przekonało od razu wszystkie kury i żadna nie spojrzała nawet na gąsienicę, oddalając się w stronę przeciwną.",
+  "start": 925.09
+ },
+ {
+  "i": 62,
+  "pl": "— A to się wykręciłam! — zaśmiał się zielony robak. — Nigdy w niebezpieczeństwie nie trzeba tracić przytomności. Wiedziałam, że ich odstraszyć potrafię.",
+  "start": 934.47
+ },
+ {
+  "i": 63,
+  "pl": "Z zadowoleniem spojrzała na żabę, ale zaraz westchnęła.",
+  "start": 946.67
+ },
+ {
+  "i": 64,
+  "pl": "— Cały kłopot, że teraz trudno będzie znowu na liść się dostać. Ha, cóż robić! I z tym przecież dam sobie jakoś radę. Nie od parady mam głowę na karku. Ale gdzież on się podział?",
+  "start": 951.39
+ },
+ {
+  "i": 65,
+  "pl": "— Tu jest — rzekła ropucha, ze współczuciem patrząca na słabe maleństwo. — Bardzo mi przyjemnie, że moją brzydotą dopomogłam pani w tej biedzie. Kogut widocznie przestraszył się mojej osoby.",
+  "start": 967.49
+ },
+ {
+  "i": 66,
+  "pl": "— Cóż to ma znaczyć? — spytała dumnie gąsienica. — Sama się obroniłam od koguta i pomocy od nikogo nie potrzebowałam. Ale jesteś rzeczywiście tak szkaradna, że niemiło patrzeć na ciebie. Proszę cię więc, odejdź stąd i zostaw mnie w spokoju. Oto mój liść. Zaraz się na niego dostanę.",
+  "start": 982.09
+ },
+ {
+  "i": 67,
+  "pl": "Dobrze mówi przysłowie, że najlepiej w domu. Każdemu najprzyjemniej u siebie. Ale muszę wejść trochę wyżej.",
+  "start": 1005.75
+ },
+ {
+  "i": 68,
+  "pl": "— O, tak, wyżej! — powtórzyła z westchnieniem ropucha — Każdy chce wyżej. I ona czuje to wielkie pragnienie, tę tęsknotę, która mnie naprzód popycha. Tylko biedaczka w złym dzisiaj humorze. I nie można się dziwić: taki przestrach! Wszyscy dążymy naprzód, wyżej, wyżej!...",
+  "start": 1018.03
+ },
+ {
+  "i": 69,
+  "pl": "I starała się podnieść głowę tak wysoko, jak pozwalała na to krótka, sztywna szyja.",
+  "start": 1041.85
+ },
+ {
+  "i": 70,
+  "pl": "Na dachu chaty w gnieździe zaklekotał bocian, potem zaklekotała pani bocianowa. Żaba wypukłe oczy zwróciła w tę stronę.",
+  "start": 1049.47
+ },
+ {
+  "i": 71,
+  "pl": "— Ach, ci dopiero wysoko mieszkają! — zawołała z zachwytem. — Kto by się tam mógł dostać!",
+  "start": 1060.31
+ },
+ {
+  "i": 72,
+  "pl": "Na podwórzu przed chatą stało dwóch studentów. Jeden z nich był poetą, drugi przyrodnikiem, jeden pięknymi słowy opisywał wszystko, co wzrusza, cieszy, boli lub zachwyca — drugi we wszystkim szukał początku i prawdy.",
+  "start": 1068.91
+ },
+ {
+  "i": 73,
+  "pl": "Obaj byli dobrzy i poczciwi chłopcy, chociaż na każdą rzecz zapatrywali się odmiennie.",
+  "start": 1085.41
+ },
+ {
+  "i": 74,
+  "pl": "— Patrz no, jaka ropucha — rzeki nagle przyrodnik — pyszny egzemplarz! Mam wielką ochotę włożyć ją do spirytusu.",
+  "start": 1092.39
+ },
+ {
+  "i": 75,
+  "pl": "— Masz już dwie przecież w spirytusie — odparł poeta — pozwólże tej oddychać jeszcze czystym powietrzem i cieszyć się, że żyje.",
+  "start": 1101.87
+ },
+ {
+  "i": 76,
+  "pl": "— Kiedy taka brzydka. Prawdziwy okaz.",
+  "start": 1112.07
+ },
+ {
+  "i": 77,
+  "pl": "— Znajdziesz więcej takich. Gdybyś wiedział przynajmniej, że znajdziesz w jej głowie ten bezcenny klejnot, no, kto wie, czy wtedy sam bym ci nie doradził otworzyć jej czaszkę.",
+  "start": 1115.61
+ },
+ {
+  "i": 78,
+  "pl": "— Klejnot! Ach, ty poeto! Zawsze wolisz baśnie od nauki i prawdy.",
+  "start": 1129.41
+ },
+ {
+  "i": 79,
+  "pl": "— Nie — odparł poeta — prawda jest piękna, więc ją kochać muszę, ale sam powiedz, czyż to nie piękne podanie, że ropucha, ten najbrzydszy z naszych płazów, często ma w głowie klejnot niezmiernej wartości? W podaniach ludu nieraz kryje się myśl wielka i poetyczna. Czyż i ludzie tacy, jak np.",
+  "start": 1136.47
+ },
+ {
+  "i": 80,
+  "pl": "Ezop, nie mieli...",
+  "start": 1160.61
+ },
+ {
+  "i": 81,
+  "pl": "Żaba nie słuchała więcej, nie rozumiała tej mądrej rozmowy; poskoczyła dalej, nie wiedząc nawet, że szczęśliwie uniknęła śmierci w spirytusie, i zastanowiła się nad jednym słówkiem, które ją uderzyło.",
+  "start": 1162.83
+ },
+ {
+  "i": 82,
+  "pl": "— I ci mówili także o klejnocie — rzekła do siebie — babka wie to dobrze i zna wiele rzeczy. Bardzo jest mądra. Szkoda, że nic mówić nie chce. A co do mnie, cieszę się, że nie posiadam tego skarbu w głowie, bo mógłby mnie tylko narazić na nieprzyjemności.",
+  "start": 1177.8
+ },
+ {
+  "i": 83,
+  "pl": "W bocianim gnieździe bocian przemawiał do dzieci, które ciekawie z góry przypatrywały się studentom.",
+  "start": 1197.78
+ },
+ {
+  "i": 84,
+  "pl": "— To są ludzie, najmądrzejsze na świecie stworzenia. Wiele rzeczy umieją, chociaż — rozważywszy, co umieją bociany, można się przekonać, że w niejednym ich przewyższamy. Mowa na przykład. Bardzo są z niej dumni, patrzcie tylko, jak prędko ruszają ustami.",
+  "start": 1204.88
+ },
+ {
+  "i": 85,
+  "pl": "A jednak — moim zdaniem, co wart taki język, którego o dzień drogi już nikt nie rozumie? Bocian rozmówi się wszędzie z bocianem; na północy, w Egipcie na południu, w zimnych i ciepłych krajach, wszędzie jednakowo wypowiadamy swoje myśli. To jest język!",
+  "start": 1226.04
+ },
+ {
+  "i": 86,
+  "pl": "I latać ludzie nie mogą w powietrzu, jak my, bociany. Wprawdzie urządzili sobie jakieś linie i drogi, po których z szybkością mogą przenosić się z miejsca, na miejsce, ale — po pierwsze, co to za wygoda i co za porównanie z naszym lotem?",
+  "start": 1246.76
+ },
+ {
+  "i": 87,
+  "pl": "A po wtóre — ileż widziałem wypadków, roztrzaskanych pociągów, pozabijanych ludzi! Brr! Aż mnie mrowie po dziobie przechodzi. Zresztą świat bez ludzi mógłby się obejść zupełnie. My nie odczulibyśmy wcale tego braku. Byle tylko zostały żaby i robaki.",
+  "start": 1262.96
+ },
+ {
+  "i": 88,
+  "pl": "— To mi mowa! — rzekła ropucha, która wysłuchała, jej z wielkim podziwem od początku do końca. — Bocian jest najmądrzejszą istotą na świecie. A jak wysoko mieszka. Nikogo jeszcze tak wysoko nie widziałam. I pływać może w powietrzu!",
+  "start": 1283.5
+ },
+ {
+  "i": 89,
+  "pl": "— zawołała zdumiona, widząc, jak wzniósł się z gniazda z rozpostartymi skrzydłami.",
+  "start": 1302.18
+ },
+ {
+  "i": 90,
+  "pl": "Tymczasem w gnieździe pani bocianowa zaczęła opowiadać dzieciom o Egipcie, gdzie się miały udać na zimę. Mówiła im o długiej, dalekiej podróży, o rzece, która kraj cały zalewa i zostawia muł niezrównany, pełen przewybornego pokarmu.",
+  "start": 1307.7
+ },
+ {
+  "i": 91,
+  "pl": "Ropucha słuchała z wielką ciekawością tych opowieści nowych, a zachwycających.",
+  "start": 1326.6
+ },
+ {
+  "i": 92,
+  "pl": "— Muszę się dostać do Egiptu — pomyślała. — Muszę poznać ten kraj cudowny! Tyle rzeczy na świecie jest jeszcze do poznania! Żeby mię tylko bocian zechciał zabrać. Tak bym mu była wdzięczna. Ach, wiem, że się dostanę w ten lub inny sposób, bo wszystko mi jakoś wiedzie się na świecie.",
+  "start": 1334.55
+ },
+ {
+  "i": 93,
+  "pl": "Wierzę teraz, że wszystko tutaj zrobić można, jeśli się szczerze pragnie, jak ja, całym sercem. O, wolę to pragnienie moje nieskończone, które mi rozkosz sprawia, niż najdroższy klejnot.",
+  "start": 1359.79
+ },
+ {
+  "i": 94,
+  "pl": "Nie domyślała się, że to pragnienie, które ją wiecznie naprzód i wyżej pociąga, że ta tęsknota do rzeczy nieznanych, wielkich i pięknych, jest właśnie klejnotem, który jaśniał w jej głowie blaskiem siły i radości.",
+  "start": 1375.69
+ },
+ {
+  "i": 95,
+  "pl": "Nagle tuż obok siebie ujrzała bociana, który otworzył dziób, aby ją porwać.",
+  "start": 1392.61
+ },
+ {
+  "i": 96,
+  "pl": "Więc marzenie spełnione!",
+  "start": 1399.57
+ },
+ {
+  "i": 97,
+  "pl": "Dziób zamknął się mocno, wiatr zaświszczał w uszach, ból przeniknął ciało, ale leciała w górę, może do Egiptu, wyżej i wyżej!",
+  "start": 1402.07
+ },
+ {
+  "i": 98,
+  "pl": "Z oczu jej trysnęły promienie iskier, a z paszczy szerokiej wyrwał się krótki okrzyk:",
+  "start": 1413.09
+ },
+ {
+  "i": 99,
+  "pl": "— Kwak... ach!",
+  "start": 1418.94
+ },
+ {
+  "i": 100,
+  "pl": "I ropucha nie żyła. Z ciała uleciało życie, z oczu trysnęły iskry. Gdzież są teraz?",
+  "start": 1419.93
+ },
+ {
+  "i": 101,
+  "pl": "Zabrały je promienie słoneczne, zabrały drogi klejnot z głowy ropuchy. I dokąd go zaniosły?",
+  "start": 1435.91
+ },
+ {
+  "i": 102,
+  "pl": "Pytaj o to poety. On jeden tylko widzi i rozumie te tajemnice, on ci odpowiedzieć może. On ci odpowie w baśni. A wiesz, co odpowie?",
+  "start": 1446.03
+ },
+ {
+  "i": 103,
+  "pl": "— Szukaj go w słońcu!",
+  "start": 1458.99
+ },
+ {
+  "i": 104,
+  "pl": "Szukaj, choć blask cię olśniewa. Nie wszystko widzieć możemy oczyma ciała naszego, ale kiedyś, kiedyś, ujrzymy może cuda, które dziś przeczuwa tylko tęsknota jakaś i pragnienie, ukryte niby klejnot tajemniczy w duszy człowieka.",
+  "start": 1461.73
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

@@ -1,0 +1,2078 @@
+# «Baśnie» — Chapter 1: Królowa śniegu
+<!-- bilingual study edition: PL → UA -->
+
+**PL:** Czarodziejskie zwierciadło
+
+**UA:** Чарівне дзеркало
+
+---
+
+**PL:** Żył sobie niegdyś bardzo złośliwy czarodziej. Całą jego przyjemnością było dokuczać ludziom, czynić źle, ze wszystkiego się wyśmiewać i każdą rzecz przedstawiać z najgorszej strony.
+
+**UA:** Жив колись дуже злий чарівник. Вся його насолода полягала в тому, щоб дражнити людей, чинити зло, висміювати все і представляти все з гіршого боку.
+
+---
+
+**PL:** Wymyślił wreszcie i zrobił takie sztuczne zwierciadło<sup>1</sup>, iż wszystkie rzeczy piękne i dobre wyglądały w nim szkaradnie, a nawet śmiesznie, ponieważ były wykrzywione, zamazane, niewyraźne — za to złe rzeczy widać w nim było doskonale.
+
+**UA:** Нарешті він винайшов і зробив таке штучне дзеркало<sup>1</sup>, що все прекрасне і добре виглядало в ньому огидно і навіть смішно, бо було спотворене, розпливчасте, невиразне, - але погане в ньому було видно чудово.
+
+---
+
+**PL:** Tym sposobem cały świat w tym zwierciadle był brzydki i zły, a nic na nim nie było pięknego. Czarodziej klaskał w dłonie i śmiał się ze swego figla, a źli jego uczniowie porwali zwierciadło i biegali z nim wszędzie, podstawiając je ludziom znienacka przed oczy i cieszyli się, i śmiali,
+
+**UA:** Таким чином, весь світ у цьому дзеркалі був потворний і злий, і в ньому не було нічого прекрасного. Чарівник плескав у долоні й сміявся зі свого трюку, а його злі учні взяли дзеркало й бігали з ним усюди, раптом виставляючи його перед очима людей, і ті раділи й сміялися,
+
+**PL:** kiedy przerażony człowiek zasłaniał oczy ręką; a potem nieraz sam nie wiedział, który świat jest prawdziwy: czy ten, który ogląda co dzień, czy tamten, który ujrzał w zaklętym zwierciadle?
+
+**UA:** коли перелякана людина закривала очі рукою; а потім іноді він не знав, який світ справжній: той, який бачив щодня, чи той, який бачив у чарівному дзеркалі?
+
+---
+
+**PL:** I tacy ludzie byli bardzo nieszczęśliwi, a było ich coraz więcej.
+
+**UA:** І такі люди були дуже нещасні, і їх ставало все більше.
+
+---
+
+**PL:** Cieszył się zły czarodziej, ale to mu nie wystarczało. Uczniowie jego postanowili zanieść zwierciadło aż do nieba. Niechże i aniołowie spojrzą w nie choć raz jeden. To byłaby uciecha! A może i sam Pan Bóg — —
+
+**UA:** Злий чарівник був щасливий, але йому цього було мало. Його учні вирішили віднести дзеркало на небо. Нехай янголи теж хоч раз у них зазирнуть. Це було б весело! А може навіть і сам Бог...
+
+---
+
+**PL:** I zaczęli lecieć do góry. Bardzo im było trudno, a jeszcze z tak ciężkim zwierciadłem — zaledwie mogli utrzymać je w rękach... O, daleko do nieba! Aż im pot okrył czoła, a ręce drżeć zaczęły. Wtem, trrrach! I ciężkie lustro z takiej wysokości brzdęk aż na ziemię!
+
+**UA:** І вони почали злітати. Їм було дуже важко, і з таким важким дзеркалом вони ледве тримали його в руках... Ой, це далеко до раю! Аж піт вкрив їхні чола, а руки затремтіли. Раптом трррр! І дзеркало важке з такої висоти стукає аж до землі!
+
+**PL:** Naturalnie w mgnieniu oka rozprysnęło się na miliony, miliony drobnych szczątków, na nieskończoną ilość czarodziejskiego pyłku, który rozleciał się na wszystkie strony.
+
+**UA:** Природно, в мить ока він розлетівся на мільйони і мільйони крихітних шматочків, нескінченну кількість чарівного пилу, який летів у всіх напрямках.
+
+---
+
+**PL:** Ale to właśnie było najgorsze nieszczęście!
+
+**UA:** Але це було найстрашніше нещастя!
+
+---
+
+**PL:** Zamiast jednego lustra, były ich teraz miliony; rozproszyły się wszędzie, a w każdym najmniejszym kawałeczku, choćby drobnym jak ziarnko piasku, widać było świat cały szkaradny, śmieszny, wykrzywiony.
+
+**UA:** Замість одного дзеркала тепер їх було мільйони; вони були розкидані скрізь, і в кожному найменшому шматочку, навіть маленькому, як піщинка, можна було побачити весь потворний, смішний, спотворений світ.
+
+**PL:** Jeżeli taki proszek wpadł komu do oka, to człowiek ten wszystko już widział zmienione i nie mógł dostrzec koło siebie nic dobrego, nic pięknego! Za to najgorsze rzeczy widział jasno i wyraźnie, więc wszystko złem było dla niego.
+
+**UA:** Якщо такий порошок потрапляв комусь в око, він бачив, як все змінюється, і не міг бачити навколо себе нічого хорошого і красивого! Проте найстрашніше він бачив чітко й ясно, тому все для нього було злом.
+
+---
+
+**PL:** Gorzej jeszcze, jeżeli okruszyna lustra wpadła komu do serca. Nieszczęśliwy tracił uczucie: serce jego stawało się kawałkiem lodu, nikogo kochać nie mógł, wszyscy byli dla niego obcy, obojętni.
+
+**UA:** Ще гірше, якщо уламок дзеркала потрапить комусь у серце. Нещасна людина втратила всі почуття: її серце стало шматком льоду, він не міг нікого любити, всі були для нього чужими, байдужими.
+
+---
+
+**PL:** Z większych kawałków porobiono szyby, z innych szkła do okularów, a mnóstwo jeszcze krążyło w powietrzu — wiatr je roznosił wciąż dalej i dalej, i naturalnie coraz więcej ludzi stawało się nieszczęśliwymi kalekami.
+
+**UA:** З більших шматків робили вікна, з інших робили скла, а багато з них усе ще ширяли в повітрі — вітер ніс їх усе далі й далі, і, природно, все більше й більше людей ставали нещасними каліками.
+
+---
+
+**PL:** A niegodziwych pyłków ciągle jeszcze pełno i zobaczymy, co z tego wynikło.
+
+**UA:** І ще є багато жахливого пилу, і ми побачимо, що з цього вийде.
+
+---
+
+**PL:** Sąsiedzi
+
+**UA:** Сусіди
+
+---
+
+**PL:** W pewnym bardzo starym mieście, w bardzo wysokim domu na poddaszu mieszkało dwoje dzieci, każde u swoich rodziców — był to Kaj i Gerda.
+
+**UA:** В одному дуже старому місті, в дуже високому будинку на горищі жили двоє дітей, кожен зі своїми батьками - Каєм і Гердою.
+
+---
+
+**PL:** W tym mieście było tyle ludzi, że nie mógł każdy dla siebie mieć osobnego domku, a cóż dopiero myśleć o własnym ogródku. Ale że dobrzy ludzie bardzo lubią kwiaty, więc wszyscy hodowali je w doniczkach. I tym sposobem w każdym prawie oknie był ogródek; ale najładniej było u Kaja i Gerdy.
+
+**UA:** У цьому місті було стільки людей, що кожен не міг мати окремого будинку, не кажучи вже про те, щоб мати власний сад. Але оскільки добрі люди дуже люблять квіти, то всі вирощували їх у горщиках. І таким чином майже кожне вікно мало сад; але Кай і Герда були найкрасивішими.
+
+---
+
+**PL:** Bo posłuchajcie tylko: w tym wysokim domu na poddaszu każda rodzina miała własną izdebkę z dużym oknem, przez które w lecie można było wyjść na dach albo — wcale nie schodząc ze schodów — przejść z jednego mieszkania do drugiego. Można tu było bawić się na płaskim dachu.
+
+**UA:** Бо послухайте тільки: у цьому високому будинку на горищі кожна родина мала свою кімнату з великим вікном, через яке влітку можна було вийти на дах або — не спускаючись сходами — з однієї квартири в іншу. Тут можна грати на плоскому даху.
+
+**PL:** Gdy Gerda wyjrzała oknem, widziała Kaja w izbie naprzeciwko. Kiedy słonko przygrzało, dzieci wybiegały na dach i bawiły się doskonale albo siadały na małych stołeczkach i rozmawiały o wszystkim, co je zajmowało.
+
+**UA:** Коли Герда виглянула у вікно, то побачила Кая в кімнаті навпроти. Коли сонечко пригрівало, діти вибігали на дах і веселилися, або сідали на маленькі табуретки і розмовляли про все, що їх хвилювало.
+
+---
+
+**PL:** Były to bardzo dobre dzieci i kochały się jak brat i siostra.
+
+**UA:** Вони були дуже хорошими дітьми і любили один одного, як брат і сестра.
+
+---
+
+**PL:** Na wiosnę rodzice Kaja i Gerdy ustawiali na brzegu dachu długie skrzynie, napełnione ziemią; w nich zasiewali potrzebne warzywa i wiele pięknych kwiatów. Tak więc kawałek dachu przed oknami zamieniał się w śliczny, maleńki ogródek.
+
+**UA:** Навесні батьки Кая і Герди поставили на край даху довгі ящики, наповнені землею; в них посіяли потрібні овочі та багато гарних квітів. Так шматок даху перед вікнами перетворився на гарний крихітний сад.
+
+---
+
+**PL:** Im mocniej dogrzewało złote słonko, tym piękniej było w ogródku na dachu.
+
+**UA:** Чим більше світило золоте сонце, тим гарніше було в саду на даху.
+
+**PL:** Zielone festony roślin pokrywały drewniane skrzynie i spadały aż na mur domu: różnobarwne powoje otwierały śliczne kielichy pełne rosy; różowy groszek ciekawie wyglądał na wszystkie strony; aksamitne bratki szeroko otwierały wielkie oczy, a drobne stokrotki uśmiechały się wesoło.
+
+**UA:** Зелені фестони рослин вкривали дерев'яні ящики і спадали на стіну будинку: різнокольорові іпомеї відкривали прекрасні чаші, повні роси; рожевий горошок виглядав цікаво з усіх боків; оксамитові братки відкривали великі очі, а крихітні ромашки весело посміхалися.
+
+**PL:** Oprócz tego w każdej skrzyni rósł wysoki różany krzaczek niby drzewko. Na wiosnę stroił się w zielone listki, a już w maju okrywał ślicznymi kwiatami, których woń rozpływała się w powietrzu.
+
+**UA:** Крім того, в кожній коробці був високий кущ троянд, що ріс, як дерево. Навесні він був прикрашений зеленим листям, а вже в травні вкрився прекрасними квітами, запах яких наповнював повітря.
+
+**PL:** Gałązki róż ciekawie zaglądały w okna, szeptały cicho drobnymi listkami i kołysały się lekko pod tchnieniem wietrzyka.
+
+**UA:** Трояндові гілки з цікавістю визирали у вікна, тихо шепотіли своїми крихітними листочками і злегка гойдалися на вітерці.
+
+---
+
+**PL:** Ślicznie tu było w lecie.
+
+**UA:** Влітку тут було красиво.
+
+---
+
+**PL:** Ale w zimie wszystko znikało. Biały śnieg pokrywał dachy, a zamknięte okna często zamarzały; wtedy mróz kładł na nie delikatne białe kwiaty, ale nic przez nie widzieć nie było można. A dzieci chciały się widzieć, chciały ciągle wiedzieć o sobie.
+
+**UA:** Але взимку все зникло. Білий сніг покривав дахи, часто замерзали зачинені вікна; потім мороз поклав на них ніжні білі квіти, але крізь них нічого не було видно. А діти хотіли бачитися, хотіли весь час знати одне про одного.
+
+**PL:** Więc rozgrzewały pieniądz na piecu i kładły go na szybę. Wtedy wśród białych liści i gałązek tworzył się mały i przezroczysty otwór, w którym zaraz mrugnęło śmiejące się oko Kaja albo Gerdy.
+
+**UA:** Тож розігрівали гроші на печі та клали на скло. Тоді серед білого листя та гілок утворилася маленька прозора дірочка, в яку кліпало усміхнене око Кая чи Герди.
+
+---
+
+**PL:** — Pójdź tu do nas! — mówiło oko.
+
+**UA:** — Іди сюди до нас! – мовило око.
+
+---
+
+**PL:** — Dobrze, dobrze!
+
+**UA:** - Добре, добре!
+
+---
+
+**PL:** W lecie tak łatwo było przejść z jednego mieszkania do drugiego, ale w zimie musiały dzieci zbiegać na dół i znów wchodzić na schody tak wysoko! A tam na dole śnieg i wicher!
+
+**UA:** Влітку так легко було потрапити з однієї квартири в іншу, а взимку дітям доводилося бігати вниз і знову так високо по сходах! А там сніг і вітер!
+
+---
+
+**PL:** — Patrz, patrz! Białe pszczoły wyleciały z ula — mówiła stara babka, ukazując wnuczce chwiejące się w powietrzu płatki śniegu.
+
+**UA:** - Дивіться, дивіться! Білі бджоли вилетіли з вулика, — сказала стара, показуючи внучці сніжинки, що коливаються в повітрі.
+
+---
+
+**PL:** — Pszczoły, pszczoły — powtarzała wesoło Gerda. — A czy mają swoją królową?
+
+**UA:** — Бджоли, бджоли, — весело повторювала Герда. — А чи є у них своя королева?
+
+---
+
+**PL:** — Rozumie się, że mają — odpowiedziała babka. — Największy ze wszystkich płatków, a zawsze tam leci, gdzie śnieg najgęściej pada. Jeśli spadnie na ziemię, wzbija się natychmiast znowu ku ciemnym chmurom i nigdy nie spocznie.
+
+**UA:** — Звичайно, — відповіла бабуся. — Найбільший з усіх пластівців, і він завжди летить туди, де найбільше снігу. Якщо воно впаде на землю, то відразу ж знову злетить у темні хмари і не заспокоїться.
+
+**PL:** Czasem przebiega nocą po ulicach miasta i zagląda do okien, a wtedy wyrastają na nich śnieżne kwiaty i brylantowe liście.
+
+**UA:** Іноді він бігає вулицями міста вночі і заглядає у вікна, а на них ростуть снігові квіти і блискуче листя.
+
+---
+
+**PL:** — Tak! Tak! Widzieliśmy! — wołały dzieci, zachwycone słowami babki.
+
+**UA:** - Так! так! Ми бачили! – скрикнули діти, захоплені бабусиними словами.
+
+---
+
+**PL:** — A czy królowa śniegu mogłaby przyjść tutaj? — zapytała Gerda.
+
+**UA:** - Чи могла б сюди завітати снігова королева? – запитала Герда.
+
+---
+
+**PL:** — Ach, niech no tylko przyjdzie! — krzyknął Kaj wesoło. — Posadziłbym ją zaraz przy piecu i roztopiłaby się! Ha, ha, ha!
+
+**UA:** — Ой, хай тільки прийде! – весело вигукнув Кай. — Поставив би її біля печі, і вона розтанула! Ха-ха-ха!
+
+---
+
+**PL:** Babka pogłaskała go lekko po głowie i zaczęła opowiadać co innego.
+
+**UA:** Бабуся легенько погладила його по голові й почала ще щось розповідати.
+
+---
+
+**PL:** Raz wieczorem Kaj już na wpół rozebrany wszedł na stołek i wyjrzał przez okrągły otwór na zamarzniętej szybie.
+
+**UA:** Одного вечора Кай, уже напівроздягнений, виліз на табурет і визирнув крізь круглий отвір у замерзлому вікні.
+
+**PL:** W powietrzu kołysało się mnóstwo płatków śniegu, a jeden bardzo duży uczepił się na brzegu skrzynki kwiatowej, zaczął rosnąć prędko, coraz większy, wyższy, aż stał się cudną panią w długiej, białej szacie z cieniutkiego, przezroczystego muślinu, obsypanej milionami śnieżnych gwiazdek.
+
+**UA:** У повітрі гойдалося багато сніжинок, а одна дуже велика причепилася до краю ящика з квітами і почала швидко рости, ставати більшою та вищою, аж поки не перетворилася на чудову даму в довгому білому халаті з тонкого прозорого мусліну, посипаному мільйонами снігових зірок.
+
+**PL:** Ciało jej było z przezroczystego lodu, białe i połyskujące, a jednak ona żyła. Patrzyła się na Kaja i uśmiechała się do niego, a oczy jej jaśniały jak brylanty. Na koniec skinęła ręką, jak gdyby wzywała go z sobą.
+
+**UA:** Її тіло було зроблено з прозорого льоду, білого й блискучого, але вона була жива. Вона подивилася на Кая й усміхнулася йому, її очі сяяли, як діаманти. Нарешті вона махнула рукою, ніби кликала його з собою.
+
+**PL:** Kaj przeląkł się bardzo, zeskoczył z krzesła i uciekł w głąb izdebki, ale zdawało mu się, że wielki ptak jakiś przeleciał koło okna.
+
+**UA:** Кей дуже злякався, зістрибнув зі стільця і ​​втік до кімнати, але йому здалося, що повз вікно пролетів великий птах.
+
+---
+
+**PL:** Nazajutrz dzień był jasny, pogodny i mroźny, ale wkrótce nastąpiła odwilż, wiatr przyniósł wieść radosną, że wiosna już blisko, słońce dogrzewało mocniej, śniegi zniknęły bez śladu, trawa pozieleniała, pączki zaczęły pękać,
+
+**UA:** Наступний день був яскравим, веселим і морозним, але незабаром настала відлига, вітер приніс радісну звістку, що весна близько, сонце міцнішає, сніг зник безслідно, трава зазеленіла, бруньки почали розпускатися,
+
+**PL:** przyleciały jaskółki do gniazd przeszłorocznych i znowu dzieci siedziały na dachu, w ślicznym, maleńkim, wiszącym ogrodzie.
+
+**UA:** ластівки полетіли до минулорічних гнізд, а діти знову сиділи на даху, у гарному крихітному висячому саду.
+
+---
+
+**PL:** Groszek pachnący spadał w festonach<sup>2</sup> na skrzynie, powoje otwierały śliczne kielichy do słońca, a róże tego roku kwitły bardzo pięknie i drzewka były nimi obsypane.
+
+**UA:** Запашний горошок упав фестонами<sup>2</sup>на ящики, іпомея розкрила сонцю свої гарні чашечки, а троянди цього року дуже гарно зацвіли і вкрили ними дерева.
+
+---
+
+**PL:** Gerda z Kajem siedzieli pod krzaczkiem i śpiewali razem ulubioną swoją piosenkę.
+
+**UA:** Герда і Кай сиділи під кущем і разом співали свою улюблену пісню.
+
+---
+
+**PL:** Co ja kocham na tym świecie?
+
+**UA:** Що я люблю в цьому світі?
+
+---
+
+**PL:** Złote słonko, cudne kwiecie!
+
+**UA:** Сонце золоте, квіти гарні!
+
+---
+
+**PL:** Boże ptaszki śpiewające,
+
+**UA:** Божий спів пташок,
+
+---
+
+**PL:** Jasne rosy, w kwiatach drżące,
+
+**UA:** Ясні роси тремтять у квітах,
+
+---
+
+**PL:** Błękit nieba i obłoki,
+
+**UA:** Синє небо і хмари,
+
+---
+
+**PL:** Cały piękny świat szeroki,
+
+**UA:** Весь прекрасний широкий світ,
+
+---
+
+**PL:** I chatynkę pobielaną,
+
+**UA:** І побілена хата,
+
+---
+
+**PL:** I mateczkę ukochaną! —
+
+**UA:** І моя кохана мама! —
+
+---
+
+**PL:** Wszystko kocham serca biciem,
+
+**UA:** Люблю все серцем,
+
+---
+
+**PL:** A przestanę chyba z życiem.
+
+**UA:** І я, мабуть, перестану жити.
+
+---
+
+**PL:** Razu jednego dzieci siedziały w ogródku i oglądały bardzo ładną książkę z obrazkami, w której były malowane ptaki i zwierzęta. Na wieżowym zegarze zaczęła bić piąta.
+
+**UA:** Одного разу діти сиділи в саду і розглядали дуже гарну книжку з малюнками, на якій були намальовані птахи та тварини. Баштовий годинник почав бити п’яту годину.
+
+---
+
+**PL:** — Aj! — zawołał Kaj nagle. — Coś mnie ukłuło w serce! Coś mi do oka wpadło!
+
+**UA:** -Ой! - раптом вигукнув Кай. — Щось защеміло в серці! Мені щось потрапило в очі!
+
+---
+
+**PL:** — Może ukłuł cię kolec róży? — rzekła troskliwie Gerda. — Czekaj, zobaczę, co ci wpadło w oko! Nic — nic nie ma.
+
+**UA:** — Може, вас шип троянди вколов? – турботливо сказала Герда. — Почекай, подивлюся, що тобі впадає в очі! Нічого - нічого немає.
+
+---
+
+**PL:** — Pewno już wyleciało — rzekł Kaj niecierpliwie i odsunął się od dziewczynki.
+
+**UA:** — Мабуть, уже пішло, — нетерпляче сказав Кай і відійшов від дівчини.
+
+---
+
+**PL:** Niestety, nie wyleciało. Był to właśnie drobniutki pyłek stłuczonego zwierciadła czarodzieja; utkwił mu w oku i zmienił świat cały, nie pozwalając widzieć na nim nic pięknego, nic dobrego. A co gorsza, pyłek taki wpadł mu w serce, które nagle stało się zimne i twarde, przestało czuć i kochać.
+
+**UA:** На жаль, не вийшло. Це була лише крихітна цятка розбитого дзеркала чарівника; воно врізалося йому в око і змінило весь світ, не даючи йому побачити в ньому нічого красивого чи доброго. І що найстрашніше, такий пил упав йому в серце, яке раптом стало холодним і твердим, перестало відчувати і любити.
+
+---
+
+**PL:** — Czegóż beczysz? — zapytał opryskliwie. — Żebyś wiedziała, jaka jesteś brzydka! A jaka śmieszna, ha, ha, ha! Cóż to za zgniła róża? Pfe! I ta szkaradna! Cała ta skrzynia — stare, brzydkie pudło, tylko ją zrzucić z dachu.
+
+**UA:** - Чого ти блеєш? — грубо запитав він. — Якби ти знав, який ти негарний! А як смішно, ха-ха-ха! Що це за гнила троянда? Pfe! А цей гидкий! Весь цей ящик - потворний старий ящик, просто скиньте його з даху.
+
+---
+
+**PL:** Kopnął skrzynię, zerwał różę i rozdeptał.
+
+**UA:** Він штовхнув коробку ногою, зірвав троянду й потоптав її.
+
+---
+
+**PL:** — Kaju! — zawołała z przestrachem dziewczynka.
+
+**UA:** -Каджу! – злякано вигукнула дівчина.
+
+---
+
+**PL:** Widząc jej przerażenie, roześmiał się szkaradnie, zerwał jeszcze jedną różę, rzucił ją i wskoczył do swojego okna.
+
+**UA:** Побачивши її жах, він жахливо засміявся, зірвав ще одну троянду, кинув її і стрибнув у своє вікно.
+
+---
+
+**PL:** Od tej chwili Kaj zmienił się zupełnie. Kiedy Gerda chciała oglądać z nim obrazki, wzruszał ramionami, mówił, że są brzydkie i wyśmiewał się z każdego. W końcu powiedział, że nie chce się z nią bawić, bo jest głupia jak małe dziecko.
+
+**UA:** З цього моменту Кай повністю змінився. Коли Герда хотіла разом з ним подивитися на картинки, він знизав плечима, сказав, що вони потворні, і висміював усіх. Нарешті він сказав, що не хоче з нею гратися, бо вона дурна, як мала дитина.
+
+**PL:** Nawet bajki babuni nie podobały mu się; mówił, że są niedorzeczne, zawsze miał jakieś: ale. Nieraz stawał za staruszką, kładł na nos jej okulary i naśladował jej miny i słowa. Tak samo zaczął naśladować innych i nauczył się wkrótce najbrzydszych grymasów i wykrzywiań.
+
+**UA:** Не любив навіть бабусиних казок; він сказав, що вони смішні, у нього завжди було але. Він часто стояв позаду старенької, одягав їй окуляри на ніс і наслідував її вирази та слова. Він почав так само наслідувати інших і незабаром навчився найпотворніших гримас і звивок.
+
+---
+
+**PL:** W gruncie rzeczy Kaj nic temu nie był winien, tylko szkaradny pyłek szkła czarodziejskiego, które tkwiło mu w sercu. Z tego to powodu nikogo nie kochał i dokuczał Gerdzie, która była dla niego taka dobra.
+
+**UA:** Насправді Кай ні в чому не був винен, лише потворна цятка чарівного скла, яка застрягла в його серці. Тому він нікого не любив і дражнив Герду, яка була такою доброю до нього.
+
+**PL:** Ludzie zaczęli mówić, że Kaj jest złym chłopcem i mieli zupełną słuszność, tylko nie wiedzieli, dlaczego jest taki.
+
+**UA:** Люди почали говорити, що Кай був поганим хлопчиком, і вони були абсолютно праві, але вони не знали, чому він такий.
+
+---
+
+**PL:** Razu jednego w zimie, gdy śnieg padał, przyniósł Kaj na podwórze szkło powiększające i przez nie patrzył na gwiazdki śniegowe, które pokrywały mu ubranie.
+
+**UA:** Одного разу взимку, коли йшов сніг, Кай приніс у двір лупу і подивився через неї на снігові зірки, що вкривали його одяг.
+
+---
+
+**PL:** — Spojrzyj, Gerdo — rzekł — jakie ogromne! Niby kwiaty, niby gwiazdy, a jakie sztuczne! To ciekawsze przecież od kwiatów prawdziwych! Tak równo, doskonale ułożone. Szkoda tylko, że topnieją.
+
+**UA:** «Дивись, Герда, — сказав він, — які величезні! Як квіти, як зірочки, але такі штучні! Це цікавіше, ніж справжні квіти! Такі рівні, чудово складені. Шкода тільки, що вони тануть.
+
+---
+
+**PL:** Nagle pobiegł na górę, przyniósł swoje saneczki i ciepłe rękawice, oznajmił Gerdzie, że idzie pojeździć saneczkami po rynku i natychmiast zniknął za bramą.
+
+**UA:** Раптом він вибіг нагору, приніс сани і теплі рукавички, сказав Герді, що збирається кататися на санях на базарній площі, і відразу ж зник за воротами.
+
+---
+
+**PL:** Na rynku była wesoła zabawa. Chłopcy ślizgali się po śniegu w swoich sankach, najśmielsi przywiązywali je do sań wieśniaków i jechali tym sposobem spory kawałek drogi. A co przy tym śmiechu i wrzawy!
+
+**UA:** На базарній площі було весело. Хлопці ковзали по снігу на санях, найсміливіші прив’язували їх до селянських саней і їхали далеко. А що з того сміху та галасу!
+
+---
+
+**PL:** Wtem wjechały na rynek duże, białe sanie zaprzężone białymi końmi. Osoba siedząca w saniach otulona była w ogromne białe futro, a na głowie miała białą futrzaną czapkę. Sanie dwa razy objechały rynek, a tymczasem udało się Kajowi przywiązać do nich z tyłu swoje małe saneczki.
+
+**UA:** Раптом на ринкову площу виїхали великі білі сани, запряжені білими кіньми. Той, хто сидів у санях, був закутаний у величезну білу шубу і мав на голові білу хутряну шапку. Сани двічі об'їхали ринкову площу, а тим часом Каю вдалося прив'язати до них свої маленькі сани.
+
+**PL:** Teraz pomknął jak strzała po utartej drodze i wyjechał za miasto. Osoba w sankach odwróciła głowę i przyjaźnie uśmiechnęła się do niego.
+
+**UA:** Тепер він, як стріла, помчав по протореній дорозі й покинув місто. Людина в санчатах повернула голову й привітно посміхнулася йому.
+
+---
+
+**PL:** Kaj doznawał wielkiej przyjemności, bo nigdy jeszcze nie jechał tak prędko; nie chciał jednak zanadto oddalić się od miasta i po niejakim czasie pragnął odwiązać swoje sanki. Wtedy osoba w saniach odwróciła się znowu i spojrzała tak przyjaźnie, że Kaj zapomniał o wszystkim.
+
+**UA:** Кай відчув величезне задоволення, бо ніколи раніше не їхав так швидко; але він не хотів надто віддалятися від міста, а через деякий час хотів відв’язати сани. Потім людина в санях знову обернулась і поглянула так привітно, що Кай забув про все.
+
+---
+
+**PL:** I tak powtórzyło się parę razy.
+
+**UA:** І так було кілька разів.
+
+---
+
+**PL:** Śnieg zaczął padać gęsty, pociemniało, Kaj nie widział już nic dookoła prócz kręcących się białych płatków. Puścił sznurek, aby odczepić swoje sanki, ale one jak gdyby przymarzły do wielkich, mknęły jak wiatr za nimi, dalej, dalej, dalej!
+
+**UA:** Сніг почав густо падати, стало темно, Кай уже не бачив нічого навколо, крім білих пластівців, що кружляли. Він відпустив мотузку, щоб відчепити сани, але вони ніби примерзли до великих саней, бігли, як вітер за ними, далі, далі, далі!
+
+**PL:** Kaj krzyknął przerażony, ale nikt mu nie odpowiedział, jakby go nikt nie słyszał. Sanki pędziły ciągle, a śnieg sypał, nic już widać nie było. Chwilami uderzały się o coś gwałtownie, to znów spadały na dół, przeskakiwały jakieś nieznane przeszkody i sunęły po białej drodze w świat nieznany.
+
+**UA:** Кай скрикнув від страху, але ніхто йому не відповів, наче ніхто його не чув. Сани ще мчали, а сніг падав, тож нічого не було видно. То вони сильно вдарялися об щось, то знову падали, перестрибували через якісь невідомі перешкоди і ковзали білою дорогою в невідомий світ.
+
+---
+
+**PL:** Kaj chciał się przeżegnać, zmówić pacierz, lecz w żaden sposób przypomnieć sobie nie mógł słów Ojcze nasz i przychodziła mu na myśl tylko tabliczka mnożenia.
+
+**UA:** Кай хотів перехреститися і помолитися, але не міг пригадати слова «Отче наш», і все, про що він міг думати, — це таблиця множення.
+
+---
+
+**PL:** Płatki śniegu padały coraz większe, wyglądały na koniec niby białe ptaszki. Zdawało mu się, że dookoła niego biegną gołębie, kury, gęsi — całym tłumem.
+
+**UA:** Сніжинки падали все більші й більші, нарешті стали схожими на білих птахів. Йому здавалося, що навколо нього бігають голуби, кури, гуси — ціла юрба.
+
+---
+
+**PL:** Naraz konie stanęły, sanie się zatrzymały, a siedząca w nich osoba podniosła się i Kaj spostrzegł, że futro jej i czapka były ze śniegu. Była to wysoka dama, wysmukła, olśniewającej białości: królowa śniegu!
+
+**UA:** Раптом коні зупинилися, сани зупинилися, і той, хто в них сидів, підвівся, і Кай помітив, що її шуба і шапка зроблені зі снігу. Це була висока жінка, струнка, сліпучо-біла: снігова королева!
+
+---
+
+**PL:** — Dobrze jedziemy! — rzekła. — Ale po co masz tam marznąć? Chodź pod moje niedźwiedzie.
+
+**UA:** - Гаразд, ходімо! сказала вона. — Та чого тобі там мерзнути? Ходи під моїх ведмедів.
+
+---
+
+**PL:** Posadziła go w saniach obok siebie, nakryła białym futrem, a jemu się zdawało, że zapada w górę śnieżną.
+
+**UA:** Посадила його до себе в сани, вкрила білим хутром, і йому здавалося, що він тоне в снігову гору.
+
+---
+
+**PL:** — Jeszcze ci zimno? — rzekła i pocałowała go w czoło.
+
+**UA:** -Тобі ще холодно? – сказала вона і поцілувала його в чоло.
+
+---
+
+**PL:** Huu! Jakiż to był zimny pocałunek! Uczuł lód aż w głębi serca, które — jak wiemy — już miał na wpół zlodowaciałe; przez mgnienie oka zdawało mu się, że umiera, ale to minęło bardzo prędko i zrobiło mu się lepiej. Nie czuł już wcale zimna.
+
+**UA:** ого! Який це був холодний поцілунок! Він відчував лід глибоко в серці, яке - як ми знаємо - було вже напівмерзле; на мить ока він подумав, що помирає, але це дуже швидко пройшло, і йому стало легше. Він уже зовсім не відчував холоду.
+
+---
+
+**PL:** — Moje saneczki! Moje saneczki! — zawołał z wielką trwogą, aby nie stracić ulubionej zabawki. Więc rzucono sznurek od nich białej kurze, aby biegła obok, ciągnąc je za sobą.
+
+**UA:** - Мої сани! Мої санки! - заплакав він з великим страхом, щоб не втратити улюблену іграшку. Тож вони кинули з них шнурок білій курці, щоб вона бігла поруч, тягнучи їх за собою.
+
+---
+
+**PL:** Królowa śniegu pochyliła się nad Kajem i pocałowała go powtórnie, a w tej chwili chłopiec zapomniał już o wszystkim: o rodzicach, domu, babce i Gerdzie.
+
+**UA:** Снігова королева схилилася над Каєм і знову поцілувала його, і в цю мить хлопчик забув про все: про батьків, про дім, про бабусю та Герду.
+
+---
+
+**PL:** Teraz nie bał się wcale pięknej pani, nie wydawała mu się straszna. Opowiadał jej, co umie, o jakich się uczył krajach i miastach, jak wybornie liczy na pamięć — a ona uśmiechała się do niego.
+
+**UA:** Тепер він зовсім не боявся красуні, вона не здавалася йому страшною. Він розповів їй, що він знає, про які країни та міста він дізнався, яка у нього чудова пам'ять, - і вона посміхнулася йому.
+
+---
+
+**PL:** Wreszcie wzięła go na ręce i wzleciała z nim razem wysoko, wysoko, ku ciemnym chmurom, które szarpał wiatr świszczący.
+
+**UA:** Нарешті вона взяла його на руки і полетіла з ним високо-високо, назустріч темним хмарам, які роздирав свист вітру.
+
+---
+
+**PL:** Przelatywali ponad ciemnymi lasami, nad górami, morzami i lądami. Zimny wicher huczał pod nimi w przepaściach, biały śnieg połyskiwał, wyły wilki głodne, krakały stada czarnych kruków — a ponad nimi świecił jasny księżyc.
+
+**UA:** Летіли над темними лісами, над горами, морями і землями. Холодний вітер шумів у проваллях під ними, блищав білий сніг, вили голодні вовки, каркали зграї чорних круків — а над ними світив яскравий місяць.
+
+---
+
+**PL:** I tak płynęła długa noc zimowa, a gdy nastąpił ranek, Kaj spał u nóg królowej śniegu.
+
+**UA:** І ось минула довга зимова ніч, а коли настав ранок, Кай заснув біля ніг снігової королеви.
+
+---
+
+**PL:** W ogródku wróżki
+
+**UA:** У садочку чарівниці
+
+---
+
+**PL:** Jakże smutno i strasznie było biednej Gerdzie, kiedy wieczorem Kaj nie wrócił do domu!
+
+**UA:** Як сумно і страшно було бідній Герді, коли Кай не прийшов увечері додому!
+
+---
+
+**PL:** Nikt nie wiedział, gdzie się podział i co się z nim stało. Chłopcy opowiadali, że jeździł po rynku, a potem swoje saneczki uczepił do wielkich sań, które pomknęły za miasto. Tyle go widziano.
+
+**UA:** Ніхто не знав, де він і що з ним сталося. Хлопці розповіли, що він катався по базарній площі, а потім причепив свої сани до великих саней, які їхали за місто. Його так багато бачили.
+
+---
+
+**PL:** Płakali rodzice, babka i Gerda, bo myśleli, że z mostu zsunął się w rzekę i utonął. Gerda płakała gorzko całą zimę.
+
+**UA:** Його батьки, бабуся і Герда плакали, бо думали, що він скотився з мосту в річку і потонув. Герда всю зиму гірко плакала.
+
+---
+
+**PL:** Wreszcie nadeszła wiosna, zajaśniało piękne słoneczko.
+
+**UA:** Нарешті прийшла весна і засяяло гарне сонечко.
+
+---
+
+**PL:** — Kaj nie żyje! — rzekła do niego Gerda.
+
+**UA:** - Кай мертвий! – сказала йому Герда.
+
+---
+
+**PL:** — Albo to prawda! — odpowiedziało słońce.
+
+**UA:** — Або це правда! – відповіло сонечко.
+
+---
+
+**PL:** Powróciły jaskółki do gniazd zeszłorocznych.
+
+**UA:** Ластівки повернулися до минулорічних гнізд.
+
+---
+
+**PL:** — Kaj nie żyje! — oznajmiła im Gerda.
+
+**UA:** - Кай мертвий! – сказала їм Герда.
+
+---
+
+**PL:** — Nieprawda! — odpowiedziały jaskółki.
+
+**UA:** - Це неправда! – відповіли ластівки.
+
+---
+
+**PL:** A wtedy i Gerda przestała w to wierzyć.
+
+**UA:** А потім і Герда перестала в це вірити.
+
+---
+
+**PL:** — Włożę czerwone buciki, których Kaj jeszcze nie widział i pójdę do rzeki zapytać o niego — pomyślała pewnego ranka.
+
+**UA:** - Взутиму червоні черевики, яких Кай ще не бачила, і піду до річки, щоб спитати про нього, - подумала вона одного ранку.
+
+---
+
+**PL:** Było bardzo wcześnie, ale wstała zaraz, ubrała się cichutko, żeby nie obudzić babki, włożyła swoje czerwone buciki, leciuchno pocałowała babunię i pobiegła do rzeki.
+
+**UA:** Було дуже рано, але вона відразу встала, тихенько одяглася, щоб не розбудити бабусю, взула червоні черевички, легенько поцілувала бабусю і побігла до річки.
+
+---
+
+**PL:** — Czy to prawda, że zabrałaś mi mojego Kaja? — zapytała niespokojnie. — Oddaj mi go, a dam ci śliczne czerwone buciki.
+
+**UA:** — Це правда, що ти забрав у мене мій Кай? — стурбовано спитала вона. - Поверни мені це, і я дам тобі гарненькі червоні черевички.
+
+---
+
+**PL:** Zdawało jej się, że fale zaszemrały jakoś dziwnie, jakby się zgadzały na ten układ. Więc co prędzej zdjęła buciki, śliczne, ukochane, czerwone buciki i rzuciła je w wodę.
+
+**UA:** Їй здалося, що хвилі якось дивно дзюрчать, ніби погоджуються на цю домовленість. Тому вона швидко зняла свої черевички, свої гарні, улюблені червоні черевички, і кинула їх у воду.
+
+---
+
+**PL:** Buciki upadły niedaleko, a fala wyniosła je na brzeg z powrotem. Rzeka nie chciała przyjąć tej ofiary, gdyż nie mogła oddać Kaja, lecz Gerda inaczej to sobie tłumaczyła.
+
+**UA:** Туфлі впали неподалік, і хвиля віднесла їх назад на берег. Річка не хотіла приймати цю жертву, бо не могла повернути Кай, але Герда пояснила це інакше.
+
+**PL:** Zdawało jej się, że za blisko brzegu wrzuciła trzewiczki i aby je rzucić dalej, weszła do małego czółenka, które kołysało się na wodzie. Poszła na przeciwny koniec łódki i rzuciła buciki z całej siły, jak tylko mogła najdalej.
+
+**UA:** Їй здалося, що вона кинула туфлі занадто близько до берега, і, щоб закинути їх далі, вона сіла в маленький човен, який гойдався у воді. Вона підійшла до протилежного кінця човна і кинула туфлі якомога далі.
+
+**PL:** Tak idąc i poruszając się, mimowolnie chwiała czółenkiem, które nie było przywiązane i zaczęło oddalać się od brzegu. Gerda spostrzegła to i chciała wyskoczyć, lecz była już za daleko. Łódka, porwana prądem, szybko płynęła z biegiem wody.
+
+**UA:** Йдучи й рухаючись, вона мимоволі розгойдала неприв’язаний човен і почала віддалятися від берега. Герда помітила це і хотіла вискочити, але була вже надто далеко. Човен, віднесений течією, швидко плив по воді.
+
+---
+
+**PL:** Wtedy Gerda przelękła się bardzo i zaczęła głośno płakać. Ale nikt jej nie słyszał, tylko gromadka wróbli, które nie mogły dopomóc jej w niczym. Biegły jednak wzdłuż brzegu, jakby ją chciały pocieszyć i wołały bezustannie:
+
+**UA:** Тоді Герда дуже злякалася і почала голосно плакати. Але її ніхто не чув, лише зграя горобців, які нічим не могли їй допомогти. Але вони бігли по березі, ніби хотіли її втішити, і весь час гукали:
+
+---
+
+**PL:** — Ćwir! Ćwir! Ćwir! Jesteśmy tutaj! Nie bój się! Jesteśmy tutaj.
+
+**UA:** - Крути! Закрутіть! Закрутіть! ми тут! Не бійся! ми тут
+
+---
+
+**PL:** I Gerda uspokoiła się powoli. Czółenko płynęło z prądem, a ona siedziała cichutko, w samych pończoszkach i patrzyła w wodę. Czerwone trzewiczki płynęły za łódką, lecz nie mogły jej dogonić, ponieważ prąd bardzo szybko ją unosił.
+
+**UA:** І Герда поволі заспокоїлася. Човен плив за течією, а вона тихо сиділа в панчохах і дивилася у воду. Червоні черевички попливли за човном, але не змогли його наздогнати, бо течія дуже швидко віднесла.
+
+---
+
+**PL:** Prześlicznie wyglądały brzegi rzeki; na zielonych, kwiecistych łąkach pasły się stada owiec, krowy poważnie skubały świeżą, soczystą paszę, stare drzewa rozwijały młode listki, wszystko uśmiechało się w blasku słonecznym.
+
+**UA:** Береги річки виглядали красивими; на зелених квітчастих луках паслися отари овець, корови поважно клювали свіжий, соковитий корм, старі дерева розгортали молоде листя, все усміхалося в сонячному світлі.
+
+---
+
+**PL:** — Może mnie rzeka zaniesie do Kaja — pomyślała Gerda i przestała się smucić. Usiadła na ławeczce i patrzyła długo na zielone brzegi, które przesuwały się przed nią.
+
+**UA:** - Може, річка занесе мене в Кай, - подумала Герда і перестала сумувати. Вона сіла на лавку і довго дивилася на зелені береги, що пропливали перед нею.
+
+**PL:** Właśnie ujrzała wielki sad wiśniowy, pełen kwitnących drzew, a między nimi malutki domek pod słomianą strzechą<sup>3</sup>, z czerwonymi, żółtymi i niebieskimi okienkami. Dwóch drewnianych żołnierzy stało przed ganeczkiem z bronią w ręku.
+
+**UA:** Вона щойно побачила великий вишневий сад, повний квітучих дерев, а між ними крихітний будиночок із солом’яним дахом<sup>3</sup>з червоними, жовтими та синіми вікнами. Перед ґанком зі зброєю в руках стояли два дерев'яних солдатика.
+
+---
+
+**PL:** Gerda pomyślała, że to żywi ludzie i wołała ratunku, ale naturalnie nikt jej nie odpowiedział. Prąd niósł ją prosto do brzegu, więc zaczęła znów wołać jeszcze głośniej.
+
+**UA:** Герда подумала, що це живі люди, і кричала про допомогу, але їй, звичайно, ніхто не відповів. Течія віднесла її просто до берега, і вона знову почала кликати, ще голосніше.
+
+---
+
+**PL:** Wtem drzwi domku się otworzyły i wyszła z niego zgarbiona staruszka, podpierając się kijkiem i drepcząc ku furtce. Na głowie miała duży słomiany kapelusz, pomalowany w bardzo piękne kwiaty.
+
+**UA:** Раптом двері в хату відчинилися і звідти вийшла зігнута стара жінка, спираючись на палицю, крокувала до воріт. На голові у неї був великий солом'яний капелюх, розписаний дуже гарними квітами.
+
+---
+
+**PL:** — Ach, biedne dziecko! — zawołała stara. — Skądże się wzięłaś na tej bystrej rzece, która cię tak daleko w świat uniosła?
+
+**UA:** - Ой, бідна дитина! – вигукнула стара. - Звідки ти взявся на цій бистрій річці, що понесла тебе так далеко у світ?
+
+---
+
+**PL:** Drepcząc prędko, staruszka zbliżyła się do brzegu, zaczepiła o czółno swoim zakrzywionym kijkiem i przyciągnęła je do lądu. Podała dziewczynce rękę i pomogła jej wyskoczyć na ziemię.
+
+**UA:** Швидко рухаючись, стара жінка підійшла до берега, зачепила каное своєю кривою палицею й потягла його до берега. Вона подала дівчині руку і допомогла зіскочити на землю.
+
+---
+
+**PL:** Ach, jak przyjemnie zrobiło się Gerdzie, gdy znów uczuła pod nogami twardą ziemię! Bała się jednak trochę nieznajomej staruszki.
+
+**UA:** О, як приємно стало Герді, коли вона знову відчула тверду землю під ногами! Проте незнайомої старенької вона трохи боялася.
+
+---
+
+**PL:** — Kto jesteś, moje dziecko i skąd się tu wzięłaś? — pytała znów kobieta, uważnie patrząc na dziewczynkę.
+
+**UA:** — Хто ти, дитино моя, і звідки взявся? – знову запитала жінка, уважно дивлячись на дівчину.
+
+---
+
+**PL:** Wtedy Gerda opowiedziała jej wszystko i pytała, czy nie wie co o Kaju.
+
+**UA:** Потім Герда все розповіла їй і запитала, чи знає вона щось про Кая.
+
+---
+
+**PL:** Staruszka nie wiedziała, ale była tego zdania, że Kaj może się znaleźć, a tymczasem zaprosiła dziewczynkę do ogródka, pozwoliła jej zrywać kwiaty i jeść wiśnie, żeby tylko nie była smutna.
+
+**UA:** Стара не знала, але вірила, що Кай можна знайти, а тим часом запросила дівчину в садок, дозволила їй рвати квіти та їсти черешні, щоб вона не сумувала.
+
+---
+
+**PL:** Potem weszły do domku. Przez wysokie okienka czerwone, żółte i niebieskie, dziwne światło wpadało do izdebki. Na stole w dużych koszach stały prześliczne wiśnie, a staruszka pozwoliła jeść Gerdzie, ile tylko zechce.
+
+**UA:** Потім вони зайшли в котедж. Крізь високі червоно-жовто-сині вікна до кімнати проникало дивне світло. На столі стояли гарні вишні у великих кошиках, і стара дозволяла Герді їсти скільки завгодно.
+
+---
+
+**PL:** Wiśnie były wyborne, Gerda głodna, więc jadła, uśmiechając się z zadowolenia. Staruszka złotym grzebieniem czesała jej złote włosy.
+
+**UA:** Вишні були смачні, Герда була голодна, тому їла, задоволено посміхаючись. Розчесала стара золотим гребінцем своє золоте волосся.
+
+**PL:** Czesała je długo, długo, w dziwnym blasku czerwonych i niebieskich szybek, a Gerda zapominała o Kaju, babce i rodzicach, bo grzebień był zaczarowany, staruszka ta zaś była wróżką.
+
+**UA:** Вона довго розчісувала його в дивному сяйві червоно-синього скла, і Герда забула про Кая, свою бабусю та батьків, тому що гребінець був зачарований, а стара була феєю.
+
+---
+
+**PL:** — Dawno już mieć pragnęłam taką miłą, dobrą dziewczynkę — mówiła łagodnym głosem — zobaczysz, jak ci u mnie dobrze będzie.
+
+**UA:** «Я давно хотіла мати таку гарну, добру дівчинку, — сказала вона ніжним голосом, — ось побачиш, як тобі буде добре.
+
+---
+
+**PL:** Potem Gerda została w izdebce, a staruszka wyszła sama do ogródka, dotknęła swoim kijem każdego krzaczka różanego i wszystkie natychmiast zapadły się w ziemię. Zrobiła to dlatego, ażeby Gerda na widok róż nie przypomniała sobie Kaja.
+
+**UA:** Тоді Герда залишилася в кімнаті, а стара вийшла сама в сад, торкнулася палицею до кожного кущика троянд, і всі відразу ж опустилися на землю. Вона зробила це для того, щоб Герда не згадала Кая, побачивши троянди.
+
+---
+
+**PL:** Teraz dziewczynka wybiegła także do ogródka. Ach, jak tu było ślicznie i przyjemnie! Tyle kwiatów, a każdy inny! Tyle barw, blasku, woni. Prawdziwie był to czarodziejski ogród: rosły w nim wszystkie kwiaty, jakie tylko są na świecie i wszystkie kwitły jednocześnie.
+
+**UA:** Тепер і дівчина вибігла в сад. Ох, як тут було гарно і приємно! Так багато квітів, кожна різна! Стільки кольорів, блиску, запахів. Це був справді чарівний сад: у ньому росли всі квіти світу, і всі вони розцвіли одночасно.
+
+**PL:** Gerda biegała pomiędzy grządkami, śmiała się i śpiewała, dopóki słońce nie skryło się poza wielką, starą wiśnię. Wtedy położyła się spać w czystym łóżeczku, na czerwonej jedwabnej poduszeczce, na której wyhaftowane były piękne, błękitne fiołki.
+
+**UA:** Герда бігала між клумбами, сміючись і співаючи, поки сонце не сховалося за великою старою вишнею. Потім лягла спати в чистому ліжку, на червоній шовковій подушці з вишитими на ній гарними синіми фіалками.
+
+**PL:** Zasnęła też spokojnie, jak królewna, a w nocy śniła sny słodkie i miłe.
+
+**UA:** Вона теж заснула спокійно, як царівна, і вночі їй снилися солодкі та приємні сни.
+
+---
+
+**PL:** Nazajutrz z rana obudziła się wesoło i bawiła znowu cały dzień w ogródku, wśród najpiękniejszych kwiatów, w ciepłym blasku słońca — i tak upływały dni jeden po drugim.
+
+**UA:** Наступного ранку вона прокинулася весела і знову весь день гралася в саду, серед найгарніших квітів, під теплим сонячним промінням - і так минали дні один за одним.
+
+---
+
+**PL:** Gerda znała teraz wszystkie kwiatki, ale chociaż miała ich tutaj tak wiele, ciągle jej się zdawało, że jeszcze jakiegoś brakuje. Tylko nie mogła sobie przypomnieć którego.
+
+**UA:** Тепер Герда знала всі квіти, але, хоча їх у неї було так багато, їй усе одно здавалося, що деяких бракує. Вона просто не могла пригадати, який саме.
+
+---
+
+**PL:** Wtem raz na słomianym kapeluszu wróżki spostrzegła malowaną różę. Zdziwiona i szczęśliwa, zaczęła natychmiast szukać w ogródku kochanego kwiatka: rozglądała się wokoło, pochylała nad grządkami, lecz ani jednej różyczki nie było.
+
+**UA:** Раптом вона помітила намальовану троянду на солом’яному капелюшку феї. Здивована й щаслива, вона відразу почала шукати свою улюблену квітку в саду: озирнулася, схилилася над грядками, а там жодної троянди.
+
+---
+
+**PL:** Wówczas gorzko płakać zaczęła. Jej łzy gorące padały na ziemię i przesiąkły przez nią, aż zwilżyły ukryty w tym miejscu krzak róży. I nagle cudny, świeży, okryty wonnym kwieciem, wystrzelił znów nad ziemię, a Gerda objęła go rączkami, pieściła i całowała śliczne róże.
+
+**UA:** Тоді вона почала гірко плакати. Її гарячі сльози падали на землю і просочувалися наскрізь, аж поки не зволожили захований там трояндовий кущ. І раптом чудова, свіжа квітка, вкрита пахощами, знову знялася над землею, і Герда обняла її руками, пестила і цілувала прекрасні троянди.
+
+**PL:** I przypomniała sobie tamten krzaczek na poddaszu i przypomniała sobie znowu Kaja.
+
+**UA:** І вона згадала той кущ на горищі і знову згадала Каю.
+
+---
+
+**PL:** — Och, jakże dawno ja tu jestem! — zawołała. — A miałam szukać Kaja. Moje śliczne różyczki, czyż nie wiecie, gdzie on się podział? Czy myślicie, że umarł?
+
+**UA:** — Ой, як давно я тут не був! — вигукнула вона. — А я мав шукати Кая. Мої гарненькі трояндочки, ви не знаєте, куди він подівся? Ви думаєте, він мертвий?
+
+---
+
+**PL:** — O, nie! — odparły róże. — Byłyśmy przecie pod ziemią, tam go nie ma.
+
+**UA:** - О ні! – відповіли троянди. — Ми були під землею, його немає.
+
+---
+
+**PL:** — Dziękuję wam — zawołała uszczęśliwiona Gerda i pobiegła do innych kwiatków, aby się czegoś o Kaju dowiedzieć.
+
+**UA:** - Дякую, - радісно вигукнула Герда і побігла до інших квітів, щоб дізнатися щось про Кая.
+
+---
+
+**PL:** Lecz daremnie pytała. Kwiatki uśmiechały się wszystkie do słońca i śpiewały mu swoje pieśni i opowiadały mu swoje powieści, które podobały się bardzo dziewczynce, lecz o Kaju nie dowiedziała się niczego.
+
+**UA:** Але вона даремно просила. Квіти всі посміхалися сонечку і співали йому свої пісні і розповідали свої романи, які дуже подобалися дівчині, але вона нічого не дізналася про Кая.
+
+---
+
+**PL:** — Na próżno je pytam — pomyślała wreszcie. — One kochają tylko swoje powieści i pieśni, nie mam tu na co czekać.
+
+**UA:** «Даремно я їх прошу», — подумала вона нарешті. — Вони люблять тільки свої романи та пісні, мені тут нема чого чекати.
+
+---
+
+**PL:** Podniosła spódniczkę, aby lepiej biec mogła i pośpieszyła do furtki.
+
+**UA:** Вона підняла спідницю, щоб краще бігти, і поспішила до воріт.
+
+---
+
+**PL:** Ale furtka zamknięta była na klucz. Wtedy zaczęła mocno szarpać klamkę, aż zardzewiały zamek ustąpił pod naciskiem i drzwi się otworzyły. Gerda wyszła prędko i bosymi nóżkami biegła co tchu po twardej, kamienistej drodze, obawiając się pogoni.
+
+**UA:** Але ворота були замкнені. Тоді вона почала щосили смикати дверну ручку, аж поки іржавий замок не здав під тиском і двері відчинилися. Герда швидко пішла й побігла босоніж якнайшвидше по твердій кам’янистій дорозі, боячись, що її погонять.
+
+**PL:** Trzy razy obejrzała się za siebie, a nie widząc nikogo, usiadła na chwilę na wielkim kamieniu, kiedy jej sił zabrakło.
+
+**UA:** Вона тричі озирнулася за спину і, нікого не побачивши, сіла на мить на великий камінь, коли її сили закінчилися.
+
+---
+
+**PL:** Teraz dopiero obejrzała się dokoła: lato minęło dawno, późna jesień była na świecie, powiędły kwiaty i pożółkły łąki, ale w ogrodzie wróżki, gdzie kwiaty kwitną wiecznie, nic o tym nie wiedziała.
+
+**UA:** Аж тепер вона озирнулася: давно минуло літо, настала пізня осінь, квіти зів’яли й пожовтіли луги, але в казковому саду, де вічно цвітуть квіти, вона нічого про це не знала.
+
+---
+
+**PL:** — Boże! Boże! Ileż ja czasu straciłam — narzekała Gerda. — Oto już późna jesień, trzeba spieszyć bardzo, zanim zima powróci.
+
+**UA:** - Господи! Бог! «Скільки часу я згаяла, — скаржилася Герда. — Вже пізня осінь, треба поспішати, поки зима не повернулася.
+
+---
+
+**PL:** I wstała, by iść dalej.
+
+**UA:** І вона встала, щоб йти далі.
+
+---
+
+**PL:** Szła bosymi nóżkami po kamienistej drodze, a dokoła było smutno i ponuro. Czuła wielkie zmęczenie, ale się nie zatrzymywała. Z wierzb przydrożnych padały długie, żółte liście lub ciężkie krople chłodnej rosy. Na tarninowych krzakach były jeszcze jagody, ale tak cierpkie, że wykrzywiały usta.
+
+**UA:** Вона йшла босоніж по кам'янистій дорозі, і все навколо було сумно і похмуро. Вона відчувала сильну втому, але не зупинялася. З верб при дорозі падало довге жовте листя чи важкі краплі прохолодної роси. На кущах терну ще були ягоди, але такі терпкі, що від них аж рота скривило.
+
+---
+
+**PL:** Szaro i smutno było na szerokim świecie, otulonym w szare, ciężkie, ołowiane chmury.
+
+**UA:** Сіро й сумно було в широкому світі, оповитому сірими, важкими, свинцевими хмарами.
+
+---
+
+**PL:** U księżniczki
+
+**UA:** У принцеси
+
+---
+
+**PL:** Długo szła tak Gerda, w końcu zmęczyła się bardzo i usiadła znowu pod drzewem. Właśnie pierwszy śnieg pokrył ziemię i bose nożyny dziewczynki poczerwieniały z zimna. Wtem tuż przed nią stanęła duża, szara wrona: popatrzyła na nią, pokręciła łebkiem, podleciała w prawo i w lewo i zawołała: „Kra!
+
+**UA:** Довго так йшла Герда, нарешті дуже втомилася й знову сіла під ялинку. Щойно випав перший сніг, і босі ноги дівчини червоніли від холоду. Раптом перед нею стала велика сіра ворона: глянула на неї, похитала головою, літала праворуч і ліворуч і гукала: «Корова!
+
+**PL:** Kra!”
+
+**UA:** Флоу!"
+
+---
+
+**PL:** Znaczyło to: „Dzień dobry, kochana dziewczynko, musisz być bardzo biedna, kiedy w takie zimno sama idziesz w świat szeroki. Gdzież ty idziesz, dziewczynko? Czego szukasz?”
+
+**UA:** Це означало: «Доброго ранку, люба дівчинко, ти, мабуть, дуже бідна, коли сама в такий мороз ідеш у широкий світ. Куди ти йдеш, дівчинко? Чого шукаєш?»
+
+---
+
+**PL:** Gerda zrozumiała, co chce powiedzieć wrona i tak jej była wdzięczna za współczucie, tak się jej ciepło zrobiło w serduszku, że natychmiast opowiedziała jej całą historię i spytała zarazem, czy nic nie wie o Kaju.
+
+**UA:** Герда зрозуміла, що хотіла сказати ворона, і була настільки вдячна за її співчуття, її серце стало таким теплим, що вона негайно розповіла їй всю історію і запитала, чи знає вона щось про Кая.
+
+---
+
+**PL:** Wrona kręciła łebkiem w zamyśleniu, podlatywała na prawo i lewo i powtarzała jak gdyby do siebie:
+
+**UA:** Ворон задумливо похитав головою, літав ліворуч і праворуч і повторював, наче сам собі:
+
+---
+
+**PL:** — A może? A być może? A kto wie? Kto wie? Kto wie?
+
+**UA:** — А може? А може? А хто знає? хто знає хто знає
+
+---
+
+**PL:** — Widziałaś go! — zawołała uszczęśliwiona Gerda i zaczęła całować i ściskać wronę tak gwałtownie, że o mało jej nie udusiła.
+
+**UA:** - Ти бачив його! — радісно вигукнула Герда і почала цілувати й обіймати ворону так люто, що ледь не задушила її.
+
+---
+
+**PL:** — Spokojnie! Spokojnie! — powtarzała wrona. — Powiedziałam: kto wie! Może — może! — ale on dawno zapomniał o tobie. I przy tym tak mi trudno mówić twoim językiem. Co innego, gdybyś mogła rozmawiać ze mną po wroniemu, wtedy bym ci dokładnie opowiedziała wszystko.
+
+**UA:** - Розслабся! Розслабся! – повторила ворона. — Я сказав: хто його знає! Можливо – можливо! — але він давно забув про вас. І мені так важко розмовляти твоєю мовою. Було б інакше, якби ти міг поговорити зі мною вороною, тоді я б тобі все докладно розповів.
+
+---
+
+**PL:** — Ach, nie umiem! — z żalem szepnęła Gerda. — Babka umiała dobrze, ale się nie nauczyłam. Czemuż się nie nauczyłam!
+
+**UA:** - Ой, не можу! – з жалем прошепотіла Герда. — Бабуся добре знала, а я не навчився. Чому я не навчився!
+
+---
+
+**PL:** — Kra! Kra! Nic nie szkodzi — rzekła wrona. — I tak się rozumiemy. Będę mówiła, jak potrafię.
+
+**UA:** - Кра! Флоу! Байдуже, сказала ворона. — І так ми розуміємо один одного. Я буду говорити як зможу.
+
+---
+
+**PL:** I zaczęła opowiadać:
+
+**UA:** І почала говорити:
+
+---
+
+**PL:** — W tym państwie, gdzie jesteśmy, rządzi bardzo mądra, bardzo mądra księżniczka. Razu jednego przyszło jej do głowy, aby sobie wybrać męża. Ale chciała takiego męża, który by umiał odpowiadać na wszystkie jej pytania, a nie nudnego mruka, co się odezwać nie umie i tylko udaje pana.
+
+**UA:** — У цій країні, де ми є, править дуже мудра, дуже мудра принцеса. Одного разу їй спало на думку вибрати чоловіка. Але вона хотіла чоловіка, який міг би відповісти на всі її запитання, а не нудного буркуна, який не міг говорити і лише прикидався чоловіком.
+
+**PL:** Gdy powiedziała o tym swoim damom dworu, ucieszyły się wszystkie i wychwalały ją za ten mądry pomysł. Wtedy ogłoszono w gazetach, że każdy młodzieniec, który pragnie się ożenić z księżniczką, może przyjść do pałacu, a jeśli potrafi odpowiedzieć na jej pytania, może zostać jej mężem.
+
+**UA:** Коли вона розповіла про це своїм фрейлінам, вони всі зраділи і похвалили її за цю мудру ідею. Тоді в газетах оголосили, що будь-який молодий чоловік, який бажає одружитися з принцесою, може прийти до палацу, і якщо він зможе відповісти на її запитання, він може стати її чоловіком.
+
+---
+
+**PL:** Oj, żebyś wiedziała, co się wtedy działo, jakie tłumy cisnęły się do zamku! Ale cóż, nikomu jakoś się nie wiodło. Na ulicy wszyscy rozmawiali głośno, kłócili się, krzyczeli, obracali językami, jakby mieli za to obiecaną nagrodę, ale ktokolwiek minął zamkowe podwórze, zobaczył straż wspaniałą,
+
+**UA:** О, якби ви знали, що тоді діялося, які натовпи рвалися до замку! Але добре, ні в кого не було добре. На вулиці всі голосно розмовляли, сперечалися, кричали, крутили язиками, наче їм обіцяли за це винагороду, але хто проходив мимо замкового двору, бачив пишну варту,
+
+**PL:** postrojoną służbę, wielką tronową salę i piękną księżniczkę, zapominał języka w gębie, stawał jak słup niemy i zamiast odpowiedzi, powtarzał pytania księżniczki. To naturalnie było bardzo nudne, więc żadnego wybrać nie chciała.
+
+**UA:** прикрашені слуги, великий тронний зал і прекрасна принцеса, він забув свій язик, став мов німий стовп і замість відповіді повторював питання принцеси. Природно, це було дуже нудно, тому вона не хотіла вибирати жодного.
+
+---
+
+**PL:** — A Kaj? — przerwała nieśmiała Gerda.
+
+**UA:** - А Кай? – сором’язливо перебила Герда.
+
+---
+
+**PL:** — Otóż właśnie, moja kochana, dwa dni tak upłynęły, aż trzeciego przyszedł pieszo chłopczyk z ogorzałą twarzyczką, długimi włosami, bardzo biednie ubrany.
+
+**UA:** – Ну, серденько, так минуло два дні, аж на третій пішки прийшов хлопець із засмаглим обличчям, довгим волоссям, дуже бідно одягнений.
+
+---
+
+**PL:** — To Kaj! — zawołała, klaszcząc w ręce, Gerda.
+
+**UA:** - Це Кай! – вигукнула Герда, сплеснувши руками.
+
+---
+
+**PL:** — Na plecach miał tornister — ciągnęła dalej wrona.
+
+**UA:** — У нього на спині був ранець, — продовжувала ворона.
+
+---
+
+**PL:** — Ach, nie, to były pewno jego sanki. Właśnie z sankami zginął.
+
+**UA:** — О, ні, це точно були його сани. Він загинув разом із санчатами.
+
+---
+
+**PL:** — Ha, może sanki — zgodziła się wrona. — Dobrze się nie przyglądałam. Poszedł śmiało ku schodom, a gdy zobaczył straże, spojrzał zdziwiony i zaraz powiedział: „To musi być okropnie nudno, tak stać tu ciągle!” Następnie wszedł do sali.
+
+**UA:** — Га, може, сани, — погодився ворон. — Не придивлявся. Він сміливо пішов до сходів, а коли побачив охорону, здивувався і відразу сказав: «Це, мабуть, страшенно нудно стояти тут весь час!» Потім він увійшов до кімнати.
+
+**PL:** Buty jego skrzypiały strasznie, ale widać było, że sobie z tego nic nie robi.
+
+**UA:** Його черевики страшенно скрипіли, але було видно, що йому це байдуже.
+
+---
+
+**PL:** — O, to z pewnością Kaj! — krzyknęła Gerda. — Właśnie miał skrzypiące buty, jeszcze nowe, które mu babka kupiła.
+
+**UA:** - О, це точно Кай! – вигукнула Герда. — У нього якраз були скрипучі черевики, ще нові, які йому бабуся купила.
+
+---
+
+**PL:** — Bardzo być może — potwierdziła wrona. — Szedł do samej księżniczki i nie zmieszał się wcale, chociaż ogromna sala pełna była dworzan, urzędników i dygnitarzy<sup>4</sup>, każdemu umiał odpowiedzieć, no i dostał księżniczkę.
+
+**UA:** — Цілком ймовірно, — сказала ворона. — Він пішов до самої княгині і зовсім не розгубився, хоч величезний зал був повний придворних, чиновників і високопоставлених осіб<sup>4</sup>, він умів кожному відповісти, і дістав княгиню.
+
+---
+
+**PL:** — To z pewnością Kaj — rzekła uszczęśliwiona Gerda. — On był zawsze ogromnie mądry, umiał liczyć na pamięć nawet z ułamkami. O, zaprowadź mnie do pałacu!
+
+**UA:** «Це точно Кай», — радісно сказала Герда. – Він завжди був дуже розумним, умів рахувати напам’ять, навіть з дробами. Ой, веди мене до палацу!
+
+---
+
+**PL:** — Bah! — zakrakała wrona. — Łatwo to powiedzieć. Przecież takiej obdartej i bosej dziewczynki nie wpuszczą do królewskiego pałacu!
+
+**UA:** - Бах! – каркнула ворона. — Це легко сказати. Таку обірвану та босу дівчину до царського палацу не пустять!
+
+---
+
+**PL:** — Powiedz tylko Kajowi, że tu jestem, a sam przyjdzie po mnie natychmiast.
+
+**UA:** «Просто скажи Каю, що я тут, і він негайно прийде за мною».
+
+---
+
+**PL:** — Zaczekaj tu przy płocie — rzekła wrona i poleciała do pałacu.
+
+**UA:** «Почекай тут біля огорожі», - сказала ворона і полетіла до палацу.
+
+---
+
+**PL:** Ciemno już było, kiedy powróciła.
+
+**UA:** Було вже темно, коли вона повернулася.
+
+---
+
+**PL:** — To wszystko na nic — rzekła. — Boso cię tu nie wpuszczą, straż i lokaje bardzo zważają na nogi. Ale nie płacz. Poradzimy jakoś na to. Mam w pałacu krewnego, który jest w wielkich łaskach u księżniczki i zna wszystkie zakątki jak swoje własne gniazdo.
+
+**UA:** «Це все даремно», — сказала вона. — Босоніж сюди не пустять, охоронці й лакеї дуже бережуть ваші ноги. Але не плач. Якось розберемося. У мене в палаці є родич, який у великої милості в царівни і знає всі кутки, як своє гніздо.
+
+**PL:** On otworzy ci małą furtkę i ukrytymi schodami zaprowadzi prosto do sypialni księstwa.
+
+**UA:** Він відкриє вам невеликі ворота і проведе вас через приховані сходи прямо до спальні князівства.
+
+---
+
+**PL:** — O, moja droga wrono! — cicho szepnęła Gerda, idąc do zamku długą, cienistą aleją, w której liście spadały z drzew jak krople deszczu. A kiedy w zamku pogaszono światła, weszły przez małą furtkę, tylko przymkniętą z lekka.
+
+**UA:** — Ой, мій любий ворон! – тихо прошепотіла Герда, прямуючи до замку довгою тінистою алеєю, де листя падало з дерев, як краплі дощу. А коли в замку вимкнули світло, увійшли через невеличку хвіртку, лише трохи причинену.
+
+---
+
+**PL:** Serce Gerdy uderzało mocno z niepokoju i szczęścia. Czasem zdawało jej się, że robi coś złego, ale chciała się tylko przekonać, czy to naprawdę Kaj. Chyba nie rozgniewa się na nią, ale będzie szczęśliwy, że aż tutaj do niego przyszła, że opowie mu o rodzicach.
+
+**UA:** Серце Герди забилося від тривоги й щастя. Іноді їй здавалося, що вона робить щось не так, але вона просто хотіла дізнатися, чи справді це Кай. Він, мабуть, не розсердиться на неї, але буде радий, що вона прийшла сюди до нього і розповіла про своїх батьків.
+
+---
+
+**PL:** Na koniec weszła z wroną na małe boczne schodki. Na szafie w korytarzu stała nocna lampa, a na pierwszych schodkach krewny wrony, kruk czarnopióry. Gerda ukłoniła mu się, jak umiała.
+
+**UA:** Нарешті вона піднялася з вороною маленькими бічними сходами. На шафі в передпокої стояла нічна лампа, а на перших сходинках — родич ворона — чорноперий ворон. Герда вклонилася йому, як могла.
+
+---
+
+**PL:** Kruk uważnie popatrzył na nią i odezwał się wreszcie:
+
+**UA:** Ворон уважно подивився на неї і нарешті сказав:
+
+---
+
+**PL:** — Pójdę naprzód, a wy za mną. Droga prosta i nikogo na niej nie spotkamy.
+
+**UA:** — Я піду попереду, а ти за мною. Дорога пряма, і ми нікого на ній не зустрінемо.
+
+---
+
+**PL:** — A mnie się zdaje, że ktoś za nami idzie — powiedziała Gerda i obejrzała się z trwogą. W istocie przesunęło się coś szybko po ścianie jak gdyby cienie jeźdźców, psów i koni.
+
+**UA:** — Мені здається, що за нами хтось стежить, — сказала Герда і злякано озирнулася. Справді, щось швидко рухалося по стіні, як тіні вершників, собак і коней.
+
+---
+
+**PL:** — To sny o polowaniu śpieszą do księcia pana i księżniczki — uspokoił ją kruk natychmiast.
+
+**UA:** — Це мрії про полювання мчать до князя, володаря й княгині, — одразу ж заспокоїв її ворон.
+
+---
+
+**PL:** Mijali szereg przepysznych<sup>5</sup> pokoi, których ściany obite były czerwonym, błękitnym lub żółtym atłasem<sup>6</sup>, sztuczne kwiaty pokrywały je wieńcami, wszędzie lśniły kosztowne sprzęty i klejnoty; wreszcie stanęli w królewskiej sypialni.
+
+**UA:** Вони проминули низку розкішних кімнат<sup>5</sup>, стіни яких були вкриті червоним, синім або жовтим атласом<sup>6</sup>, штучні квіти вкривали їх вінками, всюди виблискували дорогі меблі та коштовності; нарешті вони стали в спальні короля.
+
+**PL:** Tu sufit przypominał piękną koronę<sup>7</sup> palmy o wspaniałych, szklanych liściach, a na środku, na grubej łodydze ze złota, wisiały dwa łóżeczka w kształcie lilii: jedno białe, gdzie spoczywała księżniczka, drugie purpurowe, gdzie może Kaj sypiał.
+
+**UA:** Тут стеля нагадувала чудову крону пальми з розкішним скляним листям, а посередині, на товстій золотій стеблині, висіли два лілійні ліжка: одне біле, де відпочивала принцеса, інше фіолетове, де, можливо, спав Кай.
+
+---
+
+**PL:** Gerda pochyliła się nad nim ciekawie i zobaczyła jego opaloną szyję. Ucieszona, krzyknęła głośno; sny natychmiast pomknęły wzdłuż ściany z pokoju, a książę się obudził, podniósł głowę i — to nie był Kaj.
+
+**UA:** Герда з цікавістю схилилася над ним і побачила його засмаглу шию. Зрадівши, вона голосно скрикнула; з кімнати враз по стіні полетіли сни, і принц прокинувся, глянув і - то не Кай.
+
+---
+
+**PL:** Z drugiej lilii wychyliła się główka księżniczki, która patrzyła także, co się stało.
+
+**UA:** З другої лілії висунулася голова принцеси, і вона також спостерігала за тим, що відбувається.
+
+---
+
+**PL:** Gerda zaczęła płakać i opowiedziała wszystko od początku, nie zapominając o wielkiej przysłudze, jaką oddali jej kruk i wrona.
+
+**UA:** Герда заплакала й розповіла все спочатку, не забуваючи про велику послугу, яку зробили їй ворон і ворона.
+
+---
+
+**PL:** — Biedne dziecię — rzekła z litością księżniczka. — Nie martw się, nie gniewamy się na ciebie, ani na wronę, ani na kruka. Chcę nawet wynagrodzić ich za dobre serce.
+
+**UA:** — Бідна дитина, — з жалем сказала принцеса. — Не бійся, ми на тебе не сердимося, ні ворона, ні ворон. Навіть хочу винагородити їх за добре серце.
+
+**PL:** Odtąd mają prawo przebywania w zamku i otrzymają żywność z naszej kuchni, ale muszą nam przyrzec, że bez naszej wiedzy nie wprowadzą więcej nikogo do zamku.
+
+**UA:** Відтепер вони мають право залишатися в замку й отримуватимуть їжу з нашої кухні, але вони повинні пообіцяти нам, що більше нікого не приведуть у замок без нашого відома.
+
+---
+
+**PL:** Książę oddał Gerdzie swoje własne łóżko i życzył, żeby w nim spała spokojnie, a zmęczona dziewczynka na wygodnej, ciepłej pościeli przytuliła znużoną główkę do poduszki, złożyła rączki i szepnęła tylko:
+
+**UA:** Принц подарував Герді її власне ліжко і побажав, щоб вона спала в ньому спокійно, а втомлена дівчина поклала свою стомлену голову на подушку на зручних теплих простирадлах, склала руки і лише прошепотіла:
+
+---
+
+**PL:** — O, jacyż dobrzy ludzie i zwierzęta! — i w tej chwili zasnęła.
+
+**UA:** — Ой, які добрі люди і тварини! — і в ту мить заснула.
+
+---
+
+**PL:** Nazajutrz księżniczka dała jej prześliczną aksamitną suknię i prosiła bardzo, żeby na zawsze została w pałacu. Ale Gerda poprosiła tylko o wózek i konika, a także o parę bucików, gdyż musiała wędrować dalej i szukać Kaja po szerokim świecie.
+
+**UA:** Наступного дня принцеса подарувала їй гарну оксамитову сукню і попросила залишитися в палаці назавжди. Але Герда попросила лише воза та коня, а також пару черевиків, бо треба було блукати далі й шукати Кая у широкому світі.
+
+---
+
+**PL:** Więc dostała ciepłe ubranie, buciki i mufkę<sup>8</sup>, a gdy się posiliła, stanęła przed bramą śliczna złocona kareta, zaprzężona w pięknego konia, woźnica i lokaj mieli złote korony na liberii<sup>9</sup>. Sam książę i księżniczka umieścili ją w karecie i żegnali, życząc wszystkiego dobrego.
+
+**UA:** Тож їй дали теплий одяг, взуття та муфту<sup>8</sup>, а коли вона поїла, перед воротами стояла чудова позолочена карета, запряжена прекрасним конем, а візник і дворецький мали золоті корони на своїх лівреях<sup>9</sup>. Принц і княгиня самі посадили її в карету і, попрощавшись, побажали їй всього найкращого.
+
+**PL:** A Gerda płakała i dobra wrona także. Usiadła obok dziewczynki w karecie i odprowadziła ją prawie trzy mile. Dalej bała się jechać, więc sfrunęła na gałąź wysokiego drzewa i trzepotała skrzydłami tak długo, póki mogła dojrzeć złocistą karetę błyszczącą w promieniach słońca.
+
+**UA:** І Герда заплакала, і добра ворона теж. Вона сіла біля дівчини в карету і пройшла її майже три милі. Вона все ще боялася йти, тому злетіла на гілку високого дерева і махала крилами, поки не побачила золоту карету, яка сяяла на сонці.
+
+---
+
+**PL:** Gerda jechała dalej sama jedna, lecz się nie obawiała głodu ani zimna, gdyż kareta zaopatrzona była w żywność; stały w niej kosze ciastek, pierników, owoców — dzielny konik biegł szybko, więc myślała sobie, że chyba teraz musi znaleźć Kaja.
+
+**UA:** Герда йшла далі сама, але не боялася ні голоду, ні холоду, бо вагон був укомплектований харчами; там були кошики з печивом, пряниками, фруктами - хоробрий кінь мчав швидко, тож вона подумала, що тепер їй потрібно знайти Кая.
+
+---
+
+**PL:** Mała zbójniczka
+
+**UA:** Маленька розбійниця
+
+---
+
+**PL:** Złocista kareta wjechała do ciemnego lasu i między drzewami świeciła jak słońce. Zobaczyli to rozbójnicy i wybiegli z gęstwiny.
+
+**UA:** Золота карета в'їхала в темний ліс і засяяла, як сонце, між деревами. Побачили це розбійники і вибігли з хащі.
+
+---
+
+**PL:** — Złoto! Złoto! — krzyczeli i rzucili się na karetę, uchwycili konia za cugle<sup>10</sup>, pozabijali służbę i wyciągnęli na drogę przerażoną Gerdę.
+
+**UA:** - Золото! золото! - закричали вони і кинулися до карети, схопили коня за поводи, перебили слуг і витягли перелякану Герду на дорогу.
+
+---
+
+**PL:** — Ach, jaka biała, tłusta, orzeszkami karmiona! — zawołała chciwie stara rozbójnica z rozczochraną głową, strasznymi oczyma i żółtą, pomarszczoną twarzą. — Musi być smaczna jak młode jagniątko, to będzie dopiero uczta.
+
+**UA:** – Ой, яка біла, товста жінка, арахісом годована! — вигукнув старий розбійник зі скуйовдженою головою, зі страшними очима і жовтим зморшкуватим обличчям. — Мусить бути смачним, як молодий баранчик, буде частування.
+
+---
+
+**PL:** Wyciągnęła zza pasa wielki nóż błyszczący i podniosła rękę, aby zabić biedną Gerdę — lecz w tej chwili krzyknęła okropnie, gdyż mała rozbójniczka, jej córeczka, którą niosła na plecach, do krwi ugryzła ją w ucho i bijąc matkę nogami po plecach, krzyczała przeraźliwie:
+
+**UA:** Вона витягла з-за пояса великого блискучого ножа й підняла руку, щоб убити бідолашну Герду — але в цю мить страшенно закричала, бо маленька розбійниця, її донечка, яку вона несла на спині, вкусила її за вухо до крові й, б’ючи ногами по спині матері, страшенно кричала:
+
+---
+
+**PL:** — Nie dam jej zabić! Nie zabijaj! — wołało dzikie, rozpuszczone dziecko. — Ja chcę, żeby się ona ze mną bawiła! Ja chcę jej mufki i ładnej sukienki i chcę, żeby ze mną spała.
+
+**UA:** - Я не дам їй померти! Не вбивай! - скрикнула дика, розпещена дитина. - Я хочу, щоб вона гралася зі мною! Я хочу, щоб її муфта і гарне плаття, і я хочу, щоб вона спала зі мною.
+
+---
+
+**PL:** Stara zbójnica pozwalała swojej córeczce na wszystko, więc schowała na powrót nóż na dawne miejsce, otarła z krwi ucho i umieściła dziką dziewczynkę w karecie razem z Gerdą.
+
+**UA:** Стара розбійниця дозволяла своїй маленькій дочці все, тому вона повернула ніж на колишнє місце, витерла кров з вуха і посадила дику дівчину в карету з Гердою.
+
+**PL:** Potem jeden ze zbójców siadł na koźle<sup>11</sup>, zaciął konia i popędzili jak wiatr po kamieniach, dołach, górach, między drzewami, zaczepiając o gałęzie i nie zważając na nic.
+
+**UA:** Тоді один із розбійників сів на ящик<sup>11</sup>, підірвав коня, і вони, як вітер, помчали по камінню, ямах, горах, між деревами, хапаючись за гілки й ні про що не дбаючи.
+
+---
+
+**PL:** Mała zbójniczka śmiała się głośno z radości i tupała nogami. Była ona w tym samym wieku, co Gerda, ale większa i tęższa, z dużą i czerwoną twarzą, czarnymi włosami i czarnymi, błyszczącymi oczyma. Kiedy nacieszyła się jazdą, objęła wpół Gerdę i powiedziała wesoło:
+
+**UA:** Маленька розбійниця голосно засміялася від радості й затупотіла ніжками. Вона була такого ж віку, як Герда, але більша й кремезніша, з великим червоним обличчям, чорним волоссям і чорними блискучими очима. Коли вона насолодилася поїздкою, вона обняла Герду і радісно сказала:
+
+---
+
+**PL:** — Nie bój się, nie dam cię zabić, chyba że się na ciebie rozgniewam. Oni muszą mnie słuchać! Ty pewno jesteś księżniczka?
+
+**UA:** - Не бійся, я не вб'ю, якщо не розсерджуся на тебе. Вони повинні мене слухати! Ти впевнений, що ти принцеса?
+
+---
+
+**PL:** — Nie — odrzekła dziewczynka i ze łzami w oczach opowiedziała jej swoją historię: jak bardzo Kaja kocha i pragnie go znaleźć, ale nie wie zupełnie, gdzie go szukać.
+
+**UA:** - Ні, - відповіла дівчина і зі сльозами на очах розповіла їй свою історію: як сильно Кая кохає і хоче його знайти, але вона не знає, де його шукати.
+
+---
+
+**PL:** Mała zbójniczka słuchała ciekawie, a oczy jej świeciły jak dwa ognie. W tej chwili powóz stanął, gdyż wjechali na dziedziniec zbójeckiego zamku.
+
+**UA:** Маленька розбійниця з цікавістю слухала, її очі сяяли, як два вогнища. У цю мить карета зупинилася, коли вони в’їхали на подвір’я розбійницького замку.
+
+---
+
+**PL:** Był to wielki budynek, stary, brudny, odrapany, pełen dziur i szczelin, w których gnieździły się kruki i wrony.
+
+**UA:** Це була велика будівля, стара, брудна, обшарпана, повна дір і щілин, у яких гніздувалися круки та ворони.
+
+**PL:** Ogromne buldogi, straszne potwory z otwartymi paszczami, jakby chciały natychmiast rozszarpać i pożreć przybyłych, biegały i skakały po podwórzu, ale żaden nie szczekał, bo im nie było wolno.
+
+**UA:** Подвір’ям бігали й стрибали величезні бульдоги, страшні чудовиська з відкритими пащами, наче хотіли негайно розтерзати й зжерти прибульців, але ніхто з них не гавкав, бо їх не пускали.
+
+---
+
+**PL:** W zamku, w olbrzymiej okopconej sali o czarnych ścianach i kamiennej podłodze, płonął wielki ogień, a dym kłębami wznosił się do góry i osiadał na suficie, poczerniałych ścianach i dziurami w murze wychodził na zewnątrz.
+
+**UA:** У замку, у величезній закопченій залі з чорними стінами й кам'яною підлогою, горів великий вогонь, і дим піднімався хмарами й осідав на стелю, почорнілі стіни й виходив на вулицю крізь діри в стіні.
+
+**PL:** Przy ogniu w dużym kotle gotowała się zupa, a zające i króliki piekły się na rożnach.
+
+**UA:** На вогні у великому казані кипіла юшка, на рожні смажилися зайці та кролики.
+
+---
+
+**PL:** — Dziś będziesz spała ze mną i z moimi zwierzątkami! — rzekła zbójniczka, gdy się obie z Gerdą najadły i napiły, a potem poszły do swego kącika, gdzie było posłanie ze słomy przykryte kobiercami.
+
+**UA:** — Сьогодні ти будеш спати зі мною і моїми тваринами! – сказав розбійник, коли вони з Гердою поїли й випили, а потім пішли у свій куток, де стояла солом’яна постіль, покрита килимами.
+
+**PL:** Nad nimi we framugach i na grzędach gnieździły się stada gołębi, które udawały śpiące, lecz poruszyły się trochę i każdy jednym okiem spojrzał na dziewczynki.
+
+**UA:** Над ними, у одвірках і на сідалах, гніздилися зграї голубів і вдавали, що сплять, але вони трохи поворухнулись і кожна одним оком дивилася на дівчат.
+
+---
+
+**PL:** — To moje leśne gołębie — rzekła rozbójniczka. — Wszystko to moje, co tu wkoło widzisz. — I wzięła w rękę jednego gołębia, potrząsając go i dmuchając, aż zaczął trzepotać skrzydłami.
+
+**UA:** — Це мої лісові голуби, — сказав розбійник. - Усе, що ви тут бачите, моє. – І взяла в руку одного голуба, трясла ним і дмухала, аж він крилами замахав.
+
+---
+
+**PL:** — A to mój ren<sup>12</sup> kochany — dodała, pokazując ogromnego rena, przywiązanego na sznurze uczepionym do błyszczącej miedzianej obrączki, którą miał na szyi. — Co wieczór udaję, że go chcę zabić moim nożem, a on bardzo się tego boi.
+
+**UA:** «А це мій хлопчик<sup>12</sup>, любий», — додала вона, показуючи величезного хлопчика, прив’язаного до мотузки, прикріпленої до блискучого мідного кільця на його шиї. – Щоночі я вдаю, що хочу вбити його своїм ножем, а він цього дуже боїться.
+
+---
+
+**PL:** Wyjęła zaraz wielki nóż świecący, wyostrzyła go o ścianę i pociągnęła renowi po szyi. Zwierzę stało spokojnie ze spuszczoną głową.
+
+**UA:** Вона миттєво дістала великий сяючий ніж, заточила його об стіну й провела по шиї немовляти. Тварина спокійно стояла, опустивши голову.
+
+---
+
+**PL:** — Czy ty sypiasz z tym nożem? — spytała z obawą Gerda.
+
+**UA:** - Ти спиш з цим ножем? – стурбовано запитала Герда.
+
+---
+
+**PL:** — Zawsze sypiam z nożem w ręku — odparła zbójniczka.— Nikt nie wie, co się może zdarzyć w nocy. A teraz mi opowiedz raz jeszcze historię o małym Kaju i o tym, jak go szukasz po szerokim świecie.
+
+**UA:** «Я завжди сплю з ножем у руці», — відповів грабіжник. «Ніхто не знає, що може статися вночі». А тепер розкажи мені історію про маленького Кая і про те, як ти шукаєш його по всьому світу.
+
+---
+
+**PL:** I Gerda znowu zaczęła opowiadać. Leśne gołębie słuchały ciekawie, a zbójniczka oparła głowę na kolanach dziewczynki i trzymając nóż w ręku, zasnęła tak mocno, że chrapała, aż się rozlegało.
+
+**UA:** І Герда знову заговорила. Лісові голуби з цікавістю прислухалися, а розбійниця поклала голову на коліна дівчини і, тримаючи в руці ножа, так міцно заснула, що та хропіла, аж було чути.
+
+**PL:** Gerda nie mogła zasnąć: nie wiedziała przecież, czy jej nie zabiją, a prócz tego przy ognisku w drugim kącie sali zbójcy krzyczeli, śpiewali, pili, przeklinali, a stara rozbójnica podkasała suknie, tańczyła, wykrzykiwała straszne słowa i fikała koziołki.
+
+**UA:** Герда не могла заснути: вона не знала, чи вб'ють її, а крім того, біля вогнища в іншому кутку кімнати розбійники кричали, співали, пили, лаялися, а стара розбійниця задирала сукню, танцювала, вигукувала страшні слова і робила сальто.
+
+---
+
+**PL:** Okropny to był obraz i Gerda patrzyła nań z przerażeniem.
+
+**UA:** Це була жахлива картина, і Герда дивилася на неї з жахом.
+
+---
+
+**PL:** — Grr! Grr! — zagruchały tymczasem gołębie. — Widziałyśmy twojego Kaja. Biała kura ciągnęła jego sanki, a on z królową śniegu siedział w wielkich saniach i pędził jak wicher przez las ku północy, kiedy spałyśmy w gniazdach.
+
+**UA:** - Гррр! Грррр! – тим часом воркотіли голуби. — Ми бачили твого Кая. Біла курка потягла свої сани, і вони зі сніговою королевою сіли у великі сани і помчали, як вітер, лісом на північ, а ми спали в своїх гніздах.
+
+**PL:** Królowa śniegu tchnęła na nas mrozem i oprócz nas dwojga wszystkie gołębie pomarły. — Grr! Grr!
+
+**UA:** Снігова королева навела на нас мороз, і, крім нас двох, усі голуби загинули. - Гррр! Грррр!
+
+---
+
+**PL:** — Co wy mówicie? — spytała Gerda. — Jaka królowa śniegu? Czy naprawdę wiecie co o Kaju?
+
+**UA:** - Що ти кажеш? – запитала Герда. - Яка снігова королева? Ти справді щось знаєш про Кая?
+
+---
+
+**PL:** — Jechała lasem do krainy lodów, gdzie wiecznie śnieg i zimno, i mróz nieustanny. Tam ma swoje królestwo. Spytaj rena.
+
+**UA:** — Вона їхала лісом у льодовий край, де завжди сніг, холод і постійний мороз. У нього там своє королівство. Запитай Рена.
+
+---
+
+**PL:** — Tak, tak — potwierdził ren, wstrząsając głową. — Śnieg i lód, białe pola, wielkie białe pola, lód bez końca, błyszczący i przejrzysty, piękny, wspaniały kraj!
+
+**UA:** «Так, так», — підтвердив Рен, хитаючи головою. —Сніг і лід, білі поля, великі білі поля, нескінченні льоди, блискуча і прозора, прекрасна, чудова країна!
+
+**PL:** Tam na samej północy, na biegunie<sup>13</sup> jest stolica królowej śniegu; tam jej lodowy pałac, lśniący jak brylanty, przejrzysty jak kryształ.
+
+**UA:** Там, на самій півночі, на полюсі<sup>13</sup>, знаходиться столиця снігової королеви; там її льодовий палац, сяючий, як діаманти, прозорий, як кришталь.
+
+---
+
+**PL:** — O, Kaju! Kaju! Kaju! — zawołała dziewczynka, aż obudziła zbójniczkę, która pogroziła jej pięścią ze złości.
+
+**UA:** - О, Кай! Каджу! Каджу! – скрикнула дівчина, розбудивши розбійника, який у гніві потряс кулаком.
+
+---
+
+**PL:** — Będziesz ty cicho — mruknęła z gniewem. — Czy chcesz, żebym cię zabiła nożem?
+
+**UA:** — Ти будеш тихо, — сердито пробурмотіла вона. - Ти хочеш, щоб я тебе вбив ножем?
+
+---
+
+**PL:** Dopiero gdy dzień się zrobił, opowiedziała Gerda wszystko, co słyszała w nocy, a zbójniczka wysłuchała opowieści uważnie i w zamyśleniu potrząsała głową.
+
+**UA:** Тільки коли розвиднівся, Герда розповіла все, що почула вночі, а розбійниця уважно вислухала розповідь і задумливо похитала головою.
+
+---
+
+**PL:** — Może — może — szeptała. — Czy to prawda, renie? Czy znasz kraj wiecznych lodów?
+
+**UA:** «Можливо… можливо», — прошепотіла вона. — Це правда, Рене? Чи знаєте ви країну вічного морозива?
+
+---
+
+**PL:** — A któż go może znać lepiej ode mnie — odparł ten z błyszczącymi jak ogień oczyma. Tam przecież się urodziłem i wyrosłem, tam biegałem po wielkich, śnieżnych polach.
+
+**UA:** — А хто його знає краще за мене? — відповів той із блискучими, як вогонь, очима. Там я народився і виріс, де бігав по великих, засніжених полях.
+
+---
+
+**PL:** — Słuchaj — rzekła zbójniczka do Gerdy — wszyscy nasi ludzie poszli na wyprawę, matka została w domu, ale ona się upije przy śniadaniu i mocno zaśnie. Wtedy będę mogła zrobić coś dla ciebie.
+
+**UA:** - Слухай, - сказав розбійник Герді, - всі наші вирушили в експедицію, мама залишилася вдома, але вона нап'ється за сніданком і засне глибоким сном. Тоді я можу щось для вас зробити.
+
+---
+
+**PL:** I tak się wszystko stało. Przy śniadaniu stara zbójnica napiła się z wielkiej flaszki i natychmiast usnęła. Wtedy zbójniczka zbliżyła się z nożem do rena i rzekła:
+
+**UA:** І так все сталося. Під час сніданку старий розбійник випив із великої пляшки й одразу заснув. Тоді грабіжник підійшов до дитини з ножем і сказав:
+
+---
+
+**PL:** — Lubię cię straszyć, dotykając nożem twojej szyi, dziś jednak zrobię co innego. Oto przetnę twój powróz i wypuszczę cię na wolność, abyś wrócił do kraju wiecznych lodów; ale musisz zanieść tę dziewczynkę do pałacu królowej śniegu, gdzie znajdzie swego Kaja.
+
+**UA:** - Мені подобається лякати тебе, торкаючись твоєї шиї ножем, але сьогодні я зроблю щось інше. Ось я переріжу твою мотузку і визволю тебе, щоб ти вернувся в край вічних льодів; але ви повинні віднести цю дівчину до палацу снігової королеви, де вона знайде свого Кая.
+
+**PL:** Wiesz dobrze, o co chodzi, bo wczoraj opowiadała głośno tę historię, a ty lubisz słuchać, co mówią.
+
+**UA:** Ви знаєте, про що йдеться, тому що вона вчора розповідала цю історію вголос, і вам подобається чути, що вони говорять.
+
+---
+
+**PL:** Ren podskoczył z radości i gotów był zaraz do drogi. Więc zbójniczka zaczęła ubierać Gerdę.
+
+**UA:** Рен підскочив від радості й був готовий йти. Тож грабіжник почав одягати Герду.
+
+---
+
+**PL:** — Masz tu swoje buciki — powiedziała. — Nie możesz jechać boso, bo zmarzłabyś. Są one bardzo ciepłe, wykładane futrem. Mufki ci nie oddam, ponieważ jest bardzo ładna i ogromnie mi się podoba, ale masz za to wielkie rękawice matki, które ci osłonią ręce aż po łokcie. Włóż je tylko.
+
+**UA:** «Ось твої черевики», — сказала вона. — Не можна їздити босоніж, бо замерзнеш. Вони дуже теплі і підбиті хутром. Я не віддам тобі муфту, бо вона дуже гарна і мені дуже подобається, але у тебе є великі мамині рукавички, які закриють тобі руки до ліктів. Просто вставте їх.
+
+---
+
+**PL:** Gerda chciała dziękować zbójniczce, lecz rozpłakała się z wielkiej radości.
+
+**UA:** Герда хотіла подякувати розбійнику, але від великої радості розплакалася.
+
+---
+
+**PL:** — Tylko mi nie becz, bo tego nie lubię! — zawołała dzika dziewczynka. — Masz tutaj zamiast siodła wygodną poduszkę, a żebyś nie była głodna, dam ci na drogę szynkę i dwa bochenki chleba. Wszystko to przymocowałam do rena. I ciebie też przywiążę bardzo mocno, żebyś z niego nie spadła.
+
+**UA:** — Тільки не блей на мене, мені це не подобається! – вигукнула дика дівчина. — Замість сідла тут тобі зручна подушка, а щоб ти не був голодний, я дам тобі на дорогу шинку та дві буханці хліба. Все це я прикріпив до рени. А ще я вас дуже міцно прив’яжу, щоб ви з нього не впали.
+
+**PL:** Tylko mi zaraz miej wesołą minę, bo nie cierpię głupich beków.
+
+**UA:** Просто порадійте мені, бо я терпіти не можу дурних відрижок.
+
+---
+
+**PL:** Posadziła Gerdę na poduszce i przywiązała ją mocno do rena, potem otworzyła drzwi, zawołała na buldogi, a gdy weszły do sali, myśląc, że jeść dostaną, przecięła sznur, na którym ren był uwiązany i zawołała głośno:
+
+**UA:** Вона посадила Герду на подушку і міцно прив'язала її до оленя, потім відчинила двері, покликала бульдогів, а коли вони увійшли в кімнату, думаючи, що їх нагодують, перерізала мотузку, на якій був прив'язаний олень, і голосно крикнула:
+
+---
+
+**PL:** — No, teraz w drogę! Hop! Hop! Z całej siły! A pamiętaj sobie, żeby Gerdzie się co nie stało.
+
+**UA:** — Ну, а тепер ходімо! хоп! хоп! З усіх сил! І пам’ятайте, нехай нічого не трапиться з Гердою.
+
+---
+
+**PL:** Gerda na pożegnanie wyciągnęła do niej małe rączki w ogromnych rękawicach, a ren ruszył z kopyta i pędził jak huragan przez lasy i pola, płoty, rowy, zarośla, bagniska i stepy, dalej, dalej i dalej...
+
+**UA:** На прощання Герда простягла свої рученята у величезних рукавичках, а Рен знявся й помчав, як ураган, через ліси й поля, паркани, рови, хащі, болота й степи, далі, далі й далі...
+
+---
+
+**PL:** Wilki wyły, wrony i kruki krakały, na niebie błyszczały gwiazdy i księżyc, a daleko na północy ukazywało się czerwone światło, pełne dziwnego blasku.
+
+**UA:** Вили вовки, каркали ворони й круки, на небі сяяли зірки й місяць, а далеко на півночі горіло червоне світло, повне дивного блиску.
+
+---
+
+**PL:** — Widzisz zorzę północną<sup>14</sup>, która płonie tam w moim kraju, w kraju wiecznego lodu! — szeptał ren zachwycony i pędził jeszcze szybciej, dzień i noc bez wytchnienia.
+
+**UA:** — Бачиш, північне сяйво<sup>14</sup>горить там, у моїй країні, в країні вічних льодів! – захоплено прошепотів Рен і побіг ще швидше, день і ніч без відпочинку.
+
+---
+
+**PL:** Na koniec, kiedy chleby zostały zjedzone, a z szynki nie pozostało ani śladu, ukazał się przed nimi biały kraj wiecznego lodu.
+
+**UA:** Нарешті, коли хліб був з’їдений і від шинки не залишилося й сліду, перед ними постала біла земля вічного льоду.
+
+---
+
+**PL:** Laponka i Eskimoska
+
+**UA:** Лапландка та ескімоска
+
+---
+
+**PL:** Zatrzymali się nagle przed niepozornym domkiem. Była to chatka tak niska, że dach opierał się na ziemi, a drzwi stanowił otwór, przez który mieszkańcy musieli wpełzać do środka na brzuchu. W chatce nie było nikogo oprócz starej Laponki<sup>15</sup>, która gotowała rybę nad lampą napełnioną tranem.
+
+**UA:** Вони раптом зупинилися перед непримітним будинком. Це була така низька хатина, що дах упирався в землю, а двері були отвором, через який мешканцям доводилося пролазити всередину на животі. У хатині не було нікого, крім старої саамки<sup>15</sup>, яка готувала рибу на лампі, наповненій салом.
+
+---
+
+**PL:** Ren opowiedział jej swoją historię, która wydawała mu się najważniejszą, a potem zaczął mówić o Gerdzie, ponieważ dziewczynka była tak zziębnięta, że sama opowiadać nie mogła.
+
+**UA:** Рен розповів їй свою історію, яка здалася йому найважливішою, а потім заговорив про Герду, бо дівчина була така холодна, що сама не могла розповісти.
+
+---
+
+**PL:** — Ach, biedaki! — rzekła Laponka, wysłuchawszy wszystkiego uważnie. — Daleka, bardzo daleka jeszcze przed wami droga.
+
+**UA:** — Ой, бідолашні! – сказала лапійка, уважно все вислухавши. — Попереду ще довгий, дуже довгий шлях.
+
+**PL:** Więcej niż sto mil lecieć musicie na północ, bo tam dopiero, na samym biegunie królowa śniegu ma swój pyszny<sup>16</sup> zamek, w którym zorza północna pali się co wieczór wspaniałymi ogniami.
+
+**UA:** На північ вам доведеться летіти більше ста миль, адже там, на самому полюсі, Снігова королева має свій чудовий замок<sup>16</sup>, де щовечора дивовижними вогнями горить північне сяйво.
+
+**PL:** Nie mam w domu papieru, więc na suszonym sztokfiszu<sup>17</sup> napiszę wam list do pewnej bardzo mądrej Eskimoski<sup>18</sup>, która mieszka niedaleko pałacu królowej i może wam więcej dopomóc ode mnie.
+
+**UA:** У мене вдома немає паперу, тому я напишу тобі листа про сушену рибу<sup>17</sup>дуже мудрій ескімоській жінці<sup>18</sup>, яка живе біля палацу королеви і може допомогти тобі більше, ніж я.
+
+---
+
+**PL:** Potem dała Gerdzie jeść, pić, a gdy dziewczynka posiliła się i ogrzała, Laponka napisała list na suszonym sztokfiszu, oddała go Gerdzie i kazała dobrze pilnować. Następnie przywiązała ją znowu do rena, a ten szybko puścił się w drogę.
+
+**UA:** Потім вона дала Герді поїсти й випити, а коли дівчина поїла й зігрілася, лапландська жінка написала листа на сушеній рибі, дала її Герді й сказала, щоб вона добре за нею стежила. Тоді вона знову прив’язала його до оленя, і він швидко рушив.
+
+---
+
+**PL:** I pędzili znowu na północ bez wytchnienia i odpoczynku. Drogę wskazywały im wspaniałe blaski ogni, płonących w pałacu królowej, które na ciemnym niebie rozlewały się w zorzę czerwoną.
+
+**UA:** І вони знову мчали на північ без перепочинку й відпочинку. Шлях показував дивовижне сяйво вогнів, що палали в палаці королеви, яке розливалося в червоне сяйво в темному небі.
+
+---
+
+**PL:** Wreszcie stanęli przed chatką Eskimoski. Tu drzwi nie było wcale, więc musieli zapukać do komina. Wpuszczono ich niezwłocznie.
+
+**UA:** Нарешті вони зупинилися перед ескімоською хатиною. Дверей взагалі не було, тож довелося стукати в димар. Їх одразу впустили.
+
+---
+
+**PL:** Wewnątrz chaty było tak strasznie gorąco, że Eskimoska, mała, tłusta i bardzo brudna kobiecina, chodziła w lekkiej sukni. Zaraz też rozwiązała Gerdzie jej sukienkę, zdjęła jej buciki i ciepłe rękawice, a renowi położyła na głowie kawał lodu, gdyż inaczej nie mogliby tu wytrzymać.
+
+**UA:** У хатині було так жахливо жарко, що ескімоська жінка, маленька, товста й дуже брудна жінка, була одягнена в легку сукню. Вона тут же розв’язала сукню Герди, зняла туфлі й теплі рукавички, а Рену поклала на голову шматок льоду, інакше вони б не змогли тут залишитися.
+
+---
+
+**PL:** Potem wzięła rybę i zaczęła czytać list Laponki.
+
+**UA:** Тоді вона взяла рибу й почала читати листа лапландки.
+
+---
+
+**PL:** Przeczytała go raz i drugi i zamyśliła się głęboko. Ren zbliżył się do niej i mówił z prośbą w głosie.
+
+**UA:** Вона читала це знову і знову і глибоко замислювалася. Рен підійшов до неї і промовив благальним голосом.
+
+---
+
+**PL:** — Wiem, że jesteś bardzo mądra i masz wielką władzę, że rozkazujesz wiatrom, które są ci posłuszne, daj więc Gerdzie takiego napoju, żeby była silniejsza od dwunastu mężczyzn i mogła pokonać królową śniegu.
+
+**UA:** – Я знаю, що ти дуже мудрий і маєш велику силу, що ти керуєш вітрами, які тобі підкоряються, тож напий Герду такого напою, щоб вона була сильнішою за дванадцять чоловіків і здолала снігову королеву.
+
+---
+
+**PL:** — Siłę dwunastu mężczyzn! — powtórzyła Eskimoska z uśmiechem, kiwając głową. — Na cóż by się to zdało? Czyż królową śniegu pokona siła dwunastu mężczyzn?
+
+**UA:** -Сила дванадцяти чоловік! – з усмішкою повторила ескімоска, киваючи головою. — Яка б це була користь? Чи вдасться перемогти снігову королеву силою дванадцяти чоловіків?
+
+---
+
+**PL:** Potem wzięła z półki duży kawał zwiniętej skóry, rozłożyła ją z wielką uwagą i patrzyła na dziwaczne znaki i litery, które ją pokrywały, z takim natężeniem, że grube krople potu wystąpiły na jej czoło.
+
+**UA:** Тоді вона взяла з полиці великий шматок катаної шкіри, дуже обережно розгорнула його й подивилася на дивні позначки й літери, які покривали його з такою інтенсивністю, що на її лобі виступили густі краплі поту.
+
+---
+
+**PL:** Ren kręcił się koło niej nieustannie, potrącał ją rogami, ocierał się bokiem i patrzył w oczy błagalnie, aż Eskimoska zaprowadziła go wreszcie do kąta, a kładąc mu na głowę świeży kawał lodu, szepnęła bardzo cicho:
+
+**UA:** Рен постійно ходив навколо неї, штовхав її рогами, терся боком і благально дивився їй в очі, поки ескімоска нарешті не відвела його в куток і, поклавши йому на голову свіжий шматок льоду, тихо прошепотіла:
+
+---
+
+**PL:** — Kaj jest naprawdę u królowej śniegu, ale jemu tam dobrze. Zdaje mu się, że jest w najpiękniejszym kraju, i że mu nigdzie lepiej być nie może. Wszystko to stąd pochodzi, że drobne okruszyny czarodziejskiego zwierciadła utkwiły mu w oku i w sercu.
+
+**UA:** — Кай справді у снігової королеви, але йому там добре. Йому здається, що він у найкрасивішій країні і краще ніде не може бути. Усе це від того, що крихітні осколки чарівного дзеркала застрягли в його оці та в його серці.
+
+**PL:** A dopóki tkwić tam będą, nikt go nie uratuje, bo królowa śniegu ma nad nim władzę i może go zatrzymać gwałtem. A zresztą choćby i wrócił do ludzi, to będzie dla nich obcy, bo nic dla nich nie ma; nie potrafi nawet być wdzięcznym Gerdzie za jej miłość i poświęcenie.
+
+**UA:** І поки вони залишаться там, ніхто його не врятує, тому що снігова королева має над ним владу і може зупинити його силою. Більше того, навіть якщо він повернеться до людей, він буде для них чужим, бо нічого не має для них; він навіть не може бути вдячним Герді за її любов і жертовність.
+
+---
+
+**PL:** — Więc cóż począć? — rzekł ren strapiony.
+
+**UA:** - Так що ж робити? — засмучено сказав Рен.
+
+---
+
+**PL:** — Trzeba go uleczyć, trzeba wyjąć mu z serca i z oka szczątki czarodziejskiego zwierciadła.
+
+**UA:** — Нам потрібно його вилікувати, нам потрібно видалити залишки чарівного дзеркала з його серця й ока.
+
+---
+
+**PL:** — A jak to zrobić?
+
+**UA:** — А як це зробити?
+
+---
+
+**PL:** — Nie wiem. To nie moja sprawa.
+
+**UA:** - Я не знаю. Це не моя справа.
+
+---
+
+**PL:** — Więc nie chcesz pomóc Gerdzie? Nie możesz jej dać żadnej władzy?
+
+**UA:** - Тобто ти не хочеш допомогти Герді? Хіба ви не можете дати їй жодної влади?
+
+---
+
+**PL:** — Zmiłuj się, renie, powiedz, cóż ja jej więcej dać mogę nad tę władzę, którą sama posiada? Czyż nie widzisz jej siły i potęgi? Czyż nie widzisz, że ludzie i zwierzęta służą jej i wypełniają jej wolę?
+
+**UA:** - Змилуйся, Рен, скажи мені, що я можу дати їй більше, ніж ту силу, якою вона володіє? Хіба ти не бачиш її сили і могутності? Хіба ви не бачите, що люди і тварини служать їй і виконують її волю?
+
+**PL:** Czyż nie widzisz, że bosa i uboga, pół świata już przebyła, a wszyscy jej pomagają i nic się jej oprzeć nie może? Takiej władzy my jej nie damy.
+
+**UA:** Хіба ти не бачиш, боса та бідна, вона вже півсвіту об'їздила, і всі їй допомагають, і вона нічим не може їй протистояти? Ми не дамо їй такої влади.
+
+**PL:** Takiej władzy nie może dać jej nikt na świecie i od nas ona jej nie potrzebuje, bo źródło potęgi ma we własnym swym sercu, a tym źródłem jest dobroć, miłość i niewinność. Jeśli te trzy klucze nie otworzą przed nią pałacu królowej śniegu i nie ocalą Kaja, to my także uczynić tego nie zdołamy.
+
+**UA:** Ніхто в світі не може дати їй такої сили і не потребує її від нас, тому що джерело сили в її власному серці, і це джерело - добро, любов і невинність. Якщо ці три ключі не відкриють їй палац снігової королеви і не врятують Кая, ми теж не зможемо цього зробити.
+
+---
+
+**PL:** A teraz słuchaj jeszcze, co ci powiem. O dwie mile stąd zaczyna się ogród królowej. Tam zaniesiesz dziewczynkę i zostawisz ją przy dużym krzaku, który stoi na śniegu, okryty czerwonymi jagodami. Ale już z nią nie rozmawiaj i wracaj tu co prędzej.
+
+**UA:** А тепер послухайте, що я вам скажу. За дві милі звідси починається сад королеви. Ви віднесете туди дівчину і залишите її біля великого куща, що стоїть на снігу, вкритого червоними ягодами. Але більше не розмовляй з нею і повертайся сюди якомога швидше.
+
+---
+
+**PL:** Eskimoska posadziła Gerdę na renie, przywiązała ją dobrze, a poczciwe zwierzę pomknęło natychmiast.
+
+**UA:** Ескімоська жінка посадила Герду на оленя, надійно прив'язала її, і добродушна тварина відразу втекла.
+
+---
+
+**PL:** — Ach, moje buciki! Moje rękawice! — zawołała Gerda, gdy mróz ostry owiał jej bose nożyny i zatamował prawie oddech w piersi.
+
+**UA:** - Ой, мої черевички! Мої рукавички! – вигукнула Герда, коли гострий мороз вкрив її босі ноги й мало не перестав дихати.
+
+---
+
+**PL:** Ale ren nie śmiał się wrócić, ani zatrzymać i biegł naprzód, co miał siły, aż stanął na granicy ogrodu królowej, przy wielkim krzaku okrytym czerwonymi jagodami.
+
+**UA:** Але Рен не наважувався ні повертатися, ні зупинятися, а біг щонайшвидше, поки не став на краю саду королеви, біля великого куща, вкритого червоними ягодами.
+
+---
+
+**PL:** Tu zsadził Gerdę na ziemię i pocałował ją w usta, a z oczu popłynęły mu wielkie łzy.
+
+**UA:** Тут він посадив Герду і поцілував її в губи, і великі сльози текли з його очей.
+
+---
+
+**PL:** Potem zawrócił i znów biegł przed siebie, wcale się nie oglądając.
+
+**UA:** Потім розвернувся і знову побіг вперед, не оглядаючись.
+
+---
+
+**PL:** A biedna Gerda została na śniegu sama jedna, bosa, bez rękawic i bucików, wśród wichru i strasznego mrozu.
+
+**UA:** І залишилася бідолашна Герда одна на снігу, боса, без рукавичок і взуття, на вітрі та страшному морозі.
+
+---
+
+**PL:** Zaczęła biec naprzód, jak mogła najprędzej. Ale natychmiast zastąpił jej drogę cały tłum płatków śnieżnych. Nie spadały one z nieba, gdyż niebo było jasne i pogodne, oświetlone płonącą zorzą, lecz unosiły się nisko nad ziemią i powiększały się coraz bardziej w miarę jak zbliżały się ku niej.
+
+**UA:** Вона почала бігти вперед якомога швидше. Але відразу ціла юрба сніжинок перегородила їй шлях. Вони не впали з неба, бо небо було яскравим і безтурботним, освітленим палаючим полярним сяйвом, але вони зависли низько над землею й ставали все більшими й більшими, наближаючись до неї.
+
+---
+
+**PL:** Wtedy przypomniała sobie dziewczynka, jak oglądała z Kajem płatki śniegu przez szkło powiększające. Tamte jednak były inne i nie takie wielkie. Te wyglądały strasznie, jak żywe istoty: były to rzeczywiście przednie straże królowej śniegu.
+
+**UA:** Потім дівчина згадала, як дивилася з Каєм на сніжинки через збільшувальне скло. Але ті були інші і не такі великі. Вони були моторошно схожі на живих істот: вони справді були авангардом снігової королеви.
+
+**PL:** Ich postaci były dziwaczne i groźne: niby ogromne, białe i kolczaste jeże — to kłęby żmij i wężów o syczących paszczach — to niby małe, grube niedźwiedziątka o nastroszonej sierści. A wszystkie białe, lekkie, świecące, ruchliwe, budzące strach brzydotą i tym, że żywe, a przecież to płatki śniegu.
+
+**UA:** Їх постаті були дивні й грізні: це були величезні, білі та колючі їжаки, то були клубки гадюк і змій із шиплячими пащами, то були маленькі огрядні ведмежата з колючою шерстю. І всі вони білі, легкі, блискучі, рухливі, лякають своєю потворністю і тим, що вони живі, а ще сніжинки.
+
+---
+
+**PL:** Dziwne, szkaradne wojsko.
+
+**UA:** Дивна, огидна армія.
+
+---
+
+**PL:** Gerda w trwodze zaczęła się modlić. Ale mróz był tak wielki, iż własny jej oddech, wychodząc z ust, stawał się dla niej widzialny, zmieniał się w gęstą parę i otaczał ją jakby obłokiem.
+
+**UA:** Герда зі страху почала молитися. Але мороз був такий великий, що її власне дихання, вириваючись із рота, ставало для неї видимим, перетворювалося на густу пару і оточувало її, наче хмарою.
+
+**PL:** I nagle w tym obłoku ujrzała małe aniołki, które krążyły koło niej, spuszczały się ku ziemi, a gdy jej dotknęły, rosły szybko i otaczały ją jak groźne wojsko. Każdy miał hełm na głowie, w ręku tarczę i włócznię.
+
+**UA:** І раптом у тій хмарі вона побачила маленьких янголят, які кружляли навколо неї, спускалися до землі, і, торкнувшись її, швидко виросли і оточили її, як небезпечне військо. У кожного на голові був шолом, у руці — щит і спис.
+
+---
+
+**PL:** Było ich coraz więcej, a kiedy Gerda skończyła pacierz, już otaczał ją cały legion tego cudownego wojska. Teraz rozpoczął się bój z potwornymi płatkami śniegu.
+
+**UA:** Їх ставало все більше і більше, і коли Герда закінчила свою молитву, її вже оточував увесь легіон цього чудового війська. Тепер почалася боротьба зі сніжинками-монстрами.
+
+**PL:** Wojsko anielskie rąbało i siekło na drobne szczątki szkaradne istoty, które zaczęły się cofać w popłochu i Gerda biec mogła prędzej bez przeszkody. Aniołkowie głaskali jej nóżki i ręce i nie czuła już mrozu, aż stanęła przed samym pałacem królowej.
+
+**UA:** Ангельське воїнство рубало й рубало на дрібні шматки огидних створінь, які в паніці почали відступати, а Герда змогла бігти швидше без жодних перешкод. Ангели гладили її ноги й руки, і вона вже не відчувала морозу, поки не стала перед палацом цариці.
+
+---
+
+**PL:** A tymczasem zobaczmy, co tam robił Kaj. O Gerdzie nie myślał wcale i nie przypuszczał, że stoi w śniegu przed pałacem.
+
+**UA:** А поки подивимося, що там робив Кай. Він зовсім не думав про Герду і не усвідомлював, що стоїть на снігу перед палацом.
+
+---
+
+**PL:** W pałacu królowej śniegu
+
+**UA:** У палаці Снігової королеви
+
+---
+
+**PL:** Ściany pałacu były z olbrzymich zasp śnieżnych, w których wichry wywierciły drzwi i okna. Przeszło sto sal znajdowało się w tym gmachu, a największa miała kilka mil długości.
+
+**UA:** Стіни палацу складалися з величезних кучугур, в яких вітри просвердлювали двері та вікна. У цій будівлі було понад сто кімнат, і найбільша була завдовжки кілька миль.
+
+**PL:** Oświetlała je piękna zorza, kładąc na białym śniegu czerwone i żółte blaski, toteż w wielkich komnatach było pusto, cicho, jasno i mroźno.
+
+**UA:** Прекрасне полярне сяйво освітлювало їх, кидаючи червоні й жовті відблиски на білий сніг, тож великі кімнати були порожні, тихі, яскраві й морозні.
+
+---
+
+**PL:** Nigdy w tej białej olbrzymiej przestrzeni nie słyszano śmiechu ani wesołego głosu, nie było tu nigdy rozgłośnej zabawy, choć północne niedźwiadki i inne stworzenia mogły wyprawiać najświetniejsze bale w takich wspaniałych salach przy muzyce wichru. Nie wchodziły tu jednak nigdy — nigdy!
+
+**UA:** У цьому величезному білому просторі ніколи не було чути ні сміху, ні веселого голосу, тут ніколи не було гучних вечірок, хоча північні ведмеді та інші створіння могли під музику вітру кидати в таких чудових залах найрозкішніші кулі. Але вони ніколи сюди не заходили - ніколи!
+
+**PL:** W pałacu królowej śniegu było pusto i zawsze cicho. Cicho codziennie o jednej godzinie zapalała się zorza, a następnie gasła, cicho błyszczały białe, śnieżne ściany, cicho w środku leżało wielkie lodowe jezioro.
+
+**UA:** Палац снігової королеви був порожній і завжди мовчав. Щодня о першій годині безшумно з’являлося полярне сяйво, а потім згасало, білі засніжені стіни тихо блищали, а посередині тихо лежало велике крижане озеро.
+
+**PL:** Przejrzysty lód spękany był w tysiące kawałków, ale wszystkie były podobne do siebie, zupełnie jednakowe. A na środku jeziora, na wysokim lodowym tronie siedziała królowa śniegu, gdy gościła w swoim królestwie.
+
+**UA:** Прозорий лід розколовся на тисячі шматків, але всі вони були схожі один на одного, зовсім схожі. А посеред озера, на високому троні з льоду, сиділа снігова королева, відвідуючи своє королівство.
+
+---
+
+**PL:** Mały Kaj był siny z zimna, prawie czarny, ale nie wiedział o tym i nie czuł wcale chłodu, gdyż królowa śniegu zamroziła pocałunkami nawet dreszcze w jego ciele, a serce jego stało się kawałkiem lodu.
+
+**UA:** Маленький Кай був синій від холоду, майже чорний, але він не знав цього і зовсім не відчував холоду, тому що снігова королева своїми поцілунками заморозила навіть тремтіння в його тілі, а серце стало шматком льоду.
+
+**PL:** Biały, zimny, śnieżny pałac wydawał mu się najwspanialszym królestwem na świecie, z podziwem patrzył na wysoki tron lodowy i bawił się u stóp jego, układając z kawałków lodu wszystko, co mu się tylko podobało. Tak właśnie dzieci bawią się klockami, budując wieże i przeróżne gmachy.
+
+**UA:** Білий, холодний, засніжений палац здавався йому найчудовішим царством у світі, він із захопленням дивився на високий крижаний трон і грав біля його ніг, складаючи зі шматочків льоду все, що заманеться. Так діти граються з кубиками, будують вежі та різні будівлі.
+
+**PL:** Kajowi klocków nie zabrakło nigdy; były przejrzyste, o ostrych krawędziach, zimne i jednakowe; mógł je układać całe życie w rozmaite figury, litery, desenie, a wszystko, co ułożył, wydawało mu się mądre i doskonałe i nic w tym nie chciał zmienić, ani zepsuć.
+
+**UA:** У Kaj ніколи не закінчувалися блоки; вони були чисті, гострі, холодні й однорідні; він міг ціле життя складати їх у різні фігури, букви, візерунки, і все, що він складав, здавалося йому мудрим і досконалим, і він не хотів нічого в цьому міняти чи псувати.
+
+---
+
+**PL:** Więc były na lodzie kwadraty, trójkąty, liczby i wyrazy: śnieg, jezioro, królowa i bardzo wiele innych. Nie mógł tylko ułożyć wyrazu „kocham”, choć królowa mu powiedziała:
+
+**UA:** Так на льоду з’явилися квадрати, трикутники, цифри та слова: сніг, озеро, королева та багато інших. Він просто не міг скласти слово «я люблю тебе», хоча королева сказала йому:
+
+---
+
+**PL:** — Jeśli zdołasz ułożyć ten wyraz, będziesz wolny, a ja daruję ci cały świat i nowe łyżwy.
+
+**UA:** - Якщо ти зможеш скласти це слово, ти будеш вільний, і я подарую тобі цілий світ і нові ковзани.
+
+---
+
+**PL:** Więc Kaj pragnął bardzo ułożyć dziwne słowo, a nie umiał. On, taki mądry, nie wiedział, jak zacząć.
+
+**UA:** Тож Кай дуже хотів скласти дивне слово, але не зміг. Він, такий розумний, не знав, як почати.
+
+---
+
+**PL:** Tymczasem ciepły wiatr wionął z południa i królowa śniegu wstała z wysokiego tronu.
+
+**UA:** Тим часом з півдня подув теплий вітер і снігова королева піднялася зі свого високого трону.
+
+---
+
+**PL:** — Muszę śpieszyć do ciepłych krajów — powiedziała — trzeba znowu nakryć moje czarne garnki (to znaczy: wulkany). Pobielę im trochę głowy, a cytryny i winogrona poumierają na ten widok.
+
+**UA:** - Мені треба поспішати в теплі краї, - сказала вона, - мені потрібно знову накрити свої чорні горщики (тобто: вулкани). Побілю їм трохи голови, а лимони й виноград загинуть від того.
+
+---
+
+**PL:** I zniknęła w tumanach<sup>19</sup> śniegu.
+
+**UA:** І вона зникла в хмарах снігу<sup>19</sup>.
+
+---
+
+**PL:** Kaj został sam w olbrzymiej, pustej sali. Zrobił sobie z kawałków lodu wygodne siedzenie, usiadł, patrzył na ułożone przed sobą litery, milczał, myślał i siedział nieruchomy, sztywny, zimny i siny, jak zamarznięty.
+
+**UA:** Кай залишився сам у величезній порожній кімнаті. Він зробив собі зручне сидіння зі шматочків льоду, сів, подивився на розкладені перед собою літери, помовчав, подумав і сидів непорушно, застиглий, холодний і синій, наче замерз.
+
+---
+
+**PL:** Wtedy właśnie Gerda weszła do pałacu. Ostry wicher z przeciągłym jękiem rzucił się ku niej, aby ją zatrzymać, ale zaczęła modlić się goręcej i wiatr ucichł, i przypadł spokojnie ku ziemi, jakby kładł się do snu.
+
+**UA:** Саме тоді Герда увійшла до палацу. Різкий вітер кинувся до неї з протяжним стогоном, щоб зупинити її, але вона почала молитися ще ревніше, і вітер затих і спокійно впав на землю, ніби збирався спати.
+
+---
+
+**PL:** Gerda weszła do olbrzymiej sali, pustej, białej i cichej. Nagle zobaczyła Kaja. Poznała go natychmiast. Z okrzykiem radości pobiegła ku niemu, obie ręce zarzuciła mu na szyję i mocno przyciskając go do serca, wołała uradowana:
+
+**UA:** Герда увійшла у величезну кімнату, порожню, білу й тиху. Раптом вона побачила Кая. Вона відразу впізнала його. З радісним криком вона підбігла до нього, обняла його обома руками за шию і, міцно пригорнувши його до серця, вигукнула з радості:
+
+---
+
+**PL:** — Kaju! Kochany Kaju! Znalazłam cię przecież!
+
+**UA:** -Каджу! Шановний Кай! Я тебе знайшов!
+
+---
+
+**PL:** Lecz Kaj siedział cichy, sztywny, nieruchomy — a taki zimny!
+
+**UA:** Але Кай сидів мовчазний, заціпенілий, нерухомий — і такий холодний!
+
+---
+
+**PL:** Gerda wybuchnęła płaczem. Jej łzy gorące padały mu na piersi, przenikały mu do serca, roztopiły lodową bryłę i spłukały z niej okruszynę czarodziejskiego zwierciadła, które było przyczyną całego nieszczęścia.
+
+**UA:** Герда розплакалася. Її гарячі сльози впали йому на груди, проникли в серце, розтопили льодяну глибу і змили крихту чарівного дзеркала, яке стало причиною всіх нещасть.
+
+---
+
+**PL:** I nagle serce zabiło mu mocniej, zimny dreszcz przebiegł ciało, zdumiony podniósł oczy na Gerdę, a ona zaczęła śpiewać:
+
+**UA:** І раптом його серце забилося сильніше, холодна дрож пробігла по тілу, він здивовано звів очі на Герду, і вона заспівала:
+
+---
+
+**PL:** Co ja kocham na tym świecie?
+
+**UA:** Що я люблю в цьому світі?
+
+---
+
+**PL:** Złote słonko, jasne kwiecie!
+
+**UA:** Сонце золоте, квіти яскраві!
+
+---
+
+**PL:** Boże ptaszki śpiewające...
+
+**UA:** Божі співочі птахи...
+
+---
+
+**PL:** A kiedy wymówiła słowa: „Wszystko kocham serca biciem, a przestanę chyba z życiem!” — Kaj przypomniał sobie nagle krzaczek róży, dom, rodziców, babkę, Gerdę i wszystko, co się stało i zrobiło mu się tak smutno, tak smutno w tej wielkiej, białej, pustej, strasznej sali, że wybuchnął ogromnym płaczem,
+
+**UA:** І коли вона вимовила слова: «Люблю все серцем, і, думаю, перестану жити!» — Кай раптом згадав трояндовий кущ, будинок, своїх батьків, бабусю, Герду і все, що сталося, і йому стало так сумно, так сумно в цій великій, білій, порожній, жахливій кімнаті, що він розплакався,
+
+**PL:** a ze łzami spłynął natychmiast i drugi okruch szkła czarodziejskiego, który mu tkwił w oku.
+
+**UA:** і другий осколок чарівного скла, що застряг йому в оці, одразу ж зі сльозами випав.
+
+---
+
+**PL:** Wówczas dopiero poznał naprawdę Gerdę i wydawała mu się tak piękną jak dawniej i uczuł, że ją kocha tak mocno jak dawniej i aż krzyknął z radości i objął ją także rękami. I ściskali się serdecznie oboje, płacząc i śmiejąc się razem ze szczęścia.
+
+**UA:** Тільки тоді він по-справжньому пізнав Герду, і вона здалася йому такою ж гарною, як і раніше, і він відчув, що кохає її так само сильно, як і раніше, і він скрикнув від радості і також обійняв її своїми руками. І вони обоє тепло обійняли одне одного, разом плакали і сміялися від щастя.
+
+---
+
+**PL:** Po raz pierwszy w białym pałacu, u stóp tronu królowej śniegu rozległy się nieznane tu głosy wesela; toteż zdumione lodowe jezioro pękać zaczęło z wielkiego podziwu, a kawałeczki lodu, dotąd nieruchome, kręciły się w szalonym tańcu, podskakując i uderzając o siebie,
+
+**UA:** Вперше в білому палаці, біля підніжжя трону снігової королеви, залунали невідомі голоси весілля; тож здивоване крижане озеро почало луснути від великого захоплення, а шматки льоду, раніше нерухомі, закрутилися в шаленому танці, стрибаючи й ударяючись один об одного,
+
+**PL:** aż zmęczone upadły znowu i same ułożyły się w ten dziwny wyraz, za który Kaj miał otrzymać wolność, świat cały i nowe łyżwy.
+
+**UA:** поки, втомлені, вони знову не впали й не влаштувалися в цей дивний вираз, за ​​який Кай мав отримати свободу, цілий світ і нові ковзани.
+
+---
+
+**PL:** W pałacu królowej śniegu, na lodowym jeziorze, u stóp wysokiego lodowatego tronu, jaśniał w blaskach zorzy północnej nieznany tu, tajemniczy wyraz:
+
+**UA:** У палаці Снігової Королеви, на крижаному озері, біля підніжжя високого крижаного трону, сяяв у сяйві північного сяйва незнайомий тут загадковий вираз:
+
+---
+
+**PL:** »Kocham«.
+
+**UA:** «Я люблю».
+
+---
+
+**PL:** A dzieci stały przy nim uśmiechnięte, opromienione złotem i różowym światłem.
+
+**UA:** А діти стояли біля нього усміхнені, осяяні золотом і рожевим світлом.
+
+**PL:** Gerda pocałowała Kaja w twarz — a sina twarz jego stała się rumianą — pocałowała go w oczy i stały się znowu jasne i błyszczące — całowała mu ręce i stały się silne — całowała mu nogi i utraciły sztywność i stały się zdrowe, i Kaj powstał z lodowego krzesła, raźny, zdrów, silny i dobry jak niegdyś.
+
+**UA:** Герда поцілувала Кая в обличчя - і його блакитне обличчя стало рум'яним - вона поцілувала його очі, і вони знову стали яскравими і сяючими - вона поцілувала його руки, і вони стали сильними - вона поцілувала його ноги, і вони втратили свою жорсткість і стали здоровими, і Кай піднявся з крижаного стільця, бадьорий, здоровий, сильний і добрий, як і раніше.
+
+---
+
+**PL:** Teraz mogła powrócić i królowa śniegu; był zupełnie wolny! Wolność jego jaśniała u stóp wysokiego tronu tajemniczym wyrazem w blaskach północnej zorzy.
+
+**UA:** Тепер снігова королева могла повернутися; він був абсолютно вільний! Його свобода сяяла таємничим виразом біля підніжжя високого трону в сяйві північної зорі.
+
+---
+
+**PL:** Dzieci wzięły się za ręce i wyszły z okropnego pałacu. Rozmawiały o domu, rodzicach i babce, o kwiatach na dachu i o krzaczku róży, a gdzie się zwróciły, uciszały się wiatry i słońce wychylało się z ciemnych obłoków.
+
+**UA:** Діти взялися за руки і вийшли зі страшного палацу. Говорили вони про хату, про батьків і бабусю, про квіти на даху та трояндовий кущ, і куди б вони не обернулися, вітри стихали і з-за темних хмар виринало сонце.
+
+---
+
+**PL:** Gdy stanęły przy krzaku z czerwonymi jagodami, zastały tam dwa reny: stary ren przyprowadził towarzysza.
+
+**UA:** Коли вони зупинилися біля куща з червоними ягодами, то знайшли там двох оленів: старий узвід привів товариша.
+
+**PL:** Dobre zwierzęta zaniosły Gerdę i Kaja najpierw do starej Eskimoski, gdzie dzieci wygrzały się w gorącej izbie, a następnie do Laponki, która przygotowała im na drogę nowe suknie<sup>20</sup> i powiedziała, którędy iść mają.
+
+**UA:** Добрі тварини віднесли Герду і Кая спочатку до старої ескімоски, де діти грілися в гарячій кімнаті, а потім до лапландки, яка підготувала для них нові сукні<sup>20</sup>і вказала, куди їм йти.
+
+---
+
+**PL:** Oba reny odprowadziły dzieci do granicy swego kraju i pożegnały tam, gdzie zniknęły śniegi, a ziemię i lasy okrywa świeża zieloność.
+
+**UA:** Обидва олені проводжали дітей до кордону своєї країни і попрощалися з тим місцем, де зник сніг, а земля і ліси вкрилися свіжою зеленню.
+
+---
+
+**PL:** — Bądźcie zdrowi! — Bądźcie zdrowi! — powiedziały sobie nawzajem.
+
+**UA:** - Бувайте здорові! - Бувайте здорові! – сказали вони один одному.
+
+---
+
+**PL:** W powietrzu zaświergotały małe ptaszki, las zaszemrał młodymi listeczkami i na małym, ślicznym koniku wyjechała spomiędzy drzew jakaś dziewczynka w czerwonej czapeczce i z pistoletem za pasem.
+
+**UA:** У повітрі щебетали пташечки, ліс шелестів молодим листям, а з-поміж дерев виїжджала на маленькому гарному коні дівчина в червоному чепчику і з рушницею за поясом.
+
+---
+
+**PL:** Była to mała zbójniczka na kucyku, którego Gerda dostała od księżniczki wraz ze złocistą karetą.
+
+**UA:** Вона була маленькою розбійницею на поні, яку Герда отримала від принцеси разом із золотою каретою.
+
+---
+
+**PL:** Gerda i zbójniczka poznały się natychmiast i wydały okrzyk radości.
+
+**UA:** Герда та розбійник відразу впізнали один одного і вигукнули від радості.
+
+---
+
+**PL:** — Znalazłaś Kaja! — wołała ucieszona zbójniczka.
+
+**UA:** - Ти знайшов Кая! – скрикнув зраділий розбійник.
+
+---
+
+**PL:** — Powracamy do domu! — odpowiedziała szczęśliwa Gerda. — Dziękujemy ci za wszystko. Chciałabym podziękować też księżniczce, wronie i krukowi.
+
+**UA:** -Ми йдемо додому! – радісно відповіла Герда. — Дякую за все. Ще я хочу подякувати царівні, ворону і круку.
+
+---
+
+**PL:** — Księżniczka wyjechała w daleką podróż.
+
+**UA:** — Вирушила царівна в далеку дорогу.
+
+---
+
+**PL:** — A wrona?
+
+**UA:** -А ворона?
+
+---
+
+**PL:** — Wrona nie żyje. Kruk nosi po niej żałobę.
+
+**UA:** — Ворона здохла. Ворон сумує за нею.
+
+---
+
+**PL:** — Pozdrów go od nas — rzekła ze smutkiem Gerda.
+
+**UA:** — Передай йому привіт від нас, — сумно сказала Герда.
+
+---
+
+**PL:** — Bądźcie zdrowi! — rzekła zbójniczka i serdecznie uściskała małych wędrowców.
+
+**UA:** - Бувайте здорові! – сказав розбійник і гаряче обійняв маленьких мандрівників.
+
+---
+
+**PL:** A dzieci szły, trzymając się za ręce i rozmawiając o tym, co kochały. Dokoła nich budziła się ze snu przyroda, na niebie jaśniało słońce, na łąkach pachniały kwiaty, na polach kołysały się zielone fale zboża, las szumiał, świergotały ptaki.
+
+**UA:** А діти йшли, тримаючись за руки, розмовляли про те, що люблять. Навколо них прокидалась від сну природа, світило на небі сонце, пахли квіти в лугах, зелені хвилі збіжжя гойдалися на полях, шумів ліс, щебетали пташки.
+
+---
+
+**PL:** Tak zbliżyły się do wielkiego miasta. Dzwony odezwały się z wieży kościelnej i dzieci poznały ten dobrze znany głos. I poznały ulice, domy, sklepy, bramy.
+
+**UA:** Так вони підійшли до великого міста. З церковної вежі залунали дзвони, і діти впізнали цей добре відомий голос. І вони знайомилися з вулицями, будинками, магазинами, воротами.
+
+---
+
+**PL:** Ściskając się za ręce, biegły do swego domu, po znanych schodach, na znane poddasze, do izdebki, gdzie upłynęło im dzieciństwo.
+
+**UA:** Взявшись за руки, вони побігли до свого будинку, по знайомих сходах, на знайоме горище, в кімнату, де минуло їх дитинство.
+
+---
+
+**PL:** Nic się tu nic zmieniło: sprzęty stały na swoim miejscu, na zegarze posuwały się wskazówki, a wahadło biegało w tę i ową stronę, powtarzając tym samym jednostajnym głosem: tik–tak!
+
+**UA:** Тут нічого не змінилося: апаратура була на своїх місцях, стрілки на годиннику рухалися, а маятник хитався туди-сюди, повторюючи тим самим монотонним голосом: тік-так!
+
+---
+
+**PL:** Wchodząc we drzwi, zauważyły dopiero, jak urosły w przeciągu tego czasu. A tam, przy oknie, stały ich małe krzesełka! Babunia siedziała na starym fotelu i modliła się z książki, a słońce oblewało złotym blaskiem jej siwą głowę.
+
+**UA:** Увійшовши в двері, вони помітили, як сильно виросли за цей час. А там, біля вікна, стояли їхні крісла! Бабуся сиділа в старому кріслі й молилася з книжки, а сонце обливало її сиву голову золотим світлом.
+
+---
+
+**PL:** Jak tu ślicznie, jak jasno, jak wesoło!
+
+**UA:** Як тут гарно, як яскраво, як весело!
+
+---
+
+**PL:** O pałacu królowej śniegu zapomnieli. Usiedli znowu na małych stołeczkach jak dawniej i spojrzeli na drewnianą skrzynkę, w której rosły powoje i groszki pachnące. Na krzaczkach róż rozwinęły się prześliczne kwiaty i zdawały się uśmiechać do nich, nachylając różane główki w stronę okna.
+
+**UA:** Забули про палац снігової королеви. Вони, як і раніше, знову сіли на маленькі стільчики й подивилися на дерев’яний ящик, у якому росли іпомея та запашний горошок. На кущах троянд розцвіли чудові квіти і вони ніби посміхалися їм, схиливши голівки троянд до вікна.
+
+---
+
+**PL:** A dzieci zaśpiewały razem:
+
+**UA:** І діти разом заспівали:
+
+---
+
+**PL:** Co ja kocham na tym świecie?
+
+**UA:** Що я люблю в цьому світі?
+
+---
+
+**PL:** Złote słonko, cudne kwiecie!
+
+**UA:** Сонце золоте, квіти гарні!
+
+---
+
+**PL:** Boże ptaszki śpiewające,
+
+**UA:** Божий спів пташок,
+
+---
+
+**PL:** Jasne rosy, w kwiatach drżące,
+
+**UA:** Ясні роси тремтять у квітах,
+
+---
+
+**PL:** Błękit nieba i obłoki,
+
+**UA:** Синє небо і хмари,
+
+---
+
+**PL:** Cały piękny świat szeroki,
+
+**UA:** Весь прекрасний широкий світ,
+
+---
+
+**PL:** I chatynkę pobielaną,
+
+**UA:** І побілена хата,
+
+---
+
+**PL:** I mateńkę ukochaną!
+
+**UA:** І моя кохана мама!
+
+---
+
+**PL:** Wszystko kocham serca biciem,
+
+**UA:** Люблю все серцем,
+
+---
+
+**PL:** A przestanę chyba z życiem!
+
+**UA:** І я, мабуть, перестану жити!
