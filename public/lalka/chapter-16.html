@@ -1,0 +1,2344 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  HOW TO RE-ALIGN AFTER EDITS
+  ··········································································
+  1. Edit the Polish sentences (**PL:** lines) in chapter-16.md.
+  2. Re-run the aligner from this folder:
+         ./.venv-asr/bin/python align_audio.py chapter-16.md audio/chapter-16.webm
+     The AUDIO_TIMES block is printed to stdout; the js-out option also saves
+     it to chapter-16.audio-times.js.
+  3. Regenerate this page so CHAPTER matches the edited text:
+         ./.venv-asr/bin/python build_reader.py chapter-16.md
+     It reads chapter-16.asr.json and rebuilds this page from
+     reader.template.html. Nothing else needs to change.
+  4. If you only fixed a few timings by ear (timestamp-helper.html), you can
+     paste the new `const AUDIO_TIMES = [...]` block directly over the array
+     in section 2 below; CHAPTER[i].start is filled from it at boot.
+  5. Listen to a couple of sections, then repeat for chapter-02 with the same
+     two scripts (no code changes needed).
+
+  The audio file is referenced by the RELATIVE path audio/chapter-16.webm, so keep
+  this page and the MP3 in the same folder. No network, no build step, no
+  server: it runs from file://.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Lalka · Rozdział XVI</title>
+<style>
+  /* ------------------------------------------------------------------ */
+  /*  Design tokens: light + dark                                       */
+  /* ------------------------------------------------------------------ */
+  :root {
+    --bg: #fbfaf7;
+    --bg-soft: #f4f1ea;
+    --surface: #ffffff;
+    --ink: #15140f;
+    --ink-soft: #3d3a33;
+    --muted: #7c766c;
+    --line: #e5e0d6;
+    --line-strong: #d3ccbe;
+    --accent: #2c6e4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f1ea;
+    --accent-ring: rgba(44, 110, 79, .22);
+    --ua-border: #c3d2e6;
+    --ua-bg: #f7f9fc;
+    --shadow: 0 1px 2px rgba(24, 20, 10, .05), 0 8px 22px rgba(24, 20, 10, .045);
+    --radius: 14px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg: #12120f;
+    --bg-soft: #191814;
+    --surface: #1b1a16;
+    --ink: #f2efe6;
+    --ink-soft: #d6d1c4;
+    --muted: #9a9486;
+    --line: #2b2924;
+    --line-strong: #3b3831;
+    --accent: #7fc9a2;
+    --accent-ink: #10231a;
+    --accent-soft: #1e2b23;
+    --accent-ring: rgba(127, 201, 162, .18);
+    --ua-border: #3a4a5e;
+    --ua-bg: #171a1f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .28);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Sticky header + controls bar                                      */
+  /* ------------------------------------------------------------------ */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 12px 18px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  /* The collapse button always shares the title row, flush right: a fixed
+     slot is left for it here so it stays at the right at every viewport
+     width (a fixed 240px basis used to let it drop onto its own row at the
+     left on medium screens). */
+  .brand { flex: 1 1 calc(100% - 52px); min-width: 0; }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand p { margin: 1px 0 0; font-size: .74rem; color: var(--muted); }
+  .brand .back { display: inline-block; font-size: .76rem; color: var(--muted); text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+  .brand .back:hover { color: var(--accent); }
+  .brand .chapter-name {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: .86rem;
+    font-style: italic;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .brand .chapter-name:empty { display: none; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ctl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ctl:hover { border-color: var(--line-strong); }
+  .ctl:focus-visible, .chip:focus-visible, .play:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .ctl strong { font-weight: 600; color: var(--ink); }
+  .ctl.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+  .vol { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+         border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .vol input[type="range"] {
+    width: 76px; accent-color: var(--accent); cursor: pointer;
+  }
+  .vol output { font-variant-numeric: tabular-nums; font-size: .74rem; color: var(--muted); min-width: 30px; text-align: right; }
+
+  .clock { font-family: var(--mono); font-size: .74rem; color: var(--muted);
+           padding: 0 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* Collapsed header: brand and the display controls fold away, leaving the
+     audio time, the Continuous play button and the expand button in one slim
+     row (the clock must stay visible here even on narrow screens, where it
+     is normally hidden). */
+  .topbar-collapse {
+    flex: none;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: .78rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .topbar-collapse:hover { border-color: var(--line-strong); }
+  /* Visual order at every width: title, then the collapse button beside it,
+     then the controls on their own row below. */
+  .topbar-collapse { order: 1; }
+  .controls { order: 2; }
+  .topbar.is-collapsed .topbar-inner { flex-wrap: nowrap; padding-top: 7px; padding-bottom: 7px; }
+  .topbar.is-collapsed .brand { display: none; }
+  .topbar.is-collapsed .controls { flex: 1 1 auto; width: auto; min-width: 0; }
+  .topbar.is-collapsed .controls > *:not(.clock):not(#continuous) { display: none; }
+  .topbar.is-collapsed .clock { display: inline; order: -1; }
+  .topbar.is-collapsed .topbar-collapse { order: 3; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio problem banner                                              */
+  /* ------------------------------------------------------------------ */
+  .banner {
+    max-width: 900px;
+    margin: 12px auto 0;
+    padding: 10px 14px;
+    border: 1px solid #e0b4a6;
+    border-left: 4px solid #c4643f;
+    border-radius: 10px;
+    background: #fdf0ea;
+    color: #6b2c15;
+    font-size: .85rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  html[data-theme="dark"] .banner { background: #2a1a14; border-color: #5c3a2c; color: #f0c3ab; }
+  .banner code { font-family: var(--mono); font-size: .82em; }
+  .banner button {
+    margin-left: auto; flex: none; background: none; border: 0; color: inherit;
+    cursor: pointer; font-size: 1rem; line-height: 1; padding: 2px 4px; opacity: .7;
+  }
+  .banner button:hover { opacity: 1; }
+  [hidden] { display: none !important; }
+
+  /* ------------------------------------------------------------------ */
+  /*  Content                                                           */
+  /* ------------------------------------------------------------------ */
+  main { max-width: 900px; margin: 0 auto; padding: 16px 18px 120px; }
+
+  .para-sep {
+    margin: 26px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    font-variant: small-caps;
+  }
+  .para-sep::before, .para-sep::after {
+    content: ""; height: 1px; background: var(--line); flex: 1;
+  }
+
+  .unit {
+    position: relative;
+    scroll-margin-top: calc(var(--hdr, 160px) + 12px);   /* #u-N anchors must clear the sticky header (height measured at boot) */
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 18px 14px;
+    margin: 0 0 12px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .unit.is-playing {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow);
+  }
+  /* Selected card = where Continuous play will start. */
+  .unit.is-selected { border-color: var(--line-strong); }
+  .unit.is-selected::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 16px; bottom: 16px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    opacity: .45;
+    transition: opacity .18s ease;
+  }
+  .unit.is-playing::before { opacity: 1; top: 10px; bottom: 10px; }
+  .unit .num {
+    position: absolute; top: 12px; right: 14px;
+    font-family: var(--mono); font-size: .66rem; color: var(--muted);
+    opacity: .75; letter-spacing: .02em;
+  }
+
+  /* PL — primary text, always visible */
+  .pl-row { display: flex; gap: 12px; align-items: flex-start; }
+  .play {
+    flex: none;
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--bg-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  .play:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .play:active:not(:disabled) { transform: scale(.94); }
+  .play:disabled { opacity: .35; cursor: not-allowed; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .pl {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .footnote-ref {
+    position: relative; cursor: help; color: var(--accent);
+    text-decoration: underline dotted; text-underline-offset: 2px; outline-offset: 3px;
+  }
+  .footnote-tooltip {
+    display: none; position: fixed; z-index: 20; left: 12px; top: 12px;
+    width: min(360px, calc(100vw - 36px)); max-height: calc(100vh - 24px);
+    overflow: auto; box-sizing: border-box; padding: 11px 13px;
+    border: 1px solid var(--line-strong); border-radius: 9px;
+    background: var(--bg); color: var(--ink); box-shadow: 0 8px 26px rgb(0 0 0 / .2);
+    font: 400 .82rem/1.45 var(--sans); text-align: left; white-space: normal;
+  }
+  .footnote-ref:hover .footnote-tooltip,
+  .footnote-ref:focus .footnote-tooltip { display: block; }
+  .footnote-tooltip strong { display: block; margin-bottom: 4px; color: var(--accent); }
+  .footnote-tooltip .note-label { display: block; margin-top: 7px; color: var(--muted); font: 700 .63rem/1.2 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+  .footnote-tooltip .note-pl { display: block; }
+  .footnote-tooltip .note-ua { display: block; margin-top: 7px; color: var(--muted); }
+
+  /* progress hairline on the playing card */
+  .unit .pbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    background: transparent; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .unit .pbar span { display: block; height: 100%; width: 0; background: var(--accent); opacity: .55; }
+  .unit.is-playing .pbar span { width: var(--p, 0%); }
+
+  /* progress mode 2: underline the word being spoken (replaces the hairline) */
+  .w { border-radius: 3px; }
+  html[data-progress="word"] .unit.has-words .pbar { display: none; }
+  html[data-progress="word"] .unit.is-playing .w.is-current {
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--accent);
+  }
+
+  /* Ukrainian reveal block */
+  .toggles { display: flex; gap: 6px; margin: 10px 0 0 46px; }
+  .chip {
+    font: inherit;
+    font-size: .7rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--ink-soft); border-color: var(--line-strong); }
+  .chip[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .stack { margin: 10px 0 2px 46px; }
+  .stack[hidden] { display: none; }
+  .stack p { margin: 0 0 8px; }
+  .stack .lbl {
+    display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .ua p {
+    font-size: .97rem;
+    color: var(--ink-soft);
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--ua-border);
+    background: linear-gradient(90deg, var(--ua-bg), transparent 65%);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Footer / help                                                 */
+  /* -------------------------------------------------------------- */
+  footer {
+    max-width: 900px; margin: 0 auto; padding: 8px 18px 64px;
+    color: var(--muted); font-size: .78rem; line-height: 1.6;
+  }
+  footer kbd {
+    font-family: var(--mono); font-size: .72rem; padding: 1px 5px;
+    border: 1px solid var(--line-strong); border-radius: 5px; background: var(--bg-soft);
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Mobile                                                        */
+  /* -------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .topbar-inner { padding: 10px 12px 9px; gap: 8px; }
+    .brand h1 { font-size: .95rem; white-space: normal; }
+    .controls { gap: 6px; width: 100%; }
+    .ctl, .vol { font-size: .72rem; padding: 6px 9px; }
+    .vol input[type="range"] { width: 58px; }
+    /* The clock stays visible when expanded, parked at the right edge of the
+       controls row (it used to be hidden entirely on narrow screens). */
+    .clock { display: inline; }
+    .topbar:not(.is-collapsed) .clock { margin-left: auto; }
+    main { padding: 12px 12px 96px; }
+    .unit { padding: 14px 14px 12px; }
+    .pl { font-size: 1.02rem; }
+    .toggles, .stack { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <a class="back" href="index.html">← Contents</a>
+      <h1>Lalka · Rozdział XVI</h1>
+      <p class="chapter-name">„Ona” — „on” — i ci inni</p>
+      <p>Bolesław Prus · bilingual study edition: PL → UA</p>
+    </div>
+
+    <div class="controls" role="toolbar" aria-label="Playback and display controls">
+      <label class="vol" title="Volume">
+        <span aria-hidden="true">🔊</span>
+        <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volume">
+        <output id="volumeOut" for="volume">100%</output>
+      </label>
+
+      <label class="vol" title="Playback speed">
+        <span aria-hidden="true">⏱</span>
+        <input id="rate" type="range" min="0.5" max="1" step="0.1" value="1" aria-label="Playback speed">
+        <output id="rateOut" for="rate">1×</output>
+      </label>
+
+      <label class="ctl" id="progressCtl" title="Progress display">
+        <span aria-hidden="true">◍</span>
+        <select id="progress" aria-label="Progress display"
+                style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer">
+          <option value="section">Section</option>
+          <option value="word">Word</option>
+        </select>
+      </label>
+
+      <button id="toggleUa" class="ctl" type="button" aria-pressed="false">Reveal all UA</button>
+      <button id="continuous" class="ctl" type="button" aria-pressed="false">▶ Continuous play</button>
+      <button id="theme" class="ctl" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <span class="clock" id="clock" aria-hidden="true">0:00 / 0:00</span>
+    </div>
+
+    <button id="collapse" class="topbar-collapse" type="button" aria-expanded="true"
+            aria-label="Collapse header" title="Collapse header">▲</button>
+  </div>
+</header>
+
+<div id="audioBanner" class="banner" hidden role="status">
+  <span aria-hidden="true">⚠</span>
+  <span><strong>Audio not loaded.</strong> Keep <code>audio/chapter-16.webm</code> in the same folder as this
+  page (it is referenced as a relative path). Timestamps and text still work.</span>
+  <button type="button" aria-label="Dismiss" onclick="this.parentElement.hidden = true">✕</button>
+</div>
+
+<main id="cards" aria-label="Chapter units"></main>
+
+<footer>
+  <p><strong>Keys:</strong> <kbd>Space</kbd>/<kbd>Enter</kbd> play / pause the section in view ·
+     <kbd>↑</kbd> <kbd>↓</kbd> select · <kbd>C</kbd>/<kbd>→</kbd> continuous play ·
+     <kbd>U</kbd>/<kbd>Esc</kbd> toggle UA · <kbd>T</kbd>/<kbd>←</kbd> theme.
+     <em>TV remote (D-pad): OK = play / pause, ▲▼ = select, ▶ = continuous, ◀ = theme, Back = toggle UA.</em></p>
+  <p><strong>Continuous play</strong> starts at the section playing right now, or at the card
+     you selected (click any card, or move with <kbd>↑</kbd>/<kbd>↓</kbd>), or where you left
+     off last time. Click section 1 to start over.</p>
+  <p id="progressHelp" hidden><strong>Progress</strong> in the header switches between the
+     section hairline and underlining each word as it is spoken.</p>
+  <p id="stats"></p>
+</footer>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. CONTENT — single source of truth (PL → UA, in reading order)  */
+/*    Generated from chapter-16.md by build_reader.py. Replace this        */
+/*    array only; all rendering lives further down.                      */
+/* ===================================================================== */
+const CHAPTER = [
+ {
+  "pl": "Tego dnia, kiedy Wokulski miał przyjść na obiad, panna Izabela wróciła od hrabiny o piątej. Była trochę rozgniewana i bardzo rozmarzona, razem — prześliczna.",
+  "ua": "Того дня, коли Вокульський мав прийти на обід, панна Ізабела повернулася від графині о п'ятій. Вона була трохи розгнівана й дуже замріяна, разом — чарівна.",
+  "para": 0,
+  "start": 7.85
+ },
+ {
+  "pl": "Spotkało ją dziś szczęście i zawód. Wielki tragik włoski, Rossi<sup>470<\/sup>, znany jej i ciotce jeszcze z Paryża, przyjechał na występy do Warszawy. Natychmiast odwiedził hrabinę i troskliwie wypytywał się o pannę Izabelę.",
+  "ua": "Сьогодні її зустріли щастя й розчарування. Великий італійський трагік Россі<sup>470<\/sup>, знаний їй і тітці ще з Парижа, приїхав на гастролі до Варшави. Він негайно відвідав графиню й дбайливо розпитував про панну Ізабелу.",
+  "para": 1,
+  "start": 18.96
+ },
+ {
+  "pl": "Miał być dziś drugi raz i hrabina specjalnie dla niego zaprosiła siostrzenicę. Tymczasem Rossi nie przyszedł; przysłał tylko list, w którym przepraszał za zawód i usprawiedliwiał się niespodziewaną wizytą jakiejś wysoko położonej osoby.",
+  "ua": "Сьогодні він мав бути вдруге, і графиня спеціально для нього запросила небогу. Тим часом Россі не прийшов; прислав лише листа, у якому перепрошував за розчарування й виправдовувався несподіваним візитом якоїсь високопоставленої особи.",
+  "para": 1,
+  "start": 34.26
+ },
+ {
+  "pl": "Przed paroma laty, właśnie w Paryżu, Rossi był ideałem panny Izabeli; kochała się w nim, i nawet nie kryła swych uczuć, o ile, rozumie się, było to możliwym dla panienki jej stanowiska.",
+  "ua": "Кілька років тому, саме в Парижі, Россі був ідеалом панни Ізабели; вона була в нього закохана й навіть не приховувала своїх почуттів, наскільки, зрозуміло, це було можливим для панночки її становища.",
+  "para": 2,
+  "start": 48.68
+ },
+ {
+  "pl": "Znakomity artysta wiedział o tym, bywał co dzień w domu hrabiny, grał i deklamował wszystko, co mu kazała panna Izabela, a wyjeżdżając do Ameryki ofiarował jej włoski egzemplarz Romea i Julii<sup>471<\/sup> z dedykacją: „Mdła mucha więcej ma mocy, czci i szczęścia aniżeli Romeo...”<sup>472<\/sup>.",
+  "ua": "Знаменитий артист знав про це, бував щодня в домі графині, грав і декламував усе, що казала йому панна Ізабела, а від'їжджаючи до Америки, подарував їй італійський примірник «Ромео і Джульєтти»<sup>471<\/sup> з присвятою: «Кволая муха має більше сили, шани й щастя, ніж Ромео...»<sup>472<\/sup>.",
+  "para": 2,
+  "start": 60.84
+ },
+ {
+  "pl": "Wiadomość o przybyciu Rossiego do Warszawy i o tym, że jej nie zapomniał, wzruszyła pannę Izabelę. Już o pierwszej w południe była u ciotki.",
+  "ua": "Звістка про приїзд Россі до Варшави і про те, що він її не забув, зворушила панну Ізабелу. Вже о першій по полудні вона була в тітки.",
+  "para": 3,
+  "start": 81.13
+ },
+ {
+  "pl": "Co chwilę wstawała do okna, każdy turkot przyśpieszał bicie jej serca, za każdym uderzeniem dzwonka drgała; zapominała się w rozmowie, na twarz jej wystąpiły silne rumieńce... No — i Rossi nie przyszedł!...",
+  "ua": "Щохвилини вставала до вікна, кожен гуркіт прискорював биття її серця, за кожним ударом дзвінка здригалася; забувалася в розмові, на її обличчі виступали сильні рум'янці... Ну — а Россі не прийшов!..",
+  "para": 3,
+  "start": 89.67
+ },
+ {
+  "pl": "A tak dziś była piękną. Ubrała się, umyślnie dla niego w jedwabną sukienkę kremowej barwy (z daleka wyglądało to jak zmięte płótno), miała brylantowe kolczyki (nie większe od ziarn grochu) w uszach i pąsową różę na ramieniu. I tyle. Ale niech żałuje Rossi, że jej nie widział!",
+  "ua": "А вона сьогодні була така гарна. Вбралася, спеціально для нього, у шовкову сукеночку кремового кольору (здалеку це скидалося на пом'яте полотно), мала діамантові сережки (не більші за горошини) у вухах і пурпурову троянду на плечі. І все. Але нехай шкодує Россі, що її не бачив!",
+  "para": 4,
+  "start": 104.38
+ },
+ {
+  "pl": "Po czterogodzinnym oczekiwaniu wróciła do domu oburzona. Mimo jednak gniewu wzięła do rąk egzemplarz Romea i Julii i przeglądając go myślała:",
+  "ua": "Після чотиригодинного чекання вона повернулася додому обурена. Проте, незважаючи на гнів, узяла до рук примірник «Ромео і Джульєтти» й, гортаючи його, думала:",
+  "para": 5,
+  "start": 124.84
+ },
+ {
+  "pl": "„Gdyby też nagle wszedł tu Rossi?...”",
+  "ua": "«А якби раптом увійшов сюди Россі?..»",
+  "para": 6,
+  "start": 135.51
+ },
+ {
+  "pl": "Nawet byłoby lepiej tu niż u hrabiny. Bez świadków mógłby jej szepnąć jakieś gorętsze słówko; przekonałby się, że ona szanuje jego pamiątki, a nade wszystko — przekonałby się (o czym tak głośno mówi duże lustro), że w tej sukni, z tą różą i na tym błękitnym fotelu wygląda jak bóstwo.",
+  "ua": "Навіть було б краще тут, ніж у графині. Без свідків він міг би шепнути їй якесь гарячіше слівце; переконався б, що вона шанує його пам'ятки, а понад усе — переконався б (про що так голосно говорить велике дзеркало), що в цій сукні, з цією трояндою й на цьому блакитному кріслі вона виглядає як богиня.",
+  "para": 7,
+  "start": 138.47
+ },
+ {
+  "pl": "Przypomniała sobie, że na obiedzie ma być Wokulski, i mimo woli wzruszyła ramionami. Galanteryjny kupiec po Rossim, którego podziwiał cały świat, wydał jej się tak śmiesznym, że po prostu ogarnęła ją litość.",
+  "ua": "Вона пригадала, що на обіді має бути Вокульський, і мимохіть знизала плечима. Галантерейний купець після Россі, яким захоплювався цілий світ, видався їй таким смішним, що її просто огорнула жалість.",
+  "para": 8,
+  "start": 159.12
+ },
+ {
+  "pl": "Gdyby Wokulski w tej chwili znalazł się u jej nóg, ona może nawet wsunęłaby mu palce we włosy i bawiąc się nim jak wielkim psem czytałaby tę oto skargę Romea przed Laurentym<sup>473<\/sup>:",
+  "ua": "Якби Вокульський у цю мить опинився біля її ніг, вона, може, навіть устромила б пальці в його волосся і, бавлячись ним, як великим псом, читала б оцю скаргу Ромео перед Лаврентієм<sup>473<\/sup>:",
+  "para": 8,
+  "start": 174.04
+ },
+ {
+  "pl": "„Niebo jest tu, gdzie mieszka Julia. Lada pies, kot, lada mysz marna żyje w niebie, może patrzeć na nią; tylko — Romeo nie może! Mdła mucha więcej ma mocy, więcej czci i szczęścia aniżeli Romeo. Jej wolno dotykać drogiej ręki Julii i z płonących ust kraść nieśmiertelne zbawienie.",
+  "ua": "«Небо тут, де мешкає Джульєтта. Будь-який пес, кіт, будь-яка нужденна миша живе в небі, може дивитися на неї; лише — Ромео не може! Кволая муха має більше сили, більше шани й щастя, ніж Ромео. Їй дозволено торкатися дорогої руки Джульєтти й з палких вуст красти безсмертне спасіння.",
+  "para": 9,
+  "start": 186.84
+ },
+ {
+  "pl": "Mucha ma tę wolność, ale Romeo nie ma, bo on wygnany!... O księże, złe duchy wyją, gdy w piekle usłyszą ten wyraz; maszże ty serce, ty, święty spowiednik i przyjaciel, drzeć ze mnie pasy tym strasznym słowem — wygnanie...”<sup>474<\/sup>",
+  "ua": "Муха має цю волю, але Ромео не має, бо він вигнаний!.. О отче, злі духи виють, коли в пеклі почують це слово; невже ти маєш серце, ти, святий сповіднику й друже, дерти з мене пасами цим страшним словом — вигнання...»<sup>474<\/sup>",
+  "para": 9,
+  "start": 208.35
+ },
+ {
+  "pl": "Westchnęła. — Kto wie, ile razy powtarza sobie te zdania wielki tułacz myśląc o niej?... I może nawet nie ma powiernika!... Wokulski mógłby być takim powiernikiem; on chyba wie, jak za nią można rozpaczać, bo on narażał dla niej życie.",
+  "ua": "Вона зітхнула. — Хто знає, скільки разів повторює собі ці слова великий мандрівник, думаючи про неї?.. І, може, навіть не має повірника!.. Вокульський міг би бути таким повірником; він, мабуть, знає, як за нею можна розпачати, бо він наражав заради неї життя.",
+  "para": 10,
+  "start": 227.96
+ },
+ {
+  "pl": "Odwróciwszy kilka kartek wstecz znowu czytała:",
+  "ua": "Перегорнувши кілька сторінок назад, знову читала:",
+  "para": 11,
+  "start": 243.39
+ },
+ {
+  "pl": "„Romeo! czemuż ty jesteś Romeo? Rzuć tę nazwę albo... przysięgnij być wiernym mojej miłości, a wtedy ja wyprę się rodu Kapuletów... Zresztą — tylko twoje nazwisko jest dla mnie nieprzyjazne, boś ty w istocie dla mnie nie Monteki... O, weź inną nazwę, bo czym jest nazwa?...",
+  "ua": "«Ромео! чому ж ти Ромео? Відкинь це ім'я або... присягни бути вірним моєму коханню, а тоді я зречуся роду Капулетті... Зрештою — лише твоє прізвище мені вороже, бо ти по суті для мене не Монтеккі... О, візьми інше ім'я, бо що таке ім'я?..",
+  "para": 12,
+  "start": 247.95
+ },
+ {
+  "pl": "To, co zwiemy różą, pod inną nazwą również by pachniało: tak i Romeo, bez nazwy Romeo, przecież by całą swą wartość zatrzymał. Więc, Romeo — rzuć twoją nazwę, a w zamian za to, co nawet nie jest cząstką ciebie, weź mnie... ach!... całą...”<sup>475<\/sup>",
+  "ua": "Те, що ми зовемо трояндою, під іншою назвою так само б пахло: так і Ромео, без імені Ромео, все ж таки б усю свою цінність зберіг. Тож, Ромео — відкинь твоє ім'я, а натомість за те, що навіть не є частиною тебе, візьми мене... ах!.. цілу...»<sup>475<\/sup>",
+  "para": 12,
+  "start": 270.87
+ },
+ {
+  "pl": "Jakież było dziwne między nimi podobieństwo: on — Rossi, aktor, a ona — panna Łęcka. Rzuć nazwisko, rzuć swój zawód... Tak, ale cóż by wtedy zostało... Zresztą nawet księżniczka krwi mogłaby wyjść za Rossiego i świat tylko podziwiałby jej poświęcenie...",
+  "ua": "Яка ж дивна була між ними подібність: він — Россі, актор, а вона — панна Ленцька. Відкинь прізвище, відкинь свій фах... Так, але що ж тоді лишилося б... Зрештою, навіть принцеса крові могла б вийти за Россі, і світ лише дивувався б її самопожертві...",
+  "para": 13,
+  "start": 293.5
+ },
+ {
+  "pl": "Wyjść za Rossiego?... Dbać o jego garderobę teatralną, a może przyszywać mu guziki do nocnych koszul?...",
+  "ua": "Вийти за Россі?.. Дбати про його театральну гардеробну, а може, пришивати йому ґудзики до нічних сорочок?..",
+  "para": 14,
+  "start": 313.88
+ },
+ {
+  "pl": "Panna Izabela wstrząsnęła się. Kochać go bez nadziei — to dosyć... Kochać i czasami porozmawiać z kim o tej tragicznej miłości... Może by z panną Florentyną. Nie, ona nie ma dosyć uczucia. Daleko lepiej nadawałby się do tego Wokulski.",
+  "ua": "Панна Ізабела струсилася. Кохати його без надії — цього досить... Кохати й іноді поговорити з кимось про це трагічне кохання... Може б, з панною Флорентиною. Ні, вона не має досить чуття. Набагато краще надавався б для цього Вокульський.",
+  "para": 15,
+  "start": 321.74
+ },
+ {
+  "pl": "Patrzyłby jej w oczy, cierpiałby za siebie i za nią, ona opowiadałaby mu bolejąc nad własnym i nad jego cierpieniem i w taki sposób bardzo przyjemnie upływałyby im godziny. Kupiec galanteryjny w roli powiernika!... Można by zresztą zapomnieć o tym kupiectwie...",
+  "ua": "Він дивився б їй у вічі, страждав би за себе й за неї, вона розповідала б йому, побиваючись над власним і над його стражданням, і таким чином дуже приємно спливали б їм години. Галантерейний купець у ролі повірника!.. Можна було б зрештою забути про це купецтво...",
+  "para": 15,
+  "start": 339.52
+ },
+ {
+  "pl": "W tej samej porze pan Tomasz zakręcając siwego wąsa spacerował po swym gabinecie i myślał:",
+  "ua": "У той самий час пан Томаш, закручуючи сивого вуса, походжав по своєму кабінету й думав:",
+  "para": 16,
+  "start": 358.33
+ },
+ {
+  "pl": "„Wokulski jest to człowiek ogromnie zręczny i energiczny! Gdybym miał takiego plenipotenta (tu westchnął), nie pozbyłbym się majątku... No, już stało się: za to dziś go mam... Z kamienicy zostanie mi czterdzieści, nie — pięćdziesiąt, a może i sześćdziesiąt tysięcy rubli...",
+  "ua": "«Вокульський — надзвичайно спритна й енергійна людина! Якби я мав такого повноважного представника (тут зітхнув), я не позбувся б маєтку... Ну, вже сталося: зате нині я його маю... З кам'яниці мені залишиться сорок, ні — п'ятдесят, а може, й шістдесят тисяч рублів...",
+  "para": 17,
+  "start": 364.77
+ },
+ {
+  "pl": "Nie, nie przesadzajmy, niech pięćdziesiąt tysięcy, no — niechby tylko czterdzieści tysięcy... Dam mu to, on będzie mi płacił z osiem tysięcy rubli rocznie, resztę zaś (jeżeli interes pójdzie w jego rękach, jak się spodziewam), resztę procentów — każę kapitalizować<sup>476<\/sup>...",
+  "ua": "Ні, не перебільшуймо, хай п'ятдесят тисяч, ну — нехай би лише сорок тисяч... Дам йому це, він платитиме мені з вісім тисяч рублів щорічно, а решту (якщо справа піде в його руках, як я сподіваюся), решту відсотків — накажу капіталізувати<sup>476<\/sup>...",
+  "para": 17,
+  "start": 386.38
+ },
+ {
+  "pl": "Za pięć, sześć lat suma podwoi się, a już za dziesięć — może wzrosnąć w czwórnasób... Bo to w operacjach handlowych pieniądze szalenie się mnożą... Ale co ja mówię!... Wokulski, jeżeli jest naprawdę genialnym kupcem, powinien mieć i z pewnością ma sto za sto.",
+  "ua": "За п'ять-шість років сума подвоїться, а вже за десять — може зрости вчетверо... Бо в торговельних операціях гроші шалено множаться... Але що я кажу!.. Вокульський, якщо він справді геніальний купець, повинен мати й напевно має сто на сто.",
+  "para": 17,
+  "start": 402.42
+ },
+ {
+  "pl": "A w takim razie spojrzę mu w oczy i powiem bez ogródki: »Dawaj ty innym, mój dobrodzieju, piętnaście albo dwadzieścia procent rocznie, ale nie mnie, który się na tym rozumiem.",
+  "ua": "А в такому разі гляну йому в очі й скажу без обиняків: „Давай ти іншим, мій добродію, п'ятнадцять чи двадцять відсотків щорічно, але не мені, який на цьому розуміється.",
+  "para": 17,
+  "start": 419.3
+ },
+ {
+  "pl": "I on, naturalnie, zobaczywszy, z kim ma do czynienia, zmięknie od razu i może nawet wykaże taki dochód, o jakim mi się nie śniło...”",
+  "ua": "І він, звісно, побачивши, з ким має справу, відразу зм'якне й, може, навіть покаже такий прибуток, який мені й не снився...»",
+  "para": 17,
+  "start": 429.8
+ },
+ {
+  "pl": "Dzwonek w przedpokoju uderzył dwa razy. Pan Tomasz cofnął się w głąb gabinetu i usiadłszy na fotelu wziął do rąk tom przygotowanej na ten cel ekonomii Supińskiego<sup>477<\/sup>. Mikołaj otworzył drzwi i za chwilę ukazał się Wokulski.",
+  "ua": "Дзвінок у передпокої продзвенів двічі. Пан Томаш відступив у глиб кабінету й, сівши в крісло, взяв до рук том приготовленої з цього приводу економії Супінського<sup>477<\/sup>. Миколай відчинив двері й за мить з'явився Вокульський.",
+  "para": 18,
+  "start": 438.67
+ },
+ {
+  "pl": "— A... witam!... — zawołał pan Tomasz wyciągając do niego rękę.",
+  "ua": "— А... вітаю!.. — вигукнув пан Томаш, простягаючи йому руку.",
+  "para": 19,
+  "start": 453.98
+ },
+ {
+  "pl": "Wokulski nisko ukłonił się przed białymi włosami człowieka, którego rad by nazywać swoim ojcem.",
+  "ua": "Вокульський низько вклонився перед білим волоссям людини, яку охоче назвав би своїм батьком.",
+  "para": 20,
+  "start": 458.34
+ },
+ {
+  "pl": "— Siadajże, panie Stanisławie... Może papierosa?... Proszę cię... Cóż tam słychać?... Czytałem właśnie Supińskiego: tęga głowa!... Tak, narody nie umiejące pracować i oszczędzać zniknąć muszą z powierzchni ziemi... Tylko oszczędność i praca!... Pomimo to nasi wspólnicy zaczynają grymasić, co?...",
+  "ua": "— Сідайте ж, пане Станіславе... Може, цигарку?.. Прошу тебе... Що ж там чути?.. Я саме читав Супінського: тверда голова!.. Так, народи, що не вміють працювати й заощаджувати, мусять зникнути з поверхні землі... Тільки ощадність і праця!.. Попри це наші спільники починають вередувати, га?..",
+  "para": 21,
+  "start": 465.29
+ },
+ {
+  "pl": "— Niech robią, jak im wygodniej — odparł Wokulski. — Ja na nich nie zyskam ani jednego rubla.",
+  "ua": "— Нехай роблять, як їм зручніше, — відповів Вокульський. — Я на них не заробив би ні одного рубля.",
+  "para": 22,
+  "start": 486.16
+ },
+ {
+  "pl": "— Ale ja nie opuszczę cię, panie Stanisławie — rzekł pan Tomasz tonem przekonania. I dodał po chwili — W tych dniach sprzedaję, to jest dopuszczam do sprzedaży mego domu.",
+  "ua": "— Але я не покину тебе, пане Станіславе, — мовив пан Томаш тоном переконання. І додав за мить: — Найближчими днями продаю, тобто допускаю до продажу мій будинок.",
+  "para": 23,
+  "start": 492.08
+ },
+ {
+  "pl": "Miałem z nim duży kłopot: lokatorowie nie płacą, rządcy złodzieje, a wierzycieli hipotecznych<sup>478<\/sup> musiałem zaspakajać z własnej kieszeni. Nie dziw się, że mnie to w końcu znudziło...",
+  "ua": "Мав я з ним великий клопіт: мешканці не платять, управителі злодії, а іпотечних<sup>478<\/sup> кредиторів мусив задовольняти з власної кишені. Не дивуйся, що мені це врешті набридло...",
+  "para": 23,
+  "start": 503.19
+ },
+ {
+  "pl": "— Naturalnie — wtrącił Wokulski.",
+  "ua": "— Звісно, — докинув Вокульський.",
+  "para": 24,
+  "start": 514.91
+ },
+ {
+  "pl": "— Mam nadzieję — ciągnął pan Tomasz — że zostanie mi z niego pięćdziesiąt, a choćby czterdzieści tysięcy rubli...",
+  "ua": "— Маю надію, — вів далі пан Томаш, — що з нього мені залишиться п'ятдесят, а хоч би й сорок тисяч рублів...",
+  "para": 25,
+  "start": 517.01
+ },
+ {
+  "pl": "— Ile ma pan nadzieję wziąć za ten dom?...",
+  "ua": "— Скільки ви сподіваєтеся взяти за цей будинок?..",
+  "para": 26,
+  "start": 524.51
+ },
+ {
+  "pl": "— Sto, do stu dziesięciu tysięcy rubli... Cokolwiek jednakże dostanę, tobie oddam, panie Stanisławie.",
+  "ua": "— Сто, до ста десяти тисяч рублів... Що б, однак, я не отримав, тобі віддам, пане Станіславе.",
+  "para": 27,
+  "start": 527.41
+ },
+ {
+  "pl": "Wokulski pochylił głowę na znak zgody i pomyślał, że jednak pan Tomasz za swoją kamienicę nie dostanie więcej nad dziewięćdziesiąt tysięcy rubli. Tyle bowiem miał w tej chwili do dyspozycji, a nie mógł zaciągać długów bez narażenia swego kredytu.",
+  "ua": "Вокульський схилив голову на знак згоди й подумав, що все ж пан Томаш за свою кам'яницю не отримає більше дев'яноста тисяч рублів. Стільки бо мав на цю хвилину в розпорядженні, а не міг брати в борг без шкоди для свого кредиту.",
+  "para": 28,
+  "start": 536.07
+ },
+ {
+  "pl": "— Tobie oddam, panie Stanisławie — mówił pan Łęcki. — I właśnie chciałem zapytać się, czy przyjmiesz?...",
+  "ua": "— Тобі віддам, пане Станіславе, — говорив пан Ленцький. — І саме хотів запитати, чи приймеш?..",
+  "para": 29,
+  "start": 551.15
+ },
+ {
+  "pl": "— Ależ rozumie się...",
+  "ua": "— Але ж звісно...",
+  "para": 30,
+  "start": 558.67
+ },
+ {
+  "pl": "— I jaki mi dasz procent?",
+  "ua": "— І який відсоток мені даси?",
+  "para": 31,
+  "start": 560.71
+ },
+ {
+  "pl": "— Gwarantuję dwudziesty, a jeżeli interesa pójdą lepiej, to i wyższy — odparł Wokulski dodając w duchu, że więcej nad piętnaście procent nie mógłby dać komu innemu.",
+  "ua": "— Гарантую двадцятий, а якщо справи підуть краще, то й вищий, — відповів Вокульський, додаючи подумки, що більше п'ятнадцяти відсотків він не міг би дати нікому іншому.",
+  "para": 32,
+  "start": 562.61
+ },
+ {
+  "pl": "„Filut!... — pomyślał pan Tomasz. — Sam ma ze sto procentów, a mnie daje dwadzieścia...”",
+  "ua": "«Хитрун!.. — подумав пан Томаш. — Сам має зі сто відсотків, а мені дає двадцять...»",
+  "para": 33,
+  "start": 573.65
+ },
+ {
+  "pl": "Głośno jednak rzekł:",
+  "ua": "Але вголос сказав:",
+  "para": 34,
+  "start": 578.83
+ },
+ {
+  "pl": "— Dobrze, kochany panie Stanisławie. Przyjmuję dwadzieścia procent, bylebyś mi mógł wypłacić z góry.",
+  "ua": "— Добре, любий пане Станіславе. Приймаю двадцять відсотків, аби ти міг виплачувати мені наперед.",
+  "para": 35,
+  "start": 580.59
+ },
+ {
+  "pl": "— Będę płacił z góry... co pół roku — odpowiedział Wokuski lękając się, ażeby pan Tomasz nie wydał pieniędzy zbyt prędko.",
+  "ua": "— Платитиму наперед... що півроку, — відповів Вокульський, побоюючись, щоб пан Томаш не витратив грошей надто швидко.",
+  "para": 36,
+  "start": 587.13
+ },
+ {
+  "pl": "— I na to zgoda — rzekł pan Tomasz tonem wielkiej serdeczności. — Wszystkie zaś zyski — dodał z lekkim akcentem — wszystkie zyski wyższe nad dwadzieścia procent, proszę cię, ażebyś nie dawał mi ich do ręki, choćbym... błagał, rozumiesz?... ale żebyś dołączał do kapitału. Niech rośnie, prawda?...",
+  "ua": "— І на це згода, — мовив пан Томаш тоном великої сердечності. — Усі ж прибутки, — додав із легким наголосом, — усі прибутки, вищі за двадцять відсотків, прошу тебе, щоб не давав мені до рук, хоч би я... благав, розумієш?.. але щоб додавав до капіталу. Нехай росте, правда?..",
+  "para": 37,
+  "start": 595.31
+ },
+ {
+  "pl": "— Panie proszą — rzekł w tej chwili Mikołaj ukazując się we drzwiach gabinetu.",
+  "ua": "— Пані просять, — мовив у цю мить Миколай, з'явившись у дверях кабінету.",
+  "para": 38,
+  "start": 614.32
+ },
+ {
+  "pl": "Pan Tomasz uroczyście podniósł się z fotelu i ceremonialnym krokiem wprowadził gościa do salonu.",
+  "ua": "Пан Томаш урочисто підвівся з крісла й церемонним кроком провів гостя до салону.",
+  "para": 39,
+  "start": 620.32
+ },
+ {
+  "pl": "Później niejednokrotnie Wokulski usiłował zdać sobie sprawę z salonu i ze sposobu, w jaki tam wszedł; ale całości faktu nie mógł sobie przypomnieć.",
+  "ua": "Пізніше Вокульський неодноразово намагався відтворити собі салон і те, як він туди увійшов; але цілості події пригадати не міг.",
+  "para": 40,
+  "start": 626.67
+ },
+ {
+  "pl": "Pamiętał, że przede drzwiami ukłonił się parę razy panu Tomaszowi, że potem owionęła go jakaś miła woń, skutkiem czego ukłonił się damie w kremowej sukni z pąsową różą przy ramieniu, a potem — innej damie wysokiej i czarno ubranej, która patrzyła na niego z przestrachem.",
+  "ua": "Пам'ятав, що перед дверима вклонився кілька разів панові Томашу, що потім його обвіяв якийсь милий запах, унаслідок чого він вклонився дамі в кремовій сукні з пурпуровою трояндою на плечі, а потім — іншій дамі, високій і вбраній у чорне, яка дивилася на нього з острахом.",
+  "para": 40,
+  "start": 636.89
+ },
+ {
+  "pl": "Przynajmniej tak mu się zdawało.",
+  "ua": "Принаймні так йому здавалося.",
+  "para": 40,
+  "start": 654.65
+ },
+ {
+  "pl": "Dopiero po chwili spostrzegł, że damą w kremowej sukni była panna Izabela. Siedziała na fotelu, z nieporównanym wdziękiem pochylona w jego stronę, i łagodnie patrząc mu w oczy mówiła:",
+  "ua": "Лише за мить він помітив, що дамою в кремовій сукні була панна Ізабела. Вона сиділа в кріслі, із незрівнянною чарівністю нахилена в його бік, і лагідно дивлячись йому в очі, казала:",
+  "para": 41,
+  "start": 657.45
+ },
+ {
+  "pl": "— Ojciec mój, jako pański wspólnik, będzie musiał odbyć długą praktykę, zanim potrafi zadowolnić pana. W jego imieniu proszę o pobłażliwość.",
+  "ua": "— Мій батько, як ваш спільник, муситиме пройти довгу практику, перш ніж зуміє догодити вам. Від його імені прошу про поблажливість.",
+  "para": 42,
+  "start": 670.77
+ },
+ {
+  "pl": "Wyciągnęła rękę, której Wokulski ledwo śmiał dotknąć.",
+  "ua": "Вона простягнула руку, якої Вокульський ледве наважився торкнутися.",
+  "para": 43,
+  "start": 681.3
+ },
+ {
+  "pl": "— Pan Łęcki — odparł — jako wspólnik, potrzebuje mieć tylko zaufanego adwokata i buchaltera, którzy co pewien czas skontrolują rachunki. Reszta należy do nas.",
+  "ua": "— Пан Ленцький, — відповів він, — як спільнику, потрібно мати лише довіреного адвоката й бухгалтера, які час від часу перевірятимуть рахунки. Решта належить до нас.",
+  "para": 44,
+  "start": 685.14
+ },
+ {
+  "pl": "Zdawało mu się, że powiedział coś bardzo głupiego, i zarumienił się.",
+  "ua": "Йому здалося, що він сказав щось дуже дурне, і зашарівся.",
+  "para": 45,
+  "start": 696.1
+ },
+ {
+  "pl": "— Pan musi mieć dużo zajęcia przy takim magazynie... — wtrąciła czarno ubrana panna Florentyna i przestraszyła się jeszcze mocniej.",
+  "ua": "— Ви, певно, маєте багато клопотів із таким магазином... — докинула вбрана в чорне панна Флорентина й злякалася ще дужче.",
+  "para": 46,
+  "start": 700.48
+ },
+ {
+  "pl": "— Nie tak wiele. Do mnie należy dostarczanie funduszów obrotowych i zawiązywanie stosunków z nabywcami i odbiorcami. Rodzajem zaś towaru i oceną jego wartości zajmuje się administracja sklepu.",
+  "ua": "— Не так багато. На мені лежить постачання обігових коштів і налагодження зв'язків із покупцями й замовниками. Родом же товару й оцінкою його вартості займається адміністрація крамниці.",
+  "para": 47,
+  "start": 708.74
+ },
+ {
+  "pl": "— Czy to można w każdym razie spuścić się na obcych! — westchnęła panna Florentyna.",
+  "ua": "— Чи ж можна в усякому разі покладатися на чужих! — зітхнула панна Флорентина.",
+  "para": 48,
+  "start": 722.38
+ },
+ {
+  "pl": "— Mam doskonałego plenipotenta, a zarazem przyjaciela, który lepiej prowadzi interesa, niżbym ja to potrafił.",
+  "ua": "— Маю чудового повноважного представника, а водночас друга, який веде справи краще, ніж я зміг би.",
+  "para": 49,
+  "start": 729.49
+ },
+ {
+  "pl": "— Szczęśliwy jesteś, panie Stanisławie... — pochwycił Łęcki. — Nie wyjeżdżasz w tym roku za granicę?",
+  "ua": "— Щасливий ти, пане Станіславе... — підхопив Ленцький. — Чи не виїжджаєш цього року за кордон?",
+  "para": 50,
+  "start": 736.45
+ },
+ {
+  "pl": "— Chcę być w Paryżu na wystawie.",
+  "ua": "— Хочу бути в Парижі на виставці.",
+  "para": 51,
+  "start": 742.23
+ },
+ {
+  "pl": "— Zazdroszczę panu — odezwała się panna Izabela — Od dwu miesięcy marzę tylko o wystawie paryskiej, ale papa jakoś nie okazuje skłonności do wyjazdu...",
+  "ua": "— Заздрю вам, — озвалася панна Ізабела. — Ось уже два місяці мрію лише про паризьку виставку, але тато якось не виявляє схильності до від'їзду...",
+  "para": 52,
+  "start": 744.27
+ },
+ {
+  "pl": "— Nasz wyjazd całkowicie zależy od pana Wokulskiego — odpowiedział ojciec. — Radzę ci więc jak najczęściej zapraszać go na obiad i podawać smaczny, ażeby miał dobry humor.",
+  "ua": "— Наш від'їзд цілком залежить від пана Вокульського, — відповів батько. — Тож раджу тобі якнайчастіше запрошувати його на обід і подавати смачний, щоб мав гарний настрій.",
+  "para": 53,
+  "start": 754.54
+ },
+ {
+  "pl": "— Zaręczam, że ile razy będzie pan na nas łaskaw, sama zajrzę do kuchni. Czy jednak dobre chęci wystarczą w tym wypadku...",
+  "ua": "— Запевняю, що кожного разу, коли ви зробите нам ласку, сама зазирну на кухню. Але чи вистачить у цьому випадку доброї волі...",
+  "para": 54,
+  "start": 765.14
+ },
+ {
+  "pl": "— Z wdzięcznością przyjmuję obietnicę — odparł Wokulski. — Nie wpłynie to jednak na termin wyjazdu państwa do Paryża, ponieważ zależy on tylko od ich woli.",
+  "ua": "— З вдячністю приймаю обіцянку, — відповів Вокульський. — Це, однак, не вплине на термін від'їзду вашого до Парижа, бо він залежить лише від вашої волі.",
+  "para": 55,
+  "start": 773.57
+ },
+ {
+  "pl": "— Merci... — szepnęła panna Izabela.",
+  "ua": "— Мерсі... — шепнула панна Ізабела.",
+  "para": 56,
+  "start": 783.33
+ },
+ {
+  "pl": "Wokulski schylił głowę. „Znam ja to »merci«! — pomyślał — płaci się za nie kulami...”",
+  "ua": "Вокульський схилив голову. «Знаю я це „мерсі“! — подумав він. — За нього платять кулями...»",
+  "para": 57,
+  "start": 786.85
+ },
+ {
+  "pl": "— Państwo pozwolą do stołu?... — wtrąciła panna Florentyna.",
+  "ua": "— Прошу панство до столу?.. — докинула панна Флорентина.",
+  "para": 58,
+  "start": 794.42
+ },
+ {
+  "pl": "Przeszli do jadalnego pokoju, gdzie na środku stał okrągły stół nakryty na cztery osoby. Wokulski znalazł się przy nim między panną Izabelą i jej ojcem, naprzeciw panny Florentyny. Już był zupełnie spokojny, tak spokojny, że aż go to przerażało.",
+  "ua": "Вони перейшли до їдальні, де посередині стояв круглий стіл, накритий на чотири особи. Вокульський опинився за ним між панною Ізабелою та її батьком, навпроти панни Флорентини. Він був уже цілком спокійний, такий спокійний, що це його аж лякало.",
+  "para": 59,
+  "start": 799.06
+ },
+ {
+  "pl": "Opuścił go szał miłości i nawet pytał sam siebie: czy ona jest kobietą, którą kochał?... Bo czy podobna kochać się tak jak on i siedząc o krok od przyczyny swego obłędu czuć taką ciszę w duszy, tak niezmierną ciszę?...",
+  "ua": "Покинув його шал кохання, і він навіть питав сам себе: чи вона жінка, яку він кохав?.. Бо чи можливо кохати так, як він, і, сидячи за крок від причини свого безумства, відчувати таку тишу в душі, таку безмірну тишу?..",
+  "para": 59,
+  "start": 817.87
+ },
+ {
+  "pl": "Myśl miał tak swobodną, że nie tylko dokładnie widział każde drgnienie fizjognomii swoich współbiesiadników, ale jeszcze (co już było zabawne), patrząc na pannę Izabelę, robił sobie następujący rachunek:",
+  "ua": "Думка в нього була така вільна, що він не лише точно бачив кожен порух фізіономій своїх співтрапезників, а ще (що вже було кумедно), дивлячись на панну Ізабелу, робив собі такий підрахунок:",
+  "para": 59,
+  "start": 834.13
+ },
+ {
+  "pl": "„Suknia. Piętnaście łokci surowego jedwabiu po rublu — piętnaście rubli... Koronki z dziesięć rubli, a robota z piętnaście... Razem — czterdzieści rubli suknia, ze sto pięćdziesiąt rubli kolczyki i dziesięć groszy róża...”",
+  "ua": "«Сукня. П'ятнадцять ліктів сирового шовку по рублю — п'ятнадцять рублів... Мережива з десять рублів, а робота п'ятнадцять... Разом — сорок рублів сукня, зі сто п'ятдесят рублів сережки і десять грошів троянда...»",
+  "para": 60,
+  "start": 846.86
+ },
+ {
+  "pl": "Mikołaj zaczął podawać potrawy. Wokulski bez najmniejszego apetytu zjadł kilka łyżek chłodniku, zapił portweinem<sup>479<\/sup>, potem spróbował polędwicy i zapił ją piwem. Uśmiechnął się, sam nie wiedząc czemu, i w przystępie jakiejś żakowskiej radości postanowił robić błędy przy stole.",
+  "ua": "Миколай почав подавати страви. Вокульський без найменшого апетиту з'їв кілька ложок холодника, запив портвейном<sup>479<\/sup>, потім спробував філе й запив його пивом. Усміхнувся, сам не знаючи чому, і в нападі якоїсь школярської радості постановив робити помилки за столом.",
+  "para": 61,
+  "start": 860.52
+ },
+ {
+  "pl": "Na początek skosztowawszy polędwicy położył nóż i widelec na podstawce obok talerza.",
+  "ua": "На початку скуштувавши філе, поклав ніж і виделку на підставку біля тарілки.",
+  "para": 61,
+  "start": 878.8
+ },
+ {
+  "pl": "Panna Florentyna aż drgnęła, a pan Tomasz z wielką werwą począł opowiadać o wieczorze w Tuileriach<sup>480<\/sup>, podczas którego na żądanie cesarzowej Eugenii<sup>481<\/sup> tańczył z jakąś marszałkową menueta<sup>482<\/sup>.",
+  "ua": "Панна Флорентина аж здригнулася, а пан Томаш з великим запалом почав розповідати про вечір у Тюїльрі<sup>480<\/sup>, під час якого на бажання імператриці Євгенії<sup>481<\/sup> танцював із якоюсь маршалковою менует<sup>482<\/sup>.",
+  "para": 61,
+  "start": 884.93
+ },
+ {
+  "pl": "Podano sandacza, którego Wokulski zaatakował nożem i widelcem. Panna Florentyna o mało nie zemdlała, panna Izabela spojrzała na sąsiada z pobłażliwą litością, a pan Tomasz... zaczął także jeść sandacza nożem i widelcem.",
+  "ua": "Подали судака, якого Вокульський атакував ножем і виделкою. Панна Флорентина мало не зомліла, панна Ізабела глянула на сусіда з поблажливою жалістю, а пан Томаш... почав також їсти судака ножем і виделкою.",
+  "para": 62,
+  "start": 898.63
+ },
+ {
+  "pl": "„Jacyście wy głupi!” — pomyślał Wokulski czując, że budzi się w nim coś niby pogarda dla tego towarzystwa. Na domiar odezwała się panna Izabela, zresztą bez cienia złośliwości:",
+  "ua": "«Які ж ви дурні!» — подумав Вокульський, відчуваючи, що в ньому прокидається щось подібне до зневаги до цього товариства. На додачу озвалася панна Ізабела, зрештою, без тіні злостивості:",
+  "para": 63,
+  "start": 913.05
+ },
+ {
+  "pl": "— Musi mnie papa kiedy nauczyć, jak się jada ryby nożem.",
+  "ua": "— Мусить мене тато колись навчити, як їдять рибу ножем.",
+  "para": 64,
+  "start": 924.07
+ },
+ {
+  "pl": "Wokulskiemu wydało się to wprost niesmaczne. „Widzę, że odkocham się tu przed końcem obiadu...” — rzekł do siebie.",
+  "ua": "Вокульському це видалося просто несмачним. «Бачу, що розкохаюся тут до кінця обіду...» — сказав він собі.",
+  "para": 65,
+  "start": 928.11
+ },
+ {
+  "pl": "— Moja droga — odpowiedział pan Tomasz córce — niejadanie ryb nożem to doprawdy przesąd... Wszak mam rację, panie Wokulski?",
+  "ua": "— Люба моя, — відповів пан Томаш доньці, — неїдження риби ножем — це, по правді, забобон... Адже я маю рацію, пане Вокульський?",
+  "para": 66,
+  "start": 936.01
+ },
+ {
+  "pl": "— Przesąd?... nie powiem — rzekł Wokulski. — Jest to tylko przeniesienie zwyczaju z warunków, gdzie on jest stosowny, do warunków, gdzie nim nie jest.",
+  "ua": "— Забобон?.. не скажу, — мовив Вокульський. — Це лише перенесення звичаю з умов, де він доречний, в умови, де він не є таким.",
+  "para": 67,
+  "start": 944.53
+ },
+ {
+  "pl": "Pan Tomasz aż poruszył się na krześle.",
+  "ua": "Пан Томаш аж ворухнувся на стільці.",
+  "para": 68,
+  "start": 953.51
+ },
+ {
+  "pl": "— Anglicy uważają to prawie za obrazę... — wydeklamowała panna Florentyna.",
+  "ua": "— Англійці вважають це майже за образу... — продекламувала панна Флорентина.",
+  "para": 69,
+  "start": 956.45
+ },
+ {
+  "pl": "— Anglicy mają ryby morskie, które można jadać samym widelcem; nasze zaś ryby ościste może jedliby innym sposobem...",
+  "ua": "— В англійців морські риби, які можна їсти самою виделкою; а наші риби, повні кісток, може, їли б іншим способом...",
+  "para": 70,
+  "start": 961.57
+ },
+ {
+  "pl": "— O, Anglicy nigdy nie łamią form — broniła się panna Florentyna.",
+  "ua": "— О, англійці ніколи не порушують форм — боронилася панна Флорентина.",
+  "para": 71,
+  "start": 970.71
+ },
+ {
+  "pl": "— Tak — mówił Wokulski — nie łamią form w warunkach zwykłych, ale w niezwykłych stosują się do prawidła: robić, jak wygodniej. Sam zresztą widywałem bardzo dystyngowanych lordów, którzy baraninę z ryżem jedli palcami, a rosół pili prosto z garnka.",
+  "ua": "— Так, — казав Вокульський, — не порушують форм в умовах звичайних, але в незвичайних дотримуються правила: робити, як зручніше. Сам я зрештою бачив дуже добірних лордів, які баранину з рисом їли пальцями, а юшку пили просто з горщика.",
+  "para": 72,
+  "start": 975.79
+ },
+ {
+  "pl": "Lekcja była ostra. Pan Tomasz jednak przysłuchiwał się jej z zadowoleniem, a panna Izabela prawie z podziwem. Ten kupiec, który jadał baraninę z lordami i wygłaszał tak śmiało teorię posługiwania się nożem przy rybach, urósł w jej wyobraźni.",
+  "ua": "Урок був гострий. Пан Томаш, однак, слухав його із задоволенням, а панна Ізабела майже з подивом. Цей купець, який їв баранину з лордами й так сміливо виголошував теорію користування ножем при рибі, виріс у її уяві.",
+  "para": 73,
+  "start": 993.05
+ },
+ {
+  "pl": "Kto wie, czy teoria nie wydała się jej ważniejszą aniżeli pojedynek z Krzeszowskim.",
+  "ua": "Хто знає, чи теорія не видалася їй важливішою за дуель із Кжешовським.",
+  "para": 73,
+  "start": 1009.97
+ },
+ {
+  "pl": "— Więc pan jest nieprzyjacielem etykiety? — spytała.",
+  "ua": "— Тож ви ворог етикету? — запитала вона.",
+  "para": 74,
+  "start": 1016.29
+ },
+ {
+  "pl": "— Nie. Nie chcę tylko być jej niewolnikiem.",
+  "ua": "— Ні. Не хочу тільки бути її рабом.",
+  "para": 75,
+  "start": 1019.69
+ },
+ {
+  "pl": "— Są jednak towarzystwa, w których ona przestrzega się zawsze.",
+  "ua": "— Є, однак, товариства, де її дотримуються завжди.",
+  "para": 76,
+  "start": 1023.15
+ },
+ {
+  "pl": "— Tego nie wiem. Ale widziałem najwyższe towarzystwa, w których o niej zapominano w pewnych warunkach.",
+  "ua": "— Цього не знаю. Але бачив найвищі товариства, де про неї забували за певних умов.",
+  "para": 77,
+  "start": 1026.43
+ },
+ {
+  "pl": "Pan Tomasz lekko schylił głowę; panna Florentyna zsiniała, panna Izabela patrzyła na Wokulskiego prawie życzliwie. Nawet więcej niż — prawie... Bywały mgnienia, w których marzyło się jej, że Wokulski jest jakimś Harun–al–Raszydem<sup>483<\/sup> ucharakteryzowanym na kupca.",
+  "ua": "Пан Томаш злегка схилив голову; панна Флорентина посиніла, панна Ізабела дивилася на Вокульського майже прихильно. Навіть більше ніж — майже... Бували миті, у які їй мріялося, що Вокульський — якийсь Гарун аль-Рашид<sup>483<\/sup>, загримований під купця.",
+  "para": 78,
+  "start": 1033.63
+ },
+ {
+  "pl": "W sercu jej budził się podziw, nawet — sympatia. Z pewnością ten człowiek może być jej powiernikiem; z nim będzie mogła rozmawiać o Rossim.",
+  "ua": "У її серці прокидалося захоплення, навіть — симпатія. Напевно, ця людина може бути її повірником; з ним вона зможе говорити про Россі.",
+  "para": 78,
+  "start": 1053.15
+ },
+ {
+  "pl": "Po lodach zupełnie zdetonowana panna Florentyna została w jadalni, a reszta towarzystwa przeszła na kawę do gabinetu pana. Właśnie Wokulski skończył swoją filiżankę, kiedy Mikołaj przyniósł panu Tomaszowi na tacy list mówiąc:",
+  "ua": "Після морозива цілком збентежена панна Флорентина залишилася в їдальні, а решта товариства перейшла на каву до кабінету пана. Саме Вокульський допив свою філіжанку, коли Миколай приніс панові Томашу на таці листа, кажучи:",
+  "para": 79,
+  "start": 1063.05
+ },
+ {
+  "pl": "— Czeka na odpowiedź, jaśnie panie.",
+  "ua": "— Чекає на відповідь, ясновельможний пане.",
+  "para": 80,
+  "start": 1079.86
+ },
+ {
+  "pl": "— Ach, od hrabiny... — rzekł pan Tomasz spojrzawszy na adres. — Pozwolicie państwo...",
+  "ua": "— А, від графині... — мовив пан Томаш, глянувши на адресу. — Дозвольте, панство...",
+  "para": 81,
+  "start": 1083.29
+ },
+ {
+  "pl": "— Jeżeli pan nie ma nic przeciw temu — przerwała panna Izabela uśmiechając się do Wokulskiego — to przejdziemy do salonu, a ojciec tymczasem odpisze...",
+  "ua": "— Якщо ви не маєте нічого проти, — перервала панна Ізабела, усміхаючись Вокульському, — то перейдемо до салону, а батько тим часом відпише...",
+  "para": 82,
+  "start": 1089.38
+ },
+ {
+  "pl": "Wiedziała, że list ten napisał pan Tomasz sam do siebie; koniecznie bowiem potrzebował choć pół godziny przedrzemać się po obiedzie.",
+  "ua": "Вона знала, що цього листа пан Томаш написав сам собі; бо конче потребував бодай півгодини подрімати після обіду.",
+  "para": 83,
+  "start": 1099.15
+ },
+ {
+  "pl": "— Nie obrazi się pan? — spytał pan Tomasz ściskając Wokulskiego za rękę.",
+  "ua": "— Чи не образитеся? — запитав пан Томаш, стискаючи Вокульському руку.",
+  "para": 84,
+  "start": 1106.75
+ },
+ {
+  "pl": "Opuścili z panną Izabelą gabinet i weszli do salonu. Ona z gracją jej tylko właściwą usiadła na fotelu wskazując mu drugi, zaledwie o parę kroków odległy.",
+  "ua": "Вони з панною Ізабелою залишили кабінет і ввійшли до салону. Вона з грацією, їй лише притаманною, сіла в крісло, вказавши йому друге, віддалене заледве на кілька кроків.",
+  "para": 85,
+  "start": 1111.98
+ },
+ {
+  "pl": "Wokulskiemu, kiedy znalazł się z nią sam na sam, krew uderzyła do głowy. Wzburzenie spotęgowało się, gdy spostrzegł, że panna Izabela patrzy na niego jakimś dziwnym wzrokiem, jakby go chciała przeniknąć do dna i przykuć do siebie.",
+  "ua": "Вокульському, коли він опинився з нею сам на сам, кров вдарила в голову. Хвилювання зросло, коли він помітив, що панна Ізабела дивиться на нього якимсь дивним поглядом, ніби хоче його пронизати до дна й прикувати до себе.",
+  "para": 86,
+  "start": 1123.48
+ },
+ {
+  "pl": "To już nie była ta panna Izabela z kwesty wielkotygodniowej ani nawet z wyścigów; to była osoba rozumna i czująca, która ma go o coś serio zapytać i chce mu coś szczerego powiedzieć.",
+  "ua": "Це була вже не та панна Ізабела зі збору в Страсний тиждень і навіть не з перегонів; це була розумна й чутлива особа, що хоче його про щось серйозно запитати й щось щире йому сказати.",
+  "para": 86,
+  "start": 1137.74
+ },
+ {
+  "pl": "Wokulski był tak ciekawy tego, co mu powie, i tak stracił wszelką władzę nad sobą, że chyba zabiłby człowieka, który by im w tej chwili przeszkodził. Patrzył na pannę Izabelę w milczeniu i czekał.",
+  "ua": "Вокульський був такий цікавий того, що вона йому скаже, і так утратив усяку владу над собою, що, мабуть, убив би людину, яка б їм у цю мить завадила. Він дивився на панну Ізабелу мовчки й чекав.",
+  "para": 87,
+  "start": 1151.39
+ },
+ {
+  "pl": "Panna Izabela była zakłopotana: dawno już nie doznała takiego zamętu uczuć jak w tej chwili. Przez myśl przebiegały jej zdania: „kupił serwis” — „przegrywał umyślnie w karty do ojca” — „znieważył mnie”,",
+  "ua": "Панна Ізабела була збентежена: давно вже не зазнавала такого сум'яття почуттів, як у цю мить. Крізь думку пробігали їй речення: «купив сервіз» — «навмисне програвав у карти її батькові» — «образив мене»,",
+  "para": 88,
+  "start": 1163.9
+ },
+ {
+  "pl": "a potem: „kocha mnie” — „kupił konia wyścigowego” — „pojedynkował się” — „jadał baraninę z lordami w najwyższych towarzystwach...” Pogarda, gniew, podziw, sympatia kolejno potrącały jej duszę jak krople gęsto padającego deszczu;",
+  "ua": "а потім: «кохає мене» — «купив скакового коня» — «стрілявся» — «їв баранину з лордами в найвищих товариствах...» Зневага, гнів, захоплення, симпатія почергово торкалися її душі, як краплі густо падаючого дощу;",
+  "para": 88,
+  "start": 1178.2
+ },
+ {
+  "pl": "na dnie zaś tej burzy nurtowała potrzeba zwierzenia się komuś ze swych kłopotów codziennych i ze swych rozmaitych powątpiewań, i ze swej tragicznej miłości do wielkiego aktora.",
+  "ua": "а на дні цієї бурі бродила потреба звіритися комусь зі своїх щоденних клопотів і зі своїх різних сумнівів, і зі свого трагічного кохання до великого актора.",
+  "para": 88,
+  "start": 1193.46
+ },
+ {
+  "pl": "„Tak, on może być... on będzie moim powiernikiem!...” — myślała panna Izabela topiąc słodkie spojrzenie w zdumionych oczach Wokulskiego i lekko pochylając się naprzód, jakby chciała go pocałować w czoło.",
+  "ua": "«Так, він може бути... він буде моїм повірником!..» — думала панна Ізабела, втопивши солодкий погляд у здивованих очах Вокульського й легенько нахиляючись уперед, ніби хотіла поцілувати його в чоло.",
+  "para": 89,
+  "start": 1205.4
+ },
+ {
+  "pl": "Potem ogarniał ją bezprzyczynowy wstyd: cofała się na poręcz fotelu, rumieniła się i z wolna opuszczała długie rzęsy, jakby ją sen morzył.",
+  "ua": "Потім її огортав безпричинний сором: вона відступала на бильце крісла, червоніла й помалу опускала довгі вії, ніби її змагав сон.",
+  "para": 89,
+  "start": 1219.56
+ },
+ {
+  "pl": "Patrząc na grę jej fizjognomii Wokulskiemu przypomniały się cudowne falowania zorzy północnej i owe dziwne melodie bez tonów i bez słów, które niekiedy odzywają się w ludzkiej duszy niby echa lepszego świata.",
+  "ua": "Дивлячись на гру її фізіономії, Вокульському згадалися дивовижні коливання північного сяйва й ті дивні мелодії без тонів і без слів, що іноді озиваються в людській душі наче відлуння кращого світу.",
+  "para": 89,
+  "start": 1229.73
+ },
+ {
+  "pl": "Rozmarzony, przysłuchiwał się gorączkowemu tykotaniu stołowego zegara i biciu własnych pulsów i dziwił się, że te dwa tak szybkie zjawiska prawie wloką się w porównaniu z biegiem jego myśli.",
+  "ua": "Замріяний, він прислухався до гарячкового цокання настільного годинника й биття власних пульсів і дивувався, що ці два такі швидкі явища майже тягнуться порівняно з бігом його думок.",
+  "para": 89,
+  "start": 1244.43
+ },
+ {
+  "pl": "„Jeżeli jest jakie niebo — mówił sobie — błogosławieni nie doznają wyższego szczęścia aniżeli ja w tej chwili.”",
+  "ua": "«Якщо є якесь небо, — казав він собі, — блаженні не зазнають вищого щастя, ніж я в цю мить.»",
+  "para": 90,
+  "start": 1257.65
+ },
+ {
+  "pl": "Milczenie trwało już tak długo, że zaczęło być nieprzyzwoitym. Panna Izabela opamiętała się pierwsza.",
+  "ua": "Мовчання тривало вже так довго, що стало непристойним. Панна Ізабела отямилася перша.",
+  "para": 91,
+  "start": 1265.88
+ },
+ {
+  "pl": "— Pan miał — rzekła — nieporozumienie z panem Krzeszowskim...",
+  "ua": "— У вас було, — мовила вона, — непорозуміння з паном Кжешовським...",
+  "para": 92,
+  "start": 1272.7
+ },
+ {
+  "pl": "— O wyścigi... — wtrącił pośpiesznie Wokulski. — Baron nie mógł mi darować, że kupiłem jego konia...",
+  "ua": "— Через перегони... — поспіхом докинув Вокульський. — Барон не міг мені подарувати, що я купив його коня...",
+  "para": 93,
+  "start": 1277.64
+ },
+ {
+  "pl": "Chwilę patrzyła na niego z łagodnym uśmiechem.",
+  "ua": "Якусь хвилину вона дивилася на нього з лагідною усмішкою.",
+  "para": 94,
+  "start": 1285.28
+ },
+ {
+  "pl": "— Potem miał pan pojedynek, który... bardzo nas zaniepokoił... — dodała ciszej. — A potem... baron przeprosił mnie — zakończyła szybko, spuszczając oczy. — W liście napisanym z tego powodu do mnie baron mówi o panu z wielkim szacunkiem i przyjaźnią...",
+  "ua": "— Потім ви мали дуель, яка... дуже нас стурбувала... — додала тихіше. — А потім... барон перепросив мене, — закінчила швидко, опустивши очі. — У листі, написаному з цього приводу до мене, барон говорить про вас із великою шаною й приязню...",
+  "para": 95,
+  "start": 1288.33
+ },
+ {
+  "pl": "— Jestem bardzo... bardzo szczęśliwy... — bąkał Wokulski.",
+  "ua": "— Я дуже... дуже щасливий... — белькотів Вокульський.",
+  "para": 96,
+  "start": 1305.52
+ },
+ {
+  "pl": "— Z czego, panie?",
+  "ua": "— Із чого, пане?",
+  "para": 97,
+  "start": 1310.9
+ },
+ {
+  "pl": "— Że okoliczności złożyły się w taki sposób... Baron jest człowiekiem dystyngowanym...",
+  "ua": "— Що обставини склалися таким чином... Барон — добірна людина...",
+  "para": 98,
+  "start": 1312.3
+ },
+ {
+  "pl": "Panna Izabela wyciągnęła rękę i zostawiwszy ją na chwilę w rozpalonej dłoni Wokulskiego rzekła:",
+  "ua": "Панна Ізабела простягнула руку й, залишивши її на мить у розпаленій долоні Вокульського, мовила:",
+  "para": 99,
+  "start": 1317.69
+ },
+ {
+  "pl": "— Pomimo niewątpliwej dobroci barona ja jednak tylko panu dziękuję. Dziękuję... Są przysługi, których się nieprędko zapomina, i doprawdy... — tu zaczęła mówić wolniej i ciszej — doprawdy, ulżyłby pan memu sumieniu żądając czegoś, co by zrównoważyło pańską... uprzejmość...",
+  "ua": "— Незважаючи на безсумнівну доброту барона, я проте дякую лише вам. Дякую... Є послуги, які нескоро забуваються, і справді... — тут вона почала говорити повільніше й тихіше — справді, ви полегшили б мою совість, зажадавши чогось, що зрівноважило б вашу... чемність...",
+  "para": 100,
+  "start": 1323.35
+ },
+ {
+  "pl": "Wokulski puścił jej rękę i wyprostował się na krześle. Był tak odurzony, że nie zwrócił uwagi na ten mały wyraz „uprzejmość”.",
+  "ua": "Вокульський випустив її руку й випростався на стільці. Він був такий одурманений, що не звернув уваги на це маленьке слово «чемність».",
+  "para": 101,
+  "start": 1344.22
+ },
+ {
+  "pl": "— Dobrze — odparł. — Jeżeli pani każe, przyznam się nawet... do zasługi. Czy w zamian wolno mi zanieść prośbę do pani?...",
+  "ua": "— Добре, — відповів він. — Якщо пані накаже, я навіть визнаю... заслугу. Чи в обмін можна мені піднести прохання до пані?..",
+  "para": 102,
+  "start": 1353.81
+ },
+ {
+  "pl": "— Tak.",
+  "ua": "— Так.",
+  "para": 103,
+  "start": 1362.51
+ },
+ {
+  "pl": "— A więc — mówił rozgorączkowany — proszę o jedno: ażebym mógł służyć pani, o ile mi siły starczą. Zawsze i we wszystkim.",
+  "ua": "— Отже, — говорив розпалений, — прошу про одне: щоб я міг служити пані, наскільки мені стане сил. Завжди і в усьому.",
+  "para": 104,
+  "start": 1363.23
+ },
+ {
+  "pl": "— Panie!... — przerwała z uśmiechem panna Izabela — ależ to jest podstęp. Ja chcę spłacić jeden dług, a pan chce mnie zmusić do zaciągania nowych. Czy to właściwe?...",
+  "ua": "— Пане!.. — перервала з усмішкою панна Ізабела — але ж це підступ. Я хочу сплатити один борг, а ви хочете примусити мене до нових. Чи це належно?..",
+  "para": 105,
+  "start": 1372.31
+ },
+ {
+  "pl": "— Co w tym niewłaściwego?... Alboż nie przyjmuje pani usług nawet od posłańców publicznych?...",
+  "ua": "— Що в цьому неналежного?.. Хіба пані не приймає послуг навіть від публічних посильних?..",
+  "para": 106,
+  "start": 1383.35
+ },
+ {
+  "pl": "— Ale im płaci się za to — odpowiedziała figlarnie patrząc mu w oczy.",
+  "ua": "— Але їм за це платять, — відповіла жартівливо, дивлячись йому в очі.",
+  "para": 107,
+  "start": 1389.17
+ },
+ {
+  "pl": "— I ta tylko jest między mną i nimi różnica, że im płacić potrzeba, a mnie nie wypada. Nawet nie można.",
+  "ua": "— І єдина між мною й ними різниця, що їм платити треба, а мені не випадає. Навіть не можна.",
+  "para": 108,
+  "start": 1393.75
+ },
+ {
+  "pl": "Panna Izabela kręciła głową.",
+  "ua": "Панна Ізабела хитала головою.",
+  "para": 109,
+  "start": 1399.78
+ },
+ {
+  "pl": "— To, o co proszę — mówił dalej Wokulski — nie przechodzi granicy najzwyklejszych stosunków ludzkich. Panie zawsze rozkazujecie — my zawsze spełniamy, oto wszystko.",
+  "ua": "— Те, про що прошу, — казав далі Вокульський, — не виходить за межі найзвичайніших людських стосунків. Пані завжди наказуєте — ми завжди виконуємо, ось і все.",
+  "para": 110,
+  "start": 1403.3
+ },
+ {
+  "pl": "Ludzie należący do tej co i pani sfery towarzyskiej wcale nie potrzebowaliby prosić o podobną łaskę; dla nich jest ona codziennym obowiązkiem, nawet prawem. Ja zaś dobijałem się, a dzisiaj błagam o nią, gdyż spełnienie zleceń pani byłoby dla mnie pewnym rodzajem nobilitacji<sup>484<\/sup>.",
+  "ua": "Люди, що належать до тієї ж, що й пані, суспільної сфери, зовсім не потребували б просити про подібну ласку; для них вона щоденний обов'язок, навіть право. Я ж домагався, а сьогодні благаю про неї, бо виконання доручень пані було б для мене певним родом нобілітації<sup>484<\/sup>.",
+  "para": 110,
+  "start": 1412.9
+ },
+ {
+  "pl": "Boże miłosierny! jeżeli furmani i lokaje mogą nosić barwy pani, z jakiej racji ja nie miałbym zasługiwać na ten zaszczyt?",
+  "ua": "Боже милосердний! якщо фурмани й лакеї можуть носити барви пані, з якої причини я не мав би заслуговувати на цю честь?",
+  "para": 110,
+  "start": 1429.96
+ },
+ {
+  "pl": "— Ach, o tym pan mówi?... Dawać panu mojej szarfy nie potrzebuję; pan sam wziął ją gwałtem. A odbierać?... Już za późno, choćby ze względu na list barona.",
+  "ua": "— Ах, про це ви кажете?.. Давати вам моєї шарфи мені не потрібно; ви самі взяли її силоміць. А відбирати?.. Вже запізно, хоч би з огляду на лист барона.",
+  "para": 111,
+  "start": 1437.9
+ },
+ {
+  "pl": "Znowu podała mu rękę, którą Wokulski ze czcią ucałował. W obocznym pokoju rozległy się kroki i wszedł pan Tomasz wyspany, promieniejący. Jego piękna twarz miała tak serdeczny wyraz, że Wokulski pomyślał:",
+  "ua": "Вона знову подала йому руку, яку Вокульський із шаною поцілував. У бічній кімнаті розлунилися кроки, і ввійшов пан Томаш, виспаний, променистий. Його гарне обличчя мало такий сердечний вираз, що Вокульський подумав:",
+  "para": 112,
+  "start": 1448.45
+ },
+ {
+  "pl": "„Nędznikiem będę, jeżeli twoje trzydzieści tysięcy rubli, poczciwcze, nie przyniosą ci dziesięciu tysięcy rocznie.”",
+  "ua": "«Нікчемою буду, якщо твої тридцять тисяч рублів, добряче, не принесуть тобі десяти тисяч щорічно.»",
+  "para": 113,
+  "start": 1461.55
+ },
+ {
+  "pl": "Jeszcze z kwadrans posiedzieli we troje, rozmawiając o niedawnej zabawie w Dolinie Szwajcarskiej<sup>485<\/sup> na cel dobroczynny, o przybyciu Rossiego i o wyjeździe do Paryża. Nareszcie Wokulski z żalem opuścił miłe towarzystwo obiecując przychodzić częściej i współcześnie z nimi jechać do Paryża.",
+  "ua": "Ще з чверть години вони посиділи втрьох, розмовляючи про недавню забаву в Швейцарській долині<sup>485<\/sup> на благодійну мету, про приїзд Россі й про від'їзд до Парижа. Нарешті Вокульський із жалем залишив милу компанію, обіцяючи приходити частіше й одночасно з ними їхати до Парижа.",
+  "para": 114,
+  "start": 1470.16
+ },
+ {
+  "pl": "— Zobaczy pan, jak tam będzie wesoło — rzekła panna Izabela na pożegnanie.",
+  "ua": "— Побачите, як там буде весело, — мовила панна Ізабела на прощання.",
+  "para": 115,
+  "start": 1489.11
+ }
+];
+const ANNOTATIONS = {"470": {"term": "Rossi Ernest (1829–1896)", "definition": "znakomity aktor włoski, świetny odtwórca ról szekspirowskich. Przybył na gościnne występy do Warszawy 16 czerwca 1878. [przypis redakcyjny]", "translation": "видатний італійський актор, блискучий виконавець шекспірівських ролей. Прибув на гастролі до Варшави 16 червня 1878 р. [przypis redakcyjny]"}, "471": {"term": "Romeo i Julia", "definition": "słynna tragedia Szekspira. Miejscem akcji jest miasto włoskie Werona, tematem — losy dwojga kochanków pochodzących ze zwaśnionych z sobą rodów. Montekich i Kapuletów. [przypis redakcyjny]", "translation": "відома трагедія Шекспіра. Місцем дії є італійське місто Верона, темою — доля двох закоханих із родів, ворожих між собою, Монтеккі та Капулетті. [przypis redakcyjny]"}, "472": {"term": "Mdła mucha więcej ma mocy...", "definition": "słowa Romea z aktu III, sceny 3 tragedii *Romeo i Julia*. [przypis redakcyjny]", "translation": "слова Ромео з дії III, сцени 3 трагедії *Ромео і Джульєтта*. [przypis redakcyjny]"}, "473": {"term": "Laurenty", "definition": "ojciec Laurenty, jedna z postaci wyżej podanej tragedii. [przypis redakcyjny]", "translation": "отець Лаврентій, одна з постатей наведеної вище трагедії. [przypis redakcyjny]"}, "474": {"term": "Niebo jest tu, gdzie mieszka Julia...", "definition": "słowa Romea z aktu III, sceny 3. [przypis redakcyjny]", "translation": "слова Ромео з дії III, сцени 3. [przypis redakcyjny]"}, "475": {"term": "Romeo! czemuż ty jesteś Romeo?...", "definition": "słowa Julii z aktu II, sceny 2. [przypis redakcyjny]", "translation": "слова Джульєтти з дії II, сцени 2. [przypis redakcyjny]"}, "476": {"term": "kapitalizować", "definition": "składać dochody na kapitał. [przypis redakcyjny]", "translation": "складати доходи в капітал. [przypis redakcyjny]"}, "477": {"term": "Supiński Józef (1804–1893)", "definition": "ekonomista polski, autor *Szkoły polskiej gospodarstwa społecznego* (1862–1865), poprzednik pozytywizmu, nawoływał do „pracy i oszczędności”. [przypis redakcyjny]", "translation": "польський економіст, автор *Польської школи суспільного господарювання* (1862–1865), попередник позитивізму, закликав до „праці й ощадливості”. [przypis redakcyjny]"}, "478": {"term": "wierzyciele hipoteczni", "definition": "hipoteka: instytucja prawna zabezpieczająca prawa właściciela nieruchomości oraz roszczenia pieniężne jego ewentualnych wierzycieli. [przypis redakcyjny]", "translation": "іпотека: правова інституція, що забезпечує права власника нерухомості та грошові вимоги його можливих кредиторів. [przypis redakcyjny]"}, "479": {"term": "portwein (z niem.)", "definition": "czerwone mocne wino portugalskie. [przypis redakcyjny]", "translation": "міцне червоне португальське вино. [przypis redakcyjny]"}, "480": {"term": "Tuilerie", "definition": "Tuileries: pałac i park z w. XVII w Paryżu, od r. 1800 rezydencja panujących. W r. 1871 w czasie walk Komuny Paryskiej pałac, z wyjątkiem dwóch pawilonów, spłonął. [przypis redakcyjny]", "translation": "Тюїльрі: палац і парк XVII ст. у Парижі, від 1800 р. резиденція правителів. У 1871 р. під час боїв Паризької комуни палац, за винятком двох павільйонів, згорів. [przypis redakcyjny]"}, "481": {"term": "Cesarzowa Eugenia (1826–1920)", "definition": "żona Napoleona III, z domu hrabianka de Montilo de Gusman. [przypis redakcyjny]", "translation": "дружина Наполеона III, з дому графиня де Монтіло де Ґусман. [przypis redakcyjny]"}, "482": {"term": "menuet", "definition": "starofrancuski taniec w trzyćwierciowym takcie, pełen wdzięku i wytworności. [przypis redakcyjny]", "translation": "старофранцузький танець у тричвертному такті, сповнений грації та вишуканості. [przypis redakcyjny]"}, "483": {"term": "Harun–al–Raszyd (766–809)", "definition": "kalif arabski, miłośnik sztuk pięknych, występuje jako potężny władca w wielu baśniach arabskich. [przypis redakcyjny]", "translation": "арабський халіф, любитель витончених мистецтв, постає могутнім володарем у багатьох арабських казках. [przypis redakcyjny]"}, "484": {"term": "nobilitacja", "definition": "nadanie szlachectwa. [przypis redakcyjny]", "translation": "надання шляхетства. [przypis redakcyjny]"}, "485": {"term": "Dolina Szwajcarska", "definition": "przy Alejach Ujazdowskich (istniała do roku 1945). Znajdował się w niej ogródek koncertowy i restauracyjny, ze ślizgawką w zimie. Mieścił się tu także pałacyk Warszawskiego Towarzystwa Łyżwiarskiego. 22 czerwca 1878 odbyła się w Dolinie Szwajcarskiej wielka zabawa maskaradowa z loterią na cel dobroczynny. [przypis redakcyjny]", "translation": "при Аллеях Уяздовських (існувала до 1945 р.). Тут був концертно-ресторанний садок, взимку — з ковзанкою. Тут також містився палацек Варшавського ковзанярського товариства. 22 червня 1878 р. у Швейцарській долині відбулося велике маскарадне свято з лотереєю на благодійну мету. [przypis redakcyjny]"}};
+let footnoteTooltipIndex = 0;
+
+/* ===================================================================== */
+/* 2. TIMESTAMPS — seconds into audio/chapter-16.webm, one per unit              */
+/*    null = no timestamp: the unit's audio is merged into the previous  */
+/*    section (the play button is disabled).                             */
+/*    Produced by align_audio.py (faster-whisper word timestamps + LCS). */
+/* ===================================================================== */
+const AUDIO_TIMES = [
+  7.85,    // [  0] conf 1.00  "Tego dnia, kiedy Wokulski miał przyjść na…"
+  18.96,   // [  1] conf 0.89  "Spotkało ją dziś szczęście i zawód. Wielk…"
+  34.26,   // [  2] conf 1.00  "Miał być dziś drugi raz i hrabina specjal…"
+  48.68,   // [  3] conf 1.00  "Przed paroma laty, właśnie w Paryżu, Ross…"
+  60.84,   // [  4] conf 0.86  "Znakomity artysta wiedział o tym, bywał c…"
+  81.13,   // [  5] conf 1.00  "Wiadomość o przybyciu Rossiego do Warszaw…"
+  89.67,   // [  6] conf 0.97  "Co chwilę wstawała do okna, każdy turkot…"
+  104.38,  // [  7] conf 0.94  "A tak dziś była piękną. Ubrała się, umyśl…"
+  124.84,  // [  8] conf 0.95  "Po czterogodzinnym oczekiwaniu wróciła do…"
+  135.51,  // [  9] conf 0.83  "„Gdyby też nagle wszedł tu Rossi?...”"
+  138.47,  // [ 10] conf 1.00  "Nawet byłoby lepiej tu niż u hrabiny. Bez…"
+  159.12,  // [ 11] conf 0.94  "Przypomniała sobie, że na obiedzie ma być…"
+  174.04,  // [ 12] conf 0.91  "Gdyby Wokulski w tej chwili znalazł się u…"
+  186.84,  // [ 13] conf 1.00  "„Niebo jest tu, gdzie mieszka Julia. Lada…"
+  208.35,  // [ 14] conf 0.90  "Mucha ma tę wolność, ale Romeo nie ma, bo…"
+  227.96,  // [ 15] conf 1.00  "Westchnęła. — Kto wie, ile razy powtarza…"
+  243.39,  // [ 16] conf 1.00  "Odwróciwszy kilka kartek wstecz znowu czy…"
+  247.95,  // [ 17] conf 1.00  "„Romeo! czemuż ty jesteś Romeo? Rzuć tę n…"
+  270.87,  // [ 18] conf 0.91  "To, co zwiemy różą, pod inną nazwą równie…"
+  293.50,  // [ 19] conf 1.00  "Jakież było dziwne między nimi podobieńst…"
+  313.88,  // [ 20] conf 1.00  "Wyjść za Rossiego?... Dbać o jego gardero…"
+  321.74,  // [ 21] conf 1.00  "Panna Izabela wstrząsnęła się. Kochać go…"
+  339.52,  // [ 22] conf 1.00  "Patrzyłby jej w oczy, cierpiałby za siebi…"
+  358.33,  // [ 23] conf 1.00  "W tej samej porze pan Tomasz zakręcając s…"
+  364.77,  // [ 24] conf 1.00  "„Wokulski jest to człowiek ogromnie zręcz…"
+  386.38,  // [ 25] conf 0.88  "Nie, nie przesadzajmy, niech pięćdziesiąt…"
+  402.42,  // [ 26] conf 0.91  "Za pięć, sześć lat suma podwoi się, a już…"
+  419.30,  // [ 27] conf 1.00  "A w takim razie spojrzę mu w oczy i powie…"
+  429.80,  // [ 28] conf 0.88  "I on, naturalnie, zobaczywszy, z kim ma d…"
+  438.67,  // [ 29] conf 0.92  "Dzwonek w przedpokoju uderzył dwa razy. P…"
+  453.98,  // [ 30] conf 1.00  "— A... witam!... — zawołał pan Tomasz wyc…"
+  458.34,  // [ 31] conf 0.79  "Wokulski nisko ukłonił się przed białymi…"
+  465.29,  // [ 32] conf 0.95  "— Siadajże, panie Stanisławie... Może pap…"
+  486.16,  // [ 33] conf 1.00  "— Niech robią, jak im wygodniej — odparł…"
+  492.08,  // [ 34] conf 0.96  "— Ale ja nie opuszczę cię, panie Stanisła…"
+  503.19,  // [ 35] conf 0.87  "Miałem z nim duży kłopot: lokatorowie nie…"
+  514.91,  // [ 36] conf 0.67  "— Naturalnie — wtrącił Wokulski."
+  517.01,  // [ 37] conf 1.00  "— Mam nadzieję — ciągnął pan Tomasz — że…"
+  524.51,  // [ 38] conf 1.00  "— Ile ma pan nadzieję wziąć za ten dom?..."
+  527.41,  // [ 39] conf 1.00  "— Sto, do stu dziesięciu tysięcy rubli...…"
+  536.07,  // [ 40] conf 1.00  "Wokulski pochylił głowę na znak zgody i p…"
+  551.15,  // [ 41] conf 0.86  "— Tobie oddam, panie Stanisławie — mówił…"
+  558.67,  // [ 42] conf 1.00  "— Ależ rozumie się..."
+  560.71,  // [ 43] conf 1.00  "— I jaki mi dasz procent?"
+  562.61,  // [ 44] conf 1.00  "— Gwarantuję dwudziesty, a jeżeli interes…"
+  573.65,  // [ 45] conf 1.00  "„Filut!... — pomyślał pan Tomasz. — Sam m…"
+  578.83,  // [ 46] conf 1.00  "Głośno jednak rzekł:"
+  580.59,  // [ 47] conf 1.00  "— Dobrze, kochany panie Stanisławie. Przy…"
+  587.13,  // [ 48] conf 0.95  "— Będę płacił z góry... co pół roku — odp…"
+  595.31,  // [ 49] conf 1.00  "— I na to zgoda — rzekł pan Tomasz tonem…"
+  614.32,  // [ 50] conf 0.92  "— Panie proszą — rzekł w tej chwili Mikoł…"
+  620.32,  // [ 51] conf 1.00  "Pan Tomasz uroczyście podniósł się z fote…"
+  626.67,  // [ 52] conf 1.00  "Później niejednokrotnie Wokulski usiłował…"
+  636.89,  // [ 53] conf 0.98  "Pamiętał, że przede drzwiami ukłonił się…"
+  654.65,  // [ 54] conf 1.00  "Przynajmniej tak mu się zdawało."
+  657.45,  // [ 55] conf 1.00  "Dopiero po chwili spostrzegł, że damą w k…"
+  670.77,  // [ 56] conf 0.95  "— Ojciec mój, jako pański wspólnik, będzi…"
+  681.30,  // [ 57] conf 1.00  "Wyciągnęła rękę, której Wokulski ledwo śm…"
+  685.14,  // [ 58] conf 1.00  "— Pan Łęcki — odparł — jako wspólnik, pot…"
+  696.10,  // [ 59] conf 1.00  "Zdawało mu się, że powiedział coś bardzo…"
+  700.48,  // [ 60] conf 1.00  "— Pan musi mieć dużo zajęcia przy takim m…"
+  708.74,  // [ 61] conf 1.00  "— Nie tak wiele. Do mnie należy dostarcza…"
+  722.38,  // [ 62] conf 1.00  "— Czy to można w każdym razie spuścić się…"
+  729.49,  // [ 63] conf 0.86  "— Mam doskonałego plenipotenta, a zarazem…"
+  736.45,  // [ 64] conf 1.00  "— Szczęśliwy jesteś, panie Stanisławie...…"
+  742.23,  // [ 65] conf 1.00  "— Chcę być w Paryżu na wystawie."
+  744.27,  // [ 66] conf 0.95  "— Zazdroszczę panu — odezwała się panna I…"
+  754.54,  // [ 67] conf 1.00  "— Nasz wyjazd całkowicie zależy od pana W…"
+  765.14,  // [ 68] conf 1.00  "— Zaręczam, że ile razy będzie pan na nas…"
+  773.57,  // [ 69] conf 1.00  "— Z wdzięcznością przyjmuję obietnicę — o…"
+  783.33,  // [ 70] conf 0.75  "— Merci... — szepnęła panna Izabela."
+  786.85,  // [ 71] conf 0.77  "Wokulski schylił głowę. „Znam ja to »merc…"
+  794.42,  // [ 72] conf 1.00  "— Państwo pozwolą do stołu?... — wtrąciła…"
+  799.06,  // [ 73] conf 1.00  "Przeszli do jadalnego pokoju, gdzie na śr…"
+  817.87,  // [ 74] conf 1.00  "Opuścił go szał miłości i nawet pytał sam…"
+  834.13,  // [ 75] conf 1.00  "Myśl miał tak swobodną, że nie tylko dokł…"
+  846.86,  // [ 76] conf 1.00  "„Suknia. Piętnaście łokci surowego jedwab…"
+  860.52,  // [ 77] conf 0.90  "Mikołaj zaczął podawać potrawy. Wokulski…"
+  878.80,  // [ 78] conf 1.00  "Na początek skosztowawszy polędwicy położ…"
+  884.93,  // [ 79] conf 0.72  "Panna Florentyna aż drgnęła, a pan Tomasz…"
+  898.63,  // [ 80] conf 0.97  "Podano sandacza, którego Wokulski zaatako…"
+  913.05,  // [ 81] conf 0.96  "„Jacyście wy głupi!” — pomyślał Wokulski…"
+  924.07,  // [ 82] conf 1.00  "— Musi mnie papa kiedy nauczyć, jak się j…"
+  928.11,  // [ 83] conf 1.00  "Wokulskiemu wydało się to wprost niesmacz…"
+  936.01,  // [ 84] conf 1.00  "— Moja droga — odpowiedział pan Tomasz có…"
+  944.53,  // [ 85] conf 1.00  "— Przesąd?... nie powiem — rzekł Wokulski…"
+  953.51,  // [ 86] conf 1.00  "Pan Tomasz aż poruszył się na krześle."
+  956.45,  // [ 87] conf 1.00  "— Anglicy uważają to prawie za obrazę...…"
+  961.57,  // [ 88] conf 1.00  "— Anglicy mają ryby morskie, które można…"
+  970.71,  // [ 89] conf 1.00  "— O, Anglicy nigdy nie łamią form — broni…"
+  975.79,  // [ 90] conf 1.00  "— Tak — mówił Wokulski — nie łamią form w…"
+  993.05,  // [ 91] conf 1.00  "Lekcja była ostra. Pan Tomasz jednak przy…"
+  1009.97, // [ 92] conf 1.00  "Kto wie, czy teoria nie wydała się jej wa…"
+  1016.29, // [ 93] conf 1.00  "— Więc pan jest nieprzyjacielem etykiety?…"
+  1019.69, // [ 94] conf 1.00  "— Nie. Nie chcę tylko być jej niewolnikie…"
+  1023.15, // [ 95] conf 0.89  "— Są jednak towarzystwa, w których ona pr…"   // start word fuzzy-corrected
+  1026.43, // [ 96] conf 1.00  "— Tego nie wiem. Ale widziałem najwyższe…"
+  1033.63, // [ 97] conf 0.92  "Pan Tomasz lekko schylił głowę; panna Flo…"
+  1053.15, // [ 98] conf 1.00  "W sercu jej budził się podziw, nawet — sy…"
+  1063.05, // [ 99] conf 1.00  "Po lodach zupełnie zdetonowana panna Flor…"
+  1079.86, // [100] conf 1.00  "— Czeka na odpowiedź, jaśnie panie."
+  1083.29, // [101] conf 1.00  "— Ach, od hrabiny... — rzekł pan Tomasz s…"
+  1089.38, // [102] conf 1.00  "— Jeżeli pan nie ma nic przeciw temu — pr…"
+  1099.15, // [103] conf 1.00  "Wiedziała, że list ten napisał pan Tomasz…"
+  1106.75, // [104] conf 1.00  "— Nie obrazi się pan? — spytał pan Tomasz…"
+  1111.98, // [105] conf 0.96  "Opuścili z panną Izabelą gabinet i weszli…"
+  1123.48, // [106] conf 1.00  "Wokulskiemu, kiedy znalazł się z nią sam…"
+  1137.74, // [107] conf 1.00  "To już nie była ta panna Izabela z kwesty…"
+  1151.39, // [108] conf 1.00  "Wokulski był tak ciekawy tego, co mu powi…"
+  1163.90, // [109] conf 1.00  "Panna Izabela była zakłopotana: dawno już…"
+  1178.20, // [110] conf 1.00  "a potem: „kocha mnie” — „kupił konia wyśc…"
+  1193.46, // [111] conf 1.00  "na dnie zaś tej burzy nurtowała potrzeba…"
+  1205.40, // [112] conf 1.00  "„Tak, on może być... on będzie moim powie…"
+  1219.56, // [113] conf 0.91  "Potem ogarniał ją bezprzyczynowy wstyd: c…"
+  1229.73, // [114] conf 1.00  "Patrząc na grę jej fizjognomii Wokulskiem…"
+  1244.43, // [115] conf 1.00  "Rozmarzony, przysłuchiwał się gorączkowem…"
+  1257.65, // [116] conf 1.00  "„Jeżeli jest jakie niebo — mówił sobie —…"
+  1265.88, // [117] conf 1.00  "Milczenie trwało już tak długo, że zaczęł…"
+  1272.70, // [118] conf 1.00  "— Pan miał — rzekła — nieporozumienie z p…"
+  1277.64, // [119] conf 1.00  "— O wyścigi... — wtrącił pośpiesznie Woku…"
+  1285.28, // [120] conf 1.00  "Chwilę patrzyła na niego z łagodnym uśmie…"
+  1288.33, // [121] conf 1.00  "— Potem miał pan pojedynek, który... bard…"
+  1305.52, // [122] conf 1.00  "— Jestem bardzo... bardzo szczęśliwy... —…"
+  1310.90, // [123] conf 1.00  "— Z czego, panie?"
+  1312.30, // [124] conf 0.91  "— Że okoliczności złożyły się w taki spos…"
+  1317.69, // [125] conf 1.00  "Panna Izabela wyciągnęła rękę i zostawiws…"
+  1323.35, // [126] conf 1.00  "— Pomimo niewątpliwej dobroci barona ja j…"
+  1344.22, // [127] conf 1.00  "Wokulski puścił jej rękę i wyprostował si…"
+  1353.81, // [128] conf 1.00  "— Dobrze — odparł. — Jeżeli pani każe, pr…"
+  1362.51, // [129] conf 1.00  "— Tak."
+  1363.23, // [130] conf 1.00  "— A więc — mówił rozgorączkowany — proszę…"
+  1372.31, // [131] conf 1.00  "— Panie!... — przerwała z uśmiechem panna…"
+  1383.35, // [132] conf 1.00  "— Co w tym niewłaściwego?... Alboż nie pr…"
+  1389.17, // [133] conf 1.00  "— Ale im płaci się za to — odpowiedziała…"
+  1393.75, // [134] conf 1.00  "— I ta tylko jest między mną i nimi różni…"
+  1399.78, // [135] conf 1.00  "Panna Izabela kręciła głową."
+  1403.30, // [136] conf 0.95  "— To, o co proszę — mówił dalej Wokulski…"
+  1412.90, // [137] conf 0.94  "Ludzie należący do tej co i pani sfery to…"
+  1429.96, // [138] conf 1.00  "Boże miłosierny! jeżeli furmani i lokaje…"
+  1437.90, // [139] conf 0.96  "— Ach, o tym pan mówi?... Dawać panu moje…"
+  1448.45, // [140] conf 0.94  "Znowu podała mu rękę, którą Wokulski ze c…"
+  1461.55, // [141] conf 1.00  "„Nędznikiem będę, jeżeli twoje trzydzieśc…"
+  1470.16, // [142] conf 0.86  "Jeszcze z kwadrans posiedzieli we troje,…"
+  1489.11, // [143] conf 1.00  "— Zobaczy pan, jak tam będzie wesoło — rz…"
+];
+
+/* Word-level [start, end] pairs, one per displayed token of each unit — the
+   underline of progress mode 2. null when the chapter has no word timings. */
+const WORD_TIMES = [[[7.97, 8.57], [8.57, 8.77], [8.89, 9.05], [9.05, 9.69], [9.69, 9.93], [9.93, 10.35], [10.35, 10.55], [10.55, 10.95], [11.09, 11.39], [11.39, 11.97], [11.97, 12.55], [12.55, 12.75], [12.75, 13.23], [13.23, 13.47], [13.47, 13.91], [14.11, 14.35], [14.35, 14.59], [14.59, 15.35], [15.35, 15.53], [15.53, 15.83], [15.83, 16.51], [16.83, 17.33], [17.33, 17.33], [17.33, 18.13]], [[19.08, 19.88], [19.88, 20.08], [20.08, 20.52], [20.52, 21.3], [21.3, 21.66], [21.66, 22.04], [22.42, 23.02], [23.02, 23.54], [23.54, 24.02], [24.02, 24.62], [25.0, 25.44], [25.44, 25.7], [25.7, 25.94], [25.94, 26.38], [26.38, 26.62], [26.62, 26.8], [26.8, 27.2], [27.38, 27.84], [27.84, 27.96], [27.96, 28.4], [28.4, 28.54], [28.54, 29.06], [29.58, 30.12], [30.12, 30.76], [30.76, 31.26], [31.26, 31.38], [31.38, 31.92], [31.92, 32.64], [32.64, 32.64], [32.64, 32.86], [32.86, 33.2], [33.2, 33.82]], [[34.38, 34.6], [34.6, 34.82], [34.82, 35.14], [35.14, 35.52], [35.52, 35.8], [35.8, 35.96], [35.96, 36.36], [36.36, 37.04], [37.04, 37.22], [37.22, 37.44], [37.44, 38.08], [38.08, 38.8], [39.12, 39.84], [39.84, 40.28], [40.28, 40.52], [40.52, 41.2], [41.32, 41.66], [41.66, 41.9], [41.9, 42.22], [42.32, 42.4], [42.4, 42.56], [42.56, 43.16], [43.16, 43.32], [43.32, 43.74], [43.74, 43.9], [43.9, 44.72], [44.72, 44.9], [44.9, 45.68], [45.68, 46.18], [46.18, 46.56], [46.56, 47.14], [47.14, 47.82], [47.82, 48.18]], [[48.8, 49.52], [49.52, 49.88], [49.88, 50.22], [50.22, 50.52], [50.52, 50.7], [50.7, 51.3], [51.3, 51.9], [51.9, 52.14], [52.14, 52.92], [52.92, 53.32], [53.32, 53.86], [53.86, 54.44], [54.44, 54.62], [54.62, 54.78], [54.78, 54.9], [54.9, 55.08], [55.08, 55.32], [55.32, 55.56], [55.56, 55.88], [55.88, 56.14], [56.14, 56.5], [56.68, 57.08], [57.08, 57.2], [57.2, 57.6], [57.6, 57.76], [57.76, 58.06], [58.06, 58.24], [58.24, 58.78], [58.78, 58.94], [58.94, 59.4], [59.4, 59.58], [59.58, 60.22]], [[60.96, 61.66], [61.66, 62.2], [62.2, 62.64], [62.64, 62.9], [62.9, 63.08], [63.42, 63.78], [63.78, 64.02], [64.02, 64.22], [64.22, 64.36], [64.36, 64.52], [64.52, 65.02], [65.18, 65.4], [65.4, 65.58], [65.58, 66.2], [66.2, 66.68], [66.68, 66.88], [66.88, 67.0], [67.0, 67.34], [67.34, 67.68], [67.68, 68.22], [68.42, 69.0], [69.0, 69.5], [69.5, 69.68], [69.68, 70.18], [70.18, 70.76], [70.76, 70.9], [70.9, 71.38], [71.38, 72.08], [72.08, 72.58], [72.58, 72.96], [72.96, 73.32], [73.32, 73.54], [73.54, 74.2], [74.4, 74.9], [74.9, 75.3], [75.3, 75.76], [75.76, 76.04], [76.04, 76.44], [76.88, 77.24], [77.24, 77.52], [77.52, 78.18], [78.18, 78.98], [78.98, 79.54]], [[81.25, 81.85], [81.85, 81.97], [81.97, 82.49], [82.49, 82.91], [82.91, 83.05], [83.05, 83.61], [83.61, 83.77], [83.77, 84.03], [84.03, 84.19], [84.23, 84.35], [84.35, 84.53], [84.53, 84.75], [84.75, 85.37], [85.55, 86.27], [86.27, 86.63], [86.63, 87.15], [87.51, 87.95], [87.95, 88.09], [88.09, 88.39], [88.39, 88.51], [88.51, 88.87], [88.87, 89.07], [89.07, 89.23], [89.23, 89.57]], [[89.79, 89.95], [89.95, 90.21], [90.21, 90.73], [90.73, 90.91], [90.91, 91.31], [91.45, 91.71], [91.71, 92.23], [92.23, 92.83], [92.83, 93.11], [93.11, 93.31], [93.31, 93.73], [93.97, 94.31], [94.31, 94.63], [94.63, 95.11], [95.11, 95.55], [95.55, 96.05], [96.53, 97.13], [97.13, 97.27], [97.27, 97.37], [97.37, 97.79], [98.03, 98.21], [98.21, 98.49], [98.49, 98.69], [98.69, 99.35], [99.35, 99.69], [99.69, 100.21], [100.39, 100.57], [100.57, 100.57], [100.57, 101.19], [102.27, 102.87], [102.87, 103.05], [103.05, 103.63]], [[104.5, 104.5], [104.5, 104.9], [104.9, 105.28], [105.28, 105.56], [105.56, 106.12], [106.12, 107.0], [107.0, 107.24], [107.24, 108.26], [108.26, 108.46], [108.46, 108.74], [108.74, 109.24], [109.24, 109.8], [109.8, 110.4], [110.4, 110.96], [110.96, 111.42], [111.42, 112.0], [112.0, 112.38], [112.38, 113.02], [113.02, 113.16], [113.16, 113.34], [113.34, 113.72], [113.72, 114.18], [114.18, 114.74], [114.74, 115.4], [115.4, 115.96], [116.14, 116.68], [116.68, 117.1], [117.1, 117.24], [117.24, 117.52], [117.52, 118.0], [118.0, 118.6], [118.6, 119.12], [119.12, 119.48], [119.48, 120.16], [120.16, 120.5], [120.5, 120.66], [120.66, 121.06], [121.06, 121.28], [121.28, 121.62], [121.62, 122.66], [122.72, 122.96], [122.96, 123.3], [123.3, 123.76], [124.16, 124.28], [124.28, 124.44], [124.44, 124.6], [124.6, 124.96]], [[124.96, 125.9], [126.45, 127.39], [127.39, 128.05], [128.05, 128.59], [128.59, 128.73], [128.73, 128.99], [128.99, 129.67], [129.67, 130.55], [130.55, 130.85], [130.85, 131.47], [131.47, 131.83], [131.83, 131.99], [131.99, 132.27], [132.27, 132.93], [132.93, 133.41], [133.41, 133.59], [133.59, 133.91], [133.91, 134.09], [134.09, 134.91], [134.91, 135.05], [135.05, 135.63]], [[135.63, 136.67], [136.67, 136.89], [136.89, 137.27], [137.27, 137.83], [137.83, 138.01], [138.01, 138.01]], [[138.59, 139.71], [139.71, 140.13], [140.13, 140.49], [140.49, 140.75], [140.75, 140.99], [140.99, 141.15], [141.15, 141.61], [141.61, 142.29], [142.29, 142.87], [142.87, 143.87], [143.87, 144.07], [144.07, 144.59], [144.59, 144.93], [144.93, 145.61], [145.61, 146.09], [146.09, 146.79], [146.79, 146.99], [147.11, 147.15], [147.15, 147.39], [147.39, 147.81], [147.81, 148.07], [148.07, 148.67], [148.67, 148.81], [148.81, 149.03], [149.03, 149.47], [149.47, 149.47], [149.47, 150.25], [150.25, 150.47], [150.79, 151.05], [151.05, 151.19], [151.19, 151.39], [151.39, 151.91], [151.91, 152.13], [152.13, 152.39], [152.39, 152.79], [152.79, 153.33], [153.33, 153.49], [153.49, 153.67], [153.67, 154.19], [154.19, 154.37], [154.37, 154.55], [154.55, 154.97], [154.97, 155.17], [155.17, 155.35], [155.35, 155.63], [155.63, 156.49], [156.49, 156.99], [156.99, 157.53], [157.53, 157.79], [157.79, 158.27]], [[159.24, 159.84], [159.84, 160.1], [160.22, 160.3], [160.3, 160.46], [160.46, 160.94], [160.94, 161.1], [161.1, 161.34], [161.34, 161.98], [161.98, 162.16], [162.16, 162.46], [162.46, 162.7], [162.7, 163.66], [163.66, 164.26], [165.39, 166.11], [166.11, 166.59], [166.59, 167.99], [166.59, 167.99], [167.99, 168.27], [168.27, 168.79], [168.79, 169.05], [169.05, 169.59], [170.05, 170.29], [170.29, 170.43], [170.43, 170.59], [170.59, 170.81], [170.81, 171.43], [171.51, 171.59], [171.59, 171.75], [171.75, 172.03], [172.03, 172.63], [172.63, 172.79], [172.79, 173.39]], [[174.16, 174.74], [174.74, 175.28], [175.28, 175.4], [175.4, 175.5], [175.5, 175.82], [175.82, 176.38], [176.38, 176.62], [176.62, 176.9], [176.9, 177.1], [177.1, 177.46], [177.82, 178.22], [178.22, 178.52], [178.52, 178.9], [178.9, 179.68], [179.68, 179.84], [179.84, 180.26], [180.26, 180.38], [180.38, 180.88], [180.88, 181.4], [181.4, 181.96], [181.96, 182.14], [182.14, 182.34], [182.34, 182.5], [182.5, 182.94], [182.94, 183.28], [183.44, 183.96], [183.96, 184.26], [184.26, 184.58], [184.58, 185.14], [185.14, 185.78], [185.78, 186.1], [186.1, 186.8]], [[186.96, 188.22], [188.22, 188.52], [188.52, 188.78], [188.92, 189.02], [189.02, 189.44], [189.44, 189.78], [189.78, 190.66], [190.66, 190.94], [191.18, 191.44], [191.62, 191.82], [191.82, 192.2], [192.38, 192.66], [192.66, 192.98], [192.98, 193.12], [193.12, 193.44], [193.44, 194.0], [194.0, 194.56], [194.56, 194.72], [194.72, 194.9], [194.98, 195.26], [195.26, 195.26], [195.26, 195.78], [195.78, 196.12], [196.12, 196.5], [196.57, 197.91], [197.91, 198.23], [198.23, 198.61], [198.61, 198.89], [198.89, 199.27], [199.41, 199.67], [199.67, 200.15], [200.15, 200.37], [200.37, 200.95], [200.95, 201.33], [201.33, 201.79], [201.79, 202.89], [202.89, 203.33], [203.33, 203.89], [203.89, 204.27], [204.27, 204.71], [204.71, 205.21], [205.21, 205.67], [205.67, 205.81], [205.81, 206.35], [206.35, 206.67], [206.67, 207.11], [207.11, 207.91], [207.91, 208.47]], [[208.47, 209.29], [209.29, 209.37], [209.37, 209.55], [209.55, 210.11], [210.29, 210.65], [210.65, 211.01], [211.01, 211.29], [211.29, 211.47], [211.55, 211.67], [211.67, 211.85], [211.85, 212.41], [212.41, 213.21], [213.21, 213.87], [214.07, 214.27], [214.27, 214.69], [214.69, 215.21], [215.21, 215.73], [215.73, 215.93], [215.93, 216.29], [216.29, 216.83], [216.83, 217.07], [217.07, 217.53], [217.53, 218.73], [218.73, 218.95], [218.95, 219.57], [219.69, 219.83], [219.97, 220.37], [220.37, 221.01], [221.01, 221.15], [221.15, 221.47], [221.87, 222.51], [222.51, 222.83], [222.83, 223.05], [223.05, 223.59], [223.59, 223.77], [223.77, 224.37], [224.37, 224.97], [224.97, 225.71], [225.71, 226.35]], [[228.08, 228.72], [228.72, 228.72], [228.72, 229.4], [229.4, 229.6], [229.66, 229.84], [229.84, 230.26], [230.26, 230.96], [230.96, 231.24], [231.24, 231.42], [231.42, 231.9], [231.9, 232.38], [232.38, 232.86], [232.96, 233.32], [233.32, 233.56], [233.56, 233.8], [234.3, 234.62], [234.62, 234.8], [234.8, 235.08], [235.08, 235.26], [235.26, 235.4], [235.4, 236.06], [236.06, 237.26], [237.26, 237.72], [237.72, 237.92], [237.92, 238.18], [238.18, 238.9], [238.9, 239.12], [239.12, 239.44], [239.44, 239.78], [240.12, 240.46], [240.46, 240.64], [240.64, 240.82], [240.82, 241.14], [241.14, 241.76], [241.84, 241.96], [241.96, 242.26], [242.26, 242.72], [242.72, 242.86], [242.86, 243.06], [243.06, 243.38]], [[243.51, 245.13], [245.13, 245.47], [245.47, 245.97], [246.11, 246.47], [246.47, 247.03], [247.03, 247.57]], [[248.07, 248.87], [249.51, 250.19], [250.19, 250.31], [250.31, 250.87], [250.87, 251.35], [252.37, 252.65], [252.65, 252.81], [252.81, 253.43], [253.43, 254.25], [254.25, 255.19], [255.19, 255.45], [255.45, 255.97], [255.97, 256.33], [256.33, 256.85], [257.15, 257.51], [257.51, 257.75], [257.75, 258.11], [258.11, 258.91], [258.91, 259.09], [259.09, 259.45], [259.45, 260.21], [260.51, 261.19], [261.19, 261.19], [261.19, 261.93], [261.93, 262.29], [262.29, 262.89], [262.89, 263.13], [263.13, 263.37], [263.37, 263.55], [263.55, 264.33], [264.55, 264.83], [264.83, 265.01], [265.01, 265.19], [265.19, 265.63], [265.63, 265.83], [265.83, 266.09], [266.09, 266.43], [266.43, 266.99], [267.45, 267.93], [267.93, 268.27], [268.27, 268.71], [268.71, 269.25], [269.35, 269.83], [269.83, 270.01], [270.01, 270.25], [270.25, 270.75]], [[270.99, 271.49], [271.49, 271.63], [271.63, 272.03], [272.03, 272.53], [272.53, 273.17], [273.17, 273.67], [273.62, 274.16], [274.16, 274.62], [274.62, 274.84], [274.84, 275.48], [275.8, 276.4], [276.4, 276.64], [276.64, 277.06], [277.24, 277.48], [277.48, 277.9], [277.9, 278.34], [278.58, 279.18], [279.18, 279.32], [279.32, 279.7], [279.7, 280.02], [280.02, 280.6], [280.6, 281.34], [281.76, 282.44], [282.64, 283.4], [283.4, 283.66], [283.66, 283.86], [283.86, 284.14], [284.14, 284.6], [284.76, 285.16], [285.16, 285.32], [285.32, 285.62], [285.62, 285.86], [285.86, 286.14], [286.3, 286.62], [286.62, 286.94], [286.94, 287.16], [287.16, 287.44], [287.44, 288.06], [288.06, 288.54], [289.02, 289.6], [289.6, 289.92], [290.24, 290.96], [291.46, 292.08]], [[293.62, 293.96], [293.96, 294.2], [294.2, 294.56], [294.56, 294.86], [294.86, 295.12], [295.12, 295.94], [296.36, 296.9], [296.9, 296.9], [296.9, 297.64], [298.08, 298.58], [298.8, 299.04], [299.04, 299.32], [299.32, 299.32], [299.32, 299.76], [299.76, 300.4], [301.1, 301.5], [301.5, 302.22], [302.38, 302.62], [302.62, 302.96], [302.96, 303.48], [303.68, 303.98], [304.64, 305.04], [305.04, 305.34], [305.34, 305.46], [305.46, 305.76], [305.76, 306.36], [306.76, 307.38], [307.38, 307.62], [307.62, 308.36], [308.36, 308.86], [308.86, 309.7], [309.7, 310.06], [310.06, 310.3], [310.3, 310.78], [310.78, 310.96], [310.96, 311.24], [311.24, 311.62], [311.62, 312.42], [312.42, 312.58], [312.58, 313.42]], [[314.0, 314.8], [314.8, 315.04], [315.04, 315.66], [316.2, 317.0], [317.0, 317.12], [317.12, 317.34], [317.34, 318.0], [318.0, 318.66], [318.74, 318.82], [318.82, 319.04], [319.04, 319.58], [319.58, 319.78], [319.78, 320.36], [320.36, 320.56], [320.56, 320.96], [320.96, 321.46]], [[321.86, 322.5], [322.5, 322.94], [322.94, 323.6], [323.6, 323.78], [324.18, 324.84], [324.84, 324.98], [324.98, 325.22], [325.22, 325.82], [325.82, 325.82], [325.82, 326.46], [326.46, 327.04], [327.58, 327.96], [327.96, 328.04], [328.04, 328.48], [328.48, 329.18], [329.18, 329.34], [329.34, 329.48], [329.48, 329.92], [329.92, 330.08], [330.08, 330.62], [330.62, 331.12], [331.48, 332.12], [332.12, 332.26], [332.26, 332.38], [332.38, 332.66], [332.66, 333.4], [333.86, 334.28], [334.6, 335.02], [335.02, 335.24], [335.24, 335.4], [335.4, 335.78], [335.78, 336.18], [336.68, 337.32], [337.32, 337.64], [337.64, 338.34], [338.34, 338.5], [338.5, 338.62], [338.62, 338.84], [338.84, 339.5]], [[339.64, 340.08], [340.08, 340.24], [340.24, 340.36], [340.36, 340.74], [340.88, 341.5], [341.5, 341.68], [341.68, 342.0], [342.0, 342.16], [342.16, 342.36], [342.36, 342.64], [343.14, 343.26], [343.26, 344.04], [344.04, 344.2], [344.32, 344.82], [344.82, 344.98], [344.98, 345.56], [345.56, 345.66], [345.66, 345.82], [345.82, 346.08], [346.08, 346.7], [346.7, 346.78], [346.78, 346.9], [346.9, 347.1], [347.1, 347.64], [347.64, 348.22], [348.22, 348.82], [348.82, 349.62], [349.62, 349.76], [349.76, 350.24], [351.16, 351.62], [351.62, 352.38], [352.38, 352.52], [352.52, 352.7], [352.7, 353.4], [353.78, 354.42], [354.42, 354.54], [354.54, 354.98], [354.98, 355.66], [355.66, 355.8], [355.8, 355.9], [355.9, 356.6]], [[358.45, 358.79], [358.79, 358.89], [358.89, 359.17], [359.17, 359.41], [359.41, 359.61], [359.61, 359.99], [359.99, 360.87], [360.87, 361.25], [361.25, 361.69], [361.69, 362.27], [362.27, 362.43], [362.43, 362.71], [362.71, 363.33], [363.33, 363.49], [363.49, 364.09]], [[364.89, 366.09], [366.09, 366.33], [366.33, 366.51], [366.51, 366.93], [366.93, 367.37], [367.37, 368.11], [368.11, 368.25], [368.25, 368.99], [369.29, 369.87], [369.87, 370.05], [370.05, 370.43], [370.43, 371.69], [371.97, 372.27], [372.27, 372.89], [373.35, 373.57], [373.57, 374.25], [374.25, 374.43], [374.43, 375.03], [375.03, 375.67], [376.01, 376.53], [376.53, 377.03], [377.03, 377.27], [378.04, 378.64], [378.64, 378.84], [378.84, 379.16], [379.16, 379.34], [379.34, 379.74], [380.04, 380.64], [380.64, 381.16], [381.16, 381.66], [381.66, 381.9], [381.9, 383.18], [383.78, 384.0], [384.0, 384.18], [384.18, 384.72], [384.72, 384.82], [384.82, 385.0], [385.0, 385.12], [385.12, 385.6], [385.6, 385.98], [385.98, 386.28]], [[386.5, 386.74], [386.88, 387.02], [387.02, 387.7], [388.0, 388.26], [388.26, 388.82], [388.82, 389.2], [389.34, 389.42], [389.42, 389.42], [389.42, 389.8], [389.8, 390.1], [390.1, 390.64], [390.64, 391.06], [391.82, 392.14], [392.14, 392.44], [392.44, 392.66], [392.92, 393.16], [393.16, 393.48], [393.48, 393.64], [393.64, 394.14], [394.14, 394.3], [394.3, 394.58], [394.58, 395.02], [395.02, 395.3], [395.3, 395.74], [396.12, 396.58], [396.58, 396.96], [397.02, 397.3], [397.3, 397.68], [397.68, 398.1], [398.1, 398.22], [398.22, 398.38], [398.38, 398.76], [398.84, 398.9], [398.9, 399.0], [399.0, 399.48], [399.88, 400.3], [400.3, 400.84], [400.84, 401.14], [400.84, 401.14], [401.14, 402.16]], [[402.54, 402.72], [402.72, 403.26], [402.72, 403.26], [403.26, 403.54], [403.54, 403.92], [403.92, 404.42], [404.42, 404.6], [404.66, 404.74], [404.74, 404.92], [404.92, 405.18], [405.18, 405.46], [405.18, 405.46], [405.46, 406.62], [406.62, 407.3], [407.3, 407.44], [407.44, 408.6], [408.6, 408.82], [408.82, 408.94], [408.94, 409.08], [409.08, 409.8], [409.8, 410.38], [410.38, 410.92], [410.92, 411.58], [411.58, 411.74], [411.74, 412.16], [412.16, 412.76], [412.76, 412.92], [412.92, 413.06], [413.06, 413.42], [413.76, 414.3], [414.34, 414.52], [414.52, 414.74], [414.74, 415.12], [415.12, 415.76], [415.76, 416.16], [416.32, 416.62], [416.62, 416.9], [416.9, 417.04], [417.04, 417.16], [417.16, 417.62], [417.62, 417.98], [417.98, 418.42], [418.42, 418.64], [418.64, 418.96]], [[419.42, 419.82], [419.82, 419.9], [419.9, 420.04], [420.04, 420.36], [420.36, 420.76], [420.76, 420.86], [420.86, 421.02], [421.02, 421.16], [421.16, 421.28], [421.28, 421.52], [421.52, 421.68], [421.68, 422.1], [422.58, 423.12], [423.12, 423.28], [423.28, 423.86], [424.04, 424.36], [424.36, 424.9], [425.0, 425.48], [425.48, 425.7], [425.7, 426.16], [426.16, 426.44], [426.44, 426.86], [427.08, 427.36], [427.36, 427.6], [427.6, 427.9], [428.36, 428.74], [428.74, 428.94], [428.94, 429.1], [429.1, 429.24], [429.24, 429.78]], [[429.92, 430.06], [430.06, 430.32], [430.32, 431.06], [431.06, 431.9], [431.06, 431.9], [431.06, 431.9], [431.9, 432.16], [432.16, 432.3], [432.3, 432.7], [432.92, 433.32], [433.32, 433.48], [433.48, 433.72], [433.72, 434.28], [434.28, 434.56], [434.56, 434.8], [434.8, 435.26], [435.26, 435.6], [435.6, 436.0], [436.1, 436.14], [436.14, 436.4], [436.4, 436.62], [436.62, 436.78], [436.78, 436.96], [436.96, 437.42]], [[438.79, 439.19], [439.19, 439.27], [439.27, 439.87], [439.87, 440.41], [440.41, 440.59], [440.59, 441.05], [441.69, 441.87], [441.87, 442.25], [442.25, 442.81], [442.81, 442.93], [442.93, 443.05], [443.05, 443.35], [443.35, 443.97], [443.97, 444.13], [444.13, 444.75], [444.75, 444.93], [444.93, 445.37], [445.53, 445.71], [445.71, 445.83], [445.83, 446.11], [446.11, 446.31], [446.31, 447.33], [447.33, 447.45], [447.45, 447.63], [447.63, 447.91], [447.91, 448.75], [448.75, 449.55], [450.13, 450.71], [450.71, 451.09], [451.09, 451.33], [451.33, 451.45], [451.45, 451.59], [451.59, 451.87], [451.87, 452.33], [452.33, 452.47], [452.47, 453.13]], [[454.1, 454.1], [454.1, 454.3], [454.3, 455.04], [455.04, 455.44], [455.44, 455.94], [455.94, 456.16], [456.16, 456.52], [456.58, 457.12], [457.12, 457.28], [457.28, 457.46], [457.46, 457.82]], [[458.46, 459.18], [459.18, 459.54], [459.54, 460.22], [460.22, 460.38], [460.38, 460.68], [460.68, 461.24], [461.24, 461.78], [461.78, 462.36], [462.5, 462.74], [462.74, 463.6], [462.74, 463.6], [462.74, 463.6], [463.6, 464.02], [464.02, 464.52]], [[465.41, 465.41], [465.41, 466.05], [466.17, 466.35], [466.35, 467.03], [467.03, 467.25], [467.25, 467.79], [468.09, 468.73], [468.73, 468.85], [469.29, 469.63], [469.63, 469.77], [469.77, 470.33], [470.75, 471.33], [471.33, 471.69], [471.69, 472.53], [472.69, 473.05], [473.05, 473.49], [473.67, 473.95], [474.23, 474.69], [474.69, 475.39], [474.69, 475.39], [475.39, 476.01], [476.01, 476.17], [476.17, 476.83], [476.93, 477.63], [477.63, 477.97], [477.97, 478.11], [478.11, 478.59], [478.59, 478.89], [479.33, 479.73], [479.73, 480.59], [480.59, 480.79], [480.79, 481.21], [481.69, 482.39], [482.39, 482.55], [482.55, 482.87], [482.87, 483.41], [483.41, 484.01], [484.01, 484.83], [485.03, 485.25]], [[486.28, 486.28], [486.28, 486.62], [486.62, 486.9], [486.9, 487.1], [487.1, 487.22], [487.22, 487.74], [487.74, 487.92], [487.92, 488.3], [488.3, 488.82], [488.82, 489.42], [489.42, 489.56], [489.56, 489.74], [489.74, 489.94], [489.94, 490.1], [490.1, 490.56], [490.56, 490.84], [490.84, 491.18], [491.18, 491.52]], [[492.2, 492.2], [492.2, 492.36], [492.36, 492.5], [492.62, 492.74], [492.74, 493.12], [493.12, 493.2], [493.2, 493.36], [493.36, 494.0], [494.0, 494.18], [494.18, 494.74], [494.74, 494.92], [494.92, 495.26], [495.26, 495.54], [495.54, 496.08], [496.08, 496.72], [496.72, 497.04], [497.04, 497.16], [497.16, 497.48], [497.48, 498.43], [498.43, 498.49], [498.49, 498.67], [498.67, 499.13], [499.13, 499.81], [499.87, 499.95], [499.95, 500.15], [500.15, 501.09], [501.09, 501.21], [501.21, 501.85], [501.99, 502.31], [502.31, 502.63]], [[503.31, 503.63], [503.63, 503.81], [503.81, 503.93], [503.93, 504.23], [504.23, 504.75], [505.31, 505.93], [505.93, 506.07], [506.07, 506.59], [506.83, 507.35], [507.35, 508.03], [508.13, 508.29], [508.29, 508.87], [508.87, 509.63], [509.63, 510.11], [510.11, 510.79], [510.79, 510.89], [510.89, 511.21], [511.21, 511.67], [511.85, 512.09], [512.09, 512.33], [512.33, 512.55], [512.73, 512.89], [512.89, 513.21], [513.21, 513.35], [513.35, 513.45], [513.45, 513.75], [513.75, 514.25]], [[515.03, 515.03], [515.03, 515.65], [515.65, 516.23], [515.65, 516.23], [516.23, 516.69]], [[517.13, 517.13], [517.13, 517.35], [517.35, 517.75], [517.75, 517.97], [517.97, 518.41], [518.41, 518.53], [518.53, 518.93], [518.93, 519.23], [519.23, 519.49], [519.49, 519.97], [519.97, 520.11], [520.11, 520.25], [520.25, 520.51], [520.51, 521.55], [521.55, 521.81], [521.81, 522.21], [522.21, 522.75], [522.75, 523.15], [523.15, 523.49]], [[524.63, 524.63], [524.63, 524.93], [524.93, 525.07], [525.07, 525.23], [525.23, 525.61], [525.61, 526.07], [526.07, 526.25], [526.25, 526.41], [526.41, 526.63]], [[527.53, 527.53], [527.53, 528.11], [528.11, 528.87], [528.87, 529.53], [529.53, 530.03], [530.03, 530.53], [530.53, 530.87], [531.23, 531.91], [531.91, 532.41], [532.41, 533.07], [533.25, 533.59], [533.59, 534.25], [534.37, 534.59], [534.59, 535.39]], [[536.19, 536.87], [536.87, 537.33], [537.33, 537.69], [537.69, 537.83], [537.83, 538.05], [538.05, 538.35], [538.35, 538.45], [538.45, 538.89], [539.15, 539.39], [539.39, 539.63], [539.63, 539.87], [539.87, 540.31], [540.31, 540.59], [540.59, 540.89], [540.89, 541.51], [541.51, 541.67], [541.67, 542.13], [542.13, 542.57], [542.57, 542.85], [542.85, 543.55], [543.55, 543.97], [543.97, 544.31], [544.45, 544.99], [544.99, 545.33], [545.33, 545.55], [545.55, 545.67], [545.67, 545.77], [545.77, 546.05], [546.05, 546.21], [546.21, 546.89], [546.97, 547.17], [547.17, 547.37], [547.37, 547.67], [547.67, 548.23], [548.23, 548.67], [548.67, 548.97], [548.97, 549.55], [549.55, 549.95], [549.95, 550.47]], [[551.27, 551.27], [551.27, 551.65], [551.65, 552.15], [552.21, 552.43], [552.43, 553.13], [553.13, 553.21], [553.21, 553.47], [553.47, 553.63], [553.63, 554.03], [554.03, 554.03], [554.03, 554.57], [554.57, 555.03], [555.03, 555.55], [555.55, 556.15], [556.15, 556.31], [556.31, 556.63], [556.63, 556.63]], [[558.79, 558.79], [558.79, 559.15], [559.15, 559.85], [559.85, 560.03]], [[560.83, 560.83], [560.83, 560.95], [560.95, 561.23], [561.23, 561.45], [561.45, 561.71], [561.71, 562.03]], [[562.73, 562.73], [562.73, 563.23], [563.23, 563.83], [564.01, 564.15], [564.15, 564.47], [564.47, 565.07], [565.07, 565.39], [565.39, 565.77], [565.93, 566.13], [566.13, 566.27], [566.27, 566.69], [566.69, 567.05], [567.05, 567.59], [567.59, 568.19], [568.27, 568.65], [568.65, 568.77], [568.77, 569.05], [569.21, 569.59], [569.59, 569.93], [569.93, 570.15], [570.15, 570.57], [570.57, 570.95], [570.95, 571.45], [571.45, 571.87], [571.87, 572.17], [572.17, 572.51], [572.51, 572.91]], [[573.77, 574.31], [574.31, 574.43], [574.43, 574.87], [574.87, 574.99], [574.99, 575.37], [575.37, 575.73], [575.73, 576.19], [576.19, 576.35], [576.35, 576.53], [576.53, 576.75], [576.75, 577.35], [577.39, 577.49], [577.49, 577.63], [577.63, 577.89], [577.89, 578.47]], [[578.95, 579.57], [579.57, 579.87], [579.87, 580.37]], [[580.71, 580.71], [580.71, 581.43], [581.59, 581.87], [581.87, 582.13], [582.13, 582.69], [582.77, 583.23], [583.23, 583.71], [583.71, 584.13], [584.57, 585.09], [585.09, 585.25], [585.25, 585.57], [585.57, 586.09], [586.09, 586.21], [586.21, 586.47]], [[587.25, 587.25], [587.25, 587.75], [587.75, 588.23], [588.23, 588.37], [588.37, 588.67], [588.67, 589.17], [589.17, 589.39], [589.39, 589.69], [589.69, 590.15], [590.15, 590.75], [590.75, 591.37], [591.37, 591.93], [591.93, 592.13], [592.21, 592.43], [592.43, 592.63], [592.63, 592.95], [592.95, 593.37], [593.37, 593.69], [593.69, 594.13], [594.13, 594.39], [594.39, 594.81]], [[595.43, 595.43], [595.43, 595.57], [595.57, 595.77], [595.77, 595.91], [595.91, 596.29], [596.29, 596.71], [596.71, 597.15], [597.15, 597.37], [597.37, 597.73], [597.73, 598.09], [598.09, 598.49], [598.49, 599.33], [599.33, 599.87], [599.87, 600.25], [600.25, 600.57], [600.57, 601.13], [601.13, 601.21], [601.21, 601.49], [601.49, 601.63], [601.63, 601.99], [601.99, 602.51], [602.51, 602.69], [602.69, 603.23], [603.23, 603.93], [603.93, 604.49], [604.49, 604.79], [604.79, 605.37], [605.37, 605.73], [605.87, 606.23], [606.23, 606.49], [606.63, 606.97], [606.97, 607.21], [607.21, 607.59], [607.59, 607.77], [607.77, 607.99], [607.99, 608.15], [608.15, 608.61], [608.77, 609.29], [609.29, 609.83], [609.89, 610.25], [610.43, 610.93], [610.93, 611.23], [611.23, 611.81], [611.81, 611.93], [611.93, 612.49], [612.61, 612.89], [612.89, 613.17], [613.25, 613.39]], [[614.44, 614.44], [614.44, 614.82], [614.82, 615.56], [614.82, 615.56], [615.56, 616.2], [616.2, 616.32], [616.32, 616.42], [616.42, 616.7], [616.7, 617.22], [617.32, 617.88], [617.88, 618.1], [618.1, 618.34], [618.34, 618.74], [618.74, 619.38]], [[620.44, 620.92], [620.92, 621.26], [621.26, 621.9], [621.9, 622.5], [622.5, 622.7], [622.7, 622.84], [622.84, 623.34], [623.34, 623.5], [623.5, 624.28], [624.28, 624.7], [624.7, 625.48], [625.48, 625.9], [625.9, 626.06], [626.06, 626.7]], [[626.79, 627.91], [627.91, 628.69], [628.69, 629.27], [629.27, 630.17], [630.17, 630.51], [630.51, 630.75], [630.75, 631.17], [631.17, 631.31], [631.31, 631.81], [631.81, 631.89], [631.89, 632.03], [632.03, 632.53], [632.57, 632.67], [632.67, 632.87], [632.87, 633.15], [633.15, 633.65], [633.81, 634.37], [634.37, 634.93], [634.93, 635.55], [635.55, 635.77], [635.77, 636.07], [636.07, 636.31], [636.31, 636.89]], [[637.01, 637.33], [637.39, 637.51], [637.51, 638.35], [638.35, 638.97], [638.97, 639.51], [639.51, 639.67], [639.67, 640.09], [640.09, 640.55], [640.55, 640.95], [640.95, 641.55], [641.63, 641.75], [641.75, 642.05], [642.05, 643.05], [643.05, 643.19], [643.19, 643.65], [643.65, 644.03], [644.03, 644.61], [644.99, 645.41], [645.41, 645.59], [645.59, 646.17], [646.17, 646.31], [646.31, 646.67], [646.67, 646.79], [646.79, 647.17], [647.17, 647.57], [647.57, 647.73], [647.73, 648.11], [648.11, 648.49], [648.49, 648.67], [648.67, 649.13], [649.21, 649.35], [649.35, 649.81], [649.81, 649.81], [649.81, 650.65], [650.65, 651.03], [651.19, 651.63], [651.63, 651.77], [651.77, 652.19], [652.19, 652.59], [652.87, 653.19], [653.19, 653.65], [653.65, 653.77], [653.77, 653.93], [653.93, 654.11], [654.11, 654.77]], [[654.77, 655.81], [655.81, 656.01], [656.01, 656.17], [656.17, 656.31], [656.31, 656.89]], [[657.57, 658.27], [658.27, 658.49], [658.49, 658.77], [658.77, 659.47], [659.61, 660.15], [660.15, 660.63], [660.63, 660.75], [660.75, 661.25], [661.25, 661.71], [661.71, 662.01], [662.01, 662.45], [662.45, 663.11], [663.63, 664.35], [664.35, 664.53], [664.53, 665.11], [665.11, 665.51], [665.51, 666.33], [666.33, 666.93], [666.93, 667.57], [667.57, 667.69], [667.69, 667.87], [667.87, 668.29], [668.29, 668.45], [668.45, 668.99], [668.99, 669.55], [669.55, 669.67], [669.67, 669.83], [669.83, 670.09], [670.09, 670.69]], [[670.89, 670.89], [670.89, 672.09], [672.09, 672.33], [672.45, 672.69], [672.69, 673.11], [673.11, 673.75], [673.93, 674.13], [674.13, 674.51], [674.51, 675.03], [675.03, 675.43], [675.43, 676.07], [676.19, 676.41], [676.41, 676.89], [676.89, 677.51], [677.51, 677.79], [678.05, 678.41], [678.41, 678.63], [678.63, 679.09], [679.09, 679.45], [679.45, 679.65], [679.65, 680.51]], [[681.42, 682.14], [682.14, 682.46], [682.54, 682.74], [682.74, 683.36], [683.36, 683.74], [683.74, 684.02], [684.02, 684.58]], [[685.26, 685.26], [685.26, 685.48], [685.48, 686.1], [686.1, 686.1], [686.1, 686.7], [686.7, 686.7], [686.7, 686.88], [686.88, 687.46], [687.58, 688.08], [688.08, 688.3], [688.3, 688.64], [688.64, 689.38], [689.38, 690.04], [690.04, 690.2], [690.2, 690.84], [691.34, 691.58], [691.58, 691.88], [691.88, 692.24], [692.24, 692.52], [692.52, 693.3], [693.3, 693.82], [694.06, 694.5], [694.5, 694.82], [694.82, 695.0], [695.0, 695.32]], [[696.22, 696.9], [696.9, 697.02], [697.02, 697.16], [697.26, 697.36], [697.36, 697.76], [697.76, 697.92], [697.92, 698.24], [698.24, 698.74], [698.74, 698.88], [698.88, 699.5], [699.5, 699.7]], [[700.6, 700.6], [700.6, 700.86], [700.86, 701.18], [701.18, 701.52], [701.52, 701.9], [701.9, 702.48], [702.48, 702.66], [702.66, 702.96], [702.96, 703.7], [703.7, 703.9], [703.9, 704.74], [704.74, 705.12], [705.12, 705.48], [705.48, 705.84], [705.84, 706.54], [706.54, 706.64], [706.64, 707.2], [707.2, 707.34], [707.34, 707.6], [707.6, 708.04]], [[708.86, 708.86], [708.86, 709.0], [709.0, 709.26], [709.26, 709.58], [709.9, 710.38], [710.38, 710.58], [710.58, 711.0], [711.0, 711.7], [711.7, 712.28], [712.28, 712.9], [712.9, 713.24], [713.24, 714.08], [714.08, 714.78], [714.78, 714.96], [714.96, 715.6], [715.6, 715.8], [715.8, 716.48], [716.88, 717.54], [717.54, 717.76], [717.76, 718.22], [718.22, 718.36], [718.36, 718.78], [718.78, 718.96], [718.96, 719.48], [719.48, 719.92], [719.92, 720.06], [720.06, 720.8], [720.8, 721.22]], [[722.5, 722.5], [722.5, 722.62], [722.62, 722.78], [722.78, 723.1], [723.1, 723.26], [723.26, 723.6], [723.6, 723.96], [723.96, 724.92], [724.92, 725.06], [725.06, 725.22], [725.22, 725.78], [725.78, 726.79], [726.79, 727.23], [727.23, 727.57], [727.57, 728.27]], [[729.61, 729.61], [729.61, 729.89], [729.89, 730.71], [730.71, 731.57], [731.57, 731.59], [731.59, 732.09], [732.09, 732.75], [732.85, 733.01], [733.01, 733.41], [733.41, 733.93], [733.93, 734.63], [734.63, 735.21], [735.21, 735.29], [735.29, 735.43], [735.43, 735.95]], [[736.57, 736.57], [736.57, 737.35], [737.35, 737.67], [737.77, 737.97], [737.97, 738.67], [738.67, 738.83], [738.83, 739.31], [739.31, 739.73], [739.73, 740.17], [740.17, 740.31], [740.31, 740.87], [740.87, 740.99], [740.99, 741.07], [741.07, 741.29], [741.29, 741.43], [741.43, 741.91]], [[742.35, 742.35], [742.35, 742.73], [742.73, 742.89], [742.89, 743.01], [743.01, 743.39], [743.39, 743.51], [743.51, 743.97]], [[744.39, 744.39], [744.39, 745.01], [745.01, 745.37], [745.37, 745.77], [745.77, 746.21], [746.21, 746.35], [746.35, 746.69], [746.69, 747.17], [747.17, 747.79], [747.79, 747.95], [747.95, 748.27], [748.27, 748.67], [748.67, 748.97], [748.97, 749.23], [749.23, 749.45], [749.45, 749.83], [749.83, 750.33], [750.43, 750.61], [750.61, 750.93], [750.93, 751.39], [751.39, 751.53], [751.53, 752.03], [752.03, 752.63], [752.63, 752.79], [752.79, 753.27]], [[754.66, 754.66], [754.66, 755.0], [755.0, 755.42], [755.42, 756.06], [756.06, 756.38], [756.38, 756.54], [756.54, 756.78], [756.78, 757.46], [757.46, 757.66], [757.66, 758.02], [758.02, 758.56], [758.56, 758.56], [758.56, 759.22], [759.22, 759.34], [759.34, 759.6], [759.6, 759.76], [759.76, 760.38], [760.38, 760.88], [760.88, 761.02], [761.02, 761.16], [761.16, 761.48], [761.48, 761.66], [761.66, 762.12], [762.12, 762.68], [762.82, 763.18], [763.18, 763.38], [763.38, 763.74], [763.74, 764.08]], [[765.26, 765.26], [765.26, 765.94], [766.04, 766.1], [766.1, 766.34], [766.34, 766.66], [766.66, 767.02], [767.02, 767.24], [767.24, 767.44], [767.44, 767.64], [767.64, 768.26], [768.26, 769.26], [769.26, 769.64], [769.64, 769.76], [769.76, 770.12], [770.12, 770.56], [770.56, 770.86], [770.86, 771.16], [771.16, 771.48], [771.48, 772.12], [772.12, 772.22], [772.22, 772.36], [772.36, 772.88]], [[773.69, 773.69], [773.69, 774.09], [774.09, 774.99], [774.99, 775.77], [775.77, 776.39], [776.39, 776.49], [776.49, 776.89], [776.89, 777.43], [777.43, 777.43], [777.43, 778.09], [778.09, 778.49], [778.49, 778.63], [778.63, 778.93], [778.93, 779.13], [779.13, 779.49], [779.49, 780.01], [780.01, 780.25], [780.25, 780.59], [780.59, 781.01], [781.07, 781.41], [781.41, 782.03], [782.03, 782.27], [782.27, 782.59], [782.59, 782.87], [782.87, 783.09], [783.09, 783.45]], [[783.45, 783.45], [783.45, 784.63], [784.63, 785.67], [784.63, 785.67], [785.67, 785.95], [785.95, 786.49]], [[786.97, 788.27], [788.27, 788.67], [788.67, 789.13], [789.13, 790.19], [789.13, 790.19], [790.19, 790.37], [790.37, 790.99], [790.37, 790.99], [790.99, 791.59], [791.59, 791.85], [791.85, 792.17], [792.17, 792.39], [792.39, 792.57], [792.57, 792.69], [792.69, 793.21]], [[794.54, 794.54], [794.54, 795.02], [795.02, 795.82], [795.82, 796.0], [796.0, 796.56], [796.56, 796.64], [796.64, 797.1], [797.1, 797.42], [797.42, 798.08]], [[799.18, 799.86], [799.86, 800.02], [800.02, 800.6], [800.6, 801.14], [801.22, 801.4], [801.4, 801.64], [801.64, 802.04], [802.04, 802.32], [802.32, 802.92], [802.92, 803.26], [803.26, 803.7], [803.7, 803.86], [803.86, 804.16], [804.16, 804.62], [805.74, 806.38], [806.38, 806.94], [806.94, 807.14], [807.14, 807.34], [807.34, 807.56], [807.56, 807.96], [807.96, 808.4], [808.4, 808.98], [808.98, 809.12], [809.12, 809.3], [809.3, 809.8], [809.8, 810.58], [810.58, 810.96], [810.96, 811.7], [811.7, 812.52], [812.52, 812.66], [812.66, 813.06], [813.06, 813.64], [813.68, 813.82], [813.82, 814.5], [814.7, 815.34], [815.34, 815.7], [815.7, 815.9], [815.9, 816.12], [816.12, 817.0]], [[817.99, 818.59], [818.59, 818.71], [818.71, 818.97], [818.97, 819.59], [819.59, 819.77], [819.77, 820.01], [820.01, 820.31], [820.31, 820.53], [820.53, 820.91], [821.09, 821.53], [821.53, 821.87], [821.87, 822.21], [822.21, 822.87], [823.05, 823.25], [823.25, 823.77], [824.1, 824.7], [824.7, 824.84], [824.84, 825.3], [825.3, 825.82], [825.82, 826.02], [826.02, 826.32], [826.32, 826.5], [826.5, 826.8], [826.8, 826.98], [826.98, 827.44], [827.44, 827.68], [827.68, 827.94], [827.94, 828.12], [828.12, 828.64], [828.64, 828.94], [828.94, 829.42], [829.56, 830.12], [830.12, 830.44], [830.44, 830.86], [830.86, 831.0], [831.0, 831.32], [831.46, 831.62], [831.62, 832.5], [832.5, 832.98]], [[834.25, 834.62], [834.62, 834.82], [834.82, 835.02], [835.02, 835.64], [836.0, 836.22], [836.22, 836.34], [836.34, 836.56], [836.56, 837.06], [837.06, 837.44], [837.44, 837.8], [837.8, 838.28], [838.28, 839.0], [839.0, 839.38], [839.38, 840.34], [840.4, 840.58], [840.58, 840.98], [841.18, 841.26], [841.26, 841.52], [841.52, 841.76], [841.76, 842.26], [842.7, 843.06], [843.06, 843.2], [843.2, 843.52], [843.52, 844.16], [844.24, 844.78], [844.78, 845.06], [845.06, 845.98], [845.98, 846.6]], [[846.98, 847.6], [847.84, 848.42], [848.42, 848.78], [848.78, 849.24], [849.24, 849.84], [849.96, 850.1], [850.1, 850.4], [850.4, 850.4], [850.4, 850.92], [850.92, 851.28], [851.5, 852.22], [852.22, 852.62], [852.62, 853.02], [853.02, 853.34], [853.42, 853.54], [853.54, 853.84], [853.84, 853.94], [853.94, 854.36], [854.78, 855.32], [855.32, 855.32], [855.32, 855.96], [855.96, 856.28], [856.28, 856.76], [856.88, 856.94], [856.94, 857.12], [857.12, 857.68], [857.68, 857.96], [857.96, 858.54], [858.54, 858.74], [858.74, 859.16], [859.16, 859.56], [859.56, 860.06]], [[860.64, 861.38], [861.38, 861.78], [861.78, 862.26], [862.26, 862.8], [862.8, 863.6], [863.6, 863.76], [863.76, 864.4], [864.4, 864.9], [864.9, 865.36], [865.36, 865.68], [865.68, 866.04], [866.04, 866.66], [867.18, 867.46], [867.46, 868.66], [868.66, 868.84], [868.84, 869.5], [869.5, 870.16], [870.16, 870.34], [870.34, 870.7], [870.7, 870.88], [870.88, 871.38], [871.92, 872.78], [872.78, 872.88], [872.88, 873.12], [873.24, 873.3], [873.3, 873.78], [873.78, 874.06], [874.06, 874.44], [874.44, 874.54], [874.54, 875.04], [875.04, 875.48], [875.48, 876.1], [876.1, 876.62], [876.62, 877.28], [877.28, 877.6], [877.6, 878.14], [878.14, 878.32], [878.32, 878.6]], [[878.92, 879.44], [879.44, 880.08], [880.6, 881.22], [881.22, 881.9], [882.04, 882.48], [882.48, 882.68], [882.68, 882.84], [882.84, 883.3], [883.3, 883.58], [883.58, 884.2], [884.2, 884.46], [884.46, 884.86]], [[885.05, 886.21], [886.21, 886.95], [886.95, 887.25], [887.25, 887.83], [887.95, 888.07], [888.07, 888.33], [888.33, 888.75], [888.75, 889.01], [889.01, 889.43], [889.43, 889.97], [889.97, 890.49], [890.49, 891.11], [891.11, 891.41], [891.41, 892.01], [892.01, 892.11], [892.11, 892.77], [892.89, 893.15], [893.15, 893.51], [893.51, 893.75], [893.75, 894.17], [894.17, 894.81], [894.81, 895.41], [895.41, 895.95], [895.95, 896.05], [896.05, 896.47], [896.47, 897.33], [897.33, 897.33]], [[898.75, 899.17], [899.17, 899.73], [899.87, 900.07], [900.07, 900.67], [900.67, 901.51], [901.51, 901.89], [901.89, 902.07], [902.07, 902.55], [903.05, 903.37], [903.37, 903.97], [903.97, 904.11], [904.11, 904.27], [904.27, 904.41], [904.41, 904.97], [904.97, 905.25], [905.25, 905.73], [905.73, 906.19], [906.19, 906.29], [906.29, 906.73], [906.73, 907.15], [907.15, 907.75], [907.75, 908.23], [908.41, 908.47], [908.47, 908.71], [908.71, 909.09], [909.09, 910.05], [910.05, 910.39], [910.39, 910.75], [910.75, 911.33], [911.33, 911.69], [911.69, 911.83], [911.83, 912.35]], [[913.17, 913.77], [913.77, 913.93], [913.93, 914.35], [914.35, 914.41], [914.41, 914.89], [914.89, 915.53], [915.61, 915.91], [916.31, 916.51], [916.51, 916.87], [916.87, 917.03], [917.03, 917.15], [917.15, 917.25], [917.25, 917.47], [917.47, 917.71], [917.71, 918.27], [918.27, 918.47], [918.47, 918.67], [918.67, 919.33], [919.71, 920.03], [920.03, 920.33], [920.33, 920.87], [920.87, 921.03], [921.03, 921.35], [921.35, 921.93], [921.99, 922.33], [922.33, 922.51], [922.51, 922.75], [922.75, 923.49]], [[924.19, 924.19], [924.19, 924.57], [924.57, 924.77], [924.77, 925.01], [925.01, 925.27], [925.27, 925.81], [925.95, 926.09], [926.09, 926.25], [926.25, 926.53], [926.53, 926.85], [926.85, 927.27]], [[928.23, 928.97], [928.97, 929.63], [929.63, 929.77], [929.77, 929.89], [929.89, 930.25], [930.25, 930.89], [931.51, 932.07], [932.11, 932.23], [932.23, 932.83], [932.83, 933.01], [933.01, 933.19], [933.19, 933.45], [933.45, 933.85], [933.85, 934.35], [934.35, 934.47], [934.47, 934.85], [934.85, 934.97], [934.97, 935.23]], [[936.13, 936.13], [936.13, 936.63], [936.63, 937.03], [937.03, 937.17], [937.17, 937.87], [937.87, 938.05], [938.05, 938.37], [938.37, 938.77], [938.77, 939.01], [939.01, 939.93], [939.93, 940.21], [940.21, 940.71], [940.71, 941.23], [941.23, 941.75], [941.75, 942.25], [942.59, 942.81], [942.81, 943.05], [943.05, 943.37], [943.47, 943.59], [943.59, 944.03]], [[944.65, 944.65], [944.65, 945.35], [945.85, 945.99], [945.99, 946.41], [946.41, 946.61], [946.61, 946.93], [946.93, 947.49], [947.49, 948.19], [948.19, 948.35], [948.35, 948.55], [948.55, 948.81], [948.81, 949.43], [949.43, 949.95], [949.95, 950.09], [950.09, 950.67], [950.73, 950.89], [950.89, 951.11], [951.11, 951.33], [951.33, 951.97], [951.97, 952.09], [952.09, 952.71], [952.77, 953.01], [953.01, 953.17], [953.17, 953.33], [953.33, 953.63]], [[953.63, 954.45], [954.45, 954.79], [954.79, 954.99], [954.99, 955.51], [955.51, 955.61], [955.61, 955.79], [955.79, 956.17]], [[956.57, 956.57], [956.57, 957.33], [957.33, 957.99], [957.99, 958.15], [958.15, 958.43], [958.43, 958.59], [958.59, 959.11], [959.11, 959.51], [959.51, 960.23], [960.23, 960.45], [960.45, 961.17]], [[961.69, 961.69], [961.69, 962.45], [962.45, 962.63], [962.63, 962.99], [962.99, 963.53], [963.71, 963.87], [963.87, 964.35], [964.35, 964.75], [964.75, 965.13], [965.13, 965.69], [965.99, 966.47], [966.47, 966.79], [966.79, 967.07], [967.27, 967.85], [968.17, 968.45], [968.45, 969.15], [969.15, 969.53], [969.53, 970.11]], [[970.83, 970.83], [970.83, 971.13], [971.35, 971.95], [971.95, 972.33], [972.33, 972.53], [972.53, 972.95], [972.95, 973.37], [973.37, 973.65], [973.65, 974.27], [974.27, 974.39], [974.39, 974.69], [974.69, 975.37]], [[975.91, 975.91], [975.91, 976.27], [976.27, 976.47], [976.47, 976.85], [976.85, 977.39], [977.39, 977.57], [977.57, 978.01], [978.01, 978.39], [978.39, 978.73], [978.73, 979.01], [979.01, 979.53], [979.53, 980.07], [980.31, 980.81], [980.81, 981.01], [981.01, 981.77], [981.77, 982.45], [982.45, 982.69], [982.69, 982.87], [982.87, 983.45], [983.45, 984.11], [984.11, 984.51], [984.51, 985.11], [985.47, 985.99], [985.99, 986.45], [986.45, 987.11], [987.11, 987.49], [987.49, 988.33], [988.33, 988.79], [988.91, 989.09], [989.09, 989.69], [989.69, 989.87], [989.87, 990.17], [990.17, 990.45], [990.45, 990.99], [991.15, 991.35], [991.35, 991.75], [991.75, 992.05], [992.05, 992.59], [992.59, 992.71], [992.71, 993.17]], [[993.17, 994.45], [994.45, 994.67], [994.67, 995.11], [995.75, 995.87], [995.87, 996.21], [996.21, 996.47], [996.47, 997.21], [997.21, 997.39], [997.39, 997.61], [997.61, 997.79], [997.79, 998.55], [998.61, 998.71], [998.71, 998.99], [998.99, 999.47], [999.47, 999.73], [999.73, 999.89], [999.89, 1000.37], [1000.85, 1001.03], [1001.03, 1001.57], [1001.75, 1001.97], [1001.97, 1002.47], [1002.47, 1003.01], [1003.01, 1003.13], [1003.13, 1003.67], [1003.67, 1004.01], [1004.01, 1004.51], [1004.51, 1004.67], [1004.67, 1005.11], [1005.11, 1005.51], [1005.51, 1006.21], [1006.21, 1006.41], [1006.41, 1006.83], [1006.83, 1007.03], [1007.03, 1007.49], [1008.05, 1008.51], [1008.51, 1008.65], [1008.65, 1008.73], [1008.73, 1009.39]], [[1010.09, 1010.17], [1010.17, 1010.37], [1010.51, 1010.67], [1010.67, 1011.23], [1011.23, 1011.47], [1011.47, 1011.89], [1011.89, 1012.07], [1012.07, 1012.31], [1012.31, 1013.37], [1013.37, 1013.81], [1013.81, 1014.51], [1014.51, 1014.67], [1014.67, 1015.35]], [[1016.41, 1016.41], [1016.41, 1016.71], [1016.71, 1016.93], [1016.93, 1017.21], [1017.21, 1018.11], [1018.11, 1018.69], [1018.69, 1018.85], [1018.85, 1019.25]], [[1019.81, 1019.81], [1019.81, 1020.01], [1020.41, 1020.87], [1020.87, 1021.15], [1021.15, 1021.43], [1021.43, 1021.65], [1021.65, 1021.85], [1021.85, 1022.65]], [[1023.39, 1023.39], [1023.39, 1023.39], [1023.39, 1023.73], [1023.73, 1024.35], [1024.47, 1024.49], [1024.49, 1024.67], [1024.67, 1024.93], [1024.93, 1025.43], [1025.43, 1025.57], [1025.57, 1025.89]], [[1026.55, 1026.55], [1026.55, 1026.97], [1026.97, 1027.15], [1027.15, 1027.43], [1027.63, 1028.33], [1028.33, 1028.79], [1028.79, 1029.49], [1029.49, 1030.17], [1030.25, 1030.31], [1030.31, 1030.57], [1030.57, 1030.85], [1030.85, 1031.07], [1031.07, 1031.89], [1031.89, 1032.11], [1032.11, 1032.61], [1032.61, 1033.33]], [[1033.75, 1034.61], [1034.61, 1034.95], [1034.95, 1035.31], [1035.31, 1035.75], [1035.75, 1036.13], [1036.41, 1036.83], [1036.83, 1037.47], [1037.47, 1037.95], [1038.09, 1038.35], [1038.35, 1038.81], [1038.81, 1039.25], [1039.25, 1039.39], [1039.39, 1039.93], [1039.93, 1040.41], [1040.41, 1041.09], [1041.51, 1042.27], [1042.27, 1042.87], [1042.87, 1043.17], [1043.17, 1043.17], [1043.17, 1043.63], [1044.99, 1045.75], [1045.75, 1046.23], [1046.31, 1046.43], [1046.43, 1046.63], [1046.63, 1047.13], [1047.13, 1047.31], [1047.31, 1047.55], [1047.65, 1047.71], [1047.71, 1048.39], [1048.39, 1048.63], [1048.63, 1049.19], [1049.19, 1051.01], [1051.45, 1052.45], [1052.45, 1052.59], [1052.59, 1053.03]], [[1053.27, 1053.89], [1053.89, 1054.29], [1054.29, 1054.49], [1054.49, 1054.89], [1054.89, 1055.05], [1055.05, 1055.57], [1055.65, 1055.89], [1055.89, 1055.89], [1055.89, 1056.51], [1056.92, 1057.42], [1057.42, 1057.92], [1057.92, 1058.1], [1058.1, 1058.5], [1058.5, 1058.88], [1058.88, 1059.16], [1059.16, 1059.3], [1059.3, 1060.06], [1060.24, 1060.46], [1060.46, 1060.64], [1060.64, 1060.98], [1060.98, 1061.34], [1061.34, 1061.9], [1061.9, 1062.1], [1062.1, 1062.56]], [[1063.17, 1064.11], [1064.11, 1064.61], [1064.61, 1065.19], [1065.19, 1066.09], [1066.09, 1066.43], [1066.43, 1067.09], [1067.09, 1067.55], [1067.55, 1067.69], [1067.69, 1068.25], [1068.39, 1068.59], [1068.59, 1069.03], [1069.03, 1069.71], [1069.71, 1070.13], [1070.13, 1070.29], [1070.29, 1070.65], [1070.65, 1070.79], [1070.79, 1071.35], [1071.35, 1071.63], [1072.56, 1073.36], [1073.36, 1073.98], [1073.98, 1074.52], [1074.52, 1074.86], [1074.86, 1075.6], [1075.72, 1075.9], [1075.9, 1076.54], [1076.54, 1077.4], [1077.4, 1077.72], [1077.72, 1078.22], [1078.22, 1078.42], [1078.42, 1078.74], [1078.74, 1079.16], [1079.16, 1079.84]], [[1079.98, 1079.98], [1079.98, 1080.92], [1080.92, 1081.1], [1081.1, 1081.88], [1081.9, 1082.24], [1082.24, 1082.58]], [[1083.41, 1083.41], [1083.41, 1083.73], [1083.89, 1084.07], [1084.07, 1084.55], [1084.55, 1084.73], [1084.73, 1085.33], [1085.33, 1085.51], [1085.51, 1085.95], [1086.07, 1086.61], [1086.61, 1086.75], [1086.75, 1087.17], [1087.17, 1087.51], [1087.51, 1088.19], [1088.19, 1088.49]], [[1089.5, 1089.5], [1089.5, 1089.84], [1089.84, 1090.38], [1090.38, 1090.66], [1090.66, 1090.8], [1090.8, 1091.04], [1091.04, 1091.42], [1091.42, 1091.72], [1091.72, 1091.96], [1091.96, 1092.76], [1092.76, 1093.1], [1093.1, 1093.64], [1093.72, 1094.28], [1094.28, 1094.42], [1094.42, 1094.54], [1094.54, 1095.16], [1095.16, 1095.32], [1095.32, 1095.64], [1095.64, 1096.2], [1096.2, 1096.36], [1096.36, 1096.82], [1096.9, 1097.04], [1097.04, 1097.56], [1097.56, 1098.08], [1098.08, 1098.58]], [[1099.27, 1099.87], [1099.95, 1100.03], [1100.03, 1100.31], [1100.31, 1100.55], [1100.55, 1101.11], [1101.11, 1101.31], [1101.31, 1101.69], [1101.69, 1101.95], [1101.95, 1102.11], [1102.11, 1102.41], [1102.79, 1103.23], [1103.23, 1103.55], [1103.55, 1104.11], [1104.11, 1104.35], [1104.35, 1104.55], [1104.55, 1104.95], [1104.95, 1105.57], [1105.57, 1105.67], [1105.67, 1105.81], [1105.81, 1106.23]], [[1106.87, 1106.87], [1106.87, 1107.03], [1107.03, 1107.43], [1107.43, 1107.63], [1107.63, 1107.87], [1107.87, 1108.25], [1108.25, 1108.57], [1108.57, 1108.77], [1108.77, 1109.15], [1109.49, 1110.05], [1110.05, 1110.63], [1110.63, 1110.81], [1110.81, 1111.17]], [[1112.1, 1112.78], [1112.78, 1112.92], [1112.92, 1113.26], [1113.26, 1113.8], [1113.8, 1114.26], [1114.26, 1114.52], [1114.52, 1114.84], [1114.84, 1114.98], [1114.98, 1115.54], [1115.78, 1116.18], [1116.18, 1116.3], [1116.3, 1116.78], [1116.78, 1117.04], [1117.04, 1117.38], [1117.38, 1118.02], [1118.02, 1118.56], [1118.56, 1118.7], [1118.7, 1119.18], [1119.26, 1119.74], [1119.74, 1119.94], [1119.94, 1120.32], [1120.44, 1121.06], [1121.06, 1121.24], [1121.24, 1121.62], [1121.62, 1121.94], [1121.94, 1121.94]], [[1123.6, 1124.28], [1124.38, 1124.84], [1124.84, 1125.36], [1125.36, 1125.52], [1125.52, 1125.66], [1125.66, 1125.86], [1126.04, 1126.18], [1126.18, 1126.34], [1126.34, 1126.58], [1126.58, 1126.96], [1126.96, 1127.54], [1127.54, 1127.7], [1127.7, 1128.14], [1128.72, 1129.4], [1129.4, 1130.24], [1130.24, 1130.4], [1130.48, 1130.58], [1130.58, 1131.2], [1131.28, 1131.36], [1131.36, 1131.72], [1131.72, 1132.24], [1132.24, 1132.72], [1132.72, 1132.88], [1132.88, 1133.1], [1133.1, 1133.52], [1133.52, 1133.9], [1133.9, 1134.26], [1134.26, 1134.48], [1134.48, 1134.64], [1134.64, 1134.96], [1134.96, 1136.04], [1136.04, 1136.2], [1136.2, 1136.44], [1136.44, 1136.66], [1136.66, 1137.12], [1137.12, 1137.26], [1137.26, 1137.56]], [[1137.86, 1138.38], [1138.38, 1138.58], [1138.58, 1138.7], [1138.7, 1138.96], [1138.96, 1139.22], [1139.22, 1139.78], [1139.78, 1140.26], [1140.26, 1140.46], [1140.46, 1140.78], [1140.78, 1141.26], [1141.94, 1142.26], [1142.26, 1142.5], [1142.5, 1142.64], [1142.64, 1143.2], [1143.28, 1143.34], [1143.34, 1143.54], [1143.54, 1143.98], [1143.98, 1144.6], [1144.6, 1144.76], [1144.76, 1145.5], [1145.98, 1146.18], [1146.18, 1146.44], [1146.44, 1146.66], [1146.66, 1146.96], [1146.96, 1147.22], [1147.22, 1147.66], [1147.66, 1148.3], [1148.3, 1148.52], [1148.52, 1148.78], [1148.78, 1148.92], [1148.92, 1149.14], [1149.14, 1149.66], [1149.66, 1150.22]], [[1151.51, 1151.99], [1151.99, 1152.15], [1152.15, 1152.31], [1152.31, 1152.73], [1152.73, 1153.05], [1153.05, 1153.25], [1153.25, 1153.41], [1153.41, 1153.77], [1153.77, 1154.57], [1154.57, 1154.77], [1154.77, 1155.17], [1155.17, 1155.55], [1155.55, 1155.99], [1155.99, 1156.17], [1156.17, 1156.55], [1156.61, 1156.75], [1156.75, 1157.21], [1157.21, 1157.83], [1157.83, 1158.35], [1158.49, 1158.63], [1158.63, 1158.77], [1158.77, 1158.91], [1158.91, 1159.03], [1159.03, 1159.15], [1159.15, 1159.45], [1159.45, 1159.71], [1161.07, 1161.59], [1161.59, 1161.73], [1161.73, 1162.07], [1162.07, 1162.53], [1162.53, 1162.63], [1162.63, 1163.05], [1163.05, 1163.23], [1163.23, 1163.73]], [[1164.02, 1165.1], [1165.1, 1165.56], [1165.56, 1165.78], [1165.78, 1166.52], [1166.52, 1167.56], [1167.56, 1167.8], [1167.8, 1167.96], [1167.96, 1168.4], [1168.4, 1168.68], [1168.68, 1169.24], [1169.24, 1169.7], [1169.7, 1169.86], [1169.86, 1169.96], [1169.96, 1170.1], [1170.1, 1170.52], [1170.52, 1171.48], [1171.48, 1171.78], [1171.78, 1172.36], [1172.36, 1172.54], [1172.54, 1172.96], [1172.96, 1173.92], [1173.92, 1174.52], [1174.52, 1175.2], [1175.2, 1175.72], [1175.72, 1176.28], [1176.28, 1176.44], [1176.44, 1176.78], [1176.78, 1176.9], [1176.9, 1177.28], [1177.28, 1177.28], [1177.28, 1178.02], [1178.02, 1178.18]], [[1178.32, 1178.32], [1178.32, 1178.6], [1178.6, 1179.62], [1179.62, 1179.88], [1179.88, 1179.88], [1179.88, 1180.5], [1180.5, 1180.88], [1180.88, 1181.54], [1181.54, 1181.72], [1181.72, 1182.4], [1182.4, 1182.66], [1182.66, 1182.66], [1182.66, 1183.38], [1183.38, 1183.94], [1183.94, 1184.06], [1184.06, 1184.54], [1184.54, 1184.86], [1184.86, 1185.4], [1185.4, 1186.16], [1186.16, 1187.36], [1187.5, 1187.9], [1188.26, 1188.6], [1188.72, 1189.2], [1189.2, 1189.78], [1189.78, 1190.72], [1190.72, 1190.9], [1190.9, 1191.22], [1191.22, 1191.44], [1191.44, 1191.9], [1191.9, 1192.42], [1192.42, 1193.06], [1193.06, 1193.58]], [[1193.58, 1194.32], [1194.32, 1194.6], [1194.6, 1194.88], [1194.88, 1195.1], [1195.1, 1195.56], [1195.56, 1196.66], [1196.66, 1197.12], [1197.12, 1197.78], [1197.78, 1197.96], [1197.96, 1198.3], [1198.3, 1198.44], [1198.44, 1198.7], [1198.7, 1199.24], [1199.24, 1199.82], [1199.82, 1200.18], [1200.18, 1200.28], [1200.28, 1200.54], [1200.54, 1201.2], [1201.2, 1202.08], [1202.08, 1202.42], [1202.42, 1202.54], [1202.54, 1202.82], [1202.82, 1203.38], [1203.38, 1203.86], [1203.86, 1204.08], [1204.08, 1204.64], [1204.64, 1205.26]], [[1205.52, 1206.06], [1206.64, 1207.0], [1207.0, 1207.46], [1207.46, 1207.68], [1207.78, 1207.92], [1207.92, 1208.42], [1208.42, 1208.68], [1208.68, 1209.5], [1209.5, 1209.68], [1209.68, 1210.52], [1210.52, 1210.84], [1210.84, 1211.38], [1211.46, 1211.8], [1211.8, 1212.26], [1212.26, 1212.84], [1212.84, 1212.98], [1212.98, 1213.56], [1213.56, 1213.9], [1213.9, 1214.6], [1214.6, 1214.74], [1214.74, 1215.14], [1215.14, 1216.2], [1216.2, 1216.36], [1216.36, 1216.7], [1216.8, 1216.94], [1216.94, 1217.58], [1217.58, 1217.7], [1217.7, 1218.3], [1218.3, 1218.46], [1218.46, 1218.78]], [[1219.68, 1220.09], [1220.09, 1220.69], [1220.69, 1220.87], [1220.87, 1221.97], [1221.97, 1222.41], [1223.27, 1223.67], [1223.67, 1223.83], [1223.83, 1223.99], [1223.99, 1224.37], [1224.37, 1224.85], [1224.93, 1225.53], [1225.53, 1225.73], [1225.73, 1226.21], [1226.21, 1226.69], [1226.21, 1226.69], [1226.69, 1227.29], [1227.29, 1227.69], [1227.69, 1228.11], [1228.17, 1228.37], [1228.37, 1228.55], [1228.55, 1228.89], [1228.89, 1229.39]], [[1229.85, 1230.65], [1230.65, 1230.91], [1230.91, 1231.19], [1231.19, 1231.43], [1231.43, 1232.37], [1232.63, 1233.27], [1233.27, 1234.03], [1234.03, 1234.17], [1234.17, 1234.71], [1234.71, 1235.27], [1235.27, 1235.71], [1235.71, 1236.33], [1236.33, 1236.49], [1236.49, 1236.75], [1236.75, 1237.55], [1237.55, 1238.17], [1238.17, 1238.49], [1238.49, 1238.93], [1238.93, 1239.05], [1239.05, 1239.25], [1239.25, 1239.67], [1239.87, 1240.17], [1240.17, 1240.59], [1240.59, 1241.19], [1241.19, 1241.35], [1241.35, 1241.47], [1241.47, 1241.81], [1241.81, 1242.17], [1242.17, 1242.51], [1242.51, 1242.89], [1242.89, 1243.35], [1243.35, 1243.85]], [[1244.55, 1245.23], [1245.23, 1246.03], [1246.03, 1246.27], [1246.27, 1247.17], [1247.17, 1247.85], [1247.85, 1248.43], [1248.43, 1249.07], [1249.07, 1249.55], [1249.55, 1249.91], [1249.91, 1250.37], [1250.37, 1250.87], [1250.87, 1251.03], [1251.03, 1251.55], [1251.55, 1251.73], [1251.91, 1252.03], [1252.03, 1252.35], [1252.35, 1252.61], [1252.61, 1252.81], [1252.81, 1253.15], [1253.15, 1253.77], [1253.77, 1254.17], [1254.17, 1254.77], [1254.77, 1254.95], [1254.95, 1255.09], [1255.09, 1255.63], [1255.63, 1255.75], [1255.75, 1256.13], [1256.13, 1256.33], [1256.33, 1256.73]], [[1257.77, 1258.55], [1258.55, 1258.87], [1258.87, 1259.17], [1259.17, 1259.61], [1259.61, 1259.61], [1259.61, 1260.03], [1260.03, 1260.37], [1260.37, 1261.03], [1261.03, 1261.87], [1261.87, 1262.07], [1262.07, 1262.49], [1262.49, 1263.01], [1263.01, 1263.57], [1263.57, 1263.95], [1263.95, 1264.17], [1264.17, 1264.33], [1264.33, 1264.43], [1264.43, 1264.83]], [[1266.0, 1266.4], [1266.4, 1266.82], [1266.82, 1267.0], [1267.0, 1267.18], [1267.18, 1267.52], [1267.56, 1267.66], [1267.66, 1268.12], [1268.12, 1268.3], [1268.3, 1269.12], [1269.46, 1269.74], [1269.74, 1270.3], [1270.3, 1271.02], [1271.02, 1271.16], [1271.16, 1271.6]], [[1272.82, 1272.82], [1272.82, 1273.1], [1273.1, 1273.56], [1273.56, 1273.74], [1273.74, 1274.24], [1274.24, 1274.62], [1274.62, 1275.7], [1275.7, 1275.9], [1275.9, 1276.18], [1276.18, 1276.84]], [[1277.76, 1277.76], [1277.76, 1278.1], [1278.1, 1279.16], [1279.16, 1279.48], [1279.48, 1279.96], [1279.96, 1280.42], [1280.42, 1280.92], [1280.92, 1281.56], [1281.56, 1281.76], [1281.76, 1282.08], [1282.08, 1282.38], [1282.38, 1282.54], [1282.54, 1282.98], [1283.04, 1283.16], [1283.16, 1283.6], [1283.6, 1283.8], [1283.8, 1284.14]], [[1285.4, 1285.94], [1285.94, 1286.38], [1286.38, 1286.52], [1286.52, 1286.7], [1286.7, 1286.86], [1286.86, 1287.28], [1287.28, 1287.78]], [[1288.45, 1288.45], [1288.45, 1288.82], [1288.82, 1289.06], [1289.06, 1289.26], [1289.26, 1290.04], [1290.26, 1290.5], [1290.5, 1291.3], [1291.3, 1291.56], [1291.56, 1292.48], [1292.48, 1292.8], [1292.8, 1293.06], [1293.06, 1293.42], [1293.42, 1293.7], [1293.7, 1294.06], [1294.06, 1294.38], [1294.38, 1294.98], [1294.98, 1296.08], [1296.08, 1296.34], [1296.34, 1296.56], [1296.56, 1297.3], [1297.3, 1297.7], [1297.8, 1298.34], [1298.34, 1298.74], [1298.74, 1298.96], [1298.96, 1299.4], [1299.4, 1299.74], [1299.74, 1300.3], [1300.3, 1300.4], [1300.4, 1300.6], [1300.6, 1301.2], [1301.2, 1301.4], [1301.4, 1301.68], [1301.68, 1302.18], [1302.18, 1302.58], [1302.58, 1302.98], [1302.98, 1303.3], [1303.3, 1303.38], [1303.38, 1303.68], [1303.68, 1304.3], [1304.3, 1304.44], [1304.44, 1305.04]], [[1305.64, 1305.64], [1305.64, 1306.38], [1306.38, 1306.8], [1307.18, 1308.46], [1308.46, 1309.18], [1309.18, 1309.48], [1309.48, 1310.12], [1310.12, 1310.6]], [[1311.02, 1311.02], [1311.02, 1311.16], [1311.16, 1311.42], [1311.56, 1311.8]], [[1312.42, 1312.42], [1312.42, 1312.96], [1312.96, 1313.7], [1313.7, 1314.12], [1314.12, 1314.24], [1314.24, 1314.34], [1314.34, 1314.48], [1314.48, 1314.88], [1315.1, 1315.72], [1315.72, 1315.98], [1315.98, 1316.56], [1316.56, 1316.56]], [[1317.81, 1318.49], [1318.49, 1318.93], [1318.93, 1319.49], [1319.49, 1319.79], [1319.79, 1319.93], [1319.93, 1320.57], [1320.57, 1320.73], [1320.73, 1320.87], [1320.87, 1321.19], [1321.19, 1321.31], [1321.31, 1321.89], [1321.89, 1322.17], [1322.17, 1322.79], [1322.97, 1323.29]], [[1323.47, 1323.47], [1323.47, 1324.45], [1324.45, 1325.07], [1325.07, 1325.49], [1325.49, 1326.01], [1326.19, 1326.37], [1326.37, 1326.75], [1326.75, 1327.09], [1327.09, 1327.53], [1327.53, 1328.05], [1328.61, 1329.31], [1330.46, 1331.08], [1331.08, 1331.62], [1331.76, 1331.96], [1331.96, 1332.14], [1332.14, 1332.68], [1332.68, 1333.22], [1333.22, 1333.4], [1333.4, 1334.18], [1334.18, 1334.34], [1334.34, 1335.0], [1335.0, 1335.36], [1335.36, 1335.66], [1335.66, 1336.16], [1336.16, 1336.36], [1336.36, 1336.74], [1336.74, 1337.26], [1337.26, 1338.1], [1338.1, 1338.84], [1338.84, 1339.08], [1339.08, 1339.46], [1339.46, 1340.02], [1340.04, 1340.6], [1340.6, 1341.18], [1341.26, 1341.4], [1341.4, 1341.52], [1341.52, 1342.46], [1342.46, 1342.98], [1342.98, 1343.86]], [[1344.34, 1345.62], [1345.62, 1346.02], [1346.02, 1346.14], [1346.14, 1346.48], [1346.48, 1346.6], [1346.6, 1347.08], [1347.08, 1347.24], [1347.24, 1347.38], [1347.38, 1347.74], [1347.74, 1348.44], [1348.44, 1348.6], [1348.6, 1349.24], [1349.32, 1349.38], [1349.38, 1349.52], [1349.52, 1349.94], [1349.94, 1350.32], [1350.32, 1350.46], [1350.46, 1350.64], [1350.64, 1351.02], [1351.02, 1351.54], [1352.42, 1353.06]], [[1353.93, 1353.93], [1353.93, 1354.57], [1354.57, 1354.69], [1354.69, 1355.15], [1355.15, 1355.29], [1355.29, 1355.83], [1355.83, 1356.07], [1356.07, 1356.45], [1356.57, 1357.01], [1357.01, 1357.17], [1357.17, 1357.45], [1357.45, 1357.77], [1357.77, 1358.61], [1358.61, 1359.71], [1359.77, 1359.95], [1359.95, 1360.25], [1360.25, 1360.67], [1360.67, 1360.89], [1360.89, 1361.45], [1361.45, 1361.85], [1361.85, 1361.95], [1361.95, 1362.25]], [[1362.63, 1362.63], [1362.63, 1363.11]], [[1363.35, 1363.35], [1363.35, 1364.03], [1364.03, 1364.33], [1364.33, 1364.53], [1364.53, 1365.17], [1365.17, 1365.97], [1365.97, 1365.97], [1365.97, 1366.43], [1366.43, 1366.61], [1366.61, 1366.93], [1367.23, 1367.71], [1367.71, 1368.03], [1368.03, 1368.51], [1368.51, 1368.83], [1368.97, 1369.07], [1369.07, 1369.29], [1369.29, 1369.55], [1369.55, 1369.87], [1369.87, 1370.37], [1370.37, 1371.11], [1371.11, 1371.21], [1371.21, 1371.33], [1371.33, 1371.73]], [[1372.43, 1372.43], [1372.43, 1372.99], [1372.99, 1373.13], [1373.13, 1373.65], [1373.65, 1373.77], [1373.77, 1374.27], [1374.27, 1374.67], [1374.67, 1375.19], [1375.19, 1375.37], [1375.37, 1376.07], [1376.07, 1376.21], [1376.21, 1376.43], [1376.43, 1377.19], [1377.51, 1377.81], [1377.81, 1378.03], [1378.03, 1378.51], [1378.51, 1378.89], [1378.89, 1379.25], [1379.33, 1379.45], [1379.45, 1379.65], [1379.65, 1379.95], [1379.95, 1380.19], [1380.19, 1380.65], [1380.65, 1380.81], [1380.81, 1381.45], [1381.45, 1381.77], [1381.83, 1381.91], [1381.91, 1382.03], [1382.03, 1382.69]], [[1383.47, 1383.47], [1383.47, 1383.75], [1383.75, 1383.89], [1383.89, 1383.99], [1383.99, 1384.79], [1385.11, 1385.65], [1385.65, 1385.83], [1385.83, 1386.29], [1386.29, 1386.57], [1386.57, 1387.03], [1387.03, 1387.25], [1387.25, 1387.51], [1387.51, 1388.13], [1388.13, 1388.73]], [[1389.29, 1389.29], [1389.29, 1389.41], [1389.41, 1389.61], [1389.61, 1389.89], [1389.89, 1390.07], [1390.07, 1390.25], [1390.25, 1390.45], [1390.45, 1390.77], [1390.77, 1391.49], [1391.49, 1392.07], [1392.17, 1392.53], [1392.53, 1392.65], [1392.65, 1392.73], [1392.73, 1393.05]], [[1393.87, 1393.87], [1393.87, 1394.03], [1394.03, 1394.27], [1394.27, 1394.61], [1394.61, 1394.89], [1394.89, 1395.25], [1395.25, 1395.63], [1395.63, 1395.87], [1395.87, 1396.03], [1396.03, 1396.59], [1396.63, 1396.83], [1396.83, 1397.05], [1397.05, 1397.39], [1397.39, 1397.87], [1397.93, 1398.01], [1398.01, 1398.17], [1398.17, 1398.31], [1398.31, 1398.71], [1398.89, 1399.17], [1399.17, 1399.29], [1399.29, 1399.61]], [[1399.9, 1401.1], [1401.1, 1401.56], [1401.56, 1402.02], [1402.02, 1402.36]], [[1403.42, 1403.42], [1403.42, 1403.42], [1403.42, 1403.5], [1403.5, 1403.62], [1403.62, 1404.06], [1404.06, 1404.28], [1404.28, 1404.6], [1404.6, 1404.8], [1404.8, 1405.34], [1405.34, 1405.74], [1405.74, 1405.86], [1405.86, 1406.26], [1406.26, 1406.86], [1406.86, 1407.68], [1407.68, 1408.32], [1408.32, 1408.78], [1409.12, 1409.58], [1409.58, 1409.98], [1409.98, 1410.78], [1410.78, 1410.9], [1410.9, 1410.98], [1410.98, 1411.24], [1411.24, 1411.84], [1411.92, 1412.06], [1412.06, 1412.48]], [[1413.02, 1413.28], [1413.28, 1413.92], [1413.92, 1414.12], [1414.12, 1414.34], [1414.34, 1414.62], [1414.62, 1414.98], [1414.98, 1415.28], [1415.28, 1415.74], [1415.74, 1416.38], [1416.38, 1417.02], [1417.02, 1417.2], [1417.2, 1418.0], [1418.0, 1418.36], [1418.36, 1418.5], [1418.5, 1418.94], [1418.94, 1419.42], [1419.74, 1419.86], [1419.86, 1420.04], [1420.04, 1420.26], [1420.26, 1420.48], [1420.48, 1421.04], [1421.04, 1421.6], [1421.7, 1421.84], [1421.84, 1422.28], [1422.66, 1422.78], [1422.78, 1423.04], [1423.04, 1423.98], [1423.98, 1424.16], [1424.32, 1424.32], [1424.32, 1424.52], [1424.52, 1425.0], [1425.0, 1425.24], [1425.24, 1425.44], [1425.82, 1426.04], [1426.04, 1426.56], [1426.56, 1427.04], [1427.04, 1427.34], [1427.34, 1427.78], [1427.78, 1427.92], [1427.92, 1428.12], [1428.12, 1428.74], [1428.74, 1429.24], [1429.24, 1430.16]], [[1430.08, 1430.62], [1430.62, 1431.16], [1431.42, 1431.68], [1431.68, 1432.24], [1432.24, 1432.46], [1432.46, 1432.84], [1432.84, 1433.08], [1433.08, 1433.42], [1433.42, 1433.86], [1433.86, 1434.12], [1434.3, 1434.46], [1434.46, 1434.7], [1434.7, 1435.08], [1435.08, 1435.34], [1435.34, 1435.56], [1435.56, 1435.98], [1435.98, 1436.62], [1436.62, 1436.76], [1436.76, 1436.92], [1436.92, 1437.42]], [[1438.02, 1438.02], [1438.02, 1438.56], [1438.68, 1438.9], [1438.9, 1439.08], [1439.08, 1439.3], [1439.3, 1439.72], [1440.28, 1440.82], [1440.82, 1441.14], [1441.14, 1441.58], [1441.58, 1442.04], [1442.04, 1442.18], [1442.18, 1442.86], [1442.86, 1442.94], [1442.94, 1443.2], [1443.2, 1443.52], [1443.52, 1443.66], [1443.66, 1444.18], [1444.22, 1444.28], [1444.28, 1444.9], [1444.98, 1445.46], [1445.46, 1445.64], [1445.64, 1445.98], [1446.06, 1446.34], [1446.34, 1446.48], [1446.48, 1446.92], [1446.92, 1447.06], [1447.06, 1447.3], [1447.3, 1447.74]], [[1448.57, 1449.11], [1449.11, 1449.49], [1449.49, 1449.65], [1449.65, 1450.03], [1450.17, 1450.37], [1450.37, 1450.97], [1450.97, 1451.41], [1450.97, 1451.41], [1451.41, 1452.11], [1452.41, 1452.95], [1452.95, 1453.45], [1453.45, 1453.91], [1453.91, 1454.45], [1454.45, 1454.63], [1454.63, 1455.03], [1455.03, 1455.19], [1455.19, 1455.51], [1455.51, 1455.73], [1455.73, 1456.15], [1456.29, 1456.77], [1456.89, 1457.65], [1457.65, 1458.27], [1458.27, 1458.63], [1458.63, 1458.89], [1458.89, 1459.17], [1459.17, 1459.35], [1459.35, 1459.93], [1459.93, 1460.31], [1460.41, 1460.51], [1460.51, 1460.99], [1460.99, 1461.55]], [[1461.67, 1462.83], [1462.83, 1463.15], [1463.29, 1463.49], [1463.49, 1463.93], [1463.93, 1464.49], [1464.49, 1465.03], [1465.03, 1465.49], [1465.49, 1466.21], [1466.21, 1466.79], [1466.79, 1467.41], [1467.41, 1467.59], [1467.59, 1468.41], [1468.41, 1468.91], [1468.91, 1469.35]], [[1470.28, 1471.12], [1471.12, 1471.36], [1471.36, 1471.78], [1471.78, 1472.3], [1472.3, 1472.9], [1472.3, 1472.9], [1472.9, 1473.58], [1473.58, 1473.72], [1473.72, 1474.14], [1474.14, 1474.68], [1474.68, 1474.84], [1474.84, 1475.16], [1475.16, 1475.86], [1475.86, 1476.04], [1476.04, 1476.26], [1476.26, 1476.9], [1477.04, 1477.44], [1477.44, 1477.92], [1477.92, 1478.48], [1478.48, 1478.72], [1478.72, 1478.92], [1478.92, 1479.36], [1479.36, 1479.52], [1479.52, 1480.02], [1480.02, 1480.74], [1480.74, 1481.28], [1481.28, 1481.42], [1481.42, 1481.76], [1481.76, 1482.58], [1482.58, 1482.84], [1482.84, 1483.48], [1483.64, 1484.38], [1484.38, 1484.98], [1484.98, 1485.58], [1485.58, 1486.0], [1486.0, 1486.88], [1486.88, 1487.06], [1487.06, 1487.4], [1487.4, 1487.9], [1487.9, 1488.02], [1488.02, 1488.56]], [[1489.23, 1489.23], [1489.23, 1490.07], [1490.07, 1490.35], [1490.51, 1490.77], [1490.77, 1490.93], [1490.93, 1491.27], [1491.27, 1491.91], [1491.91, 1492.17], [1492.17, 1492.91], [1492.91, 1493.25], [1493.25, 1493.89], [1493.89, 1494.31], [1494.31, 1495.07]]];
+
+/* ===================================================================== */
+/* 3. STATE + HELPERS                                                    */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const AUDIO_URL = "audio/chapter-16.webm";
+const cardsEl = document.getElementById("cards");
+const banner = document.getElementById("audioBanner");
+const clockEl = document.getElementById("clock");
+const statsEl = document.getElementById("stats");
+
+let audioObjectUrl = null;
+async function loadAudio(url) {
+  // Browsers block fetch() from file:// pages; direct media loading still works there.
+  if (location.protocol === "file:") {
+    audio.src = url;
+    audio.load();
+    return;
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Audio request failed (${response.status})`);
+    const blob = await response.blob();
+    audioObjectUrl = URL.createObjectURL(blob);
+    audio.src = audioObjectUrl;
+    audio.load();
+  } catch (error) {
+    console.error("Could not load chapter audio:", error);
+    showBanner();
+  }
+}
+loadAudio(AUDIO_URL);
+window.addEventListener("pagehide", () => {
+  if (audioObjectUrl) URL.revokeObjectURL(audioObjectUrl);
+}, { once: true });
+
+// Theme, volume and speed are shared by every chapter. The reading position is NOT:
+// "selected" and "last" are scoped to this page, otherwise a new chapter would open with
+// the previous chapter's section number selected.
+const PAGE = location.pathname;
+const LS = { theme: "reader.theme", volume: "reader.volume", rate: "reader.rate",
+             collapsed: "reader.collapsed",
+             progress: "reader.progress",
+             selected: "reader.selected:" + PAGE, last: "reader.last:" + PAGE };
+
+/* localStorage can throw on file:// in private windows — degrade gracefully. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+};
+
+const state = {
+  index: null,        // unit currently playing (or null)
+  playing: false,
+  continuous: false,
+  endAt: 0,           // hard stop time of the current segment
+  raf: 0,
+  rate: 1,
+  volume: 1,
+  uaOpen: false,
+  progress: "section", // progress display mode: "section" hairline or "word" underline
+  wordEl: null,        // <span class="w"> currently underlined
+  selected: null,     // card picked as the next starting point
+  lastIndex: null,    // last section that was actually played
+};
+
+/* Word timings exist only when the chapter was built from an alignment sidecar
+   that carries the ASR word stream. */
+const HAS_WORD_TIMES = Array.isArray(WORD_TIMES) && WORD_TIMES.some((u) => u && u.length);
+
+// CHAPTER[i].start comes from AUDIO_TIMES; keep one source of truth.
+CHAPTER.forEach((u, i) => {
+  const t = AUDIO_TIMES[i];
+  u.start = (typeof t === "number" && isFinite(t)) ? t : null;
+});
+
+const els = []; // per-card DOM references, filled in render()
+
+/* --- time helpers ---------------------------------------------------- */
+const fmt = (s) => {
+  if (!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + String(r).padStart(2, "0");
+};
+
+const startOf = (i) => (i >= 0 && i < CHAPTER.length ? CHAPTER[i].start : null);
+
+// End of unit i = start of the next unit that HAS a timestamp, else end of audio.
+function endOf(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) {
+    const t = startOf(j);
+    if (t != null) return t;
+  }
+  return isFinite(audio.duration) ? audio.duration : Infinity;
+}
+
+function nextPlayable(i) {
+  for (let j = i + 1; j < CHAPTER.length; j++) if (startOf(j) != null) return j;
+  return -1;
+}
+
+/* ===================================================================== */
+/* 4. RENDERING — content array in, DOM out (no content literals here)   */
+/* ===================================================================== */
+function positionFootnoteTooltip(reference, tooltip) {
+  const refRect = reference.getBoundingClientRect();
+  const tipRect = tooltip.getBoundingClientRect();
+  const left = Math.max(12, Math.min(
+    refRect.left + refRect.width / 2 - tipRect.width / 2,
+    window.innerWidth - tipRect.width - 12
+  ));
+  let top = refRect.bottom + 8;
+  if (top + tipRect.height > window.innerHeight - 12) {
+    top = refRect.top - tipRect.height - 8;
+  }
+  top = Math.max(12, Math.min(top, window.innerHeight - tipRect.height - 12));
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function appendTooltipText(parent, text) {
+  // Render table emphasis safely; never interpret annotation cells as HTML.
+  const inline = /\\\*|\*([^*]+)\*/g;
+  let cursor = 0;
+  let match;
+  while ((match = inline.exec(text)) !== null) {
+    parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    if (match[0] === "\\*") {
+      parent.appendChild(document.createTextNode("*"));
+    } else {
+      const italic = document.createElement("em");
+      italic.textContent = match[1];
+      parent.appendChild(italic);
+    }
+    cursor = inline.lastIndex;
+  }
+  parent.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+function setStudyText(element, text) {
+  // Preserve unsupported superscripts literally, and decorate known note numbers.
+  const footnote = /<sup>(\d+)<\/sup>/g;
+  let cursor = 0;
+  let match;
+  while ((match = footnote.exec(text)) !== null) {
+    element.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+    const sup = document.createElement("sup");
+    const note = ANNOTATIONS[match[1]];
+    if (note) {
+      sup.className = "footnote-ref";
+      sup.tabIndex = 0;
+      sup.setAttribute("aria-label", `Przypis ${match[1]}: ${note.term}`);
+      const number = document.createElement("span");
+      number.textContent = match[1];
+      sup.appendChild(number);
+
+      const tooltip = document.createElement("span");
+      tooltip.className = "footnote-tooltip";
+      tooltip.setAttribute("role", "tooltip");
+      tooltip.id = `footnote-tooltip-${++footnoteTooltipIndex}`;
+      sup.setAttribute("aria-describedby", tooltip.id);
+      const term = document.createElement("strong");
+      term.textContent = note.term;
+      tooltip.appendChild(term);
+      const plLabel = document.createElement("span");
+      plLabel.className = "note-label";
+      plLabel.textContent = "Definicja (PL)";
+      tooltip.appendChild(plLabel);
+      const definition = document.createElement("span");
+      definition.className = "note-pl";
+      appendTooltipText(definition, note.definition);
+      tooltip.appendChild(definition);
+      const translation = document.createElement("span");
+      translation.className = "note-ua";
+      const uaLabel = document.createElement("span");
+      uaLabel.className = "note-label";
+      uaLabel.textContent = "Переклад (UA)";
+      translation.appendChild(uaLabel);
+      appendTooltipText(translation, note.translation);
+      tooltip.appendChild(translation);
+      sup.appendChild(tooltip);
+      sup.addEventListener("mouseenter", () => positionFootnoteTooltip(sup, tooltip));
+      sup.addEventListener("focus", () => positionFootnoteTooltip(sup, tooltip));
+    } else {
+      sup.textContent = match[1];
+    }
+    element.appendChild(sup);
+    cursor = footnote.lastIndex;
+  }
+  element.appendChild(document.createTextNode(text.slice(cursor)));
+}
+
+/**
+ * Wrap each spoken token once, keeping inline superscript markers inside the
+ * surrounding word span so annotation markup cannot shift word timings.
+ */
+function wrapWords(root) {
+  const spans = [];
+  let activeWord = null;
+  for (const node of Array.from(root.childNodes)) {
+    if (node.nodeType === 1 && node.tagName === "SUP") {
+      if (activeWord) activeWord.appendChild(node);
+      continue;
+    }
+    if (node.nodeType !== 3) continue;
+    const parts = node.nodeValue.split(/(\s+)/);
+    const frag = document.createDocumentFragment();
+    for (const part of parts) {
+      if (!part) continue;
+      if (/^\s+$/.test(part)) {
+        frag.appendChild(document.createTextNode(part));
+        activeWord = null;
+        continue;
+      }
+      if (!activeWord) {
+        activeWord = document.createElement("span");
+        activeWord.className = "w";
+        spans.push(activeWord);
+        frag.appendChild(activeWord);
+      }
+      activeWord.appendChild(document.createTextNode(part));
+    }
+    node.parentNode.replaceChild(frag, node);
+  }
+  return spans;
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  let lastPara = CHAPTER.length ? CHAPTER[0].para : 0;
+
+  CHAPTER.forEach((unit, i) => {
+    // Paragraph break (from `---` in the Markdown) => visual separator.
+    if (i > 0 && unit.para !== lastPara) {
+      const sep = document.createElement("div");
+      sep.className = "para-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "⁂";
+      frag.appendChild(sep);
+      lastPara = unit.para;
+    }
+
+    const card = document.createElement("article");
+    card.className = "unit";
+    card.id = "u-" + (i + 1);   // stable anchor: vocabulary pages link to chapter-NN.html#u-N
+    card.dataset.index = String(i);
+    card.setAttribute("aria-labelledby", "pl-" + i);
+
+    /* --- PL: always visible, primary study text --- */
+    const row = document.createElement("div");
+    row.className = "pl-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "play";
+    btn.textContent = "▶";
+    const hasTime = startOf(i) != null;
+    btn.disabled = !hasTime;
+    btn.title = hasTime
+      ? `Play section ${i + 1} (${fmt(startOf(i))}–${fmt(endOf(i))})`
+      : "no timestamp";
+    btn.setAttribute("aria-label", btn.title);
+    btn.addEventListener("click", () => toggleSection(i));
+
+    const pl = document.createElement("p");
+    pl.className = "pl";
+    pl.id = "pl-" + i;
+    pl.lang = "pl";
+    setStudyText(pl, unit.pl);
+
+    /* --- word spans for progress mode 2, kept only when they line up --- */
+    let wordSpans = null;
+    let wordTimes = null;
+    const unitWordTimes = WORD_TIMES && WORD_TIMES[i];
+    if (unitWordTimes && unitWordTimes.length) {
+      const spans = wrapWords(pl);
+      if (spans.length === unitWordTimes.length) {
+        wordSpans = spans;
+        wordTimes = unitWordTimes;
+        card.classList.add("has-words");
+      } else {
+        pl.replaceChildren();          // tokenisation mismatch: plain text, no underline
+        setStudyText(pl, unit.pl);
+      }
+    }
+
+    row.append(btn, pl);
+
+    /* --- number badge --- */
+    const num = document.createElement("span");
+    num.className = "num";
+    num.textContent = String(i + 1);
+
+    /* --- Ukrainian reveal chip and block --- */
+    const toggles = document.createElement("div");
+    toggles.className = "toggles";
+
+    const uaChip = document.createElement("button");
+    uaChip.type = "button";
+    uaChip.className = "chip";
+    uaChip.textContent = "UA ▾";
+    uaChip.setAttribute("aria-expanded", "false");
+    uaChip.setAttribute("aria-controls", "ua-" + i);
+    toggles.append(uaChip);
+
+    const uaBox = document.createElement("div");
+    uaBox.className = "stack ua";
+    uaBox.id = "ua-" + i;
+    uaBox.hidden = true;
+    const uaLbl = document.createElement("span");
+    uaLbl.className = "lbl";
+    uaLbl.textContent = "Українська";
+    const uaP = document.createElement("p");
+    uaP.lang = "uk";
+    setStudyText(uaP, unit.ua);
+    uaBox.append(uaLbl, uaP);
+
+    /* --- progress hairline --- */
+    const pbar = document.createElement("div");
+    pbar.className = "pbar";
+    pbar.appendChild(document.createElement("span"));
+
+    card.append(num, row, toggles, uaBox, pbar);
+
+    uaChip.addEventListener("click", () => setUa(i, uaBox.hidden));
+
+    // Click anywhere on the card to select it (the Continuous play start point).
+    // Double-click starts that section immediately.
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      selectCard(i);
+    });
+    card.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest("button, input, select, a, label")) return;
+      toggleSection(i);
+    });
+
+    els[i] = { card, btn, uaChip, uaBox, pbar: pbar.firstElementChild,
+               words: wordSpans, wordTimes: wordTimes };
+    frag.appendChild(card);
+  });
+
+  cardsEl.appendChild(frag);
+
+  const timed = CHAPTER.filter((u) => u.start != null).length;
+  // AUDIO_URL, not audio.src: loadAudio() assigns src only after its fetch()
+  // resolves, so reading the attribute here would render "audio: null" over http.
+  statsEl.textContent =
+    `${CHAPTER.length} units · ${timed} timed sections · audio: ${AUDIO_URL}`;
+}
+
+/* ===================================================================== */
+/* 5. PLAYBACK ENGINE — one <audio>, one active segment                  */
+/* ===================================================================== */
+function setChip(chip, box, open) {
+  box.hidden = !open;
+  chip.textContent = "UA " + (open ? "▴" : "▾");
+  chip.setAttribute("aria-expanded", String(open));
+}
+
+function setUa(i, open) { setChip(els[i].uaChip, els[i].uaBox, open); }
+
+/* --- word underline (progress mode 2) --------------------------------- */
+function clearWord() {
+  if (state.wordEl) {
+    state.wordEl.classList.remove("is-current");
+    state.wordEl = null;
+  }
+}
+
+/** Underline the word the audio is inside right now (binary search, then only
+ *  touch the DOM when the word actually changed). */
+function updateWord(i, t) {
+  const e = els[i];
+  if (!e || !e.words || !e.wordTimes) { clearWord(); return; }
+  const times = e.wordTimes;
+  let lo = 0, hi = times.length - 1, k = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (times[mid][0] <= t) { k = mid; lo = mid + 1; } else { hi = mid - 1; }
+  }
+  // Before the section's first word (the boundary fires a hair early, or the
+  // narrator pauses) keep the upcoming word marked instead of dropping it.
+  if (k < 0) k = 0;
+  const span = e.words[k];
+  if (state.wordEl === span) return;
+  clearWord();
+  span.classList.add("is-current");
+  state.wordEl = span;
+}
+
+function markPlaying() {
+  clearWord();
+  els.forEach((e, i) => {
+    const on = i === state.index && state.playing;
+    e.card.classList.toggle("is-playing", on);
+    e.card.classList.toggle("is-selected", i === state.selected);
+    e.btn.classList.toggle("is-playing", on);
+    e.btn.textContent = on ? "⏸" : "▶";
+    e.btn.setAttribute("aria-label", on
+      ? "Stop playback of this section"
+      : (e.btn.disabled ? "no timestamp" : `Play section ${i + 1}`));
+    if (!on) e.card.style.setProperty("--p", "0%");
+  });
+  // Re-apply the underline at once: without this the next rAF would leave the
+  // word unmarked for one frame every time the section changes.
+  if (state.playing && state.progress === "word" && state.index != null) {
+    updateWord(state.index, audio.currentTime);
+  }
+}
+
+/** Pick the card that Continuous play should start from. */
+function selectCard(i, opts) {
+  if (i == null || i < 0 || i >= CHAPTER.length) return;
+  state.selected = i;
+  focusIndex = i;
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  if (opts && opts.scroll) scrollToCard(i);
+}
+
+function stop(resetButton = true) {
+  state.playing = false;
+  state.index = null;
+  cancelAnimationFrame(state.raf);
+  clearWord();
+  audio.pause();
+  if (resetButton) markPlaying();
+  updateContinuousButton();
+}
+
+/**
+ * Play exactly one section: start[i] … start[i+1] (or end of audio).
+ * `continuous` keeps the chain going when the segment ends.
+ */
+function playSection(i) {
+  const start = startOf(i);
+  if (start == null) return;
+
+  // Already inside this section and audible: pressing Continuous again (or
+  // re-pressing play) must let the audio keep flowing instead of rewinding.
+  const resumeInPlace = state.playing && state.index === i;
+
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+
+  audio.playbackRate = state.rate;
+  audio.volume = state.volume;
+
+  const begin = () => {
+    // Re-assigning currentTime restarts decoding of the segment, which is what
+    // made card-to-card playback hiccup. Only seek when we are not already at
+    // (or a whisker away from) this section's first word.
+    if (!resumeInPlace && Math.abs(audio.currentTime - start) > 0.2) {
+      try { audio.currentTime = start; } catch (e) { /* metadata not ready yet */ }
+    }
+    audio.play().catch(() => {
+      state.playing = false;
+      markPlaying();
+      updateContinuousButton();
+      showBanner();
+    });
+    markPlaying();
+    updateContinuousButton();
+    tick();
+  };
+
+  if (audio.readyState >= 1) begin();
+  else audio.addEventListener("loadedmetadata", begin, { once: true });
+}
+
+function toggleSection(i) {
+  if (state.playing && state.index === i) {
+    stop();
+    state.continuous = false;
+    updateContinuousButton();
+    return;
+  }
+  stop();
+  playSection(i);
+}
+
+/* rAF ticker: timeupdate only fires ~4×/s, too coarse for segment ends. */
+function tick() {
+  if (!state.playing || state.index == null) return;
+  const i = state.index;
+  const t = audio.currentTime;
+  const span = Math.max(0.001, state.endAt - startOf(i));
+  const pct = Math.min(100, Math.max(0, ((t - startOf(i)) / span) * 100));
+  els[i].card.style.setProperty("--p", pct.toFixed(1) + "%");
+  if (state.progress === "word") updateWord(i, t);
+
+  if (t >= state.endAt - 0.03) {
+    onSegmentEnd();
+    return;
+  }
+  state.raf = requestAnimationFrame(tick);
+}
+
+/**
+ * Move the "current section" markers to unit i WITHOUT touching the audio.
+ * Continuous play calls this at a section boundary: the file never pauses and
+ * never re-seeks, so playback is gapless and the highlighted card simply
+ * follows whatever the audio is playing.
+ */
+function advanceSection(i) {
+  state.index = i;
+  state.playing = true;
+  state.endAt = endOf(i);
+  // Remember where the listener is, so Continuous play can resume here later.
+  state.selected = i;
+  state.lastIndex = i;
+  focusIndex = i;
+  store.set(LS.last, String(i));
+  store.set(LS.selected, String(i));
+  markPlaying();
+  updateContinuousButton();
+  scrollToCard(i);
+  state.raf = requestAnimationFrame(tick);
+}
+
+function onSegmentEnd() {
+  // Guard against a late/duplicate call (rAF and timeupdate can both fire).
+  if (!state.playing || state.index == null) return;
+  if (audio.currentTime < state.endAt - 0.03) return;
+
+  const from = state.index;
+  if (state.continuous) {
+    // The audio is already running through this boundary: follow it to the
+    // next card instead of restarting playback (no pause, no seek, no gap).
+    const t = audio.currentTime;
+    let nxt = nextPlayable(from);
+    // Skip any section whose audio is already behind us (degenerate timestamps).
+    while (nxt !== -1 && endOf(nxt) <= t + 0.03) nxt = nextPlayable(nxt);
+    if (nxt !== -1 && nxt !== from) {
+      advanceSection(nxt);
+      return;
+    }
+  }
+  const wasContinuous = state.continuous;
+  stop();
+  if (wasContinuous) {
+    // The chapter finished: forget the resume point so the next start is section 1.
+    state.continuous = false;
+    state.lastIndex = null;
+    state.selected = null;
+    store.set(LS.last, "");
+    store.set(LS.selected, "");
+    markPlaying();
+    updateContinuousButton();
+  }
+}
+
+function scrollToCard(i) {
+  const el = els[i] && els[i].card;
+  if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+/* ===================================================================== */
+/* 6. GLOBAL CONTROLS                                                    */
+/* ===================================================================== */
+const volumeEl = document.getElementById("volume");
+const volumeOut = document.getElementById("volumeOut");
+const rateEl = document.getElementById("rate");
+const rateOut = document.getElementById("rateOut");
+const toggleUaEl = document.getElementById("toggleUa");
+const continuousEl = document.getElementById("continuous");
+const themeEl = document.getElementById("theme");
+const progressEl = document.getElementById("progress");
+const progressCtl = document.getElementById("progressCtl");
+
+/* Speed label: "1×" at the top of the range, "0.9×" below it. */
+function fmtRate(r) {
+  return (Math.round(r * 10) / 10) + "×";
+}
+
+volumeEl.addEventListener("input", () => {
+  state.volume = Number(volumeEl.value) / 100;
+  audio.volume = state.volume;
+  volumeOut.textContent = volumeEl.value + "%";
+  store.set(LS.volume, volumeEl.value);
+});
+
+rateEl.addEventListener("input", () => {
+  state.rate = Number(rateEl.value);
+  audio.playbackRate = state.rate;
+  rateOut.textContent = fmtRate(state.rate);
+  store.set(LS.rate, rateEl.value);
+});
+
+/* --- progress display mode -------------------------------------------- */
+function setProgressMode(mode) {
+  if (mode !== "word" || HAS_WORD_TIMES) state.progress = mode;
+  progressEl.value = state.progress;
+  document.documentElement.dataset.progress = state.progress;
+  store.set(LS.progress, state.progress);
+  if (state.progress !== "word") clearWord();
+}
+
+progressEl.addEventListener("change", () => setProgressMode(progressEl.value));
+
+function setAll(open) {
+  state.uaOpen = open;
+  els.forEach((e, i) => setUa(i, open));
+  toggleUaEl.textContent = (open ? "Hide all UA" : "Reveal all UA");
+  toggleUaEl.setAttribute("aria-pressed", String(open));
+  toggleUaEl.classList.toggle("is-on", open);
+}
+
+toggleUaEl.addEventListener("click", () => setAll(!state.uaOpen));
+
+/** First section that actually has a timestamp. */
+function firstTimed() {
+  for (let i = 0; i < CHAPTER.length; i++) if (startOf(i) != null) return i;
+  return -1;
+}
+
+/**
+ * Where should Continuous play begin?
+ *   1. the card the user selected (playSection keeps this in sync with the
+ *      section playing, so "keep going from here" still works)
+ *   2. the section playing right now
+ *   3. the last section that was played (remembered across reloads)
+ *   4. the first timed section
+ */
+function resumeIndex() {
+  if (state.selected != null && startOf(state.selected) != null) return state.selected;
+  if (state.playing && state.index != null) return state.index;
+  if (state.lastIndex != null && startOf(state.lastIndex) != null) return state.lastIndex;
+  return firstTimed();
+}
+
+function updateContinuousButton() {
+  const on = state.continuous;
+  const from = on ? null : resumeIndex();
+  const label = on
+    ? "⏹ Stop continuous"
+    : (from > 0 ? `▶ Continuous from #${from + 1}` : "▶ Continuous play");
+  continuousEl.textContent = label;
+  continuousEl.title = on
+    ? "Stop continuous playback"
+    : (from > 0
+        ? `Starts at section ${from + 1} — click another card to change the starting point`
+        : "Play the chapter continuously from here");
+  continuousEl.setAttribute("aria-pressed", String(on));
+  continuousEl.classList.toggle("is-on", on);
+}
+
+continuousEl.addEventListener("click", () => {
+  if (state.continuous) {
+    state.continuous = false;
+    stop();
+    return;
+  }
+  const from = resumeIndex();
+  if (from < 0) return;
+  state.continuous = true;
+  updateContinuousButton();
+  playSection(from);
+  scrollToCard(from);
+});
+
+/* --- theme ------------------------------------------------------------ */
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeEl.textContent = theme === "dark" ? "☀️" : "🌙";
+  themeEl.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+  store.set(LS.theme, theme);
+}
+themeEl.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+
+/* --- header collapse -------------------------------------------------- */
+const topbarEl = document.querySelector("header.topbar");
+const collapseEl = document.getElementById("collapse");
+
+/* The anchor offset (--hdr) follows the header height, so it is re-measured
+   whenever the header collapses or expands. */
+const setHdr = () => document.documentElement.style.setProperty("--hdr", topbarEl.offsetHeight + "px");
+
+function applyCollapsed(collapsed) {
+  topbarEl.classList.toggle("is-collapsed", collapsed);
+  collapseEl.setAttribute("aria-expanded", String(!collapsed));
+  const label = collapsed ? "Expand header" : "Collapse header";
+  collapseEl.setAttribute("aria-label", label);
+  collapseEl.title = label;
+  collapseEl.textContent = collapsed ? "▼" : "▲";
+  store.set(LS.collapsed, collapsed ? "1" : "0");
+  setHdr();
+}
+collapseEl.addEventListener("click", () => {
+  applyCollapsed(!topbarEl.classList.contains("is-collapsed"));
+});
+
+/* --- audio state ------------------------------------------------------ */
+function showBanner() { banner.hidden = false; }
+
+audio.addEventListener("error", showBanner);
+audio.addEventListener("stalled", () => { if (audio.readyState < 2) showBanner(); });
+
+audio.addEventListener("timeupdate", () => {
+  clockEl.textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  // Safety net for background tabs, where requestAnimationFrame is throttled:
+  // timeupdate still fires, so section boundaries keep working.
+  if (state.playing && state.index != null && audio.currentTime >= state.endAt - 0.03) {
+    onSegmentEnd();
+  }
+});
+audio.addEventListener("loadedmetadata", () => {
+  clockEl.textContent = fmt(0) + " / " + fmt(audio.duration);
+  banner.hidden = true;
+  // Some browsers seek before metadata is available; re-sync an active section.
+  if (state.playing && state.index != null) audio.currentTime = startOf(state.index);
+});
+// External pause (media keys, browser UI, OS) resets the card buttons.
+// Guard: switching sections calls pause() and play() back-to-back, and the
+// queued "pause" event must not cancel the section that just started.
+audio.addEventListener("pause", () => {
+  if (!audio.paused) return;
+  if (state.playing) {
+    cancelAnimationFrame(state.raf);
+    state.playing = false;
+    state.index = null;
+    markPlaying();
+    if (state.continuous) { state.continuous = false; updateContinuousButton(); }
+  }
+});
+
+/* --- keyboard --------------------------------------------------------- */
+let focusIndex = 0;
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+
+  // Enter doubles as the TV remote's OK button. When a button has focus (D-pad
+  // navigation lands on toolbar buttons), let Enter press that button instead.
+  const onButton = !!(ev.target.closest && ev.target.closest("button"));
+  if (ev.code === "Space" || (ev.code === "Enter" && !onButton)) {
+    ev.preventDefault();
+    const i = state.index != null ? state.index : focusIndex;
+    if (startOf(i) != null) toggleSection(i);
+  } else if (ev.key === "ArrowDown" || ev.key === "j") {
+    ev.preventDefault();
+    selectCard(Math.min(CHAPTER.length - 1, focusIndex + 1), { scroll: true });
+    if (state.playing) playSection(focusIndex); // keep listening while moving
+  } else if (ev.key === "ArrowUp" || ev.key === "k") {
+    ev.preventDefault();
+    selectCard(Math.max(0, focusIndex - 1), { scroll: true });
+    if (state.playing) playSection(focusIndex);
+  } else if (ev.key === "u" || ev.key === "U" || ev.key === "Escape") {
+    setAll(!state.uaOpen);
+  } else if (ev.key === "c" || ev.key === "C" || ev.key === "ArrowRight") {
+    continuousEl.click();          // same as the toolbar button: starts at the selection
+  } else if (ev.key === "t" || ev.key === "T" || ev.key === "ArrowLeft") {
+    themeEl.click();
+  }
+});
+
+/* ===================================================================== */
+/* 7. BOOT                                                               */
+/* ===================================================================== */
+(function boot() {
+  // Theme: stored preference, else system.
+  const stored = store.get(LS.theme);
+  applyTheme(stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+  // Volume / rate preferences.
+  const v = store.get(LS.volume);
+  if (v != null) { volumeEl.value = v; volumeOut.textContent = v + "%"; state.volume = Number(v) / 100; }
+  // The slider owns the allowed values now: clamp an old stored preference
+  // (0.75/1.25 from the previous dropdown) onto the 0.5–1.0, 0.1 grid.
+  const rawRate = store.get(LS.rate);
+  const r = rawRate == null ? NaN : Number(rawRate);
+  if (Number.isFinite(r)) {
+    rateEl.value = String(Math.min(1, Math.max(0.5, Math.round(r * 10) / 10)));
+    if (rateEl.value !== rawRate) store.set(LS.rate, rateEl.value);
+  }
+  state.rate = Number(rateEl.value);
+  rateOut.textContent = fmtRate(state.rate);
+  audio.volume = state.volume;
+
+  render();
+
+  // Progress display mode: shared across chapters, word mode needs timings.
+  // Word underline is the default; an explicit stored choice always wins.
+  progressCtl.hidden = !HAS_WORD_TIMES;
+  document.getElementById("progressHelp").hidden = !HAS_WORD_TIMES;
+  const storedProgress = store.get(LS.progress);
+  setProgressMode(HAS_WORD_TIMES && storedProgress !== "section" ? "word" : "section");
+
+  // Resume point: last played section, else last selected card (survives reload).
+  const asIndex = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n >= 0 && n < CHAPTER.length ? n : null;
+  };
+  const sel = asIndex(store.get(LS.selected));
+  const last = asIndex(store.get(LS.last));
+  if (sel != null) { state.selected = sel; focusIndex = sel; }
+  if (last != null) state.lastIndex = last;
+
+  markPlaying();
+  updateContinuousButton();
+
+  // Restore the collapsed/expanded header choice, then measure the sticky
+  // header (it wraps taller on narrow screens) for the anchor offset.
+  applyCollapsed(store.get(LS.collapsed) === "1");
+  setHdr(); addEventListener("resize", setHdr);
+
+  // Deep link (#u-N from a vocabulary page or the index): select and show that card.
+  const hit = /^#u-(\d+)$/.exec(location.hash);
+  if (hit) selectCard(Number(hit[1]) - 1, { scroll: true });
+})();
+</script>
+</body>
+</html>

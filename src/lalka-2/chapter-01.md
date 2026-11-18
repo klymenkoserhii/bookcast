@@ -1,0 +1,2460 @@
+# «Lalka · Tom II» — Chapter 1: Pamiętnik starego subiekta
+<!-- bilingual study edition: PL → UA -->
+
+**PL:** Sytuacja polityczna jest tak niepewna, że wcale by mnie nie zdziwiło, gdyby około grudnia wybuchła wojna.
+
+**UA:** Політична ситуація така невизначена, що мене зовсім би не здивувало, якби близько грудня вибухла війна.
+
+---
+
+**PL:** Ludziom ciągle się zdaje, że wojna może być tylko na wiosnę; widać zapomnieli, że wojny: pruska i francuska, rozpoczynały się w lecie<sup>572</sup>. Nie rozumiem zaś, skąd wyrósł przesąd przeciw kampaniom zimowym?...
+
+**UA:** Людям все здається, що війна може бути лише на весну; видно, забули, що війни: пруська і французька, починалися влітку<sup>572</sup>. Не розумію ж, звідки виробився упередження проти зимових кампаній?...
+
+**PL:** W zimie stodoły są pełne, a droga jak mur; tymczasem na wiosnę u chłopa jest przednówek, a drogi jak ciasto; przejedzie bateria i możesz się w tym miejscu kąpać.
+
+**UA:** Зимою амбарні повні, а дорога як мур; тимчасово навесні у хлопа передновек, а дороги як тісто; переїде батарея — і в цьому місці можна купатися.
+
+---
+
+**PL:** Lecz z drugiej strony — zimowe noce, które ciągną się po kilkanaście godzin, potrzeba ciepłej odzieży i mieszkań dla wojska, tyfus... Doprawdy, nieraz dziękuję Bogu, że mnie nie stworzył Moltkem<sup>573</sup>; on musi kręcić głową, nieborak!...
+
+**UA:** Але з іншого боку — зимові ночі, що тягнуться по тринадцятьої години, потрібна тепла одяг і житла для війська, тиф... Насправді, не раз дякую Богу, що мене не створив Мольтке<sup>573</sup>; він має вертети головою, нещасник!...
+
+---
+
+**PL:** Austriacy, a raczej Węgrzy już na dobre wleźli do Bośni i Hercegowiny, gdzie ich bardzo niegościnnie przyjmują. Znalazł się nawet jakiś Hadżi Loja<sup>574</sup>, podobno znakomity partyzant, który im napędza dużo zgryzot. Szkoda mi węgierskiej piechoty, ale też i dzisiejsi Węgrzy diabła warci.
+
+**UA:** Австрійці, а саме Угорці, вже назавжди влізли в Боснію і Герцеговину, де їх дуже негостинно приймають. Знайшовся навіть якийсь Хаджі Лоя<sup>574</sup>, відомо, розбірковий партизанин, який багато згрізот їм додає. шкода мені угорської піхоти, але й сьогоднішні Угорці чорта варті.
+
+**PL:** Kiedy ich w 49 roku dusił szwarcgelber<sup>575</sup>, krzyczeli: każdy naród ma prawo bronić swojej wolności!... A dziś co?... Sami pchają się do Bośni, gdzie ich nie wołano, a broniących się Bośniaków nazywają złodziejami i rozbójnikami.
+
+**UA:** Коли їх у 49 році душив шварцгельбер<sup>575</sup>, кричали: кожен народ має право захищати свою волю!... А сьогодні що?... Самі лезть до Боснії, де їх не просили, а захищаючихся босняків називають злодіями та розбійниками.
+
+---
+
+**PL:** Dalibóg coraz mniej rozumiem politykę! I kto wie, czy Stach Wokulski nie ma racji, że przestał się nią zajmować (jeżeli przestał?...).
+
+**UA:** Да не знаю, все менше розумію політику! І хто знає, чи не має рації Стась Вокульський, що перестав нею займатися (чи перестав?...).
+
+---
+
+**PL:** Ale co ja rozprawiam o polityce, skoro w moim własnym życiu zaszła ogromna zmiana. Kto by uwierzył, że już od tygodnia nie zajmuję się sklepem; tymczasowo, rozumie się, bo inaczej chyba oszalałbym z nudów.
+
+**UA:** Але чого я розбираю політику, коли в моєму власному житті відбулася огромна зміна. Хто б повірив, що вже від тижня не займаюся крамницею; тимчасово, розуміється, бо інакше схів би від нуди.
+
+---
+
+**PL:** Rzecz jest taka. Pisze do mnie Stach z Paryża (prosił mnie o to samo przed wyjazdem), ażebym się zaopiekował kamienicą, którą kupił od Łęckich. „Nie miała baba kłopotu!...”, myślę, ale cóż robić?... Zdałem sklep Lisieckiemu i Szlangbaumowi, a sam — jazda w Aleje Jerozolimskie na zwiady.
+
+**UA:** Справа в такій. Пише до мене Сташ з Парижа (просив мене про те саме перед від’їздом), щоб я піклувався батьківським будинком, який він купив у Ленцьких. «Не мала баба клопоту!…» — думаю, але що робити?… Здав крамницю Лісецькому та Шланґбауму, а сам — їду на Алеї Єрусалимські на розвідку.
+
+---
+
+**PL:** Przed wyjściem pytam Klejna, który mieszka w Stachowej kamienicy, aby mi powiedział, jak tam idzie. Zamiast odpowiedzieć, wziął się za głowę.
+
+**UA:** Перед виходом питаю Клейна, що живе в Стасевому будинку, аби сказав, як там іде. Замість відповіді схопився за голову.
+
+---
+
+**PL:** — Jest tam jaki rządca?
+
+**UA:** — Чи є там якийсь управляючий?
+
+---
+
+**PL:** — Jest — mówi Klejn krzywiąc się. — Mieszka na trzecim piętrze od frontu.
+
+**UA:** — Є, — каже Клейн, кривлячись. — Живе на третьому поверсі від фронту.
+
+---
+
+**PL:** — Dosyć!... — mówię — dosyć, panie Klejn!... — (Nie lubię bowiem słuchać cudzych opinii pierwej, nim zobaczę na własne oczy. Zresztą Klejn, chłopak młody, łatwo mógłby wpaść w zarozumiałość pomiarkowawszy, że starsi zapytują go o informacje.)
+
+**UA:** — Досить!… — кажу. — Досить, пане Клейн!… — (Не люблю слухати чужі думки перш, ніж побачу власними очима. Зрештою Клейн — хлопець молодий, легко міг би впасти в зарозуміння, помітивши, що старші питають його про відомості.)
+
+---
+
+**PL:** Ha! trudno... Posyłam tedy do odprasowania mój kapelusz, płacę dwa złote, na wszelki wypadek biorę do kieszeni krócicę<sup>576</sup> i maszeruję gdzieś aż za kościół Aleksandra<sup>577</sup>.
+
+**UA:** А! незгода... Надіслали то прибирати мій шляп, плачу два злоті, на всі випадки взовні ношу кротицу<sup>576</sup> й шарую кудись за костел Олександра<sup>577</sup>.
+
+---
+
+**PL:** Patrzę: dom żółty o trzech piętrach, numer ten sam, ba!... nawet już na tabliczce znajduję nazwisko Stanisława Wokulskiego... (Widocznie kazał ją przybić stary Szlangbaum.)
+
+**UA:** Дивлюся: дім жовтий, три поверхи, номер той самий, ба!… навіть на табличці знаходжу ім’я Станіслава Вокульського… (Видно, наказав її прибити старий Шланґбаум.)
+
+---
+
+**PL:** Wchodzę na podwórko... oj! niedobrze... Pachnie bestia jak apteka. Śmietnik naładowany do wysokości pierwszego piętra, wszystkimi zaś rynsztokami płyną mydliny. Dopiero teraz spostrzegłem, że na parterze w dziedzińcu znajduje się „Pralnia paryska”, z dziewuchami jak dwugarbne wielbłądy.
+
+**UA:** Входжу на подвір’я... ой! кепсько... Смердить, наче в аптеці. Смітник набитий до висоти першого поверху, а всіма риштаками течуть мильнини. Щойно тепер зауважив, що на першому поверсі в дворі міститься «Паризька пральня», з дівками, мов двогорбі верблюдиці.
+
+**PL:** To dodało mi otuchy.
+
+**UA:** Це додало мені відваги.
+
+---
+
+**PL:** Wołam tedy: „Stróż!...” Przez chwilę nie widać nikogo, nareszcie pokazuje się baba tłusta i tak zasmolona, że nie mogę pojąć, jakim sposobem podobna ilość brudu mieści się w sąsiedztwie pralni, i do tego paryskiej.
+
+**UA:** Гукаю: «Двірник!…» Якусь хвилю нікого не видно, врешті показується баба товста й така засмальцьована, що не годен збагнути, яким чином така сила бруду вміщається побіч пральні, і до того ж паризької.
+
+---
+
+**PL:** — Gdzie stróż? — pytam dotykając ręką kapelusza.
+
+**UA:** — А де двірник? — питаю, торкаючись рукою капелюха.
+
+---
+
+**PL:** — A czego to?... — odwarknęła baba.
+
+**UA:** — А чого то?… — відгавкнула баба.
+
+---
+
+**PL:** — Przychodzę w imieniu właściciela domu.
+
+**UA:** — Приходжу в імені власника дому.
+
+---
+
+**PL:** — Stróż siedzi w kozie — mówi baba.
+
+**UA:** — Двірник сидить у козі — каже баба.
+
+---
+
+**PL:** — Za cóż to?
+
+**UA:** — За що ж то?
+
+---
+
+**PL:** — O!... ciekawy pan!... — wrzasnęła. — Za to, że mu gospodarz pensji nie płaci.
+
+**UA:** — О!… цікавий пан!… — вереснула. — За те, що йому господар платні не платить.
+
+---
+
+**PL:** Ładnych rzeczy dowiaduję się na wstępie!
+
+**UA:** Гарні речі довідуюся з самого початку!
+
+---
+
+**PL:** Naturalnie poszedłem od stróża do rządcy, na trzecie piętro. Już na drugim piętrze słyszę krzyk dzieci, jakieś trzaskanie i głos kobiety wołającej:
+
+**UA:** Зрозуміло, пішов я від двірника до управителя, на третій поверх. Уже на другому поверсі чую дитячий крик, якесь ляпання й голос жінки, що кличе:
+
+---
+
+**PL:** — A gałgany!... a nicponie!... a masz!... a masz!...
+
+**UA:** — Ах ти ж паскудники!… ах ти ж ледащо!… а на!… а на!…
+
+---
+
+**PL:** Drzwi otwarte, we drzwiach jakaś jejmość w nieco białym kaftaniku wali troje dzieci rzemieniem aż świszcze.
+
+**UA:** Двері відчинені, у дверях якась пані в трохи білому каптанчику від душі відхляскує трійко дітей ремінцем, аж свистить.
+
+---
+
+**PL:** — Przepraszam — mówię — czy nie przeszkadzam?...
+
+**UA:** — Перепрошую, — кажу, — чи не заважаю?…
+
+---
+
+**PL:** Na mój widok dzieci rozpierzchły się w głąb mieszkania, a jejmość w kaftaniku chowając za siebie rzemień zapytała zmieszana:
+
+**UA:** На мій вигляд діти розсипалися в глиб помешкання, а та пані в каптанчику, сховавши за спину ремінець, спитала зніяковіло:
+
+---
+
+**PL:** — Czy nie pan gospodarz?...
+
+**UA:** — Чи не пан господар?…
+
+---
+
+**PL:** — Nie gospodarz, ale... przychodzę w jego imieniu do szanownego małżonka pani... Jestem Rzecki...
+
+**UA:** — Не господар, але… приходжу в його імені до шановного подружжя пані… Я Ржецький…
+
+---
+
+**PL:** Jejmość chwilę przypatrywała mi się z niedowierzaniem, nareszcie rzekła:
+
+**UA:** Пані трохи придивлялася до мене з недовірою, нарешті сказала:
+
+---
+
+**PL:** — Wicek, biegnij do składu po ojca... A pan może pozwoli do saloniku...
+
+**UA:** — Віцьку, біжи до крамниці по батька… А пан, може, дозволить до вітальні…
+
+---
+
+**PL:** Między mną i drzwiami wyrwał się obdarty chłopak i dopadłszy do schodów począł zjeżdżać na poręczy na dół. Ja zaś, zażenowany, wszedłem do saloniku, którego główną ozdobę stanowiła kanapa z wyłażącym na środku włosieniem.
+
+**UA:** Між мною і дверима вирвався обдертий хлопчина і, добігши до сходів, почав з’їжджати вниз по поруччі. Я ж, збентежений, увійшов до вітальні, головною окрасою якої була канапа з кінським волосом, що повизить посередині.
+
+---
+
+**PL:** — Oto los rządcy — odezwała się pani wskazując mi nie mniej obdarte krzesło. — Mój mąż służy niby to bogatym panom, a gdyby nie chodził do składu węgli i nie przepisywał u adwokatów, nie mielibyśmy co włożyć w usta.
+
+**UA:** — Ось доля управителя, — озвалася пані, показуючи мені не менш обдертий стілець. — Мій чоловік служить начебто багатим панам, а якби не ходив до складу вугілля й не переписував у адвокатів, не мали б ми що покласти в рот.
+
+**PL:** — Oto nasze mieszkanie, niech pan spojrzy — mówiła — za trzy ciupy dopłacamy sto osiemdziesiąt rubli rocznie...
+
+**UA:** — Ось наше помешкання, нехай пан гляне, — говорила вона, — за три ціупи доплачуємо сто вісімдесят карбованців на рік…
+
+---
+
+**PL:** Nagle od strony kuchni doleciało nas niepokojące syczenie. Jejmość w kaftaniku wybiegła szepcząc po drodze:
+
+**UA:** Раптом з боку кухні долинуло до нас тривожне шипіння. Пані в каптанчику вибігла, шепочучи дорогою:
+
+---
+
+**PL:** — Kaziu! idź do sali i uważaj na tego pana...
+
+**UA:** — Казю! йди до зали й уважай на того пана…
+
+---
+
+**PL:** Istotnie, weszła do pokoju dziewczynka bardzo mizerna, w brązowej sukience i brudnych pończoszkach. Usiadła na krześle przy drzwiach i wpatrywała się we mnie wzrokiem o tyle podejrzliwym, o ile smutnym. Nigdy bym doprawdy nie sądził, że na stare lata wezmą mnie za złodzieja...
+
+**UA:** Справді, увійшла до кімнати дівчинка дуже квола, у коричневій сукенці й брудних панчішках. Сіла на стільці при дверях і вдивлялася в мене поглядом тим підозріливішим, чим смутнішим. Ніколи б я справді не подумав, що на старі літа мене візьмуть за злодія…
+
+---
+
+**PL:** Siedzieliśmy tak z pięć minut milcząc i obserwując się wzajemnie, gdy nagle rozległ się krzyk i łoskot na schodach i w tej chwili wbiegł z sieni ów obdarty chłopak, zwany Wickiem, za którym ktoś gniewnie wołał:
+
+**UA:** Сиділи ми так хвилин п’ять, мовчки й спостерігаючи одне одного, коли раптом розлігся крик і гуркіт на сходах, і цієї миті вбіг із сіней той обдертий хлопчина, званий Віцьком, за яким хтось гнівно гукав:
+
+---
+
+**PL:** — A szelmo!... dam ja ci...
+
+**UA:** — Ах ти ж шельмо!… дам я тобі…
+
+---
+
+**PL:** Odgadłem, że Wicek musi mieć żywy temperament i że ten, kto mu wymyśla, jest jego ojcem. Jakoż istotnie, ukazał się sam pan rządca w poplamionym surducie i spodniach u dołu oberwanych. Miał przy tym gęsty, szpakowaty zarost i czerwone oczy.
+
+**UA:** Здогадався я, що Віцько мусить мати живий темперамент і що той, хто на нього гримає, — його батько. Так і справді, з’явився сам пан управитель у поцяткованому сюртуці й штанях, обдертих знизу. При тому мав густу, сивувату бороду й червоні очі.
+
+---
+
+**PL:** Wszedł, grzecznie ukłonił mi się i zapytał:
+
+**UA:** Увійшов, чемно мені вклонився й запитав:
+
+---
+
+**PL:** — Wszak mam honor z panem Wokulskim?
+
+**UA:** — Чи маю честь із паном Вокульським?
+
+---
+
+**PL:** — Nie, panie, jestem tylko przyjacielem i dysponentem pana Wokulskiego...
+
+**UA:** — Ні, пане, я тільки друг і довірена особа пана Вокульського…
+
+---
+
+**PL:** — A tak!... — przerwał mi wyciągając do uścisku rękę. — Miałem przyjemność zauważyć pana w sklepie... Piękny sklep! — westchnął. — Z takich sklepów rodzą się kamienice, a... a z majątków ziemskich — takie oto mieszkania...
+
+**UA:** — А так!… — перервав він мені, простягаючи руку для потиску. — Мав приємність помітити пана в крамниці… Гарна крамниця! — зітхнув. — З таких крамниць постають кам’яниці, а… а з земельних маєтків — отакі помешкання…
+
+---
+
+**PL:** — Pan dobrodziej miał majątek? — spytałem.
+
+**UA:** — Пан добродій мав маєток? — спитав я.
+
+---
+
+**PL:** — Ba!... Ale co tam... Zapewne chce pan poznać bilans tej kamienicy? — odparł rządca. — Otóż powiem krótko. Mamy dwa rodzaje lokatorów: jedni już od pół roku nie płacą nikomu, inni płacą magistratowi kary lub zaległe podatki za gospodarza.
+
+**UA:** — Ба!… Та що там… Певне, хоче пан пізнати баланс цієї кам’яниці? — відповів управитель. — Ото скажу коротко. Маємо два роди мешканців: одні вже півроку нікому не платять, другі платять магістратові кари або заборговані податки за господаря.
+
+**PL:** Przy tym stróż nie odbiera pensji, dach zacieka, cyrkuł ekscytuje nas, ażebyśmy wywieźli śmiecie, jeden lokator wytoczył nam proces o piwnicę, a dwu lokatorów procesuje się o obelgi z powodu strychu...
+
+**UA:** При цьому двірник не одержує платні, дах протікає, дільниця нас підганяє, щоб ми вивезли сміття, один мешканець висунув нам позов за пивницю, а двоє мешканців судяться за образи з приводу горища…
+
+**PL:** Co się zaś tyczy — dodał po chwili, nieco zmieszany — co się zaś tyczy dziewięćdziesięciu rubli, które ja będę winien szanownemu panu Wokulskiemu...
+
+**UA:** Що ж до того — додав за хвилю, трохи зніяковівши, — що ж до того дев’яноста карбованців, які я винен буду шановному панові Вокульському…
+
+---
+
+**PL:** — Nie niepokój się pan — przerwałem mu. — Stach, to jest pan Wokulski, zapewne umorzy pański dług do października, a następnie zawrze z panem nowy układ.
+
+**UA:** — Не турбуйтеся, пане, — перервав я йому. — Стах, тобто пан Вокульський, певне, простить ваш борг до жовтня, а потім укладе з вами нову угоду.
+
+---
+
+**PL:** Ubogi eks-właściciel majątku ziemskiego serdecznie uściskał mi obie ręce.
+
+**UA:** Бідний екс-власник земельного маєтку щиро потиснув мені обидві руки.
+
+---
+
+**PL:** Taki rządca, który miał kiedyś własne dobra, wydawał mi się bardzo ciekawą osobistością; ale jeszcze ciekawszym wydał mi się dom, który nie przynosi żadnych dochodów.
+
+**UA:** Такий управитель, що колись мав власні добра, видавався мені вельми цікавою постаттю; та ще цікавішим видався мені дім, який не приносить жодних прибутків.
+
+**PL:** Z natury jestem nieśmiały: wstydzę się rozmawiać z nieznanymi ludźmi, a prawie boję się wchodzić do cudzych mieszkań... (Boże miłosierny! jak ja już dawno nie byłem w cudzym mieszkaniu...) Tym razem jednak wstąpił we mnie jakiś diabeł i koniecznie zapragnąłem poznać lokatorów tej dziwnej kamienicy.
+
+**UA:** З природи я несміливий: соромлюся розмовляти з незнайомими людьми, а майже боюся входити до чужих помешкань… (Боже милосердний! як я давно не був у чужому помешканні…) Цього разу, проте, вступив у мене якийсь диявол і забаглося мені конче пізнати мешканців цієї дивної кам’яниці.
+
+---
+
+**PL:** W roku 1849 bywało goręcej, a przecie szedł człowiek naprzód!...
+
+**UA:** У році 1849 бувало гарячіше, а проте йшов собі чоловік наперед!…
+
+---
+
+**PL:** — Panie — odezwałem się do rządcy — czy byłbyś łaskaw... przedstawić mnie niektórym lokatorom?... Stach... to jest pan Wokulski... prosił mnie o zajęcie się jego interesami, dopóki nie wróci z Paryża...
+
+**UA:** — Пане, — озвався я до управителя, — чи були б ви ласкаві… представити мене деяким мешканцям?… Стах… тобто пан Вокульський… просив мене зайнятися його справами, доки не повернеться з Парижа…
+
+---
+
+**PL:** — Paryż!... — westchnął rządca. — Znam Paryż jeszcze z roku 1859. Pamiętam, jak przyjmowali cesarza<sup>578</sup>, kiedy wracał z kampanii włoskiej<sup>579</sup>...
+
+**UA:** — Париж!… — зітхнув управитель. — Знаю Париж іще з року 1859. Пам’ятаю, як приймали цісаря<sup>578</sup>, коли вертався з італійської кампанії<sup>579</sup>…
+
+---
+
+**PL:** — Pan — zawołałem — pan widziałeś triumfalny powrót Napoleona do Paryża?...
+
+**UA:** — Пане, — гукнув я, — пане, ви бачили тріумфальне повернення Наполеона до Парижа?…
+
+---
+
+**PL:** Wyciągnął do mnie rękę i odparł:
+
+**UA:** Простягнув до мене руку й відповів:
+
+---
+
+**PL:** — Widziałem lepszą rzecz, panie... Podczas kampanii byłem we Włoszech i widziałem, jak Włosi przyjmowali Francuzów w wigilię bitwy pod Magentą<sup>580</sup>...
+
+**UA:** — Бачив кращу річ, пане… Під час кампанії був я в Італії й бачив, як італійці приймали французів напередодні битви під Маджентою<sup>580</sup>…
+
+---
+
+**PL:** — Pod Magentą?... W roku 1859?... — spytałem.
+
+**UA:** — Під Маджентою?… У році 1859?… — спитав я.
+
+---
+
+**PL:** — Pod Magentą, panie...
+
+**UA:** — Під Маджентою, пане…
+
+---
+
+**PL:** Popatrzyliśmy sobie w oczy z tym eks-obywatelem<sup>581</sup>, który nie mógł zdobyć się na wywabienie plam ze swego surduta. Popatrzyliśmy sobie — mówię — w oczy. Magenta... Rok 1859... Eh! Boże miłosierny...
+
+**UA:** Поглянули ми одне одному в очі з тим екс-громадянином<sup>581</sup>, який не міг здобутися на те, щоб вивести плями зі свого сюртука. Поглянули ми — кажу — одне одному в очі. Маджента… Рік 1859… Ех! Боже милосердний…
+
+---
+
+**PL:** — Powiedz pan — rzekłem — jak to was przyjmowali Włosi w wigilię bitwy pod Magentą?
+
+**UA:** — Скажіть, пане, — мовив я, — як це вас приймали італійці напередодні битви під Маджентою?
+
+---
+
+**PL:** Ubogi eks-obywatel siadł na wytartym fotelu i mówił:
+
+**UA:** Бідний екс-громадянин сів на потерте крісло й говорив:
+
+---
+
+**PL:** — W roku 1859, panie Rzecki... Zdaje mi się, że mam honor...
+
+**UA:** — У році 1859, пане Ржецький… Здається мені, що маю честь…
+
+---
+
+**PL:** — Tak, panie, jestem Rzecki, porucznik, panie, węgierskiej piechoty, panie...
+
+**UA:** — Так, пане, я Ржецький, поручик, пане, угорської піхоти, пане…
+
+---
+
+**PL:** Znowu popatrzyliśmy sobie w oczy. Eh! Boże miłosierny...
+
+**UA:** Знову поглянули ми одне одному в очі. Ех! Боже милосердний…
+
+---
+
+**PL:** — Mów pan dalej, panie szlachcicu — rzekłem ściskając go za rękę.
+
+**UA:** — Говоріть далі, пане шляхтичу, — сказав я, стискаючи йому руку.
+
+---
+
+**PL:** — W roku 1859 — prawił eks-obywatel — byłem o dziewiętnaście lat młodszy niż dziś i miałem z dziesięć tysięcy rubli rocznie... Na owe czasy! panie Rzecki... Co prawda, brało się nie tylko procent, ale i coś z kapitału. Więc, jak przyszło uwłaszczenie<sup>582</sup>...
+
+**UA:** — У році 1859, — повчав екс-громадянин, — був я на дев’ятнадцять років молодший, ніж сьогодні, і мав з десять тисяч карбованців на рік… На ті часи! пане Ржецький… Щоправда, бралося не лише проценти, але й дещо з капіталу. Тож як прийшло звільнення селян<sup>582</sup>…
+
+---
+
+**PL:** — No — rzekłem — chłopi są także ludźmi, panie...
+
+**UA:** — Ну, — сказав я, — селяни теж люди, пане…
+
+---
+
+**PL:** — Wirski — wtrącił rządca.
+
+**UA:** — Вірський, — укинув управитель.
+
+---
+
+**PL:** — Panie Wirski — rzekłem — chłopi...
+
+**UA:** — Пане Вірський, — сказав я, — селяни…
+
+---
+
+**PL:** — Wszystko mi jedno — przerwał — czym są chłopi. Dość że w roku 1859 miałem z dziesięć tysięcy rubli dochodu (łącznie z pożyczkami) i byłem we Włoszech. Ciekawy byłem, jak wygląda kraj, z którego wypędzają Szwaba...
+
+**UA:** — Мені все одно, — перервав він, — чим є селяни. Досить, що в році 1859 я мав з десять тисяч карбованців прибутку (разом із позичками) і був в Італії. Цікавий був, як виглядає край, з якого виганяють шваба…
+
+**PL:** A żem nie miał żony i dzieci, nie miałem dla kogo oszczędzać życia, więc przez amatorstwo jechałem z przednią strażą francuską... Szliśmy pod Magentę, panie Rzecki, choć nie wiedzieliśmy jeszcze, ani dokąd idziemy, ani kto z nas jutro zobaczy zachodzące słońce...
+
+**UA:** А що не мав я ні жінки, ні дітей, не мав для кого берегти життя, то з аматорства їхав із передньою вартою французів… Ішли ми під Мадженту, пане Ржецький, хоч і не знали ще ні куди йдемо, ні хто з нас завтра побачить захід сонця…
+
+**PL:** Pan zna to uczucie, kiedy człowiek niepewny jutra znajdzie się w kompanii ludzi również niepewnych jutra?...
+
+**UA:** Пан знає це почуття, коли чоловік, невпевнений у завтрашньому дні, опиниться в компанії людей, так само невпевнених у завтрашньому дні?…
+
+---
+
+**PL:** — Czy ja znam!... — Jedź pan dalej, panie Wirski...
+
+**UA:** — Чи я знаю!… — Їдьте далі, пане Вірський…
+
+---
+
+**PL:** — Niech mnie kaczki zdepczą — mówił ubogi eks-obywatel — że to są najpiękniejsze chwile w życiu. Jesteś młody, wesół, zdrów, nie masz na karku żony i dzieci, pijesz i śpiewasz, i co chwilę spoglądasz na jakąś ciemną ścianę, za którą ukrywa się nasze jutro... Hej!
+
+**UA:** — Нехай мене качки потопчуть, — говорив бідний екс-громадянин, — що це найкращі хвилини в житті. Ти молодий, веселий, здоровий, не маєш на карку жінки й дітей, п’єш і співаєш, і щохвилини поглядаєш на якусь темну стіну, за якою ховається наше завтра… Гей!
+
+**PL:** — wołasz — lejcie mi wina bo nie wiem, co jest za tą ciemną ścianą... Hej!... wina. Nawet pocałunków... panie Rzecki — szepnął nachylając się rządca.
+
+**UA:** — гукаєш — лляйте мені вина, бо не знаю, що є за тією темною стіною… Гей!… вина. Навіть поцілунків… пане Ржецький, — шепнув, нахиляючись, управитель.
+
+---
+
+**PL:** — Więc tedy, jakeście szli z przednią strażą pod Magentę?... — przerwałem mu.
+
+**UA:** — Тож виходило, як ішли ви з передньою вартою під Мадженту?… — перервав я йому.
+
+---
+
+**PL:** — Szliśmy z kirasjerami<sup>583</sup> — mówił rządca. — Pan znasz kirasjerów, panie Rzecki?... Na niebie świeci jedno słońce, ale w szwadronie kirasjerów jest sto słońc...
+
+**UA:** — Ішли ми з кірасирами<sup>583</sup>, — говорив управитель. — Пан знає кірасирів, пане Ржецький?… На небі світить одне сонце, але в ескадроні кірасирів є сто сонць…
+
+---
+
+**PL:** — Ciężka to jazda — wtrąciłem. — Piechota gryzie ją jak stalowy dziadek orzechy...
+
+**UA:** — Важка це кіннота, — вкинув я. — Піхота гризе її, як сталевий дідусь горіхи…
+
+---
+
+**PL:** — Zbliżamy się tedy, panie Rzecki, do jakiejś włoskiej mieściny, aż chłopi tamtejsi dają znać, że niedaleko stoi korpus austriacki. Szlemy<sup>584</sup> ich tedy do miasteczka z rozkazem, a właściwie z prośbą, ażeby mieszkańcy, gdy nas zobaczą, nie wydawali żadnych okrzyków...
+
+**UA:** — Наближаємося, отже, пане Ржецький, до якогось італійського містечка, аж тамошні селяни дають знати, що недалеко стоїть австрійський корпус. Шлемо їх, отже, до містечка з наказом, а власне, з проханням, щоб мешканці, як нас побачать, не видавали жодних окликів<sup>584</sup>…
+
+---
+
+**PL:** — Rozumie się — rzekłem. — Kiedy nieprzyjaciel w sąsiedztwie...
+
+**UA:** — Зрозуміло, — сказав я. — Коли ворог по сусідству…
+
+---
+
+**PL:** — W pół godziny — ciągnął rządca — jesteśmy w mieście. Ulica wąska, po obu stronach naród, ledwie można przejechać czwórkami, a w oknach i na balkonach kobiety... Jakie kobiety, panie Rzecki!... Każda ma w ręku bukiet z róż. Ci, którzy stoją na ulicy, ani pary z ust... bo Austriacy blisko...
+
+**UA:** — Через пів години — триває управитель, — ми у місті. Вулиця вузька, з обох боків людське море, а в вікнах і на балконах жінки… Які ж жінки, пане Ржецький!… Кожна має в руці букет з різ… Ті, що стоять на вулиці, не вимовляють ні слова… бо австрійська війська поруч…
+
+**PL:** Ale tamte, co na balkonach, skubią, panie, swoje bukiety i spoconych, pyłem okrytych kirasjerów zasypują listkami z róż jak śniegiem... Ach, panie Rzecki, gdybyś widział ten śnieg: amarantowy, różowy, biały, i te ręce, i te Włoszki...
+
+**UA:** Але ті, що на балконах, рвуть свої букети і кидають з різ, як снігом… Ах, пане Ржецький, якби ви побачили цей сніг: амарантовий, рожевий, білий, і такі руки, і такі італійські жінки…
+
+---
+
+**PL:** Pułkownik tylko dotykał ust i na prawo, i na lewo słał pocałunki. A tymczasem śnieg różanych listków zasypywał złote kirysy<sup>585</sup>, hełmy i parskające konie... Na domiar jakiś stary Włoch, z krzywym kijem i siwymi włosami do kołnierza, zastąpił drogę pułkownikowi.
+
+**UA:** Полковник лише чіпав уста і вправу, і вліво і вліво силав поцілунки. А тимчасово сніг із різ закривав золоті кираси<sup>585</sup>, шлеми і парські кони… На додаток якийсь старий італієць, з кривим палицею і сивими волосами до ворот, закрив дорогу полковнику.
+
+**PL:** Schwycił za szyję jego konia, pocałował go i krzyknąwszy: Eviva Italia!<sup>586</sup>, padł trupem na miejscu... — Taka była nasza wigilia przed Magenta!
+
+**UA:** Схопив за шию його коня, поцілував його і крикнувши: Eviva Italia!<sup>586</sup>, впав трупом на місці… — Така була наша попередня свята над Маджентою!
+
+---
+
+**PL:** To mówił eks-obywatel, a z oczu spływały mu łzy na poplamiony surdut.
+
+**UA:** То говорив екс-громадянин, а з очей лилися сльози на поцяткований сюртук.
+
+---
+
+**PL:** — Niech mnie diabli wezmą, panie Wirski! — zawołałem — jeżeli Stach nie odda panu darmo tego mieszkania.
+
+**UA:** — Нехай мене чорти взьмуть, пане Вірський! — закрикнув я, — якщо Стась не віддасть вам безкоштовно це помешкання.
+
+---
+
+**PL:** — Sto osiemdziesiąt rubli dopłacam! — szlochał rządca.
+
+**UA:** — Сто вісімдесят карбованців доплачу! — всхлипнув управитель.
+
+---
+
+**PL:** Obtarliśmy oczy.
+
+**UA:** Обтерли ми очі.
+
+---
+
+**PL:** — Panie — mówię — Magenta Magentą, a interes interesem. Może przedstawisz mnie pan kilku lokatorom.
+
+**UA:** — Пане, — промовляю я, — магенти Маджентою, а справа справа. Можливо, познайомите мене з деякими мешканцями.
+
+---
+
+**PL:** — Chodź pan — odpowiedział rządca zrywając się z obdartego fotelu. — Chodź pan, pokażę panu najosobliwszych...
+
+**UA:** — Ходімо, пане, — відповів управитель, стрибнувши з потертого крісла. — Ходімо, пане, покажу вам найособливіших…
+
+---
+
+**PL:** Wybiegł z saloniku i wtykając głowę do drzwi, zdaje mi się do kuchennych zawołał:
+
+**UA:** Вирвився з вітальні і вткнув голову в двері, наче до кухні закрикнув:
+
+---
+
+**PL:** — Maniu! ja wychodzę... A z tobą, Wicek, obrachujemy się wieczorem...
+
+**UA:** — Маню! я виходжу… А з тобою, Віцьку, розрахуємося ввечері…
+
+---
+
+**PL:** — Ja nie gospodarz, żeby się tatko ze mną rachował — odpowiedział mu dziecięcy głos.
+
+**UA:** — Я не господар, щоб тятко з мною рахувався — відповів дитячий голос.
+
+---
+
+**PL:** — Daruj mu pan — szepnąłem do rządcy.
+
+**UA:** — Вибачте його, пане, — шепнув я управителю.
+
+---
+
+**PL:** — Akurat!... — odparł. — Nie zasnąłby, gdyby nie dostał wałów. Dobry chłopak — mówił — sprytny chłopak, ale szelma!...
+
+**UA:** — Акуратно! — відповив. — Не заснув би, якби не отримав валових. Добрий хлопець — каже — розумний хлопець, але шельма!…
+
+---
+
+**PL:** Wyszliśmy z mieszkania i zatrzymaliśmy się przede drzwiami obok schodów. Rządca ostrożnie zapukał, a mnie wszystka krew uciekła z głowy do serca, a z serca do nóg. Może nawet z nóg uciekłaby do butów i gdzieś het! po schodach aż do bramy, gdyby nie odpowiedziano z wnętrza:
+
+**UA:** Вишли ми з помешкання і застережілись попереду дверей біля сходів. Управитель обережно клопочив, а вся моя кров зголови дішла до серця, а з серця до ног. Можливо й з ног берешеться до черевиків і десь далі по сходах, аж до брами, якби не відповили зсередини:
+
+---
+
+**PL:** — Proszę!...
+
+**UA:** — Прошу!...
+
+---
+
+**PL:** Wchodzimy.
+
+**UA:** Входимо.
+
+---
+
+**PL:** Trzy łóżka. Na jednym z książką w ręku i nogami opartymi o poręcz leży jakiś młody człowiek z czarnym zarostem i w studenckim mundurku; na dwu zaś innych łóżkach pościel wyglądała tak, jakby przez ten pokój przeleciał huragan i wszystko do góry nogami przewrócił.
+
+**UA:** Три ліжка. На одному з книжкою в руці й ногами, опертими до поручся, лежить якийсь молодий чоловік із чорною бородою й у студентському мундірі; на двох інших ліжках постільня виглядала так, ніби через цю кімнату пролітав ураган, і все завалено догори ногами.
+
+**PL:** Widzę też kufer, pustą walizkę tudzież mnóstwo książek leżących na półkach, na kufrze i na podłodze. Jest nareszcie kilka krzeseł giętych i zwyczajnych i niepoliturowany stół, na którym przyjrzawszy się uważniej spostrzegłem wymalowaną szachownicę i poprzewracane szachy.
+
+**UA:** Бачу теж сундук, порожню валізу та безліч книг, що лежать на полицях, на сундуку й на підлозі. Тут кілька гнутих і звичайних стільців й неполірованого столу, на якому при оглядку помітив вимальовану шахівну дошку й повалені шахи.
+
+---
+
+**PL:** W tej chwili mdło mi się zrobiło; obok szachów bowiem spostrzegłem dwie trupie główki: w jednej był tytuń, a w drugiej... cukier!...
+
+**UA:** Мені стало зле; біля шахів, звісно, помітив я дві трупні голівки: в одній був тютюн, а в другій... цукор!..
+
+---
+
+**PL:** — Czego to? — zapytał młody człowiek z czarnym zarostem nie podnosząc się z łóżka.
+
+**UA:** — Чого це? — запитав молодий чоловік із чорною бородою, не піднімаючись з ліжка.
+
+---
+
+**PL:** — Pan Rzecki, plenipotent<sup>587</sup> gospodarza... — odezwał się rządca wskazując na mnie.
+
+**UA:** — Пан Ржецький, повноважний<sup>587</sup> господаря... — підхопив управитель, вказуючи на мене.
+
+---
+
+**PL:** Młody człowiek oparł się na łokciu i bystro patrząc na mnie rzekł:
+
+**UA:** Молодий чоловік оперся на лікоть і, зважливо дивлячись на мене, мовив:
+
+---
+
+**PL:** — Gospodarza?... W tej chwili ja tu jestem gospodarzem i wcale sobie nie przypominam, ażebym mianował plenipotentem tego pana...
+
+**UA:** — Господаря?... У цю мить я тут господар, і зовсім не пригадую, щоб я призначав повноважним цього пана...
+
+---
+
+**PL:** Odpowiedź była tak uderzająco prosta, że obaj z Wirskim osłupieliśmy. Młody człowiek tymczasem ociężale podniósł się z łóżka i bez zbytniego pośpiechu począł zapinać spodnie i kamizelkę.
+
+**UA:** Відповідь була така вражаюче проста, що ми обидва з Вірським здивувалися. Молодий чоловік тим часом поволі піднявся з ліжка і без особливої поспішності почав защібати штани й камізельку.
+
+**PL:** Pomimo całej systematyczności, z jaką oddawał się temu zajęciu, jestem pewny, że przynajmniej połowa guzików jego garderoby pozostała nie zapiętą.
+
+**UA:** Попри всю систематичність, з якою він віддавався цьому заняттю, я певен, що принаймні половина ґудзиків його одягу залишилася розстегнтою.
+
+---
+
+**PL:** — Aaa!... — ziewnął.
+
+**UA:** — Ааа!... — позіхнув.
+
+---
+
+**PL:** — Niech panowie siadają — rzekł manewrując ręką w taki sposób, że nie wiedziałem, czy każe nam umieścić się w walizie czy na podłodze.
+
+**UA:** — Нехай панове сідають, — мовив, маніпулюючи рукою так, що я не знав, чи не велеть нам розміститися у валізі, чи на підлозі.
+
+---
+
+**PL:** — Gorąco, panie Wirski — dodał — prawda?... Aaa!...
+
+**UA:** — Гаряче, пане Вірський, — додав, — правда?... Ааа!...
+
+---
+
+**PL:** — Właśnie sąsiad z przeciwka skarży się na panów dobrodziejów!... — odparł z uśmiechem rządca.
+
+**UA:** — Саме сусід з протилежної сторони скаржиться на панів добродіїв!... — відповів з усмішкою управитель.
+
+---
+
+**PL:** — O cóż to?
+
+**UA:** — О чого то?
+
+---
+
+**PL:** — Że panowie chodzą nago po pokoju...
+
+**UA:** — Що панове ходять голі по кімнаті...
+
+---
+
+**PL:** Młody człowiek oburzył się.
+
+**UA:** Молодий чоловік обурся.
+
+---
+
+**PL:** — Zwariował stary czy co?... On może chce, żebyśmy się ubierali w futra na taką spiekotę?... Bezczelność! słowo honoru daję...
+
+**UA:** — Старий з глузду зсунувся, чи що?... Він, мабуть, хоче, щоб ми вбиралися в кожухи на таку спеку?... Безчесність! слово честі даю...
+
+---
+
+**PL:** — No — mówił rządca — niech panowie raczą uwzględnić, że on ma dorosłą córkę.
+
+**UA:** — Ні, — мовив управитель, — нехай панове ласкаво врахують, що він має дорослу доньку.
+
+---
+
+**PL:** — A cóż mnie do tego?... Ja nie jestem jej ojcem. Stary błazen! słowo honoru, i przy tym łże, bo nago nie chodzimy.
+
+**UA:** — А мені що до того?... Я ж не її батько. Старий дурень! слово честі, а крім того бреше, бо не ходять голі.
+
+---
+
+**PL:** — Sam widziałem... — wtrącił rządca.
+
+**UA:** — Сам бачив... — укинув управитель.
+
+---
+
+**PL:** — Słowo honoru, kłamstwo! — zawołał młody człowiek rumieniąc się z gniewu. — Prawda, że Maleski chodzi bez koszuli, ale w majtkach, a Patkiewicz chodzi bez majtek, lecz za to w koszuli. Panna Leokadia więc widzi cały garnitur...
+
+**UA:** — Слово честі, неправда! — закричав молодий чоловік, червоніючи від гніву. — Правда, Малескі ходить без сорочки, але в трусах, а Паткєвич ходить без трусів, зате в сорочці. Пані Леокардія бачить увесь комплект...
+
+---
+
+**PL:** — Tak, i musi zasłaniać wszystkie okna — odparł rządca.
+
+**UA:** — Так, і мусить завішувати всі вікна, — відповів управитель.
+
+---
+
+**PL:** — To stary zasłania, nie ona — odparł student machając ręką. — Ona wygląda przez szpary między firanką a oknem. Zresztą, proszę pana: jeżeli pannie Leokadii wolno drzeć się na całe podwórko, to znowu Maleski i Patkiewicz mają prawo chodzić po swoim pokoju, jak im się podoba.
+
+**UA:** — То старий завішує, а не вона, — відповів студент, махнувши рукою. — Вона виглядає крізь шпарину між фіранкою й вікном. Зрештою, прошу пана: якщо пані Леокардії дозволяють кричати на весь двір, то Малескі й Паткєвич мають право ходити по своїй кімнаті, як їм заманеться.
+
+---
+
+**PL:** Mówiąc to młody człowiek spacerował wielkimi krokami. Ile razy zaś stanął do nas tyłem, rządca mrugał na mnie i robił miny oznaczające wielką desperację. Po chwili milczenia odezwał się:
+
+**UA:** Мовлячи це, молодий чоловік ходив великими кроками. Щоразу ж, коли ставав до нас спиною, управитель підморгував мені й робив міни, що означали великий розпач. По хвилі мовчання озвався:
+
+---
+
+**PL:** — Panowie dobrodzieje winni nam są za cztery miesiące...
+
+**UA:** — Панове добродії винні нам за чотири місяці...
+
+---
+
+**PL:** — O, znowu swoje!... — wykrzyknął młody człowiek wsadzając ręce w kieszenie. — Ileż razy jeszcze będę musiał powtarzać panu, ażeby pan o tych głupstwach nie gadał ze mną, tylko albo z Patkiewiczem, albo z Maleskim?...
+
+**UA:** — О, знову своє!... — вигукнув молодий чоловік, засовуючи руки в кишені. — Скільки ще разів муситиму повторювати пану, щоб пан про ці дурниці не теревенив зі мною, а або з Паткєвичем, або з Малескі?...
+
+**PL:** To przecież tak łatwo pamiętać: Maleski płaci za miesiące parzyste, luty, kwiecień, czerwiec, a Patkiewicz za nieparzyste: marzec, maj, lipiec...
+
+**UA:** Це ж так легко запам’ятати: Малескі платить за парні місяці — лютий, квітень, червень, а Паткєвич за непарні: березень, травень, липень...
+
+---
+
+**PL:** — Ależ nikt z panów nigdy nie płaci! — zawołał zniecierpliwiony rządca.
+
+**UA:** — Але ж ніхто з панів ніколи не платить! — вигукнув нетерплячий управитель.
+
+---
+
+**PL:** — A któż winien, że pan nie przychodzi we właściwej porze?!... — wrzasnął młody człowiek wytrząsając rękoma. — Sto razy słyszałeś pan, że do Maleskiego należą miesiące parzyste, a do Patkiewicza nieparzyste...
+
+**UA:** — А хто винен, що пан не прийде в відповідну пору?!... — заверещав молодий чоловік, розмахуючи руками. — Сто разів чули ви, що до Малескі належать парні місяці, а до Паткєвича — непарні...
+
+---
+
+**PL:** — A do pana dobrodzieja?...
+
+**UA:** — А до пана добродія?...
+
+---
+
+**PL:** — A do mnie, łaskawy panie, żadne — wołał młody człowiek grożąc nam pod nosami — bo ja z zasady nie płacę za komorne. Komu mam płacić?... Za co?... Cha! cha! dobrzy sobie...
+
+**UA:** — А до мене, ласкавий пане, жодні — кричав молодий чоловік, тицяючи нам під ніс, — бо я з принципу не плачу за квартиру. Кому я маю платити?... За що?... Ха! ха! гарні собі...
+
+---
+
+**PL:** Począł chodzić jeszcze prędzej po pokoju śmiejąc się i gniewając. Nareszcie zaczął świstać i wyglądać przez okno, hardo odwróciwszy się tyłem do nas...
+
+**UA:** Почав ходити ще швидше по кімнаті, сміючись і гніваючись. Нарешті почав свистати й визирати у вікно, гордовито обернувшись до нас спиною...
+
+---
+
+**PL:** Mnie już zabrakło cierpliwości.
+
+**UA:** Мені вже урвався терпець.
+
+---
+
+**PL:** — Pozwoli pan zrobić uwagę — odezwałem się — że takie nieszanowanie umowy jest dość oryginalne... Ktoś daje panu mieszkanie, a pan uważa za stosowne nie płacić mu...
+
+**UA:** — Дозвольте зробити зауваження, — озвався я, — що таке нешанування угоди доволі оригінальне... Хтось дає вам помешкання, а пан уважає за доцільне не платити йому...
+
+---
+
+**PL:** — Kto mi daje mieszkanie?!... — wrzasnął młody człowiek siadając na oknie i huśtając się w tył, jakby miał zamiar rzucić się z trzeciego piętra. — Ja sam zająłem to mieszkanie i będę w nim dopóty, dopóki mnie nie wyrzucą. Umowy!... paradni są z tymi umowami...
+
+**UA:** — Хто мені дає помешкання?!... — заверещав молодий чоловік, сідаючи на вікно й гойдаючись назад, наче збираючись кинутися з третього поверху. — Я сам зайняв це помешкання і буду в ньому, доки мене не викинуть. Угоди!... славні ті угоди...
+
+**PL:** Jeżeli społeczeństwo chce, ażebym mu płacił za mieszkanie, to niechaj samo płaci mi tyle za korepetycje, żeby z nich wystarczyło na komorne... Paradni są!... Ja za trzy godziny lekcyj co dzień mam piętnaście rubli na miesiąc, za jedzenie biorą ode mnie dziewięć rubli, za pranie i usługę trzy...
+
+**UA:** Якщо суспільство хоче, щоб я платив йому за помешкання, то нехай само платить мені стільки за репетиторство, щоб вистачило на квартиру... Дивні люди!... Я за три години уроків щодня маю п’ятнадцять рублів на місяць, за їжу беруть із мене дев’ять рублів, за прання й послуги — три...
+
+**PL:** A mundur, a wpis?... I jeszcze chcą, żebym za mieszkanie płacił. Wyrzućcie mnie na ulicę — mówił zirytowany — niech mnie złapie hycel i da pałą w łeb... Do tego macie prawo, ale nie do uwag i wymówek...
+
+**UA:** А мундир, а навчання?... І ще хочуть, щоб я платив за квартиру. Викиньте мене на вулицю — сказав він роздратовано, — нехай мене схопить ловчий і дасть палицею по голові... На це маєте право, але не на зауваження й докори...
+
+---
+
+**PL:** — Nie rozumiem pańskiego uniesienia — rzekłem spokojnie.
+
+**UA:** — Не розумію вашого обурення, — спокійно сказав я.
+
+---
+
+**PL:** — Mam się czego unosić! — odparł młody człowiek huśtając się coraz mocniej w stronę podwórka. — Społeczeństwo, jeżeli nie zabiło mnie przy urodzeniu, jeżeli każe mi się uczyć i zdawać kilkanaście egzaminów, zobowiązało się tym samym, że mi da pracę ubezpieczającą mój byt...
+
+**UA:** — Є чого обурюватися! — відповів молодий чоловік, гойдаючись дедалі сильніше в бік подвір’я. — Суспільство, якщо не вбило мене при народженні, якщо змушує вчитися й складати кільканадцять іспитів, тим самим зобов’язалося дати мені роботу, яка забезпечить моє існування...
+
+**PL:** Tymczasem albo nie daje mi pracy, albo oszukuje mnie na wynagrodzeniu... Jeżeli więc społeczność względem mnie nie dotrzymuje umowy, z jakiej racji żąda, abym ja jej dotrzymywał względem niego. Zresztą co tu gadać, z zasady nie płacę komornego, i basta.
+
+**UA:** Тим часом або не дає мені роботи, або обманює з оплатою... Якщо ж суспільство не дотримується угоди зі мною, то з якої рації вимагає, щоб я дотримувався її щодо нього? Та що тут говорити: з принципу не плачу за квартиру, і край.
+
+**PL:** Tym bardziej że obecny właściciel domu nie budował tego domu; nie wypalał cegieł, nie rozrabiał wapna, nie murował, nie narażał się na skręcenie karku. Przyszedł z pieniędzmi, może ukradzionymi, zapłacił innemu, który może także okradł kogo, i na tej zasadzie chce mnie zrobić swoim niewolnikiem.
+
+**UA:** Тим паче, що нинішній власник дому його не будував: не випалював цегли, не місив вапна, не клав мурів, не ризикував зламати собі карк. Прийшов із грішми, може, краденими, заплатив іншому, який, може, теж когось обікрав, і на цій підставі хоче зробити мене своїм невільником.
+
+**PL:** Kpiny ze zdrowego rozsądku!
+
+**UA:** Насмішка зі здорового глузду!
+
+---
+
+**PL:** — Pan Wokulski — rzekłem powstając z krzesła — nie okradł nikogo... Dorobił się majątku pracą i oszczędnością...
+
+**UA:** — Пан Вокульський, — сказав я, підводячись зі стільця, — нікого не обікрав... Він нажив статок працею й ощадливістю...
+
+---
+
+**PL:** — Daj pan spokój! — przerwał młody człowiek. — Mój ojciec był zdolnym lekarzem, pracował dniem i nocą, miał niby to dobre zarobki i oszczędził... raptem trzysta rubli na rok!
+
+**UA:** — Та годі вам! — перебив молодий чоловік. — Мій батько був здібним лікарем, працював день і ніч, мав нібито добрий заробіток і заощадив... аж триста рублів на рік!
+
+**PL:** A że wasza kamienica kosztuje dziewięćdziesiąt tysięcy rubli, więc na kupienie jej za cenę uczciwej pracy mój ojciec musiałby żyć i zapisywać recepty przez trzysta lat... Nie uwierzę zaś, ażeby ten nowy właściciel pracował od trzystu lat...
+
+**UA:** А якщо ваша кам’яниця коштує дев’яносто тисяч рублів, то, щоб купити її чесною працею, мій батько мусив би триста років жити й виписувати рецепти... А я не повірю, щоб новий власник працював триста років...
+
+---
+
+**PL:** W głowie zaczęło mi krążyć od tych wywodów; młody człowiek zaś mówił dalej:
+
+**UA:** Від цих міркувань у мене почало паморочитися в голові, а молодий чоловік провадив далі:
+
+---
+
+**PL:** — Możecie nas wypędzić, owszem!... Wtedy dopiero przekonacie się, coście stracili.
+
+**UA:** — Можете нас вигнати, будь ласка!... Тоді й побачите, що втратили.
+
+**PL:** Wszystkie praczki, wszystkie kucharki z tej kamienicy stracą humor, a pani Krzeszowska już bez przeszkody zacznie śledzić swoich sąsiadów, rachować każdego gościa, który przychodzi do nich z wizytą, i każde ziarno kaszy, które sypią do garnka... Owszem, wypędźcie nas!...
+
+**UA:** Усі пралі, усі куховарки з цієї кам’яниці втратять добрий настрій, а пані Кжешовська вже без перешкод почне стежити за сусідами, рахувати кожного гостя, який до них приходить, і кожну крупинку каші, яку вони сиплють у горщик... Авжеж, виженіть нас!...
+
+**PL:** Wtedy dopiero panna Leokadia zacznie wyśpiewywać swoje gamy i wokalizy<sup>588</sup> z rana sopranem, a po południu kontraltem... I diabli wezmą dom, w którym my jedni jako tako utrzymujemy porządek!
+
+**UA:** Отоді панна Леокадія почне співати гами й вокалізи<sup>588</sup> зранку сопрано, а по обіді контральто... І хай чорти забирають дім, у якому тільки ми сяк-так підтримуємо лад!
+
+---
+
+**PL:** Zabraliśmy się do odejścia.
+
+**UA:** Ми зібралися йти.
+
+---
+
+**PL:** — Więc pan stanowczo nie zapłaci komornego? — spytałem.
+
+**UA:** — То пан рішуче не платитиме за квартиру? — спитав я.
+
+---
+
+**PL:** — Ani myślę.
+
+**UA:** — Навіть не думаю.
+
+---
+
+**PL:** — Może choć od października zacznie pan płacić?
+
+**UA:** — Може, хоч від жовтня почнете платити?
+
+---
+
+**PL:** — Nie, panie. Niedługo już będę żył, więc pragnę przeprowadzić choćby jedną zasadę: jeżeli społeczność chce, ażeby jednostki szanowały umowę względem niej, niechaj sama wykonywa ją względem jednostek.
+
+**UA:** — Ні, пане. Жити мені лишилося недовго, тож хочу втілити бодай один принцип: якщо суспільство хоче, щоб окремі люди дотримувалися угоди з ним, нехай саме виконує її щодо окремих людей.
+
+**PL:** Jeżeli ja mam komuś płacić za komorne, niech inni tyle płacą mi za lekcje, żeby mi na komorne wystarczyło. Rozumie pan?...
+
+**UA:** Якщо я маю комусь платити за квартиру, то нехай інші платять мені за уроки стільки, щоб мені вистачало на квартирну плату. Розумієте?...
+
+---
+
+**PL:** — Nie wszystko, panie — odparłem.
+
+**UA:** — Не все, пане, — відповів я.
+
+---
+
+**PL:** — Nic dziwnego — rzekł młody człowiek. — Na starość mózg więdnie i nie jest zdolny przyjmować nowych prawd...
+
+**UA:** — Не дивно, — сказав молодий чоловік. — На старість мозок в’яне й уже не здатен сприймати нові істини...
+
+---
+
+**PL:** Ukłoniliśmy się sobie nawzajem i wyszliśmy obaj z rządcą. Młody człowiek zamknął za nami drzwi, lecz za chwilę wybiegł na schody i zawołał:
+
+**UA:** Ми вклонилися одне одному й разом з управителем вийшли. Молодий чоловік зачинив за нами двері, але за мить вибіг на сходи й гукнув:
+
+---
+
+**PL:** — A niechaj komornik przyprowadzi ze sobą dwu stójkowych<sup>589</sup>, bo mnie będą musieli wynosić z mieszkania...
+
+**UA:** — Нехай судовий виконавець приведе із собою двох поліцаїв<sup>589</sup>, бо мене доведеться виносити з помешкання...
+
+---
+
+**PL:** — Owszem, panie! — odpowiedziałem mu z grzecznym ukłonem, myśląc w głębi duszy, że nie godzi się jednak wyrzucać takiego oryginała.
+
+**UA:** — Авжеж, пане! — відповів я, чемно вклонившись і подумавши в глибині душі, що такого дивака все-таки не годиться виганяти.
+
+---
+
+**PL:** Kiedy szczególny młodzieniec ostatecznie cofnął się do pokoju i zamknął drzwi na klucz dając tym sposobem do zrozumienia, że konferencję z nami uważa za skończoną, zatrzymałem się w połowie schodów i rzekłem do rządcy:
+
+**UA:** Коли дивний юнак нарешті повернувся до кімнати й замкнув двері на ключ, даючи зрозуміти, що вважає нашу розмову завершеною, я зупинився на середині сходів і сказав управителеві:
+
+---
+
+**PL:** — Widzę, macie tu kolorowe szyby, co?
+
+**UA:** — Бачу, у вас тут кольорові шибки, так?
+
+---
+
+**PL:** — O, bardzo kolorowe.
+
+**UA:** — О, дуже кольорові.
+
+---
+
+**PL:** — Ale są zakurzone...
+
+**UA:** — Але запилені...
+
+---
+
+**PL:** — O, bardzo zakurzone — odparł rządca.
+
+**UA:** — О, дуже запилені, — відповів управитель.
+
+---
+
+**PL:** — I myślę — dodałem — że ten młody człowiek pod względem niepłacenia komornego dotrzyma słowa, co?
+
+**UA:** — І гадаю, — додав я, — що цей молодий чоловік дотримає слова щодо несплати за квартиру, так?
+
+---
+
+**PL:** — Panie — zawołał rządca — on to nic. On mówi, że nie zapłaci, no i nie płaci; ale tamci dwaj nic nie mówią i także nie płacą. To są, panie Rzecki, nadzwyczajni lokatorowie!... Oni jedni nigdy nie robią mi zawodu.
+
+**UA:** — Пане, — вигукнув управитель, — він — дрібниця. Каже, що не заплатить, і не платить; а ті двоє нічого не кажуть і теж не платять. Це, пане Ржецький, надзвичайні мешканці!... Вони єдині ніколи мене не підводять.
+
+---
+
+**PL:** Mimo woli, i nie wiem nawet dlaczego, pokręciłem głową, choć przeczuwam, że gdybym był właścicielem podobnego domu, kręciłbym głową cały dzień.
+
+**UA:** Мимоволі, і сам не знаю чому, я похитав головою, хоча передчуваю: якби був власником такого дому, то хитав би головою цілий день.
+
+---
+
+**PL:** — Więc tu nikt nie płaci, a przynajmniej nie płaci regularnie? — zapytałem eks-obywatela.
+
+**UA:** — То тут ніхто не платить, або принаймні не платить регулярно? — запитав я екс-поміщика.
+
+---
+
+**PL:** — I nie ma się czemu dziwić — odparł pan Wirski. — W domu, z którego od tylu lat komorne pobierają wierzyciele, najuczciwszy lokator musi się znarowić<sup>590</sup>. Pomimo to mamy kilku bardzo punktualnych, na przykład baronowa Krzeszowska...
+
+**UA:** — І нема чому дивуватися, — відповів пан Вірський. — У домі, де вже стільки років кредитори збирають квартирну плату, навіть найчесніший мешканець мусить зіпсуватися<sup>590</sup>. Попри це, маємо кількох дуже пунктуальних, наприклад баронесу Кжешовську...
+
+---
+
+**PL:** — Co?!... — zawołałem. — Ach, prawda, że baronowa tu mieszka... Chciała nawet kupić ten dom...
+
+**UA:** — Що?!... — вигукнув я. — А й справді, баронеса тут мешкає... Вона навіть хотіла купити цей дім...
+
+---
+
+**PL:** — I kupi go — szepnął rządca — tylko, panowie, trzymajcie się ostro!... Kupi go, choćby miała oddać cały swój majątek... A niemały to majątek, choć pan baron mocno go nadszarpnął...
+
+**UA:** — І купить, — прошепотів управитель. — Тільки, панове, тримайтеся міцно!... Купить, хай навіть доведеться віддати весь свій маєток... А маєток чималий, хоч пан барон добряче його пошматував...
+
+---
+
+**PL:** Wciąż stałem na połowie schodów, pod oknem z żółtymi, czerwonymi i niebieskimi szybami. Wciąż stałem zapatrzony we wspomnienie pani baronowej, którą widziałem zaledwie kilka razy w życiu i zawsze przedstawiała mi się jako osoba bardzo ekscentryczna.
+
+**UA:** Я й далі стояв на сходовому майданчику, під вікном із жовтими, червоними й блакитними шибками. Стояв, заглиблений у спогад про пані баронесу, яку бачив у житті лише кілька разів і яка завжди видавалася мені дуже ексцентричною особою.
+
+**PL:** Umie być pobożną i zawziętą, pokorną i ordynaryjną...
+
+**UA:** Уміє бути побожною й запеклою, покірною й грубою...
+
+---
+
+**PL:** — Cóż to za kobieta, panie Wirski? — spytałem. — To niezwykła kobieta, panie...
+
+**UA:** — Що це за жінка, пане Вірський? — спитав я. — Незвичайна жінка, пане...
+
+---
+
+**PL:** — Jak wszystkie histeryczki — mruknął eks-obywatel. — Straciła córeczkę, mąż ją porzucił... Same awantury!...
+
+**UA:** — Як усі істерички, — пробурмотів екс-поміщик. — Донечку втратила, чоловік покинув... Самі скандали!...
+
+---
+
+**PL:** — Pójdziemy do niej, panie — rzekłem schodząc na drugie piętro. Czułem w sobie takie męstwo, że baronowa nie tylko nie trwożyła mnie, lecz prawie pociągała.
+
+**UA:** — Ходімо до неї, пане, — сказав я, спускаючись на другий поверх. Почувався таким хоробрим, що баронеса не лише не лякала мене, а майже вабила.
+
+---
+
+**PL:** Ale kiedy stanęliśmy pode drzwiami i rządca zadzwonił, doznałem skurczu w łydkach. Nie mogłem ruszyć się z miejsca i tylko dlatego nie uciekłem. W jednej chwili opuściła mnie odwaga, przypomniałem sobie sceny z licytacji...
+
+**UA:** Та коли ми стали перед дверима й управитель подзвонив, у мене звело литки. Не міг зрушити з місця і лише тому не втік. За мить уся відвага мене покинула, я згадав сцени з торгів...
+
+---
+
+**PL:** Obrócił się klucz w zamku, stuknęła zasuwka i w uchylonych drzwiach ukazała się twarz niestarej jeszcze dziewczyny, ubranej w biały czepeczek.
+
+**UA:** У замку повернувся ключ, дзенькнула засувка, і в прочинених дверях з’явилося обличчя ще не старої дівчини, одягненої в білий чепчик.
+
+---
+
+**PL:** — A kto to? — spytała dziewczyna.
+
+**UA:** — А хто там? — спитала дівчина.
+
+---
+
+**PL:** — Ja, rządca.
+
+**UA:** — Я, управитель.
+
+---
+
+**PL:** — Czego pan chce?
+
+**UA:** — Чого пан хоче?
+
+---
+
+**PL:** — Przychodzę z pełnomocnikiem właściciela.
+
+**UA:** — Приходжу з повіреним власника.
+
+---
+
+**PL:** — A ten pan czego chce?
+
+**UA:** — А цей пан чого хоче?
+
+---
+
+**PL:** — Ten pan właśnie jest pełnomocnikiem.
+
+**UA:** — Цей пан і є повіреним.
+
+---
+
+**PL:** — Więc jak mam powiedzieć?...
+
+**UA:** — То як же мені сказати?...
+
+---
+
+**PL:** — Powiedz pani — odparł już zirytowany rządca — że przychodzimy pogadać o lokalu...
+
+**UA:** — Скажіть пані, — відповів уже роздратований управитель, — що ми прийшли поговорити про помешкання...
+
+---
+
+**PL:** — Aha!
+
+**UA:** — Ага!
+
+---
+
+**PL:** Zamknęła drzwi i odeszła. Upłynęło ze dwie albo trzy minuty, zanim wróciła na powrót i po otworzeniu wielu zamków wprowadziła nas do pustego salonu.
+
+**UA:** Вона зачинила двері й відійшла. Минуло дві чи три хвилини, перш ніж вона повернулася й, відімкнувши безліч замків, провела нас до порожньої вітальні.
+
+---
+
+**PL:** Dziwny był widok tego salonu. Meble okryte ciemnopopielatymi pokrowcami, to samo fortepian, to samo pająk zawieszony u sufitu; nawet stojące w kątach kolumny z posążkami miały także popielate koszule.
+
+**UA:** Дивний вигляд мала ця вітальня. Меблі вкриті темно-сірими чохлами, так само фортепіано, так само люстра, підвішена до стелі; навіть колони з фігурками, що стояли по кутках, були вкриті попелястими чохлами.
+
+**PL:** W ogóle robił on wrażenie pokoju, którego właściciel wyjechał zostawiwszy tylko służbę bardzo dbałą o porządek domu.
+
+**UA:** Загалом кімната справляла враження помешкання, господар якого кудись виїхав, залишивши тільки служницю, що дбала про лад у домі.
+
+---
+
+**PL:** Za drzwiami było słychać rozmowę na głos kobiecy i męski. Kobiecy należał do baronowej; męski znałem dobrze, ale nie mogłem sobie przypomnieć, czyj jest.
+
+**UA:** За дверима було чути розмову жіночим і чоловічим голосами. Жіночий належав баронесі; чоловічий я добре знав, але не міг пригадати, кому саме.
+
+---
+
+**PL:** — Przysięgłabym — mówiła baronowa — że utrzymuje z nią stosunki. Onegdaj przysłał jej przez posłańca bukiet...
+
+**UA:** — Присягнулася б, — казала баронеса, — що він має з нею стосунки. Позавчора послав їй букет із посильним...
+
+---
+
+**PL:** — Hum!... Hum!... — wtrącił głos męski.
+
+**UA:** — Гм!... Гм!... — озвався чоловічий голос.
+
+---
+
+**PL:** — Bukiet, który ta obrzydliwa kokietka, dla oszukania mnie, kazała natychmiast wyrzucić za okno...
+
+**UA:** — Букет, який ця огидна кокетка, щоб обдурити мене, звеліла негайно викинути у вікно...
+
+---
+
+**PL:** — Przecież baron na wsi... tak daleko od Warszawy... — odparł mężczyzna.
+
+**UA:** — Але ж барон у селі... так далеко від Варшави... — відповів чоловік.
+
+---
+
+**PL:** — Ale ma tu przyjaciół — zawołała baronowa. — I gdybym nie znała pana, przypuszczałabym, że pośredniczysz mu w tych bezeceństwach.
+
+**UA:** — Та в нього тут є приятелі, — вигукнула баронеса. — І якби я вас не знала, то подумала б, що ви йому допомагаєте в цих неподобствах.
+
+---
+
+**PL:** — Ależ, pani!... — zaprotestował głos męski. I w tej samej chwili rozległy się dwa pocałunki, sądzę, że w rękę.
+
+**UA:** — Але ж, пані!... — запротестував чоловічий голос. І тієї ж миті пролунало два поцілунки, мабуть, у руку.
+
+---
+
+**PL:** — No, no, panie Maruszewicz, bez czułości!... Znam ja was. Obsypujecie pieszczotami kobietę, dopóki wam nie zaufa, a potem trwonicie jej majątek i żądacie rozwodu...
+
+**UA:** — Ну-ну, пане Марушевичу, без ніжностей!... Знаю я вас. Ви засипаєте жінку пестощами, поки вона вам не довіриться, а потім розтринькуєте її маєток і вимагаєте розлучення...
+
+---
+
+**PL:** „Więc to Maruszewicz — pomyślałem. — Ładna para...”
+
+**UA:** «То це Марушевич, — подумав я. — Гарна парочка...»
+
+---
+
+**PL:** — Ja jestem zupełnie inny — odparł ciszej męski głos za drzwiami i znowu rozległy się dwa pocałunki, z pewnością w rękę.
+
+**UA:** — Я зовсім не такий, — тихіше відповів за дверима чоловічий голос, і знову пролунали два поцілунки, напевно, в руку.
+
+---
+
+**PL:** Spojrzałem na eks-obywatela. Podniósł oczy do sufitu, a ramiona prawie do wysokości uszu.
+
+**UA:** Я глянув на екс-поміщика. Він звів очі до стелі, а плечі підняв майже до вух.
+
+---
+
+**PL:** — Frant<sup>591</sup>!... — szepnął wskazując na drzwi.
+
+**UA:** — Пройдисвіт<sup>591</sup>!... — прошепотів, показуючи на двері.
+
+---
+
+**PL:** — Znasz go pan?...
+
+**UA:** — Ви його знаєте?...
+
+---
+
+**PL:** — Bah!...
+
+**UA:** — Ба!...
+
+---
+
+**PL:** — Więc — mówiła baronowa w drugim pokoju — niechże pan zaniesie do Św. Krzyża<sup>592</sup> te dziewięć rubli na trzy wotywy<sup>593</sup>, na intencję, ażeby Bóg go upamiętał... Nie — dodała po chwili nieco zmienionym głosem.
+
+**UA:** — Отже, — говорила баронеса в другій кімнаті, — нехай пан віднесе до костелу Святого Хреста<sup>592</sup> ті дев’ять рублів на три меси<sup>593</sup>, щоб Бог напоумив його... Ні, — додала за мить трохи зміненим голосом.
+
+**PL:** — Niech będzie jedna wotywa za niego, a dwie za duszę mojej nieszczęśliwej dzieweczki.
+
+**UA:** — Нехай буде одна меса за нього, а дві — за душу моєї нещасної дівчинки.
+
+---
+
+**PL:** Przerwało jej ciche szlochanie.
+
+**UA:** Її слова перервав тихий схлип.
+
+---
+
+**PL:** — Niechże się pani uspokoi!... — łagodnie reflektował<sup>594</sup> ją Maruszewicz.
+
+**UA:** — Заспокойтеся, пані!... — лагідно втішав<sup>594</sup> її Марушевич.
+
+---
+
+**PL:** — Idź pan już, idź... — odparła.
+
+**UA:** — Ідіть уже, ідіть... — відповіла вона.
+
+---
+
+**PL:** Nagle otworzyły się drzwi salonu i jak wryty stanął na progu Maruszewicz, za którym ujrzałem żółtawą twarz i zaczerwienione oczy pani baronowej. Rządca i ja podnieśliśmy się z krzeseł.
+
+**UA:** Раптом двері вітальні відчинилися, і на порозі мов укопаний став Марушевич; за ним я побачив жовтувате обличчя й почервонілі очі пані баронеси. Ми з управителем підвелися зі стільців.
+
+**PL:** Maruszewicz cofnął się w głąb drugiego pokoju i widocznie wyszedł innymi drzwiami, a pani baronowa zawołała gniewnie:
+
+**UA:** Марушевич відступив углиб другої кімнати й, очевидно, вийшов іншими дверима, а пані баронеса гнівно гукнула:
+
+---
+
+**PL:** — Marysia!... Marysia!...
+
+**UA:** — Марисю!... Марисю!...
+
+---
+
+**PL:** Wbiegła dziewczyna w białym, jak wyżej, czepeczku, w ciemnej sukni i białym fartuchu. W ubraniu tym wyglądałaby na dozorczynię chorych, gdyby jej oczy nie rzucały za wiele iskier.
+
+**UA:** Убігла дівчина в такому самому білому чепчику, як і раніше, у темній сукні й білому фартусі. В такому вбранні вона скидалася б на доглядальницю, якби в її очах не було стільки іскор.
+
+---
+
+**PL:** — Jak mogłaś wprowadzić tu tych panów? — zapytała ją baronowa.
+
+**UA:** — Як ти могла впустити сюди цих панів? — спитала її баронеса.
+
+---
+
+**PL:** — Pani przecie kazała prosić...
+
+**UA:** — Та пані ж веліла запросити...
+
+---
+
+**PL:** — Głupia... precz!... — syknęła baronowa. Następnie zwróciła się do nas:
+
+**UA:** — Дурепо... геть!... — прошипіла баронеса. Потім обернулася до нас:
+
+---
+
+**PL:** — Czego pan chce, panie Wirski?
+
+**UA:** — Чого вам треба, пане Вірський?
+
+---
+
+**PL:** — Pan Rzecki jest plenipotentem właściciela domu — odparł rządca.
+
+**UA:** — Пан Ржецький — повірений власника дому, — відповів управитель.
+
+---
+
+**PL:** — A, a!... To dobrze... — mówiła baronowa, powoli wchodząc do salonu i nie prosząc nas, żebyśmy usiedli. Rysopis tej damy: czarna suknia, żółtawa twarz, sinawe usta, zaczerwienione z płaczu oczy i włosy gładko uczesane. Skrzyżowała ręce na piersiach jak Napoleon I i patrząc na mnie rzekła:
+
+**UA:** — А, а!... Добре... — промовила баронеса, поволі входячи до вітальні й не запрошуючи нас сісти. Портрет цієї дами: чорна сукня, жовтувате обличчя, синюваті губи, почервонілі від сліз очі й гладко зачесане волосся. Вона схрестила руки на грудях, наче Наполеон І, і, дивлячись на мене, сказала:
+
+---
+
+**PL:** — A, a, a!... To pan jest plenipotentem, zdaje mi się, że pana Wokulskiego... Czy tak?... Niechże mu pan powie, że albo ja wyprowadzę się z tego mieszkania, za które płacę mu siedemset rubli bardzo regularnie, wszak prawda, panie Wirski?...
+
+**UA:** — А, а, а!... То ви, здається, повірений пана Вокульського... Чи не так?... Передайте йому, що або я виїду з цього помешкання, за яке дуже справно плачу йому сімсот рублів, правда ж, пане Вірський?...
+
+---
+
+**PL:** Rządca ukłonił się.
+
+**UA:** Управитель уклонився.
+
+---
+
+**PL:** — Albo — ciągnęła baronowa — pan Wokulski usunie ze swego domu te brudy i niemoralność...
+
+**UA:** — Або, — провадила баронеса, — пан Вокульський усуне зі свого дому цей бруд і розпусту...
+
+---
+
+**PL:** — Niemoralność? — spytałem.
+
+**UA:** — Розпусту? — спитав я.
+
+---
+
+**PL:** — Tak, panie — potwierdziła baronowa kiwając głową. — Te praczki, które przez cały dzień śpiewają jakieś wstrętne piosenki na dole, a wieczorem śmieją się nad moją głową u tych... studentów... Ci zbrodniarze, którzy na mnie rzucają z góry papierosy albo leją wodę...
+
+**UA:** — Так, пане, — підтвердила баронеса, киваючи головою. — Ті пралі, що цілими днями співають унизу якісь огидні пісеньки, а ввечері регочуть у мене над головою в тих... студентів... Ті злочинці, що кидають на мене згори недопалки або ллють воду...
+
+**PL:** Ta nareszcie pani Stawska, o której nie wiem, czym jest: wdową czy rozwódką, ani z czego się utrzymuje... Ta pani bałamuci mężów żonom cnotliwym, a tak strasznie nieszczęśliwym...
+
+**UA:** А ще пані Ставська, про яку я й не знаю, хто вона: вдова чи розлучена, і з чого живе... Ця пані відбиває чоловіків у доброчесних дружин, таких нещасних...
+
+---
+
+**PL:** Zaczęła mrugać oczyma i rozpłakała się.
+
+**UA:** Вона заморгала й розплакалася.
+
+---
+
+**PL:** — Okropność!... — mówiła łkając. — Być przykutą do tak wstrętnego domu przez pamięć dla dziecka, której nic już nie wydrze z serca. Wszakże ona biegała po tych wszystkich pokojach... Ona bawiła się tam, od podwórza... I wyglądała oknem, przez które mnie, matce–sierocie, wyjrzeć dzisiaj nie wolno...
+
+**UA:** — Жах!... — схлипувала вона. — Бути прикованою до такого огидного дому пам’яттю про дитину, якої ніщо вже не вирве з мого серця. Адже вона бігала по всіх цих кімнатах... Гралася там, з боку подвір’я... І визирала у вікно, з якого мені, матері-сироті, сьогодні не дозволено виглянути...
+
+**PL:** Chcą mnie wypędzić stąd... wszyscy chcą mnie wypędzić... wszystkim zawadzam... A przecież ja stąd nie mogę wyprowadzić się, bo każda deska tej podłogi nosi ślady jej nóżek... w każdej ścianie uwiązł jej śmiech albo płacz...
+
+**UA:** Мене хочуть звідси вигнати... усі хочуть мене вигнати... я всім заважаю... А я ж не можу звідси виїхати, бо кожна дошка цієї підлоги зберігає слід її ніжок... у кожній стіні застряг її сміх чи плач...
+
+---
+
+**PL:** Upadła na kanapę i zaniosła się od łkania.
+
+**UA:** Вона впала на канапу й зайшлася риданням.
+
+---
+
+**PL:** — Ach! — płakała — ludzie są okrutniejsi od zwierząt... Chcą mnie wygnać stąd, gdzie moja dziecina wydała ostatnie tchnienie... Jej łóżeczko i wszystkie zabawki leżą na swoich miejscach... Sama ścieram kurze w jej pokoju, ażeby nie poruszyć najmniejszego sprzętu...
+
+**UA:** — Ах! — плакала вона. — Люди жорстокіші за звірів... Хочуть вигнати мене звідси, де моя дитинка віддала останній подих... Її ліжечко й усі іграшки лежать на своїх місцях... Я сама витираю пил у її кімнаті, щоб не зрушити найменшої речі...
+
+**PL:** Każdy cal<sup>595</sup> podłogi wydeptałam kolanami, wycałowałam ślady mojej dzieciny, a oni mnie chcą wygnać!... Wygnajcież stąd pierwej mój ból, moją tęskonotę, moją rozpacz...
+
+**UA:** Кожен дюйм<sup>595</sup> підлоги я витоптала колінами, цілувала сліди моєї дитинки, а вони хочуть мене вигнати!... Спершу виженіть звідси мій біль, тугу, розпач...
+
+---
+
+**PL:** Zasłoniła twarz i szlochała rozdzierającym głosem. Spostrzegłem, że rządcy nos czerwienieje, a i ja sam uczułem łzy pod powiekami.
+
+**UA:** Вона затулила обличчя й ридала нестямно. Я помітив, що в управителя почервонів ніс, а й сам відчув сльози під повіками.
+
+---
+
+**PL:** Rozpacz baronowej po zmarłym dziecku tak mnie rozbroiła, że nie miałem odwagi mówić z nią o podwyższeniu komornego. Płacz zaś jej tak znowu denerwował, że gdyby nie wzgląd na drugie piętro, wyskoczyłbym chyba oknem.
+
+**UA:** Розпач баронеси за померлою дитиною так мене обеззброїв, що я не мав відваги говорити з нею про підвищення квартирної плати. А її плач так мене нервував, що, якби не другий поверх, я, мабуть, вистрибнув би у вікно.
+
+---
+
+**PL:** W rezultacie chcąc za jakąkolwiek cenę utulić szlochającą kobietę, odezwałem się z całą łagodnością:
+
+**UA:** Зрештою, бажаючи будь-що втішити жінку, що ридала, я якомога лагідніше озвався:
+
+---
+
+**PL:** — Proszę pani, niech się pani uspokoi... Czego pani żąda od nas?... Czym możemy służyć?...
+
+**UA:** — Пані, заспокойтеся... Чого ви від нас хочете?... Чим можемо прислужитися?...
+
+---
+
+**PL:** W głosie moim było tyle współczucia, że rządcy nos jeszcze bardziej poczerwieniał. Pani baronowej zaś obeschło jedno oko, lecz jeszcze płakała drugim, na znak, że nie uważa swojej akcji za skończoną, a mnie za pobitego.
+
+**UA:** У моєму голосі було стільки співчуття, що ніс управителя почервонів ще дужче. У баронеси ж одне око висохло, а другим вона й далі плакала — на знак, що не вважає свою виставу закінченою, а мене переможеним.
+
+---
+
+**PL:** — Żądam... żądam — mówiła wśród westchnień — żądam, aby mnie nie wypędzano z miejsca, gdzie umarło moje dziecko... i gdzie wszystko mi je przypomina. Nie mogę, no... nie mogę oderwać się od jej pokoju... nie mogę ruszyć jej sprzętów i zabawek... Podłością jest w taki sposób wyzyskiwać niedolę.
+
+**UA:** — Вимагаю... вимагаю, — мовила вона крізь зітхання, — щоб мене не виганяли з місця, де померла моя дитина... де все мені про неї нагадує. Не можу, ну... не можу відірватися від її кімнати... не можу пересунути її речі та іграшки... Підло так користатися з чужого горя.
+
+---
+
+**PL:** — Któż ją wyzyskuje? — spytałem.
+
+**UA:** — Хто ж користається? — спитав я.
+
+---
+
+**PL:** — Wszyscy, począwszy od gospodarza, który każe mi płacić siedemset rubli...
+
+**UA:** — Усі, починаючи з господаря, який вимагає з мене сімсот рублів...
+
+---
+
+**PL:** — A, wybacz pani baronowa! — zawołał rządca. — Siedem pysznych pokoi, dwie kuchnie jak salony, dwa schowki... Niech pani komu odstąpi ze trzy pokoje: przecież są dwa frontowe wejścia.
+
+**UA:** — Ах, перепрошую, пані баронесо! — вигукнув управитель. — Сім чудових кімнат, дві кухні, мов вітальні, дві комори... Віддайте комусь бодай три кімнати: у вас же два виходи на фасад.
+
+---
+
+**PL:** — Nic nikomu nie odstąpię — odparła stanowczo — gdyż jestem pewna, że mój zbłąkany mąż lada dzień opamięta się i powróci...
+
+**UA:** — Нікому нічого не віддам, — рішуче відповіла вона, — бо певна, що мій чоловік, який заблукав, ось-ось отямиться й повернеться...
+
+---
+
+**PL:** — W takim razie trzeba płacić siedemset rubli...
+
+**UA:** — У такому разі доведеться платити сімсот рублів...
+
+---
+
+**PL:** — Jeżeli nie więcej... — szepnąłem.
+
+**UA:** — А може, й більше... — прошепотів я.
+
+---
+
+**PL:** Pani baronowa spojrzała tak, jakby chciała mnie spalić wzrokiem i utopić we łzach. Oj! co to za setna kobietka... Aż mi zimno, kiedy o niej pomyślę.
+
+**UA:** Пані баронеса глянула так, наче хотіла спопелити мене поглядом і втопити у сльозах. Ох, що за жінка... аж мороз пробирає, коли про неї подумаю.
+
+---
+
+**PL:** — Mniejsza o komorne — rzekła.
+
+**UA:** — Байдуже до квартирної плати, — сказала вона.
+
+---
+
+**PL:** — Bardzo rozsądnie! — pochwalił ją Wirski kłaniając się.
+
+**UA:** — Дуже розважливо! — похвалив її Вірський, уклонившись.
+
+---
+
+**PL:** — Mniejsza o pretensje gospodarza... Ale przecież nie mogę płacić siedmiuset rubli za lokal w podobnym domu...
+
+**UA:** — Байдуже до претензій господаря... Але ж не можу платити сімсот рублів за помешкання в такому домі...
+
+---
+
+**PL:** — Czego pani baronowa chce od domu? — spytałem.
+
+**UA:** — Чого пані баронеса хоче від дому? — спитав я.
+
+---
+
+**PL:** — Ten dom jest hańbą uczciwych ludzi — zawołała gestykulując rękoma. — Więc nie od siebie, ale w imieniu moralności proszę...
+
+**UA:** — Цей дім — ганьба для чесних людей! — вигукнула вона, розмахуючи руками. — Тож прошу не від себе, а від імені моралі...
+
+---
+
+**PL:** — O co?
+
+**UA:** — Чого саме?
+
+---
+
+**PL:** — O usunięcie tych studentów, którzy mieszkają nade mną, nie pozwalają mi wyjrzeć oknem na podwórze i demoralizują wszystkie...
+
+**UA:** — Виселити тих студентів, що живуть наді мною, не дають мені визирнути у вікно на подвір’я і розбещують усіх...
+
+---
+
+**PL:** Nagle zerwała się z kanapy.
+
+**UA:** Раптом вона схопилася з канапи.
+
+---
+
+**PL:** — O! słyszy pan? — rzekła wskazując na drzwi, które prowadziły do pokoju od strony dziedzińca.
+
+**UA:** — О! Чуєте? — сказала вона, вказуючи на двері, що вели до кімнати з боку подвір’я.
+
+---
+
+**PL:** Istotnie, usłyszałem głos ekscentrycznego brunecika, który z trzeciego piętra wołał:
+
+**UA:** Справді, я почув голос дивакуватого чорнявого студента, який кликав із третього поверху:
+
+---
+
+**PL:** — Marysiu!... Marysiu, chodź do nas...
+
+**UA:** — Марисю!... Марисю, ходи до нас...
+
+---
+
+**PL:** — Marysiu! — krzyknęła baronowa.
+
+**UA:** — Марисю! — гукнула баронеса.
+
+---
+
+**PL:** — Przecież jestem... Czego pani chce? — odparła nieco zarumieniona służąca.
+
+**UA:** — Та я ж тут... Чого пані хоче? — відповіла служниця, трохи зашарівшись.
+
+---
+
+**PL:** — Ani mi się rusz z domu!... Oto ma pan... — mówiła baronowa — tak jest po całych dniach. A wieczorem chodzą do nich praczki... Panie! — zawołała składając pobożnie ręce — wygnajcie tych nihilistów<sup>596</sup>, bo to źródło zepsucia i niebezpieczeństwa dla całego domu...
+
+**UA:** — І ногою не ступай із дому!... Ось бачите, пане... — говорила баронеса. — Так у них цілими днями. А ввечері до них ходять пралі... Пане! — вигукнула вона, побожно склавши руки. — Виженіть цих нігілістів<sup>596</sup>, бо вони — джерело розпусти й небезпеки для всього дому...
+
+**PL:** Oni w trupich główkach trzymają herbatę i cukier... Oni kośćmi ludzkimi poprawiają węgle w samowarze... Oni chcą tu kiedy przynieść całego nieboszczyka!...
+
+**UA:** Вони тримають чай і цукор у трупних голівках... людськими кістками підправляють вугілля в самоварі... Ще принесуть сюди цілого мерця!...
+
+---
+
+**PL:** Zaczęła znowu tak płakać, iż myślałem, że dostanie spazmów.
+
+**UA:** Вона знову так заплакала, що я подумав: зараз її схоплять судоми.
+
+---
+
+**PL:** — Panowie ci — rzekłem — nie płacą komornego, więc bardzo być może...
+
+**UA:** — Ці панове, — сказав я, — не платять квартирної плати, тож це цілком можливо...
+
+---
+
+**PL:** Baronowej obeschły oczy.
+
+**UA:** Очі баронеси висохли.
+
+---
+
+**PL:** — Ależ naturalnie — przerwała mi — że musicie ich wypędzić... Lecz, panie! — zawołała — jakkolwiek są oni źli i zepsuci, to przecież gorszą od nich jest ta... ta Stawska!...
+
+**UA:** — Та звичайно, — перебила вона, — ви мусите їх вигнати... Але, пане! — вигукнула, — хоч вони й лихі та розпусні, та ще гірша за них ота... ота Ставська!...
+
+---
+
+**PL:** Zdziwiłem się zobaczywszy płomień nienawiści, jaki błysnął w oczach pani baronowej przy wymówieniu nazwy: Stawska.
+
+**UA:** Я здивувався, побачивши спалах ненависті в очах пані баронеси, коли вона вимовила ім’я Ставської.
+
+---
+
+**PL:** — Pani Stawska tu mieszka? — spytałem mimo woli. — Ta piękna?...
+
+**UA:** — Пані Ставська тут мешкає? — мимоволі спитав я. — Та красуня?...
+
+---
+
+**PL:** — O... nowa ofiara!... — wykrzyknęła baronowa wskazując na mnie i z pałającymi oczyma zaczęła mówić głębokim głosem:
+
+**UA:** — О... нова жертва!... — вигукнула баронеса, показуючи на мене, і з палаючими очима заговорила глибоким голосом:
+
+---
+
+**PL:** — Ależ, człowieku siwowłosy, zastanów się, co robisz?... Wszakże to kobieta, której mąż oskarżony o zabójstwo uciekł za granicę... A z czego ona żyje?... Z czego się tak stroi?...
+
+**UA:** — Та схаменіться, сивоголовий чоловіче, подумайте, що робите?... Адже це жінка, чоловіка якої звинуватили у вбивстві, і він утік за кордон... А з чого вона живе?... Звідки в неї такі вбрання?...
+
+---
+
+**PL:** — Pracuje kobiecisko jak wół — szepnął rządca.
+
+**UA:** — Жінка працює, як віл, — прошепотів управитель.
+
+---
+
+**PL:** — O... i ten!... — zawołała baronowa. — Mój mąż (jestem pewna, że to on) przysyła jej ze wsi bukiety... Rządca tego domu kocha się w niej i bierze od niej komorne z dołu co miesiąc...
+
+**UA:** — О... і цей теж!... — вигукнула баронеса. — Мій чоловік (я певна, що це він) надсилає їй із села букети... Управитель цього дому закоханий у неї й щомісяця бере з неї квартирну плату...
+
+---
+
+**PL:** — Ależ, pani!... — zaprotestował eks-obywatel, a jego oblicze stało się tak rumiane jak nos.
+
+**UA:** — Та що ви, пані!... — заперечив екс-поміщик, і обличчя його почервоніло, мов ніс.
+
+---
+
+**PL:** — Nawet ten poczciwy niedołęga Maruszewicz — ciągnęła baronowa — nawet on po całych dniach wygląda do niej oknem...
+
+**UA:** — Навіть цей добрий недотепа Марушевич, — провадила баронеса, — навіть він цілими днями виглядає до неї у вікно...
+
+---
+
+**PL:** Dramatyczny głos baronowej przeszedł znowu w szlochanie.
+
+**UA:** Драматичний голос баронеси знову перейшов у схлипування.
+
+---
+
+**PL:** — I pomyśleć — jęczała — że taka kobieta ma córkę, córkę... którą wychowuje dla piekła, a ja... O! wierzę w sprawiedliwość... wierzę w miłosierdzie boskie, ale nie rozumiem... tak... nic nie rozumiem tych wyroków, które mnie pozbawiły, a jej zostawiają dziecko... tej... tej... Panie!
+
+**UA:** — І подумати тільки, — стогнала вона, — що така жінка має доньку, доньку... яку виховує для пекла, а я... О, я вірю у справедливість... вірю в Боже милосердя, але не розумію... нічого не розумію тих вироків, що позбавили мене дитини, а їй залишили... цій... цій... Господи!
+
+**PL:** — wybuchnęła z nową siłą głosu — możesz zostawić nawet tych nihilistów, ale ją... musisz wygnać!... Niech lokal po niej stoi pustką... będę za niego płacić, byle ona nie miała dachu nad głową...
+
+**UA:** — з новою силою вигукнула вона, — можеш залишити навіть тих нігілістів, але її... мусиш вигнати!... Нехай помешкання після неї стоїть порожнім... я платитиму за нього, аби тільки вона не мала даху над головою...
+
+---
+
+**PL:** Ten wykrzyknik już całkiem mi się nie podobał. Dałem znak rządcy, że wychodzimy, i kłaniając się rzekłem ozięble:
+
+**UA:** Цей вигук мені вже зовсім не сподобався. Я дав управителеві знак, що ми йдемо, і, вклонившись, холодно сказав:
+
+---
+
+**PL:** — Pozwoli pani baronowa, że w tej sprawie zadecyduje sam gospodarz, pan Wokulski.
+
+**UA:** — Дозвольте, пані баронесо, щоб у цій справі вирішив сам господар, пан Вокульський.
+
+---
+
+**PL:** Baronowa rozkrzyżowała ręce jak człowiek trafiony kulą w piersi.
+
+**UA:** Баронеса розкинула руки, наче людина, поранена кулею в груди.
+
+---
+
+**PL:** — Ach!... więc tak?... — szepnęła. — Więc już i pan i... ten, ten... Wokulski związaliście się z nią?... Ha!... zaczekam tedy na sprawiedliwość boską...
+
+**UA:** — Ах!... То ось як?... — прошепотіла вона. — То вже й ви, і... цей, цей... Вокульський заодно з нею?... Га!... Тоді чекатиму на Божу справедливість...
+
+---
+
+**PL:** Wyszliśmy, nie zatrzymywani dłużej; na schodach zatoczyłem się jak pijany.
+
+**UA:** Ми вийшли, і нас більше не затримували; на сходах я похитнувся, мов п’яний.
+
+---
+
+**PL:** — Co pan wiesz o tej pani Stawskiej? — zapytałem Wirskiego.
+
+**UA:** — Що ви знаєте про цю пані Ставську? — спитав я Вірського.
+
+---
+
+**PL:** — Najuczciwsza kobieta — odparł. — Młode to, piękne i pracuje na cały dom... Bo emerytura jej matki ledwie starczy na komorne...
+
+**UA:** — Найчесніша жінка, — відповів він. — Молода, гарна й працює на всю сім’ю... Бо пенсії її матері ледве вистачає на квартирну плату...
+
+---
+
+**PL:** — Ma matkę?
+
+**UA:** — Має матір?
+
+---
+
+**PL:** — Ma. Także dobra kobiecina.
+
+**UA:** — Має. Теж добра жіночка.
+
+---
+
+**PL:** — A ile płacą za lokal?
+
+**UA:** — А скільки платять за помешкання?
+
+---
+
+**PL:** — Trzysta rubli — odpowiedział rządca. — To, panie, jakbyśmy z ołtarza zdejmowali...
+
+**UA:** — Триста рублів, — відповів управитель. — Це, пане, ніби з вівтаря знімати...
+
+---
+
+**PL:** — Pójdziemy do tych pań — rzekłem.
+
+**UA:** — Ходімо до цих пань, — сказав я.
+
+---
+
+**PL:** — Z największą chęcią! — zawołał. — A co o nich plecie ta wariatka, niech pan nie słucha. Ona nienawidzi Stawskiej, nie wiem nawet za co. Chyba za to, że jest piękna i ma córeczkę jak cherubinek...
+
+**UA:** — З найбільшою радістю! — вигукнув він. — А що про них верзе та божевільна, не слухайте. Вона ненавидить Ставську, і я навіть не знаю чому. Мабуть, за те, що та гарна й має донечку, мов херувим...
+
+---
+
+**PL:** — Gdzie mieszkają?
+
+**UA:** — Де вони мешкають?
+
+---
+
+**PL:** — W prawej oficynie, na pierwszym piętrze.
+
+**UA:** — У правому флігелі, на першому поверсі.
+
+---
+
+**PL:** Nie pamiętam nawet, kiedy zeszliśmy ze schodów frontowych, a kiedy minęliśmy podwórko i weszliśmy na pierwsze piętro oficyny. Tak ciągle stała mi przed oczyma pani Stawska i Wokulski... Mój Boże! jaka by to była piękna para; ale i cóż z tego, kiedy ona ma męża.
+
+**UA:** Навіть не пам’ятаю, коли ми спустилися парадними сходами, коли перетнули подвір’я й піднялися на перший поверх флігеля. Перед очима все стояли пані Ставська й Вокульський... Боже мій! Яка чудова була б пара; та що з того, коли вона має чоловіка.
+
+**PL:** Chociaż to są sprawy, do których najmniej miałbym ochoty mieszać się. Mnie się wydaje tak, im wydałoby się owak, a losowi jeszcze inaczej...
+
+**UA:** Хоч це й справи, до яких мені найменше хотілося б втручатися. Мені все уявляється так, їм могло б здаватися інакше, а долі — ще інакше...
+
+---
+
+**PL:** Los! los!... on dziwnie zbliża ludzi. Gdybym przed laty nie zeszedł do piwnicy Hopfera, do Machalskiego, nie poznałbym się z Wokulskim. Gdybym jego znowu nie wyprawił do teatru, on może nie spotkałby się z panną Łęcką. Raz mimo woli nawarzyłem mu piwa i już nie chcę powtarzać tego po raz drugi.
+
+**UA:** Доля! Доля!... Дивно вона зближує людей. Якби я колись не спустився до підвалу Гопфера, до Махальського, то не познайомився б із Вокульським. Якби потім не відправив його до театру, він, може, не зустрівся б із панною Ленцькою. Раз мимоволі я вже заварив йому кашу, вдруге повторювати не хочу.
+
+**PL:** Niech sam Bóg radzi o swej czeladzi...
+
+**UA:** Нехай сам Бог дбає про свою челядь...
+
+---
+
+**PL:** Gdy stanęliśmy pode drzwiami mieszkania pani Stawskiej, rządca uśmiechnął się filuternie i szepnął:
+
+**UA:** Коли ми стали біля дверей помешкання пані Ставської, управитель хитро всміхнувся й прошепотів:
+
+---
+
+**PL:** — Uważa pan... naprzód dowiemy się, czy młoda jest w domu. Jest co widzieć, panie!...
+
+**UA:** — Дивіться, пане... Спершу дізнаємося, чи молода вдома. Є на що подивитися, пане!...
+
+---
+
+**PL:** — Wiem, wiem...
+
+**UA:** — Знаю, знаю...
+
+---
+
+**PL:** Rządca nie dzwonił, ale zapukał raz i drugi. Nagle drzwi otworzyły się dość gwałtownie i stanęła w nich gruba i niska służąca z zawiniętymi rękawami i z mydłem na rękach, których mógłby jej pozazdrościć atleta.
+
+**UA:** Управитель не дзвонив, а постукав раз і вдруге. Раптом двері доволі різко відчинилися, і на порозі стала низенька огрядна служниця із засуканими рукавами та милом на руках — таким, яким міг би позаздрити атлет.
+
+---
+
+**PL:** — O, to pan rządca!... — zawołała. — Myślałam, że znowu jaki tam...
+
+**UA:** — О, це пан управитель!... — вигукнула вона. — А я думала, знову якийсь там...
+
+---
+
+**PL:** — Cóż, dobijał się kto?... — spytał Wirski z akcentem oburzenia w głosie.
+
+**UA:** — Що, хтось ломився? — спитав Вірський із обуренням у голосі.
+
+---
+
+**PL:** — Nie dobijał się nijaki — z chłopska odparła służąca — ino jeden przysłał dziś bukiet. Mówią, że to ten Marusiewicz z przeciwka...
+
+**UA:** — Та ніхто не ломився, — по-селянському відповіла служниця, — тільки один сьогодні прислав букет. Кажуть, це той Марушевич із протилежного боку...
+
+---
+
+**PL:** — Łotr! — syknął rządca.
+
+**UA:** — Негідник! — прошипів управитель.
+
+---
+
+**PL:** — Mężczyzny wszystkie takie. Niech mu się co podoba, to zaraz będzie lazł jak ćma w ogień.
+
+**UA:** — Усі чоловіки такі. Щойно щось їм сподобається — вже повзуть, мов метелик на вогонь.
+
+---
+
+**PL:** — A panie obie są? — spytał Wirski.
+
+**UA:** — А обидві пані вдома? — спитав Вірський.
+
+---
+
+**PL:** Gruba służąca spojrzała na mnie podejrzliwie.
+
+**UA:** Огрядна служниця підозріливо глянула на мене.
+
+---
+
+**PL:** — Pan rządca z tym panem?
+
+**UA:** — Пан управитель із цим паном?
+
+---
+
+**PL:** — Z tym panem. To plenipotent gospodarza.
+
+**UA:** — З цим паном. Він повірений господаря.
+
+---
+
+**PL:** — A młody on czy stary? — badała dalej, przypatrując mi się jak sędzia śledczy.
+
+**UA:** — А він молодий чи старий? — допитувалася вона далі, розглядаючи мене, наче слідчий суддя.
+
+---
+
+**PL:** — Widzisz przecie, że stary!... — odparł rządca.
+
+**UA:** — Та бачиш же, що старий!... — відповів управитель.
+
+---
+
+**PL:** — W średnim wieku... — wtrąciłem. (Oni, dalibóg, niedługo piętnastoletnich chłopców zaczną nazywać starymi.)
+
+**UA:** — Середнього віку... — втрутився я. (Їй-богу, невдовзі вони й п’ятнадцятирічних хлопців називатимуть старими.)
+
+---
+
+**PL:** — Są obie panie — mówiła służąca. — Tylko co do pani młodszej przyszła jedna dziewczynka wydawać lekcje. Ale pani starsza jest w swoim pokoju.
+
+**UA:** — Обидві пані вдома, — сказала служниця. — Тільки до молодшої пані щойно прийшла дівчинка на урок. А старша пані у своїй кімнаті.
+
+---
+
+**PL:** — Phy! — mruknął rządca. — Wreszcie powiedz pani starszej...
+
+**UA:** — Пхе! — пробурмотів управитель. — То скажіть старшій пані...
+
+---
+
+**PL:** Weszliśmy do kuchni, gdzie stała balia pełna mydlin i dziecinnej bielizny. Na sznurze zawieszonym w pobliżu komina suszyły się również dziecinne spódniczki, koszule i pończoszki. (Jak to zaraz znać, że w mieszkaniu jest dziecko!)
+
+**UA:** Ми зайшли до кухні, де стояла ночва, повна мильної води й дитячої білизни. На мотузці біля комина сушилися також дитячі спіднички, сорочечки й шкарпетки. (Одразу видно, коли в помешканні є дитина!)
+
+---
+
+**PL:** Spoza uchylonych drzwi usłyszeliśmy głos już starszej kobiety.
+
+**UA:** З-за прочинених дверей ми почули голос уже літньої жінки.
+
+---
+
+**PL:** — Z rządcą?... jakiś pan? — mówiła niewidzialna dama. — Może to Ludwiczek, bo akurat śnił mi się...
+
+**UA:** — З управителем?... якийсь пан? — говорила невидима дама. — Може, це Людвичек, бо він мені саме снився...
+
+---
+
+**PL:** — Niech panowie idą — rzekła służąca otwierając drzwi do saloniku.
+
+**UA:** — Прошу панів пройти, — сказала служниця, відчиняючи двері до вітальні.
+
+---
+
+**PL:** Salonik nieduży, koloru perłowego. Szafirowe sprzęty, pianino, w obu oknach pełno kwiatów białych i różowych, na ścianach premia Towarzystwa Sztuk Pięknych<sup>597</sup>, na stole lampa ze szkłem w formie tulipana.
+
+**UA:** Невеличка вітальня перламутрового кольору. Сапфірові меблі, фортепіано, обидва вікна повні білих і рожевих квітів, на стінах — премія Товариства красних мистецтв<sup>597</sup>, на столі лампа зі скляним абажуром у формі тюльпана.
+
+**PL:** Po cmentarnym salonie pani Krzeszowskiej z meblami w ciemnych pokrowcach wydało mi się tu weselej. Pokój wyglądał, jakby oczekiwano na gościa. Ale jego sprzęty zanadto symetrycznie ustawione dokoła stołu świadczyły, że gość jeszcze nie przyjechał.
+
+**UA:** Після похмурої вітальні пані Кжешовської з темними чохлами на меблях тут здалося веселіше. Кімната мала такий вигляд, ніби чекали на гостя. Але надто симетрично розставлені довкола столу меблі свідчили, що гість іще не прийшов.
+
+---
+
+**PL:** Po chwili z przeciwległych drzwi wyszła osoba w wieku poważnym, ubrana w popielatą suknię. Uderzył mnie prawie biały kolor jej włosów, obok twarzy mizernej, lecz niezbyt starej i bardzo regularnej. Rysy tej damy były mi gdzieś znajome.
+
+**UA:** За хвилю з протилежних дверей вийшла поважного віку пані в попелястій сукні. Мене вразило майже біле волосся довкола худого, але не надто старого й дуже правильного обличчя. Риси цієї пані здавалися мені десь знайомими.
+
+---
+
+**PL:** Tymczasem rządca zapiął swój poplamiony surdut na dwa guziki i ukłoniwszy się z elegancją prawdziwego szlachcica rzekł:
+
+**UA:** Тим часом управитель застебнув свій забруднений сюртук на два ґудзики й, уклонившись з елегантністю справжнього шляхтича, сказав:
+
+---
+
+**PL:** — Pozwoli pani zaprezentować: pan Rzecki, plenipotent naszego gospodarza, a mój kolega...
+
+**UA:** — Дозвольте представити: пан Ржецький, повірений нашого господаря, а також мій колега...
+
+---
+
+**PL:** Spojrzeliśmy sobie obaj w oczy. Wyznaję, że byłem trochę zdziwiony naszym koleżeństwem... Wirski spostrzegł to i dodał z uśmiechem:
+
+**UA:** Ми обоє глянули одне одному в очі. Зізнаюся, я трохи здивувався нашому товариству... Вірський помітив це й додав усміхаючись:
+
+---
+
+**PL:** — Mówię: kolega, gdyż obaj widzieliśmy równie ciekawe rzeczy będąc za granicą.
+
+**UA:** — Кажу: колега, бо ми обоє бачили за кордоном однаково цікаві речі.
+
+---
+
+**PL:** — Szanowny pan był za granicą? no proszę!... — odezwała się staruszka.
+
+**UA:** — Шановний пан був за кордоном? О, треба ж!... — озвалася старенька.
+
+---
+
+**PL:** — W roku 1849 i nieco później — wtrąciłem.
+
+**UA:** — У 1849 році й трохи пізніше, — втрутився я.
+
+---
+
+**PL:** — A czy szanowny pan nie zetknął się gdzie przypadkowo z Ludwikiem Stawskim?
+
+**UA:** — А чи не траплялося шановному панові десь зустріти Людвіка Ставського?
+
+---
+
+**PL:** — Ależ, pani dobrodziejko! — zawołał Wirski śmiejąc się i kłaniając. — Pan Rzecki był za granicą przed trzydziestu laty, a zięć pani wyjechał dopiero przed czterema...
+
+**UA:** — Та що ви, пані добродійко! — вигукнув Вірський, сміючись і вклоняючись. — Пан Ржецький був за кордоном тридцять років тому, а ваш зять виїхав лише чотири роки тому...
+
+---
+
+**PL:** Staruszka machnęła ręką, jakby odganiając muchę.
+
+**UA:** Старенька махнула рукою, наче відганяла муху.
+
+---
+
+**PL:** — Prawda! — rzekła — co też ja plotę... Ale tak ciągle myślę o Ludwiczku... Niechże panowie raczą spocząć...
+
+**UA:** — Правда! — сказала вона. — Що це я верзу... Та я весь час думаю про Людвичка... Прошу панів сісти...
+
+---
+
+**PL:** Usiedliśmy, przy czym eks-obywatel znowu ukłonił się poważnej damie, a ona jemu.
+
+**UA:** Ми сіли, і екс-поміщик знову вклонився поважній пані, а вона — йому.
+
+---
+
+**PL:** Teraz dopiero spostrzegłem, że popielata suknia staruszki jest w wielu miejscach pocerowana, i dziwna melancholia ogarnęła mnie na widok tych dwojga ludzi w poplamionym surducie i w pocerowanej sukni, którzy zachowywali się jak książęta. Nad nimi już przeszedł wszystko wyrównywający pług czasu.
+
+**UA:** Тільки тепер я помітив, що попеляста сукня старенької в багатьох місцях полатана, й мене охопила дивна туга, коли я побачив цих двох людей — його в забрудненому сюртуці, її в латаній сукні, — які поводилися, мов князі. Над ними вже пройшов плуг часу, що все зрівнює.
+
+---
+
+**PL:** — Bo zapewne pan nie wie o naszym zmartwieniu — rzekła poważna dama zwracając się do mnie. — Mój zięć przed czterema laty miał bardzo przykrą sprawę, najniesłuszniej... Zamordowano tu jakąś straszną lichwiarkę... Ach, Boże! nie ma o czym mówić...
+
+**UA:** — Певно, пан не знає про наше горе, — сказала поважна пані, звертаючись до мене. — Чотири роки тому з моїм зятем трапилася дуже прикра історія, і цілком несправедливо... Тут убили якусь страшну лихварку... Ах, Боже! Нема про що й говорити...
+
+**PL:** Dosyć, że ktoś z bliskich ostrzegł go, że na niego pada posądzenie... Najniewinniej, panie...
+
+**UA:** Досить сказати, що хтось із близьких попередив його, що підозра падає на нього... Зовсім невинно, пане...
+
+---
+
+**PL:** — Rzecki — wtrącił eks-obywatel.
+
+**UA:** — Ржецький, — втрутився екс-поміщик.
+
+---
+
+**PL:** — Najniesprawiedliwiej, panie Rzecki... No i on... biedak, uciekł za granicę. W roku zeszłym znalazł się istotny morderca, ogłoszono niewinność Ludwika, ale i cóż, kiedy on już od dwu lat nie pisał...
+
+**UA:** — Найбільш несправедливо, пане Ржецький... І він, бідолаха, втік за кордон. Минулого року знайшли справжнього вбивцю, Людвіка оголосили невинним, але що з того, коли він уже два роки не писав...
+
+---
+
+**PL:** Tu pochyliła się do mnie z fotelu i rzekła szeptem:
+
+**UA:** Тут вона нахилилася до мене з крісла й прошепотіла:
+
+---
+
+**PL:** — Helenka, córka moja, panie...
+
+**UA:** — Геленка, моя донька, пане...
+
+---
+
+**PL:** — Rzecki — odezwał się rządca.
+
+**UA:** — Ржецький, — озвався управитель.
+
+---
+
+**PL:** — Córka moja, panie Rzecki, rujnuje się... szczerze mówię, że się rujnuje na ogłoszenia po zagranicznych pismach, a tu nic i nic... Kobieta młoda, panie...
+
+**UA:** — Моя донька, пане Ржецький, розоряється... Щиро кажу, витрачається на оголошення в закордонних газетах, а відповіді немає й немає... Вона молода жінка, пане...
+
+---
+
+**PL:** — Rzecki — powiedział Wirski.
+
+**UA:** — Ржецький, — промовив Вірський.
+
+---
+
+**PL:** — Kobieta młoda, panie Rzecki, niebrzydka.
+
+**UA:** — Молода жінка, пане Ржецький, і вродлива.
+
+---
+
+**PL:** — Prześliczna! — wtrącił rządca z zapałem.
+
+**UA:** — Надзвичайно вродлива! — із запалом додав управитель.
+
+---
+
+**PL:** — Byłam trochę do niej podobna — ciągnęła sędziwa dama wzdychając i kiwając głową eks-obywatelowi. — Jest tedy córka moja niebrzydka i młoda, już jedno dziecko ma i... może tęskni za innymi. Chociaż, panie Wirski, przysięgam, że nigdy od niej o tym nie słyszałam...
+
+**UA:** — Я трохи була на неї схожа, — провадила літня пані, зітхаючи й киваючи екс-поміщикові. — Отже, моя донька вродлива й молода, уже має дитину і... може, тужить за іншими. Хоча, пане Вірський, присягаюся, я ніколи не чула від неї про таке...
+
+**PL:** Cierpi i milczy, ale że cierpi, domyślam się. Ja także miałam trzydzieści lat...
+
+**UA:** Вона страждає й мовчить, але я здогадуюся, що страждає. Я теж колись мала тридцять років...
+
+---
+
+**PL:** — Kto z nas ich nie miał! — ciężko westchnął rządca.
+
+**UA:** — Хто з нас їх не мав! — тяжко зітхнув управитель.
+
+---
+
+**PL:** Skrzypnęły drzwi i wbiegła mała dziewczynka z drutami w ręku.
+
+**UA:** Двері рипнули, і вбігла маленька дівчинка з в’язальними спицями в руках.
+
+---
+
+**PL:** — Proszę babci! — zawołała — ja nigdy nie skończę kaftanika dla mojej lalki...
+
+**UA:** — Бабусю! — вигукнула вона. — Я ніколи не закінчу кофтинки для своєї ляльки...
+
+---
+
+**PL:** — Heluniu! — odezwała się staruszka surowo. — Ty nie ukłoniłaś się...
+
+**UA:** — Геленко! — суворо озвалася старенька. — Ти ж не привіталася...
+
+---
+
+**PL:** Dziewczynka zrobiła dwa dygi, na które ja odpowiedziałem niezręcznie, a pan Wirski jak hrabia, i mówiła dalej, pokazując babce druty, przy których chwiał się czarny, włóczkowy kwadracik.
+
+**UA:** Дівчинка зробила два реверанси, на які я відповів незграбно, а пан Вірський — як граф. Вона провадила далі, показуючи бабусі спиці, на яких хитався чорний вовняний квадратик.
+
+---
+
+**PL:** — Proszę babci, nadejdzie zima i moja lalka nie będzie miała w czym wyjść na ulicę... Proszę babci, znowu mi spadło oczko.
+
+**UA:** — Бабусю, скоро зима, а моя лялька не матиме в чому вийти на вулицю... Бабусю, знову спустилася петля.
+
+---
+
+**PL:** (Prześliczne dziecko... Boże miłosierny! dlaczego Stach nie jest jego ojcem. Może nie szalałby tak...)
+
+**UA:** (Чарівна дитина... Боже милосердний! Чому Стах не її батько? Може, він не шалів би так...)
+
+---
+
+**PL:** Babcia przepraszając nas wzięła włóczkę i druty, a w tej chwili weszła do salonu pani Stawska...
+
+**UA:** Бабуся, перепросивши нас, узяла вовну й спиці, а тієї миті до вітальні увійшла пані Ставська...
+
+---
+
+**PL:** Muszę sobie przyznać, że ja na jej widok zachowałem się z godnością; ale Wirski zupełnie stracił głowę. Zerwał się z krzesła jak student, zapiął surdut jeszcze na jeden guzik, powiem nawet: zarumienił się, i zaczął bełkotać:
+
+**UA:** Мушу визнати: побачивши її, я поводився гідно; а Вірський зовсім утратив голову. Зірвався зі стільця, мов студент, застебнув сюртук ще на один ґудзик, навіть зашарівся й почав белькотіти:
+
+---
+
+**PL:** — Pozwoli pani zaprezentować sobie: pan Rzecki, plenipotent naszego gospodarza...
+
+**UA:** — Дозвольте представити вам пана Ржецького, повіреного нашого господаря...
+
+---
+
+**PL:** — Bardzo mi przyjemnie — odpowiedziała pani Stawska kłaniając mi się ze spuszczonymi oczyma. Ale silny rumieniec i ślad obawy na jej twarzy upewniły mnie, że nie jestem przyjemnym gościem.
+
+**UA:** — Дуже приємно, — відповіла пані Ставська, вклонившись мені й опустивши очі. Але сильний рум’янець і слід тривоги на її обличчі переконали мене, що я тут небажаний гість.
+
+---
+
+**PL:** „Poczekaj! — myślę. I wyobraziłem sobie, że na moim miejscu jest w tym pokoju Wokulski. — Poczekaj, zaraz cię przekonam, że nie masz się nas czego lękać.”
+
+**UA:** «Почекай! — подумав я. І уявив, що на моєму місці в цій кімнаті Вокульський. — Почекай, зараз переконаю тебе, що нас не треба боятися».
+
+---
+
+**PL:** Tymczasem pani Stawska usiadłszy na krześle była tak zmieszana, że zaczęła coś poprawiać około sukienki swojej córeczki. Jej matka również straciła humor, a rządca kompletnie zbaraniał. „Poczekajcie!” — myślę i przybrawszy bardzo surowy wyraz twarzy odezwałem się:
+
+**UA:** Тим часом пані Ставська, сівши на стілець, так розгубилася, що почала поправляти сукенку доньки. Її мати теж занепала духом, а управитель зовсім отетерів. «Почекайте!» — подумав я, зробив якнайсуворіший вираз обличчя й озвався:
+
+---
+
+**PL:** — Panie dawno mieszkają w tym domu?
+
+**UA:** — Давно пані мешкають у цьому домі?
+
+---
+
+**PL:** — Pięć lat... — odpowiada pani Stawska rumieniąc się jeszcze mocniej. Jej matka aż drgnęła na fotelu.
+
+**UA:** — П’ять років... — відповіла пані Ставська, ще дужче зашарівшись. Її мати аж здригнулася в кріслі.
+
+---
+
+**PL:** — Ile panie płacą?
+
+**UA:** — Скільки пані платять?
+
+---
+
+**PL:** — Dwadzieścia pięć rubli miesięcznie... — szepnęła młoda pani. Jednocześnie pobladła, zaczęła skubać sukienkę i z pewnością mimo woli rzuciła na Wirskiego takie błagalne spojrzenie, że... że gdybym był Wokulskim, zaraz bym się o nią oświadczył...
+
+**UA:** — Двадцять п’ять рублів на місяць... — прошепотіла молода пані. Вона зблідла, почала теребити сукенку й мимоволі кинула на Вірського такий благальний погляд, що... якби я був Вокульським, то негайно освідчився б їй...
+
+---
+
+**PL:** — Jesteśmy — dodała jeszcze ciszej — jesteśmy winne panom za lipiec...
+
+**UA:** — Ми, — додала вона ще тихіше, — ми заборгували панам за липень...
+
+---
+
+**PL:** Zachmurzyłem się jak Lucyper<sup>598</sup> i nabrawszy tyle tchu, ile było powietrza w mieszkaniu rzekłem:
+
+**UA:** Я насупився, мов Люцифер<sup>598</sup>, набрав у груди скільки повітря було в помешканні й сказав:
+
+---
+
+**PL:** — Nic panie nie są nam aż do... października. Właśnie Stach... — to jest pan Wokulski pisze mi, że to istny rozbój brać trzysta rubli za trzy pokoje na tej ulicy.
+
+**UA:** — Пані нічого нам не винні аж до... жовтня. Саме Стах... тобто пан Вокульський пише мені, що брати триста рублів за три кімнати на цій вулиці — справжній розбій.
+
+**PL:** Pan Wokulski nie może pozwolić na podobne zdzierstwo i kazał mi zawiadomić panie, że ten lokal od października będzie do wynajęcia za dwieście rubli. A jeżeli panie nie życzą sobie...
+
+**UA:** Пан Вокульський не може допустити такого здирства й наказав повідомити пань, що від жовтня це помешкання здаватиметься за двісті рублів. А якщо пані не бажають...
+
+---
+
+**PL:** Rządca aż posunął się w tył z fotelem. Staruszka złożyła ręce, a pani Stawska patrzyła na mnie wielkimi oczyma. Oto dopiero oczy!... i jak ona nimi umie patrzeć!... Przysięgam, że gdybym był Wokulskim, oświadczyłbym się jej na poczekaniu.
+
+**UA:** Управитель аж відсунувся разом із кріслом. Старенька склала руки, а пані Ставська дивилася на мене великими очима. Ото очі!... Як вона вміє ними дивитися!... Присягаюся, якби я був Вокульським, то освідчився б їй тієї ж миті.
+
+**PL:** Z męża już pewnie nie ma nawet kosteczki, jeżeli nie pisał przez dwa lata. Wreszcie, od czego są rozwody?... Na co Stach ma taki majątek?...
+
+**UA:** Від її чоловіка, певно, й кісточки не лишилося, якщо він два роки не писав. Зрештою, для чого існують розлучення?... Навіщо Стахові такий маєток?...
+
+---
+
+**PL:** Znowu skrzypnęły drzwi i ukazała się w nich może dwunastoletnia dziewczynka, w pasterce<sup>599</sup> na głowie i z paczką kajetów w ręce. Było to dziecko z twarzą rumianą i pełną, lecz nie zdradzającą zbyt wielkiej inteligencji.
+
+**UA:** Двері знову рипнули, і в них з’явилася дівчинка років дванадцяти, у капелюшку-пастушці<sup>599</sup> й із пачкою зошитів у руці. Дитина мала рум’яне, повне обличчя, але не надто розумний вираз.
+
+**PL:** Ukłoniła się nam, ukłoniła się pani Stawskiej i jej matce, ucałowała w oba policzki małą Helenkę i wyszła, oczywiście do domu. Następnie wróciła się z kuchni i zarumieniona powyżej oczu, spytała pani Stawskiej:
+
+**UA:** Вона вклонилася нам, пані Ставській та її матері, поцілувала маленьку Геленку в обидві щоки й вийшла — мабуть, додому. Потім повернулася з кухні й, зашарівшись аж до очей, спитала пані Ставську:
+
+---
+
+**PL:** — Pojutrze o której mogę przyjść?
+
+**UA:** — Післязавтра о котрій мені прийти?
+
+---
+
+**PL:** — Pojutrze, kochanko... Przyjdź o czwartej — odpowiedziała pani Stawska również zmieszana.
+
+**UA:** — Післязавтра, люба... Приходь о четвертій, — відповіла пані Ставська, теж збентежена.
+
+---
+
+**PL:** Gdy dziewczynka ostatecznie wyszła, matka pani Stawskiej odezwała się niezadowolnym tonem:
+
+**UA:** Коли дівчинка нарешті вийшла, мати пані Ставської невдоволеним тоном сказала:
+
+---
+
+**PL:** — I to nazywa się lekcja, Boże odpuść... Helenka pracuje z nią przynajmniej półtorej godziny i za taką lekcję bierze czterdzieści groszy...
+
+**UA:** — І це називається уроком, Господи прости... Геленка займається з нею щонайменше півтори години, а за такий урок бере сорок грошів...
+
+---
+
+**PL:** — Mateczko! — przerwała pani Stawska, błagalnie patrząc na nią.
+
+**UA:** — Матусю! — перебила її пані Ставська, благально дивлячись на неї.
+
+---
+
+**PL:** (Gdybym był Wokulskim, już bym z nią wracał od ślubu. Co to za kobieta!... co za rysy... co za gra fizjognomii. W życiu nie widziałem nic podobnego!... A rączka, a figurka, a wzrost, a ruchy, a oczy, oczy!...)
+
+**UA:** (Якби я був Вокульським, то вже повертався б із нею після вінчання. Що за жінка!... які риси... яка гра обличчя. Ніколи в житті не бачив нічого подібного!... А ручка, а постать, зріст, рухи, очі, очі!... )
+
+---
+
+**PL:** Po chwili kłopotliwego milczenia odezwała się znowu młoda pani:
+
+**UA:** По хвилі ніякової мовчанки молода пані знову озвалася:
+
+---
+
+**PL:** — Bardzo jesteśmy wdzięczne panu Wokulskiemu za warunki, na jakich zostawia nam ten lokal!... Jest to chyba jedyny wypadek, ażeby gospodarz sam zniżał komorne. Ale nie wiem, czy... wypada nam korzystać z jego uprzejmości?...
+
+**UA:** — Ми дуже вдячні панові Вокульському за умови, на яких він залишає нам це помешкання!... Певно, це єдиний випадок, щоб господар сам знижував квартирну плату. Але не знаю, чи... годиться скористатися з його люб’язності?...
+
+---
+
+**PL:** — To nie uprzejmość, pani, to uczciwość szlachetnego człowieka! — wtrącił rządca. — Mnie pan Wokulski również zniżył komorne i przyjąłem... Ulica, proszę pani, trzeciorzędna, ruch mały...
+
+**UA:** — Це не люб’язність, пані, а чесність шляхетної людини! — втрутився управитель. — Пан Вокульський знизив плату і мені, й я погодився... Вулиця, пані, третьорядна, руху мало...
+
+---
+
+**PL:** — Ale o lokatorów na niej łatwo — wtrąciła pani Stawska.
+
+**UA:** — Зате мешканців знайти легко, — зауважила пані Ставська.
+
+---
+
+**PL:** — Wolimy dawnych, znanych nam ze spokójności i porządku — powiedziałem.
+
+**UA:** — Ми воліємо давніх, знайомих нам своєю спокійною вдачею й порядком, — сказав я.
+
+---
+
+**PL:** — Ma pan słuszność — pochwaliła mnie siwowłosa dama. — Porządek w mieszkaniu to pierwsza zasada, której przestrzegamy... Nawet jeżeli Helunia potnie kiedy papierki i rzuci je na podłogę, zaraz zmiata je Franusia...
+
+**UA:** — Ви маєте рацію, — похвалила мене сивоволоса пані. — Порядок у помешканні — перше правило, якого ми дотримуємося... Навіть коли Геленка наріже папірців і кине на підлогу, Франуся одразу їх підмітає...
+
+---
+
+**PL:** — Przecie ja, proszę babci, wycinam tylko koperty, bo piszę list do tatki, ażeby już wracał — odezwała się dziewczynka.
+
+**UA:** — Та я ж, бабусю, тільки конверти вирізаю, бо пишу листа таткові, щоб він уже повертався, — озвалася дівчинка.
+
+---
+
+**PL:** Po obliczu pani Stawskiej przeleciał cień jakby żalu i zmęczenia.
+
+**UA:** На обличчі пані Ставської промайнула тінь смутку й утоми.
+
+---
+
+**PL:** — I nic, żadnej wiadomości? — spytał rządca.
+
+**UA:** — І нічого, жодної звістки? — спитав управитель.
+
+---
+
+**PL:** Młoda pani z wolna potrząsnęła głową; nie jestem pewny, czy nie westchnęła, ale tak cicho...
+
+**UA:** Молода пані повільно похитала головою; не певен, чи зітхнула, але дуже тихо...
+
+---
+
+**PL:** — Oto los młodej i niebrzydkiej kobiety! — zawołała starsza dama. — Nie panna, nie mężatka...
+
+**UA:** — Отака доля молодої й гарненької жінки! — вигукнула старша пані. — Ні дівчина, ні заміжня...
+
+---
+
+**PL:** — Mateczko!...
+
+**UA:** — Матусю!...
+
+---
+
+**PL:** — Nie wdowa, nie rozwódka, słowem — nie wiadomo co i nie wiadomo za co... Ty, Helenko, mów sobie, co chcesz, a ja ci powiadam, że Ludwik już nie żyje...
+
+**UA:** — Ні вдова, ні розлучена, одним словом — невідомо хто й невідомо чому... Геленко, кажи собі що хочеш, а я тобі кажу: Людвік уже помер...
+
+---
+
+**PL:** — Mateczko!... mateczko!...
+
+**UA:** — Матусю!... Матусю!...
+
+---
+
+**PL:** — Tak — ciągnęła matka z uniesieniem. — My go tu wszyscy oczekujemy każdego dnia, o każdej godzinie, ale to na nic... Albo umarł, albo zaparł się ciebie, więc nie masz obowiązku czekać...
+
+**UA:** — Так, — запально провадила мати. — Ми всі тут чекаємо на нього щодня, щогодини, але марно... Або він помер, або зрікся тебе, тож ти не зобов’язана чекати...
+
+---
+
+**PL:** Obu paniom łzy nabiegły do oczu: matce z gniewu, a córce... Czy ja wiem?... Może z żalu za złamanym życiem.
+
+**UA:** В обох пань на очах виступили сльози: у матері від гніву, а в доньки... Хто знає?... Може, від жалю за зламаним життям.
+
+---
+
+**PL:** Nagle przeleciała mi przez głowę myśl, którą (gdyby nie o mnie chodziło) poczytałbym za genialną. Zresztą mniejsza o jej nazwę.
+
+**UA:** Раптом мені спала на думку ідея, яку (якби йшлося не про мене) я назвав би геніальною. Та байдуже, як її назвати.
+
+**PL:** Dość, że było w mojej twarzy i całej postaci coś takiego, że gdy poprawiłem się na krześle, założyłem nogę na nogę i odchrząknąłem, wszyscy wlepili we mnie spojrzenia — nawet mała Helenka.
+
+**UA:** Досить сказати, що в моєму обличчі й усій постаті було щось таке, що, коли я вмостився на стільці, закинув ногу на ногу й відкашлявся, усі втупили в мене погляди — навіть маленька Геленка.
+
+---
+
+**PL:** — Znajomość nasza — rzekłem — zbyt jest krótka, ażebym śmiał...
+
+**UA:** — Наше знайомство, — сказав я, — надто коротке, щоб я наважився...
+
+---
+
+**PL:** — Wszystko jedno! — przerwał mi pan Wirski. — Dobre usługi przyjmuje się nawet od nieznajomych.
+
+**UA:** — Байдуже! — перебив мене пан Вірський. — Добрі послуги приймають і від незнайомців.
+
+---
+
+**PL:** — Znajomość nasza — mówiłem skarciwszy go wzrokiem — jest wprawdzie niedługa. Pozwolą panie jednak, ażebym nie tylko ja, ile pan Wokulski użył swoich wpływów do odszukania małżonka pani...
+
+**UA:** — Наше знайомство, — провадив я, кинувши на нього докірливий погляд, — справді недовге. Проте дозвольте, щоб не тільки я, а й пан Вокульський скористався своїми зв’язками, аби розшукати вашого чоловіка...
+
+---
+
+**PL:** — Aaa!... — jęknęła starsza dama w sposób, którego nie mógłbym uważać za objaw radości.
+
+**UA:** — А-а!... — застогнала старша пані так, що це не можна було вважати виявом радості.
+
+---
+
+**PL:** — Mateczko! — wtrąciła pani Stawska.
+
+**UA:** — Матусю! — втрутилася пані Ставська.
+
+---
+
+**PL:** — Heluniu — rzekła babcia stanowczo — idź do swojej lalki i rób jej kaftanik. Oczko już znalazłam, idź...
+
+**UA:** — Геленко, — рішуче сказала бабуся, — йди до своєї ляльки й дов’язуй їй кофтинку. Петлю я знайшла, іди...
+
+---
+
+**PL:** Dziewczynka była trochę zdziwiona, może nawet zaciekawiona, ale ucałowała ręce babci i matce i wyszła ze swymi drutami.
+
+**UA:** Дівчинка трохи здивувалася, може, навіть зацікавилася, але поцілувала руки бабусі й матері та вийшла зі своїми спицями.
+
+---
+
+**PL:** — Proszę pana — ciągnęła staruszka — jeżeli mamy mówić szczerze, to mnie nie tyle chodzi... To jest... nie wierzę, ażeby Ludwik żył. Kto przez dwa lata nie pisze...
+
+**UA:** — Пане, — провадила старенька, — якщо говорити щиро, мене непокоїть не стільки... Тобто... я не вірю, що Людвік живий. Хто два роки не пише...
+
+---
+
+**PL:** — Mamo, dosyć!...
+
+**UA:** — Мамо, досить!...
+
+---
+
+**PL:** — O nie! — przerwała matka. — Jeżeli ty jeszcze nie czujesz swego położenia, to już ja je rozumiem. Nie można żyć z taką wieczną nadzieją czy groźbą...
+
+**UA:** — Ні! — перебила мати. — Якщо ти ще не усвідомлюєш свого становища, то я його розумію. Не можна жити з такою вічною надією чи загрозою...
+
+---
+
+**PL:** — Mamo droga, o moim szczęściu i obowiązkach ja tylko mam prawo...
+
+**UA:** — Люба мамо, тільки я маю право вирішувати, що для мене щастя й обов’язок...
+
+---
+
+**PL:** — Nie mów mi o szczęściu — wybuchnęła matka. — Ono skończyło się w dniu, kiedy twój mąż uciekł przed sądem, który dowiedział się o jakichś ciemnych jego stosunkach z lichwiarką. Że był niewinny, wiem, na to gotowa byłam przysiąc. Ale nie rozumiem ani ja, ani ty, po co on u niej bywał.
+
+**UA:** — Не говори мені про щастя! — вибухнула мати. — Воно скінчилося того дня, коли твій чоловік утік від суду, який довідався про якісь темні його стосунки з лихваркою. Я знаю, що він був невинний, готова була присягнутися в цьому. Але ні я, ні ти не розуміємо, навіщо він до неї ходив.
+
+---
+
+**PL:** — Mamo! — przecież ci panowie są obcy... — zawołała z desperacją pani Stawska.
+
+**UA:** — Мамо! Але ж ці панове чужі... — розпачливо вигукнула пані Ставська.
+
+---
+
+**PL:** — Ja obcy?... — spytał rządca tonem wymówki; ale powstał z krzesełka i ukłonił się.
+
+**UA:** — Я чужий?... — докірливо спитав управитель, але підвівся зі стільчика й уклонився.
+
+---
+
+**PL:** — I pan nie jesteś obcy, i ten pan — rzekła staruszka wskazując na mnie. — To musi być uczciwy człowiek...
+
+**UA:** — І ви не чужий, і цей пан, — сказала старенька, показуючи на мене. — Це мусить бути чесна людина...
+
+---
+
+**PL:** Teraz ja ukłoniłem się.
+
+**UA:** Тепер уклонився я.
+
+---
+
+**PL:** — Więc mówię panu — ciągnęła staruszka, bystro patrząc mi w oczy — żyjemy w ciągłej niepewności co do mego zięcia i niepewność ta zatruwa nam spokój. Ale ja, wyznam szczerze, więcej boję się jego powrotu...
+
+**UA:** — Отже, скажу вам, — провадила старенька, пильно дивлячись мені в очі, — ми живемо в постійній непевності щодо мого зятя, і ця непевність отруює наш спокій. Та, правду кажучи, я більше боюся його повернення...
+
+---
+
+**PL:** Pani Stawska zasłoniła twarz chustką i wybiegła do swego pokoju.
+
+**UA:** Пані Ставська затулила обличчя хусткою й вибігла до своєї кімнати.
+
+---
+
+**PL:** — Płacz sobie, płacz... — mówiła grożąc za nią rozdrażniona staruszka. — Takie łzy, chociaż bolesne, lepsze są od tych, które co dzień wylewasz...
+
+**UA:** — Поплач, поплач... — говорила роздратована старенька, погрожуючи їй услід. — Хоч ці сльози й гіркі, та кращі за ті, що ти проливаєш щодня...
+
+---
+
+**PL:** — Panie — zwróciła się do mnie — przyjmę wszystko, co nam Bóg zeszle, ale czuję, że gdyby ten człowiek wrócił, zabiłby do reszty szczęście mojego dziecka. Przysięgnę — dodała ciszej — że ona go już nie kocha, choć sama nie wie o tym, ale jestem pewna, że... pojechałaby do niego, gdyby ją wezwał!...
+
+**UA:** — Пане, — звернулася вона до мене, — я прийму все, що пошле нам Бог, але відчуваю: якби цей чоловік повернувся, він остаточно зруйнував би щастя моєї дитини. Присягаюся, — додала тихіше, — вона його вже не кохає, хоч сама цього й не знає, але певна, що... поїхала б до нього, якби він покликав!...
+
+---
+
+**PL:** Tłumione łkanie przerwało jej mowę. Spojrzeliśmy po sobie z Wirskim i pożegnaliśmy sędziwą damę.
+
+**UA:** Її слова урвав стриманий схлип. Ми з Вірським перезирнулися й попрощалися зі старенькою.
+
+---
+
+**PL:** — Pani — rzekłem na odchodnym — nim rok upłynie, przyniosę wiadomość o jej zięciu. A może — szepnąłem z mimowolnym uśmiechem — sprawy ułożą się tak, że... wszyscy będziemy zadowoleni... Wszyscy... nawet ci, których tu nie ma!...
+
+**UA:** — Пані, — сказав я на прощання, — не мине й року, як я принесу звістку про вашого зятя. А може, — прошепотів я з мимовільною усмішкою, — усе складеться так, що... ми всі будемо задоволені... Усі... навіть ті, кого тут немає!...
+
+---
+
+**PL:** Staruszka spojrzała na mnie pytającym wzrokiem, alem nic nie odpowiedział. Jeszcze raz pożegnałem ją i wyszliśmy obaj z rządcą nie dopytując się już o panią Stawską.
+
+**UA:** Старенька запитально глянула на мене, але я нічого не відповів. Ще раз попрощався з нею, і ми з управителем вийшли, більше не розпитуючи про пані Ставську.
+
+---
+
+**PL:** — A niechże pan zagląda do nas choćby co wieczór!... — zawołała sędziwa dama, gdy już byliśmy w kuchni.
+
+**UA:** — Та заходьте до нас хоч щовечора!... — гукнула старенька, коли ми вже були на кухні.
+
+---
+
+**PL:** Naturalnie, że będę zaglądał... Czy uda mi się moja kombinacja ze Stachem? Bóg raczy wiedzieć. Tam gdzie serce wchodzi w grę, na nic wszelkie rachuby. Ale spróbuję rozwiązać ręce kobiecie, a i to coś znaczy.
+
+**UA:** Звісно, заходити буду... Чи вдасться моя комбінація зі Стахом? Бог відає. Коли йдеться про серце, усі розрахунки марні. Але спробую розв’язати жінці руки, і це вже щось.
+
+---
+
+**PL:** Po opuszczeniu mieszkania pani Stawskiej i jej matki rozeszliśmy się z rządcą domu, bardzo z siebie zadowoleni. To jakiś dobry człeczyna. Ale kiedy wróciwszy do siebie zastanowiłem się nad skutkami mego przeglądu lokatorów, ażem się schwycił za głowę.
+
+**UA:** Вийшовши з помешкання пані Ставської та її матері, ми з управителем розійшлися, дуже задоволені одне одним. Славний чоловічок. Але, повернувшись додому й обміркувавши наслідки огляду мешканців, я аж схопився за голову.
+
+---
+
+**PL:** Miałem uregulować finanse kamienicy i otóż uregulowałem je tak, że na pewno dochód zmniejszył się o trzysta rubli rocznie. Ha! może tym rychlej Stach opatrzy się i sprzeda swój nabytek, który wcale nie był mu potrzebny.
+
+**UA:** Мав упорядкувати фінанси кам’яниці й так їх упорядкував, що річний прибуток напевно зменшився на триста рублів. Га! Може, Стах швидше схаменеться й продасть свою придбану нерухомість, яка йому зовсім не була потрібна.
+
+---
+
+**PL:** Ir wciąż mi niedomaga. Polityka stoi w jednej mierze: ciągła niepewność...
+
+**UA:** Ір усе ще нездужає. У політиці без змін: сама непевність...

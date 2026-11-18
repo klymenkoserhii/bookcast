@@ -1,0 +1,3088 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to audio/chapter-19.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-19.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>«Lalka» — Chapter 19: Pierwsze ostrzeżenie — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>«Lalka» — Chapter 19: Pierwsze ostrzeżenie · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="audio/chapter-19.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Była pierwsza w południe, kiedy pan Ignacy zbliżał się do sklepu, zawstydzony i niespokojny. Jak można zmarnować tyle czasu... w porze największego ruchu interesantów?... A nuż w dodatku stało się jakie nieszczęście?...",
+  "start": 5.62
+ },
+ {
+  "i": 1,
+  "pl": "I co za satysfakcja włóczyć się po ulicach w upał, wśród kurzu i zapachu prażonych asfaltów!...",
+  "start": 19.62
+ },
+ {
+  "i": 2,
+  "pl": "Istotnie, dzień był wyjątkowo gorący i jaskrawy: chodniki i kamienie ziały żarem, blaszanych szyldów ani latarniowych słupów nie można było dotknąć ręką, a z nadmiaru światła panu Ignacemu zachodziły łzami oczy i czarne płatki zasłaniały mu pole widzenia.",
+  "start": 26.29
+ },
+ {
+  "i": 3,
+  "pl": "„Gdybym był Panem Bogiem — myślał — połowę lipcowych upałów zachowałbym na grudzień...”",
+  "start": 45.31
+ },
+ {
+  "i": 4,
+  "pl": "Nagle spojrzał na wystawę sklepową (właśnie mijał okna) i osłupiał. Wystawa już drugi tydzień nie odnowiona!... Te same brązy, majoliki, wachlarze, te same neseserki, rękawiczki, parasole i zabawki!... Czy widział kto podobne zgorszenie?",
+  "start": 50.72
+ },
+ {
+  "i": 5,
+  "pl": "„Ależ ja jestem podły człowiek! — mruknął do siebie. — Onegdaj spiłem się, dziś włóczę się... Diabli wezmą budę, jak amen w pacierzu...”",
+  "start": 68.0
+ },
+ {
+  "i": 6,
+  "pl": "Ledwie wszedł do sklepu, niepewny, co mu więcej cięży: serce czy nogi? — gdy w tej chwili porwał go Mraczewski. Już był ostrzyżony na sposób warszawski, uczesany i uperfumowany jak dawniej i przez amatorstwo obsługiwał przychodzących gości, sam będąc gościem, jeszcze z tak dalekich okolic.",
+  "start": 78.02
+ },
+ {
+  "i": 7,
+  "pl": "Miejscowi panowie nie mogli wyjść z podziwu.",
+  "start": 100.21
+ },
+ {
+  "i": 8,
+  "pl": "— A bój się pan Boga, panie Ignacy — zawołał — trzy godziny czekam na pana! Wyście tu wszyscy głowy potracili...",
+  "start": 102.85
+ },
+ {
+  "i": 9,
+  "pl": "Wziął go pod ramię i nie zważając na paru obecnych gości, którzy ze zdumieniem patrzyli na nich, pędem zaciągnął Rzeckiego do gabinetu, gdzie stała kasa.",
+  "start": 109.47
+ },
+ {
+  "i": 10,
+  "pl": "Tu osiwiałego w swoim zawodzie subiekta pchnął na twardy fotel i stanąwszy przed nim z załamanymi rękoma, jak zrozpaczony Germont przed Violettą<sup>531<\/sup>, rzekł:",
+  "start": 119.67
+ },
+ {
+  "i": 11,
+  "pl": "— Wiesz pan co... Wiedziałem, że po moim wyjeździe stąd interes się rozprzęgnie; alem nie przypuszczał, że tak prędko... No, bo że pan nie siedzisz w sklepie, mniejsza: dziury nie będzie. Ale jakie tam stary głupstwa wyrabia, to przecie skandal!...",
+  "start": 131.76
+ },
+ {
+  "i": 12,
+  "pl": "Zdawało się, że panu Ignacemu brwi posuną się ze zdziwienia na wierzch czoła.",
+  "start": 149.74
+ },
+ {
+  "i": 13,
+  "pl": "— Przepraszam!... — zawołał podnosząc się z fotelu.",
+  "start": 155.06
+ },
+ {
+  "i": 14,
+  "pl": "Ale Mraczewski zmusił go do siedzenia.",
+  "start": 158.02
+ },
+ {
+  "i": 15,
+  "pl": "— Przepra...",
+  "start": 160.84
+ },
+ {
+  "i": 16,
+  "pl": "— Już tylko niech się pan nie odzywa! — przerwał mu pachnący młody człowiek. — Pan wie, co się dzieje?... Suzin dziś na noc jedzie do Berlina zobaczyć Bismarcka, a potem — do Paryża na wystawę. Koniecznie, słyszy pan?... koniecznie namawia Wokulskiego, ażeby z nim jechał. I ten dur...",
+  "start": null
+ },
+ {
+  "i": 17,
+  "pl": "— Panie Mraczewski!... Kto pana ośmielił...",
+  "start": 180.34
+ },
+ {
+  "i": 18,
+  "pl": "— Ja już z natury jestem śmiały, a Wokulski wariat!... Dziś dopiero dowiedziałem się prawdy... Pan wie, ile stary mógłby zarobić na tym interesie w Paryżu z Suzinem?... Nie dziesięć, ale pięćdziesiąt tysięcy... rubli, panie Rzecki!...",
+  "start": 182.7
+ },
+ {
+  "i": 19,
+  "pl": "I ten osioł nie tylko że nie chce dziś jechać, ale jeszcze mówi, że — nie wie, kiedy pojedzie. On nie wie, a Suzin może czekać z tą sprawą najwyżej kilka dni.",
+  "start": 195.6
+ },
+ {
+  "i": 20,
+  "pl": "— Cóż Suzin?... — cicho spytał naprawdę zmieszany pan Ignacy.",
+  "start": 206.39
+ },
+ {
+  "i": 21,
+  "pl": "— Suzin?... Jest zły, a co gorsza — rozżalony. Mówi, że Stanisław Piotrowicz już nie ten, co był, że gardzi nim... słowem, awantura!... Pięćdziesiąt tysięcy rubli zysku i darmo podróż. No, niech pan sam powie, czy w tych warunkach nawet święty Stanisław Kostka nie pojechałby do Paryża?...",
+  "start": 211.03
+ },
+ {
+  "i": 22,
+  "pl": "— Z pewnością! — mruknął pan Ignacy. — Gdzież Stach... to jest pan Wokulski? — dodał podnosząc się z fotelu.",
+  "start": 229.28
+ },
+ {
+  "i": 23,
+  "pl": "— Jest w pańskim mieszkaniu i pisze tam rachunki dla Suzina. Zobaczysz pan, co stracicie przez ten figiel.",
+  "start": 237.3
+ },
+ {
+  "i": 24,
+  "pl": "Drzwi gabinetu uchyliły się i stanął w nich Klejn z listem w ręku.",
+  "start": 242.81
+ },
+ {
+  "i": 25,
+  "pl": "— Przyniósł lokaj Łęckich do starego — rzekł. Może pan mu odda, bo dziś, bestia, czegoś taki zły...",
+  "start": 247.65
+ },
+ {
+  "i": 26,
+  "pl": "Pan Ignacy wziął do rąk bladoniebieską kopertę ozdobioną wizerunkiem niezapominajek, lecz wahał się, czy ma iść. Tymczasem Mraczewski spojrzał mu przez ramię na adres.",
+  "start": 255.19
+ },
+ {
+  "i": 27,
+  "pl": "— List od Belci! — zawołał — jestem w domu!... — I śmiejąc się wybiegł z gabinetu.",
+  "start": 266.6
+ },
+ {
+  "i": 28,
+  "pl": "„Do diabła! — mruknął pan Ignacy — czyżby te wszystkie plotki miały być prawdą?... Więc on dla niej wydaje na kupno kamienicy dziewięćdziesiąt tysięcy i traci na Suzinie pięćdziesiąt?... Razem sto czterdzieści tysięcy rubli!... A ten powóz, a te wyścigi, a te ofiary na cele dobroczynne?...",
+  "start": 271.76
+ },
+ {
+  "i": 29,
+  "pl": "A... a ten Rossi, któremu tak gorąco przypatruje się panna Łęcka jak Żyd dziesięciorgu przykazaniom?... Ehe!... schowam ja do kieszeni ceremonie...”",
+  "start": 288.99
+ },
+ {
+  "i": 30,
+  "pl": "Zapiął marynarkę na guzik pod szyją, wyprostował się i poszedł z listem do swego mieszkania. W tej chwili dopiero zauważył, że mu trochę skrzypią buty, i poczuł niejaką ulgę.",
+  "start": 299.63
+ },
+ {
+  "i": 31,
+  "pl": "W mieszkaniu pana Ignacego nad stosem papierów siedział Wokulski bez surduta i kamizelki i pisał.",
+  "start": 310.8
+ },
+ {
+  "i": 32,
+  "pl": "— Aha!... — zawołał podnosząc głowę na widok Rzeckiego. Nie gniewasz się, że ci tu gospodaruję jak u siebie?",
+  "start": 317.74
+ },
+ {
+  "i": 33,
+  "pl": "— Pryncypał robi ceremonie!... — odezwał się z przekąsem pan Ignacy. — Jest tu list od... tych... od Łęckich.",
+  "start": 324.54
+ },
+ {
+  "i": 34,
+  "pl": "Wokulski spojrzał na adres, gorączkowo rozerwał kopertę i czytał... czytał... Raz, drugi i trzeci przeczytał list. Rzecki coś przewracał w swoim biurku, a spostrzegłszy, że jego przyjaciel skończył już czytanie i zamyślony oparł głowę na ręku, rzekł suchym tonem:",
+  "start": 331.8
+ },
+ {
+  "i": 35,
+  "pl": "— Jedziesz dziś do Paryża z Suzinem?",
+  "start": 348.9
+ },
+ {
+  "i": 36,
+  "pl": "— Ani myślę.",
+  "start": 351.84
+ },
+ {
+  "i": 37,
+  "pl": "— Słyszałem, że to jakiś wielki interes... Pięćdziesiąt tysięcy rubli...",
+  "start": 352.77
+ },
+ {
+  "i": 38,
+  "pl": "Wokulski milczał.",
+  "start": 357.05
+ },
+ {
+  "i": 39,
+  "pl": "— Więc jedziesz jutro albo pojutrze, bo podobno Suzin ma na twój przyjazd zaczekać parę dni?",
+  "start": 358.57
+ },
+ {
+  "i": 40,
+  "pl": "— Nie wiem jeszcze, kiedy pojadę.",
+  "start": 365.18
+ },
+ {
+  "i": 41,
+  "pl": "— To źle, Stachu. Pięćdziesiąt tysięcy rubli to majątek; szkoda go stracić... Jeżeli dowiedzą się, że wypuściłeś z rąk taką sposobność...",
+  "start": 367.91
+ },
+ {
+  "i": 42,
+  "pl": "— Powiedzą, żem zwariował — przerwał mu Wokulski.",
+  "start": 376.41
+ },
+ {
+  "i": 43,
+  "pl": "Znowu zamilkł i nagle odezwał się:",
+  "start": 379.81
+ },
+ {
+  "i": 44,
+  "pl": "— A gdybym miał do spełnienia ważniejszy obowiązek aniżeli zyskanie pięćdziesięciu tysięcy?...",
+  "start": 382.87
+ },
+ {
+  "i": 45,
+  "pl": "— Polityczny? — spytał cicho Rzecki z trwogą w oczach, ale i z uśmiechem na ustach.",
+  "start": 389.07
+ },
+ {
+  "i": 46,
+  "pl": "Wokulski podał mu list.",
+  "start": 394.33
+ },
+ {
+  "i": 47,
+  "pl": "— Czytaj — rzekł. — Przekonasz się, że są rzeczy lepsze od polityki.",
+  "start": 396.29
+ },
+ {
+  "i": 48,
+  "pl": "Pan Ignacy z niejakim wahaniem wziął list do ręki, lecz na powtórny rozkaz Wokulskiego przeczytał:",
+  "start": 401.23
+ },
+ {
+  "i": 49,
+  "pl": "„Wieniec jest prześliczny i już z góry w imieniu Rossiego dziękuję panu za ten podarunek. Nieporównane jest to dyskretne rozmieszczenie szmaragdów między złotymi listkami.",
+  "start": 408.53
+ },
+ {
+  "i": 50,
+  "pl": "Musi Pan koniecznie przyjechać do nas jutro na obiad, ażebyśmy się naradzili nad pożegnaniem Rossiego, a także nad naszą podróżą do Paryża. Wczoraj papo powiedział mi, że jedziemy najdalej za tydzień.",
+  "start": 421.63
+ },
+ {
+  "i": 51,
+  "pl": "Naturalnie jedziemy razem, gdyż bez miłego Pańskiego towarzystwa podróż straciłaby dla mnie połowę wartości. A więc do widzenia.",
+  "start": 433.29
+ },
+ {
+  "i": 52,
+  "pl": "Izabela Łęcka”",
+  "start": 442.23
+ },
+ {
+  "i": 53,
+  "pl": "— Nie rozumiem — rzekł pan Ignacy, obojętnie rzucając list na stół. — Dla przyjemności podróżowania z panną Łęcką, a choćby radzenia nad prezentami dla... dla jej ulubieńców nie rzuca się w błoto pięćdziesięciu tysięcy... jeżeli nie więcej...",
+  "start": 444.46
+ },
+ {
+  "i": 54,
+  "pl": "Wokulski powstał z kanapy i oparłszy się obu rękoma na stole, zapytał:",
+  "start": 460.98
+ },
+ {
+  "i": 55,
+  "pl": "— A gdyby mi się podobało rzucić dla niej cały majątek w błoto, to co?...",
+  "start": 465.87
+ },
+ {
+  "i": 56,
+  "pl": "Żyły nabrzmiały mu na czole, gors koszuli gorączkowo falował na piersiach. W oczach zapalały mu się i gasły te same iskry, jakie już widział Rzecki w chwili pojedynku z baronem.",
+  "start": 471.7
+ },
+ {
+  "i": 57,
+  "pl": "— To co?... — powtórzył Wokulski.",
+  "start": 485.01
+ },
+ {
+  "i": 58,
+  "pl": "— To nic — odpowiedział spokojnie Rzecki. — Przyznałbym tylko, że omyliłem się, nie wiem już który raz w życiu...",
+  "start": 489.7
+ },
+ {
+  "i": 59,
+  "pl": "— Na czym?",
+  "start": 501.1
+ },
+ {
+  "i": 60,
+  "pl": "— Dziś na tobie. Myślałem, że człowiek, który naraża się na śmierć i... na plotki dla zdobycia majątku, ma jakieś ogólniejsze cele...",
+  "start": 502.38
+ },
+ {
+  "i": 61,
+  "pl": "— A dajcież mi raz spokój z tym waszym ogółem!... — wykrzyknął Wokulski uderzając pięścią w stół. — Co ja robiłem dla niego, o tym wiem, ale... cóż on zrobił dla mnie!... Więc nigdy nie skończą się wymagania ofiar, które mi nie dały żadnych praw?...",
+  "start": 514.29
+ },
+ {
+  "i": 62,
+  "pl": "— Chcę nareszcie raz coś zrobić dla samego siebie... Uszami wylewają mi się frazesy, których nikt nie wypełnia... Własne szczęście — to dziś mój obowiązek... inaczej... w łeb bym sobie palnął, gdybym już nic nie widział dla siebie, oprócz jakichś fantastycznych ciężarów.",
+  "start": 532.92
+ },
+ {
+  "i": 63,
+  "pl": "Tysiące próżnują, a jeden względem nich ma obowiązki!... Czy słyszano coś potworniejszego?...",
+  "start": 550.8
+ },
+ {
+  "i": 64,
+  "pl": "— A owacje dla Rossiego to nie ciężar? — spytał pan Ignacy.",
+  "start": 558.45
+ },
+ {
+  "i": 65,
+  "pl": "— Nie robię ich dla Rossiego...",
+  "start": 562.49
+ },
+ {
+  "i": 66,
+  "pl": "— Tylko dla dogodzenia kobiecie... wiem... Ze wszystkich kas oszczędności ta jest najmniej pewną — odparł Rzecki.",
+  "start": 564.41
+ },
+ {
+  "i": 67,
+  "pl": "— Jesteś nieostrożny!... — syknął Wokulski.",
+  "start": 572.09
+ },
+ {
+  "i": 68,
+  "pl": "— Powiedz — byłem... Tobie się zdaje, że dopiero ty wynalazłeś miłość. Znam i ja ją, bah!... Przez kilka lat kochałem się jak półgłówek, a tymczasem moja Heloiza<sup>532<\/sup> romansowała z innymi. Boże mój!... ile mnie kosztowała każda wymiana spojrzeń, które chwytałem w przelocie...",
+  "start": 575.45
+ },
+ {
+  "i": 69,
+  "pl": "W końcu w moich oczach wymieniano nawet uściski... Wierz mi, Stachu, ja nie jestem tak naiwny, jak myślą. Wiele w życiu widziałem i doszedłem do wniosku, że my wkładamy zbyt dużo serca w zabawę nazywaną miłością!",
+  "start": 593.15
+ },
+ {
+  "i": 70,
+  "pl": "— Mówisz tak, bo jej nie znasz — wtrącił pochmurnie Wokulski.",
+  "start": 608.15
+ },
+ {
+  "i": 71,
+  "pl": "— Każda jest wyjątkową, dopóki nam karku nie nadkręci. Prawda, że nie znam tej, ale znam inne. Ażeby nad kobietami odnosić wielkie zwycięstwa, trzeba być w miarę impertynentem i w miarę bezczelnym: dwie zalety, których ty nie posiadasz.",
+  "start": 612.61
+ },
+ {
+  "i": 72,
+  "pl": "I dlatego ostrzegam cię: niedużo ryzykuj, bo zostaniesz zdystansowany, jeżeli już nie zostałeś. Nigdym do ciebie o tych rzeczach nie mówił, prawda? nawet nie wyglądam na podobną filozofię...",
+  "start": 627.61
+ },
+ {
+  "i": 73,
+  "pl": "Ale czuję, że grozi ci niebezpieczeństwo, więc powtarzam: strzeż się! i w podłej zabawie nie angażuj serca, bo ci je w asystencji lada chłystka oplują. A w tym wypadku, mówię ci, człowiek doznaje tak przykrych wrażeń, że... Bodajbyś ich lepiej nie... doczekał!...",
+  "start": 641.03
+ },
+ {
+  "i": 74,
+  "pl": "Wokulski siedząc na kanapie zaciskał pięści, ale milczał. W tej chwili zapukano do drzwi i ukazał się Lisiecki.",
+  "start": 663.09
+ },
+ {
+  "i": 75,
+  "pl": "— Pan Łęcki chce się z panem widzieć. Może tu wejść? — zapytał subiekt.",
+  "start": 670.21
+ },
+ {
+  "i": 76,
+  "pl": "— Niech pan poprosi... — odparł Wokulski, spiesznie wciągając kamizelkę i surdut.",
+  "start": 674.37
+ },
+ {
+  "i": 77,
+  "pl": "Rzecki wstał z krzesła, smutno pokiwał głową i opuścił swoje mieszkanie.",
+  "start": 680.12
+ },
+ {
+  "i": 78,
+  "pl": "„Myślałem, że jest źle — mruknął będąc już w sieni. — Alem nie myślał, że jest aż tak źle...”",
+  "start": 686.07
+ },
+ {
+  "i": 79,
+  "pl": "Ledwie Wokulski zdążył jako tako ogarnąć się, wszedł pan Łęcki, a za nim woźny sklepowy. Pan Tomasz miał oczy krwią nabiegłe i sine plamy na policzkach. Rzucił się na fotel i oparłszy głowę na tylnej krawędzi, ciężko dyszał.",
+  "start": 694.7
+ },
+ {
+  "i": 80,
+  "pl": "Woźny stał w progu z zakłopotaną miną i przebierając palcami po metalowych guzikach swojej liberii czekał na rozkazy.",
+  "start": 710.51
+ },
+ {
+  "i": 81,
+  "pl": "— Wybacz, panie Stanisławie, ale... proszę cię wody z cytryną... — wyszeptał pan Tomasz.",
+  "start": 718.49
+ },
+ {
+  "i": 82,
+  "pl": "— Sodowej wody, cytryny i cukru... Biegnij! — rzekł Wokulski do woźnego.",
+  "start": 724.07
+ },
+ {
+  "i": 83,
+  "pl": "Woźny wyszedł zawadzając wielkimi guzami<sup>533<\/sup> o drzwi pokoju.",
+  "start": 728.31
+ },
+ {
+  "i": 84,
+  "pl": "— To nic — mówił pan Tomasz z uśmiechem. — Krótka szyja, upał i irytacja... Chwilę odpocznę...",
+  "start": 732.79
+ },
+ {
+  "i": 85,
+  "pl": "Zatrwożony Wokulski zdjął mu krawat i rozpiął koszulę. Potem zlał ręcznik wodą kolońską, którą znalazł na biurku Rzeckiego, i z synowską troskliwością wytarł choremu kark, twarz i głowę.",
+  "start": 739.93
+ },
+ {
+  "i": 86,
+  "pl": "Pan Tomasz uścisnął mu rękę.",
+  "start": 752.95
+ },
+ {
+  "i": 87,
+  "pl": "— Już mi lepiej... Bóg zapłać... — a potem dodał półgłosem: — Podobasz mi się w tej roli siostry miłosierdzia. Bela nie potrafiłaby zrobić delikatniej... No, ona stworzona do tego, ażeby jej usługiwano...",
+  "start": 755.29
+ },
+ {
+  "i": 88,
+  "pl": "Woźny przyniósł syfon i cytryny. Wokulski przyrządził limoniadę i napoił pana Tomasza, któremu stopniowo poczęły znikać sine plamy z policzków.",
+  "start": 769.55
+ },
+ {
+  "i": 89,
+  "pl": "— Idź do mego mieszkania — rzekł Wokulski do woźnego — i każ zaprząc konie. Niech zajedzie przed sklep.",
+  "start": 781.21
+ },
+ {
+  "i": 90,
+  "pl": "— Kochany... kochany jesteś... — mówił pan Tomasz, mocno ściskając go za rękę i z wdzięcznością spoglądając na niego zaczerwienionymi oczyma. — Nie przywykłem do podobnej troskliwości, ponieważ Belcia nie zna się na tych rzeczach.",
+  "start": 787.85
+ },
+ {
+  "i": 91,
+  "pl": "Nieumiejętność panny Izabeli w opiekowaniu się chorymi w przykry sposób uderzyła Wokulskiego. Ale tylko na chwilę.",
+  "start": 802.13
+ },
+ {
+  "i": 92,
+  "pl": "Powoli pan Tomasz zupełnie odzyskał siły. Obfity pot wystąpił mu na czoło, głos wzmocnił się i tylko sieć czerwonych żyłek na oczach świadczyła jeszcze o minionym ataku. Przeszedł się nawet po pokoju, przeciągnął się i zaczął:",
+  "start": 809.46
+ },
+ {
+  "i": 93,
+  "pl": "— A... nie masz pojęcia, panie Stanisławie, jak się dziś zirytowałem. Czy dasz wiarę? dom mój sprzedano za dziewięćdziesiąt tysięcy!...",
+  "start": 826.87
+ },
+ {
+  "i": 94,
+  "pl": "Wokulski drgnął.",
+  "start": 835.84
+ },
+ {
+  "i": 95,
+  "pl": "— Byłem pewny — mówił pan Łęcki — że wezmę choć ze sto dziesięć tysięcy... Już na sali słyszałem dokoła siebie głosy, że kamienica warta sto dwadzieścia... Ale cóż — zapragnął kupić ją Żyd, podły lichwiarz, ten Szlangbaum...",
+  "start": 837.6
+ },
+ {
+  "i": 96,
+  "pl": "Porozumiał się z konkurentami, a kto wie, czy i nie z moim adwokatem, i — straciłem dwadzieścia albo trzydzieści tysięcy...",
+  "start": 852.9
+ },
+ {
+  "i": 97,
+  "pl": "Teraz Wokulski wyglądał na apoplektyka, ale milczał.",
+  "start": 860.55
+ },
+ {
+  "i": 98,
+  "pl": "— A tak rachowałem — prawił pan Łęcki — że od pięćdziesięciu tysięcy dasz mi z dziesięć tysięcy rocznie. Na utrzymanie domu wychodzi mi sześć do ośmiu tysięcy, więc za resztę moglibyśmy z Belą co roku wyjeżdżać za granicę. Obiecałem nawet dziecku, że za tydzień pojedziemy do Paryża... Akurat!...",
+  "start": 864.69
+ },
+ {
+  "i": 99,
+  "pl": "Sześć tysięcy rubli ledwie wystarczą na nędzne istnienie, a o podróżach ani myśleć... Nikczemny Żyd... Nikczemne społeczeństwo, które tak ulega lichwiarzom, że nie śmie z nimi walczyć nawet przy licytacji...",
+  "start": 882.97
+ },
+ {
+  "i": 100,
+  "pl": "A co mnie najwięcej boli, powiem ci, to okoliczność, że za tym nędznym Szlangbaumem może ukrywa się jaki chrześcijanin, nawet arystokrata...",
+  "start": 897.07
+ },
+ {
+  "i": 101,
+  "pl": "Głos znowu zaczął mu się stłumiać i znowu na twarz wystąpiło sinawe zabarwienie. Usiadł i napił się wody.",
+  "start": 908.36
+ },
+ {
+  "i": 102,
+  "pl": "— Podli!... podli!... — szeptał.",
+  "start": 916.02
+ },
+ {
+  "i": 103,
+  "pl": "— Niech się pan uspokoi — rzekł Wokulski. — Ile mi pan da gotówką?",
+  "start": 918.7
+ },
+ {
+  "i": 104,
+  "pl": "— Prosiłem adwokata naszego księcia (bo mój adwokat to łajdak), ażeby odebrał należną mi sumę i tobie doręczył ją, panie Stanisławie... Razem trzydzieści tysięcy. A że obiecujesz mi od nich dwadzieścia procent, więc mam sześć tysięcy rubli rocznie na całe utrzymanie. Nędza... ruina!...",
+  "start": 924.0
+ },
+ {
+  "i": 105,
+  "pl": "— Sumę pańską — odpowiedział Wokulski — mogę umieścić w lepszym interesie. Będzie pan miał dziesięć tysięcy rocznie...",
+  "start": 942.86
+ },
+ {
+  "i": 106,
+  "pl": "— Co mówisz?...",
+  "start": 950.76
+ },
+ {
+  "i": 107,
+  "pl": "— Tak. Trafia mi się wyjątkowa okazja...",
+  "start": 951.62
+ },
+ {
+  "i": 108,
+  "pl": "Pan Tomasz zerwał się z fotelu.",
+  "start": 954.58
+ },
+ {
+  "i": 109,
+  "pl": "— Zbawco... dobrodzieju!... — mówił wzruszonym głosem. — Jesteś najszlachetniejszym z ludzi... Ale — dodał cofając się i rozkładając ręce — czy tylko ty nie stracisz?...",
+  "start": 956.72
+ },
+ {
+  "i": 110,
+  "pl": "— Ja?... Przecież jestem kupcem.",
+  "start": 968.82
+ },
+ {
+  "i": 111,
+  "pl": "— Kupiec!... Także mi mów!... — zawołał pan Tomasz. — Dzięki tobie przekonałem się, że wyraz kupiec jest dziś synonimem wielkoduszności, delikatności, bohaterstwa... Zacny!...",
+  "start": 971.62
+ },
+ {
+  "i": 112,
+  "pl": "I rzucił mu się na szyję, omal nie płacząc.",
+  "start": 983.81
+ },
+ {
+  "i": 113,
+  "pl": "Wokulski po raz trzeci usadowił go na fotelu, a w tej chwili zapukano do drzwi.",
+  "start": 987.88
+ },
+ {
+  "i": 114,
+  "pl": "— Proszę.",
+  "start": 993.08
+ },
+ {
+  "i": 115,
+  "pl": "Wszedł Henryk Szlangbaum, blady, z błyskawicami w oczach. Stanął przed panem Tomaszem i kłaniając mu się rzekł:",
+  "start": 994.22
+ },
+ {
+  "i": 116,
+  "pl": "— Panie — ja jestem Szlangbaum, właśnie syn tego „podłego” lichwiarza, na którego pan tyle wymyślał w sklepie przy moich kolegach i gościach...",
+  "start": 1001.88
+ },
+ {
+  "i": 117,
+  "pl": "— Panie... nie wiedziałem... wszelką satysfakcję jestem gotów... a najpierwej — przepraszam... Byłem bardzo zirytowany... — mówił wzruszony pan Tomasz.",
+  "start": 1012.07
+ },
+ {
+  "i": 118,
+  "pl": "Szlangbaum uspokoił się.",
+  "start": 1023.19
+ },
+ {
+  "i": 119,
+  "pl": "— Proszę pana — odparł — zamiast dawać mi satysfakcję, niech pan posłucha, co powiem. Dlaczego mój ojciec kupił pański dom? o to na dziś mniejsza. Że zaś pana nie oszukał — dam stanowczy dowód. Ojciec natychmiast odstąpi panu ten dom za dziewięćdziesiąt tysięcy...",
+  "start": 1025.33
+ },
+ {
+  "i": 120,
+  "pl": "Więcej powiem — wybuchnął — nabywca odda go panu za siedemdziesiąt...",
+  "start": 1043.45
+ },
+ {
+  "i": 121,
+  "pl": "— Henryku!... — wtrącił Wokulski.",
+  "start": 1048.29
+ },
+ {
+  "i": 122,
+  "pl": "— Już skończyłem. Żegnam pana — odpowiedział Szlangbaum i nisko ukłoniwszy się panu Tomaszowi wyszedł z pokoju.",
+  "start": 1050.59
+ },
+ {
+  "i": 123,
+  "pl": "— Co za przykra farsa! — odezwał się po chwili pan Tomasz. — Istotnie, wypowiedziałem w sklepie parę gorzkich wyrazów o starym Szlangbaumie, ale pod słowem, nie wiedziałem, że jego syn tu jest... Zwróci mi dom za siedemdziesiąt tysięcy, za który dał dziewięćdziesiąt... Paradny!...",
+  "start": 1059.29
+ },
+ {
+  "i": 124,
+  "pl": "Cóż ty na to, panie Stanisławie?...",
+  "start": 1077.07
+ },
+ {
+  "i": 125,
+  "pl": "— Może dom naprawdę wart tylko dziewięćdziesiąt... — nieśmiało odpowiedział Wokulski.",
+  "start": 1079.17
+ },
+ {
+  "i": 126,
+  "pl": "Pan Tomasz zaczął zapinać na sobie odzież i krawat.",
+  "start": 1083.47
+ },
+ {
+  "i": 127,
+  "pl": "— Dziękuję ci, panie Stanisławie — mówił — i za pomoc, i za zajęcie się moimi interesami... Co za farsa z tym Szlangbaumem!... Ale... ale... Belcia prosi cię jutro na obiad... Pieniądze odbierz od adwokata naszego księcia, a co do procentu, który będziesz łaskaw...",
+  "start": 1087.42
+ },
+ {
+  "i": 128,
+  "pl": "— Wypłacę go natychmiast z góry za pół roku.",
+  "start": 1105.52
+ },
+ {
+  "i": 129,
+  "pl": "— Bardzo ci wdzięczny jestem — ciągnął pan Tomasz całując go w oba policzki. — No, do widzenia zatem, do jutra... A nie zapomnij o obiedzie...",
+  "start": 1108.08
+ },
+ {
+  "i": 130,
+  "pl": "Wokulski wyprowadził go przez podwórze do bramy, gdzie już czekał powóz.",
+  "start": 1118.15
+ },
+ {
+  "i": 131,
+  "pl": "— Straszny upał! — mówił pan Tomasz, z trudnością przy pomocy Wokulskiego siadając do powozu. — Cóż znowu za farsa z tymi Żydami?... Dał dziewięćdziesiąt tysięcy, a gotów odstąpić za siedemdziesiąt... Pocieszne... słowo honoru!...",
+  "start": 1122.87
+ },
+ {
+  "i": 132,
+  "pl": "Konie ruszyły w stronę Alei Ujazdowskiej.",
+  "start": 1136.99
+ },
+ {
+  "i": 133,
+  "pl": "W drodze do domu pan Tomasz był odurzony. Nie czuł upału, tylko ogólne osłabienie i szum w uszach. Chwilami zdawało mu się, że każdym okiem widzi inaczej albo że obydwoma widzi gorzej. Oparł się w rogu powozu chwiejąc się za każdym silniejszym ruchem jak pijany.",
+  "start": 1140.29
+ },
+ {
+  "i": 134,
+  "pl": "Myśli i uczucia plątały mu się w dziwny sposób. Czasem wyobrażał sobie, że jest otoczony siecią intryg, z której wydobyć go może tylko Wokulski. To znowu, że jest ciężko chory i że tylko Wokulski pielęgnować by go potrafił.",
+  "start": 1161.61
+ },
+ {
+  "i": 135,
+  "pl": "To znowu, że umrze zostawiając zubożałą i od wszystkich opuszczoną córkę, którą zaopiekować by się mógł tylko Wokulski. A nareszcie pomyślał, że dobrze jest mieć własny powóz, tak lekko niosący jak ten, którym jedzie — i — że gdyby poprosił Wokulskiego, on zrobiłby mu z niego prezent.",
+  "start": 1176.14
+ },
+ {
+  "i": 136,
+  "pl": "„Straszny upał!” — mruknął pan Tomasz.",
+  "start": 1196.56
+ },
+ {
+  "i": 137,
+  "pl": "Konie stanęły przed domem, pan Tomasz wysiadł i nawet nie kiwnąwszy głową stangretowi poszedł na górę. Ledwie wlókł ociężałe nogi, a gdy znalazł się w swym gabinecie, padł na fotel w kapeluszu i tak siedział parę minut ku najwyższemu zdumieniu służącego, który uznał za stosowne poprosić panienkę.",
+  "start": 1200.79
+ },
+ {
+  "i": 138,
+  "pl": "— Musiał dobrze pójść interes — rzekł do panny Izabeli — bo jaśnie pan coś... jakby trochę tego...",
+  "start": 1221.97
+ },
+ {
+  "i": 139,
+  "pl": "Panna Izabela, która mimo pozornego chłodu z największą niecierpliwością oczekiwała na powrót ojca i rezultat licytacji domu, poszła do gabinetu o tyle szybko, o ile można to było pogodzić z zasadami przyzwoitości.",
+  "start": 1229.42
+ },
+ {
+  "i": 140,
+  "pl": "Zawsze bowiem pamiętała, że pannie z jej nazwiskiem nie wolno zdradzać żywszych uczuć, nawet wobec bankructwa. Pomimo przecież jej panowania nad sobą Mikołaj poznał (z silnych wypieków na twarzy), że jest wzruszona, i jeszcze raz dodał półgłosem:",
+  "start": 1243.74
+ },
+ {
+  "i": 141,
+  "pl": "— O! dobrze musiał pójść interes, bo jaśnie pan... tego...",
+  "start": 1261.62
+ },
+ {
+  "i": 142,
+  "pl": "Panna Izabela zmarszczyła piękne czoło i zatrzasnęła za sobą drzwi gabinetu. Jej ojciec wciąż siedział w kapeluszu na głowie.",
+  "start": 1266.69
+ },
+ {
+  "i": 143,
+  "pl": "— Cóż, ojcze? — spytała z odcieniem niesmaku, patrząc w jego czerwone oczy.",
+  "start": 1275.43
+ },
+ {
+  "i": 144,
+  "pl": "— Nieszczęście... ruina!... — odparł pan Tomasz z trudnością zdejmując kapelusz. — Straciłem trzydzieści tysięcy rubli...",
+  "start": 1280.49
+ },
+ {
+  "i": 145,
+  "pl": "Panna Izabela pobladła i usiadła na skórzanym szezlongu.",
+  "start": 1289.62
+ },
+ {
+  "i": 146,
+  "pl": "— Podły Żyd, lichwiarz, odstraszył konkurentów, przekupił adwokata i...",
+  "start": 1293.74
+ },
+ {
+  "i": 147,
+  "pl": "— Więc już nic nie mamy?... — szepnęła.",
+  "start": 1299.77
+ },
+ {
+  "i": 148,
+  "pl": "— Jak to nic?... Mamy trzydzieści tysięcy rubli, a od nich dziesięć tysięcy rubli procentu... Zacny ten Wokulski!... Nie miałem pojęcia o podobnej szlachetności... A gdybyś wiedziała, jak on mnie dziś pielęgnował...",
+  "start": 1303.09
+ },
+ {
+  "i": 149,
+  "pl": "— Dlaczego pielęgnował?...",
+  "start": 1316.37
+ },
+ {
+  "i": 150,
+  "pl": "— Miałem mały atak z gorąca i irytacji...",
+  "start": 1318.4
+ },
+ {
+  "i": 151,
+  "pl": "— Jaki atak?...",
+  "start": 1322.12
+ },
+ {
+  "i": 152,
+  "pl": "— Krew uderzyła mi do głowy... ale to już przeszło... Podły Żyd... no, ale Wokulski — powiadam ci, że to coś nadludzkiego...",
+  "start": 1323.78
+ },
+ {
+  "i": 153,
+  "pl": "Zaczął płakać.",
+  "start": 1332.2
+ },
+ {
+  "i": 154,
+  "pl": "— Papo, co tobie?... Ja poszlę po doktora... — zawołała panna Izabela klękając przed fotelem.",
+  "start": 1333.81
+ },
+ {
+  "i": 155,
+  "pl": "— Nic, nic... uspokój się... Pomyślałem tylko, że gdybym umarł, Wokulski jest jedynym człowiekiem, któremu mogłabyś zaufać...",
+  "start": 1341.45
+ },
+ {
+  "i": 156,
+  "pl": "— Nie rozumiem...",
+  "start": 1350.31
+ },
+ {
+  "i": 157,
+  "pl": "— Chciałaś powiedzieć: nie poznajesz mnie, prawda?... Dziwi cię to, że twój los mógłbym powierzyć kupcowi?... Ale widzisz... kiedy w nieszczęściu jedni sprzysięgli się przeciw nam, inni opuścili nas, on pospieszył z pomocą, a może mi nawet życie uratował...",
+  "start": 1351.84
+ },
+ {
+  "i": 158,
+  "pl": "My, apoplektycy, niekiedy bardzo blisko ocieramy się o śmierć... Więc gdy mnie cucił, pomyślałem, kto by się tobą uczciwie zaopiekował? Bo nie Joasia ani Hortensja, ani nikt... Tylko majętne sieroty znajdują opiekunów...",
+  "start": 1368.28
+ },
+ {
+  "i": 159,
+  "pl": "Panna Izabela spostrzegłszy, że ojciec stopniowo odzyskuje siły i władzę nad sobą, powstała z klęczek i usiadła na szezlongu.",
+  "start": 1386.45
+ },
+ {
+  "i": 160,
+  "pl": "— Zatem, ojcze, jakąż rolę przeznaczasz temu panu? — spytała chłodno.",
+  "start": 1396.12
+ },
+ {
+  "i": 161,
+  "pl": "— Rolę?... — powtórzył przypatrując się jej uważnie. — Rolę... doradcy... przyjaciela domu... opiekuna... Opiekuna tego mająteczku, jaki by ci pozostał...",
+  "start": 1401.64
+ },
+ {
+  "i": 162,
+  "pl": "— O, pod tym względem ja go już dawniej oceniłam. Jest to człowiek energiczny i przywiązany do nas... Zresztą mniejsza z tym — dodała po chwili. — Jakże papo skończył z kamienicą?",
+  "start": 1413.78
+ },
+ {
+  "i": 163,
+  "pl": "— Mówię ci jak. Łotr Żyd dał dziewięćdziesiąt tysięcy, więc nam zostało trzydzieści. A że poczciwy Wokulski będzie mi płacił od tej sumy dziesięć tysięcy... Trzydzieści trzy procent, wyobraź sobie.",
+  "start": 1426.72
+ },
+ {
+  "i": 164,
+  "pl": "— Jak to trzydzieści trzy? — przerwała panna Izabela. — Dziesięć tysięcy to dziesięć procent...",
+  "start": 1442.35
+ },
+ {
+  "i": 165,
+  "pl": "— Ale gdzież znowu! Dziesięć od trzydziestu to znaczy trzydzieści trzy procent. Wszakże procent znaczy: pro centum — „za sto”, rozumiesz?",
+  "start": 1448.41
+ },
+ {
+  "i": 166,
+  "pl": "— Nie rozumiem — odpowiedziała panna Izabela potrząsając głową. — Rozumiem, że dziesięć to znaczy dziesięć; ale jeżeli w języku kupieckim dziesięć nazywa się trzydzieści trzy, to niech i tak będzie.",
+  "start": 1458.5
+ },
+ {
+  "i": 167,
+  "pl": "— Widzisz, że nie rozumiesz. Zaraz wyjaśniłbym ci to, ale — takim znużony, że się trochę prześpię...",
+  "start": 1471.85
+ },
+ {
+  "i": 168,
+  "pl": "— Może posłać po doktora? — spytała panna Izabela podnosząc się z siedzenia.",
+  "start": 1478.41
+ },
+ {
+  "i": 169,
+  "pl": "— Boże uchowaj!... — zawołał pan Tomasz i zatrząsł rękoma. — Niechbym się tylko wdał w doktorów, a z pewnością bym nie żył...",
+  "start": 1482.95
+ },
+ {
+  "i": 170,
+  "pl": "Panna Izabela nie nalegała dłużej; ucałowała ojca w rękę i w czoło i poszła do swego buduaru, głęboko zadumana.",
+  "start": 1490.92
+ },
+ {
+  "i": 171,
+  "pl": "Niepokój trapiący ją od kilku dni: jak się skończy licytacja? opuścił ją tak, że śladu nie zostało po nim. Więc mają jeszcze dziesięć tysięcy rubli rocznie i trzydzieści tysięcy rubli gotówką?... Zatem pojadą na wystawę paryską, potem może do Szwajcarii, a na zimę znowu do Paryża. Nie!...",
+  "start": 1499.59
+ },
+ {
+  "i": 172,
+  "pl": "Na zimę wrócą do Warszawy, ażeby znowu otworzyć dom. I jeżeli znajdzie się jaki majętny człowiek, niestary i niebrzydki (jak na przykład baron albo marszałek... br!...), wreszcie nie parweniusz i niegłupi... (No, głupi może sobie być; w ich towarzystwie mądrym jest tylko Ochocki,",
+  "start": 1519.91
+ },
+ {
+  "i": 173,
+  "pl": "a i to dziwak!) Jeżeli znajdzie się taki epuzer<sup>534<\/sup> — panna Izabela zdecyduje się ostatecznie...",
+  "start": 1537.71
+ },
+ {
+  "i": 174,
+  "pl": "„Wyborny jest papa z tym Wokulskim!” — myślała panna Izabela chodząc tam i na powrót po swoim gabinecie.",
+  "start": 1544.62
+ },
+ {
+  "i": 175,
+  "pl": "„Wokulski moim opiekunem!... Wokulski może być bardzo dobrym doradcą, plenipotentem, zresztą opiekunem majątku... Ale tytuł opiekuna może nosić tylko książę, zresztą nasz kuzyn i dawny przyjaciel rodziny!...”",
+  "start": 1551.74
+ },
+ {
+  "i": 176,
+  "pl": "Wciąż chodziła po pokoju tam i na powrót ze skrzyżowanymi na piersiach rękoma i nagle przyszło jej na myśl: skąd ojciec tak dziś rozczulił się nad Wokulskim?... Jaką czarodziejską siłą ten człowiek pozyskawszy całe jej otoczenie obecnie zdobył już ostatnią pozycję, ojca!...",
+  "start": 1566.63
+ },
+ {
+  "i": 177,
+  "pl": "Ojciec, pan Tomasz Łęcki, płakał... On, z którego oczu od śmierci matki nie stoczyła się ani jedna łza...",
+  "start": 1587.32
+ },
+ {
+  "i": 178,
+  "pl": "„Muszę jednak przyznać, że jest to bardzo dobry człowiek — rzekła w sobie. — Rossi nie byłby tak zadowolony z Warszawy, gdyby nie troskliwość Wokulskiego. No, ależ moim opiekunem, nawet w razie nieszczęścia, nie będzie... Co do majątku, owszem, niech nim rządzi; ale opiekunem!...",
+  "start": 1595.83
+ },
+ {
+  "i": 179,
+  "pl": "Ojciec musi być ogromnie osłabiony, jeżeli wpadł na podobną kombinację...”",
+  "start": 1615.29
+ },
+ {
+  "i": 180,
+  "pl": "Około szóstej wieczorem panna Izabela będąc w salonie usłyszała dzwonek w przedpokoju, a potem niecierpliwy głos Mikołaja:",
+  "start": 1621.93
+ },
+ {
+  "i": 181,
+  "pl": "— Mówiłem: jutro przyjść, bo dziś pan chory.",
+  "start": 1630.37
+ },
+ {
+  "i": 182,
+  "pl": "— Co ja zrobię, kiedy pan jak ma pieniądze, to jest chory, a jak jest zdrów, to nie ma pieniędzy?... — odpowiedział inny głos, nieco zacinający z żydowska.",
+  "start": 1634.16
+ },
+ {
+  "i": 183,
+  "pl": "W tej chwili rozległ się w przedpokoju szelest kobiecej sukni i wbiegła panna Florentyna mówiąc:",
+  "start": 1644.16
+ },
+ {
+  "i": 184,
+  "pl": "— Cicho!... na Boga, cicho!... Niech pan Szpigelman przyjdzie jutro... Przecież pan Szpigelman wie, że są pieniądze...",
+  "start": 1649.86
+ },
+ {
+  "i": 185,
+  "pl": "— Właśnie ja dlatego dzisiaj przychodzę już trzeci raz. A jutro przyjdą inni i ja znów będę czekał...",
+  "start": 1657.0
+ },
+ {
+  "i": 186,
+  "pl": "Krew uderzyła do głowy pannie Izabeli, która nie zdając sobie sprawy z tego, co robi, nagle weszła do przedpokoju.",
+  "start": 1663.51
+ },
+ {
+  "i": 187,
+  "pl": "— Co to jest?... — zapytała panny Florentyny.",
+  "start": 1670.41
+ },
+ {
+  "i": 188,
+  "pl": "Mikołaj wzruszył ramionami i na palcach wyszedł do kuchni.",
+  "start": 1673.98
+ },
+ {
+  "i": 189,
+  "pl": "— To ja jestem, panno hrabianko... Dawid Szpigelman — odpowiedział niewielki człowiek z czarnym zarostem i w czarnych okularach. — Ja do pana hrabiego przyszedłem na mały interes...",
+  "start": 1677.92
+ },
+ {
+  "i": 190,
+  "pl": "— Kochana Belu... — odezwała się panna Florentyna chcąc wyprowadzić kuzynkę.",
+  "start": 1690.0
+ },
+ {
+  "i": 191,
+  "pl": "Ale panna Izabela wyrwała się jej z rąk i zobaczywszy, że gabinet ojca jest wolny, kazała tam wejść Szpigelmanowi.",
+  "start": 1695.22
+ },
+ {
+  "i": 192,
+  "pl": "— Zastanów się, Belu, co robisz?... — upominała ją panna Florentyna.",
+  "start": 1703.22
+ },
+ {
+  "i": 193,
+  "pl": "— Chcę raz dowiedzieć się prawdy — rzekła panna Izabela. Zamknęła drzwi gabinetu, siadła na fotelu i patrząc w okulary Szpigelmanowi zapytała:",
+  "start": 1707.7
+ },
+ {
+  "i": 194,
+  "pl": "— Jaki interes ma pan do mego ojca?",
+  "start": 1717.26
+ },
+ {
+  "i": 195,
+  "pl": "— Przepraszam pannę hrabiankę — odpowiedział przybysz kłaniając się — to jest bardzo mały interes. Ja tylko chcę odebrać moje pieniądze...",
+  "start": 1720.6
+ },
+ {
+  "i": 196,
+  "pl": "— Ile?",
+  "start": 1728.7
+ },
+ {
+  "i": 197,
+  "pl": "— Zbierze się może z osiemset rubli...",
+  "start": 1730.8
+ },
+ {
+  "i": 198,
+  "pl": "— Dostanie pan jutro.",
+  "start": 1733.2
+ },
+ {
+  "i": 199,
+  "pl": "— Przepraszam pannę hrabiankę, ale ja już od pół roku co tydzień dostaję same tylko jutro, a nie widzę ani procentu, ani kapitału.",
+  "start": 1734.68
+ },
+ {
+  "i": 200,
+  "pl": "Panna Izabela poczuła brak oddechu i ściskanie serca. Wnet jednakże zapanowała nad sobą.",
+  "start": 1743.38
+ },
+ {
+  "i": 201,
+  "pl": "— Pan wiesz, że ojciec mój odbiera trzydzieści tysięcy rubli... Prócz tego (mówiła, sama nie wiedząc dlaczego!) będziemy mieli dziesięć tysięcy rocznie... Pańska sumka przepaść nie może, chyba pan rozumie...",
+  "start": 1749.69
+ },
+ {
+  "i": 202,
+  "pl": "— Skąd dziesięć?... — spytał Żyd i zuchwale podniósł głowę.",
+  "start": 1762.19
+ },
+ {
+  "i": 203,
+  "pl": "— Jak to skąd? — odparła oburzona. — Procent od naszego majątku...",
+  "start": 1767.0
+ },
+ {
+  "i": 204,
+  "pl": "— Od trzydziestu tysięcy?... — wtrącił Żyd z uśmiechem, myśląc, że go chcą wyprowadzić w pole.",
+  "start": 1771.79
+ },
+ {
+  "i": 205,
+  "pl": "— Tak.",
+  "start": 1778.47
+ },
+ {
+  "i": 206,
+  "pl": "— Przepraszam pannę hrabiankę — ironicznie odparł Szpigelman — ja dawno robię pieniędzmi, ale takiego procentu nigdy nie widziałem. Od trzydziestu tysięcy pan hrabia może mieć trzy tysiące, i jeszcze na bardzo niepewnej hipotece. Ale co mnie do tego...",
+  "start": 1779.61
+ },
+ {
+  "i": 207,
+  "pl": "Mój interes jest, żebym ja odebrał moje pieniądze. Bo jak jutro przyjdą inni, to oni znowu będą lepsi od Dawida Szpigelmana, a jak pan hrabia resztę odda na procent, to ja będę musiał czekać rok...",
+  "start": 1795.35
+ },
+ {
+  "i": 208,
+  "pl": "Panna Izabela zerwała się z fotelu.",
+  "start": 1809.54
+ },
+ {
+  "i": 209,
+  "pl": "— Więc ja pana zapewniam, że jutro dostaniesz pieniądze! — zawołała patrząc na niego z pogardą.",
+  "start": 1812.6
+ },
+ {
+  "i": 210,
+  "pl": "— Słowo? — spytał Żyd delektując się w duszy jej pięknością.",
+  "start": 1818.3
+ },
+ {
+  "i": 211,
+  "pl": "— Słowo daję, że jutro będziecie wszyscy spłaceni... Wszyscy, i to co do grosza!...",
+  "start": 1822.52
+ },
+ {
+  "i": 212,
+  "pl": "Żyd ukłonił się do ziemi i cofając się tyłem, opuścił gabinet.",
+  "start": 1827.72
+ },
+ {
+  "i": 213,
+  "pl": "— Zobaczę, jak panna hrabianka dotrzyma słowa... — rzekł na odchodnym.",
+  "start": 1832.68
+ },
+ {
+  "i": 214,
+  "pl": "Stary Mikołaj znowu był w przedpokoju i z taką gracją otworzył drzwi Szpigelmanowi, że ten już z sieni zawołał:",
+  "start": 1838.51
+ },
+ {
+  "i": 215,
+  "pl": "— Co się pan tak rozbijasz, panie kamerdyner?...",
+  "start": 1846.13
+ },
+ {
+  "i": 216,
+  "pl": "Blada z gniewu panna Izabela biegła do sypialni ojca. Zastąpiła jej drogę panna Florentyna.",
+  "start": 1849.67
+ },
+ {
+  "i": 217,
+  "pl": "— Dajże spokój, Belciu — mówiła składając ręce — ojciec taki chory...",
+  "start": 1855.77
+ },
+ {
+  "i": 218,
+  "pl": "— Zapewniłam tego człowieka, że wszystkie długi będą spłacone, i muszą być spłacone... Choćbyśmy mieli nie jechać do Paryża...",
+  "start": 1861.23
+ },
+ {
+  "i": 219,
+  "pl": "Właśnie pan Tomasz w pantoflach i bez surduta z wolna przechadzał się po sypialni, kiedy weszła córka.",
+  "start": 1868.96
+ },
+ {
+  "i": 220,
+  "pl": "Spostrzegła, że ojciec wygląda bardzo mizernie, że ma obwisłe ramiona, obwisłe siwe wąsy, obwisłe powieki i jest pochylony jak starzec; ale uwagi te powstrzymały ją tylko od wybuchu, nie zaś od załatwienia interesu.",
+  "start": 1875.88
+ },
+ {
+  "i": 221,
+  "pl": "— Przepraszam cię, Belu, że mnie widzisz w takim negliżu... Cóż się stało?...",
+  "start": 1891.42
+ },
+ {
+  "i": 222,
+  "pl": "— Nic, ojcze — odparła hamując się. — Był tu jakiś Żyd...",
+  "start": 1896.92
+ },
+ {
+  "i": 223,
+  "pl": "— Ach, pewnie ten Szpigelman... Dokuczliwa bestia jak komary w lesie!... — zawołał pan Tomasz chwytając się za głowę. — Niech jutro przyjdzie...",
+  "start": 1901.42
+ },
+ {
+  "i": 224,
+  "pl": "— Właśnie przyjdzie, on i... inni...",
+  "start": 1910.48
+ },
+ {
+  "i": 225,
+  "pl": "— Dobrze... bardzo dobrze... Dawno już myślałem załatwić ich... No, chwała Bogu, że ochłodziło się chociaż trochę...",
+  "start": 1912.54
+ },
+ {
+  "i": 226,
+  "pl": "Panna Izabela była zdumiona spokojem ojca i jego złym wyglądem. Zdawało się, że od południa przybyło mu kilka lat wieku. Usiadła na krześle i oglądając się po sypialni spytała jakby od niechcenia:",
+  "start": 1919.8
+ },
+ {
+  "i": 227,
+  "pl": "— Dużo im papo winien?",
+  "start": 1934.53
+ },
+ {
+  "i": 228,
+  "pl": "— Niewiele... drobiazg... parę tysięcy rubli...",
+  "start": 1936.57
+ },
+ {
+  "i": 229,
+  "pl": "— To są te pieniądze, o których mówiła ciotka, że je ktoś w marcu wykupił?...",
+  "start": 1939.23
+ },
+ {
+  "i": 230,
+  "pl": "Pan Łęcki stanął na środku pokoju i strzeliwszy palcami zawołał:",
+  "start": 1943.81
+ },
+ {
+  "i": 231,
+  "pl": "— A bodajże cię!... O tamtych na śmierć zapomniałem...",
+  "start": 1948.49
+ },
+ {
+  "i": 232,
+  "pl": "— Zatem mamy więcej długów niż parę tysięcy?...",
+  "start": 1953.09
+ },
+ {
+  "i": 233,
+  "pl": "— Tak... tak... Trochę więcej... Myślę, że pięć do sześciu tysięcy... Poproszę poczciwego Wokulskiego, to mi to załatwi...",
+  "start": 1956.43
+ },
+ {
+  "i": 234,
+  "pl": "Panna Izabela mimo woli wstrząsnęła się.",
+  "start": 1964.18
+ },
+ {
+  "i": 235,
+  "pl": "— Szpigelman mówił — rzekła po chwili — że od naszej sumy nie można mieć dziesięciu tysięcy rubli procentu. Najwyżej trzy tysiące, i to na niepewnej hipotece...",
+  "start": 1968.02
+ },
+ {
+  "i": 236,
+  "pl": "— Ma rację — na hipotece, ale przecież handel to nie hipoteka... Handel może dać trzydzieści od trzydziestu... Ale... a skąd Szpigelman wie o naszym procencie? — spytał pan Tomasz zamyśliwszy się nieco.",
+  "start": 1977.86
+ },
+ {
+  "i": 237,
+  "pl": "— Ja mu powiedziałam niechcący... — tłumaczyła się zarumieniona panna Izabela.",
+  "start": 1991.9
+ },
+ {
+  "i": 238,
+  "pl": "— Szkoda, żeś mu to powiedziała... wielka szkoda!... o takich rzeczach lepiej nie mówić...",
+  "start": 1998.03
+ },
+ {
+  "i": 239,
+  "pl": "— Czy to co złego? — szepnęła.",
+  "start": 2003.11
+ },
+ {
+  "i": 240,
+  "pl": "— Złego?... No, nic złego, mój Boże... Ale zawsze lepiej, gdy ludzie nie znają ani wysokości, ani źródła dochodów... Baron, wreszcie sam marszałek nie mieliby reputacji milionerów i filantropów, gdyby znano wszystkie ich sekreta...",
+  "start": 2005.53
+ },
+ {
+  "i": 241,
+  "pl": "— Dlaczegóż to, ojcze?...",
+  "start": 2022.16
+ },
+ {
+  "i": 242,
+  "pl": "— Dziecko jeszcze jesteś — mówił nieco zakłopotany pan Tomasz — jesteś idealistka, więc... mogłoby cię to zrazić do nich... Ale masz przecie rozum.",
+  "start": 2024.3
+ },
+ {
+  "i": 243,
+  "pl": "Baron, widzisz, utrzymuje jakąś spółkę z lichwiarzami, a fortuna marszałka urosła głównie ze szczęśliwych pogorzeli, no... i trochę z handlu bydłem w czasie wojny sewastopolskiej...",
+  "start": 2035.74
+ },
+ {
+  "i": 244,
+  "pl": "— Więc tacy są moi konkurenci?... — szepnęła panna Izabela.",
+  "start": 2047.5
+ },
+ {
+  "i": 245,
+  "pl": "— To nic nie znaczy, Belu!... Mają pieniądze i duży kredyt, a to główna rzecz — uspakajał ją pan Tomasz.",
+  "start": 2052.18
+ },
+ {
+  "i": 246,
+  "pl": "Panna Izabela potrząsnęła głową, jakby chcąc odpędzić przykre myśli.",
+  "start": 2059.24
+ },
+ {
+  "i": 247,
+  "pl": "— Więc my, papo, już nie pojedziemy do Paryża...",
+  "start": 2064.36
+ },
+ {
+  "i": 248,
+  "pl": "— Dlaczego, moje dziecko, dlaczego?...",
+  "start": 2067.54
+ },
+ {
+  "i": 249,
+  "pl": "— Jeżeli papo zapłaci pięć albo sześć tysięcy tym Żydom...",
+  "start": 2069.92
+ },
+ {
+  "i": 250,
+  "pl": "— O to się nie lękaj. Poproszę Wokulskiego, ażeby wystarał mi się o taką sumę na sześć albo na siedem procent, i będziemy płacili na jej rzecz jakieś czterysta rubli rocznie. No, a mamy przecie dziesięć tysięcy.",
+  "start": 2073.3
+ },
+ {
+  "i": 251,
+  "pl": "Panna Izabela zwiesiła głowę i cicho przebierając palcami, po stole, dumała.",
+  "start": 2086.28
+ },
+ {
+  "i": 252,
+  "pl": "— Czy ty, ojcze — rzekła po namyśle — nie obawiasz się Wokulskiego?...",
+  "start": 2091.61
+ },
+ {
+  "i": 253,
+  "pl": "— Ja?... — krzyknął pan Tomasz i pięściami uderzył się w piersi. — Ja obawiam się Joasi, Hortensji, nawet naszego księcia i zresztą ich wszystkich razem, ale nie Wokulskiego. Gdybyś widziała, jak on dziś obcierał mnie wodą kolońską... A z jaką trwogą patrzył na mnie!...",
+  "start": 2096.33
+ },
+ {
+  "i": 254,
+  "pl": "To najszlachetniejszy człowiek, jakiego spotkałem w życiu... On nie dba o pieniądze, interesów na mnie robić nie może, ale dba o moją przyjaźń... Bóg mi go zesłał, i jeszcze w chwili, w której... w której zaczynam czuć starość, a może... śmierć...",
+  "start": 2113.81
+ },
+ {
+  "i": 255,
+  "pl": "I powiedziawszy to pan Tomasz zaczął mrugać powiekami, z których znowu spadło mu kilka łez.",
+  "start": 2130.19
+ },
+ {
+  "i": 256,
+  "pl": "— Papo, ty jesteś chory!... — zawołała przestraszona panna Izabela.",
+  "start": 2137.49
+ },
+ {
+  "i": 257,
+  "pl": "— Nie, nie!... To upał, irytacja, a nade wszystko... żal do ludzi. Pomyśl tylko: był kto u nas dzisiaj?... Nikt, bo myślą, żeśmy już wszystko stracili... Joanna boi się, żebym od niej nie pożyczył na jutrzejszy obiad... To samo baron i książę...",
+  "start": 2142.57
+ },
+ {
+  "i": 258,
+  "pl": "Jeszcze baron dowiedziawszy się, że zostało nam trzydzieści tysięcy, przyjdzie tu... dla ciebie. Bo pomyśli, że choćby się z tobą ożenił bez posagu, to jednak nie będzie potrzebował wydawać pieniędzy na mnie...",
+  "start": 2159.82
+ },
+ {
+  "i": 259,
+  "pl": "Ale uspokój się: gdy usłyszą, że mamy dziesięć tysięcy rubli rocznie, wrócą tu wszyscy, a ty znowu będziesz jak dawniej królowała w twoim salonie... Boże, jaki ja dziś jestem zdenerwowany!... — mówił pan Tomasz obcierając załzawione oczy.",
+  "start": 2171.76
+ },
+ {
+  "i": 260,
+  "pl": "— Ja poszlę po doktora, papo?...",
+  "start": 2187.96
+ },
+ {
+  "i": 261,
+  "pl": "Ojciec zamyślił się.",
+  "start": 2190.6
+ },
+ {
+  "i": 262,
+  "pl": "— To już jutro, jutro... do jutra może mi samo przejdzie...",
+  "start": 2192.36
+ },
+ {
+  "i": 263,
+  "pl": "W tej chwili rozległo się pukanie do drzwi.",
+  "start": 2196.9
+ },
+ {
+  "i": 264,
+  "pl": "— Kto tam?... Co tam?... — zapytał pan Tomasz.",
+  "start": 2200.39
+ },
+ {
+  "i": 265,
+  "pl": "— Pani hrabina przyjechała — odpowiedział z korytarza głos panny Florentyny.",
+  "start": 2203.53
+ },
+ {
+  "i": 266,
+  "pl": "— Joasia?!... — zawołał pan Tomasz z radosnym zdziwieniem. — Wyjdźże do niej, Belciu... Muszę się trochę ogarnąć... No, no!... Założę się, że już wie o trzydziestu tysiącach... Wyjdźże, Belu... Mikołaj!...",
+  "start": 2208.69
+ },
+ {
+  "i": 267,
+  "pl": "Zaczął kręcić się po sypialni szukając rozmaitych części ubrania, a tymczasem panna Izabela wyszła do ciotki już oczekującej na nią w salonie.",
+  "start": 2222.25
+ },
+ {
+  "i": 268,
+  "pl": "Zobaczywszy pannę Izabelę hrabina pochwyciła ją w objęcia.",
+  "start": 2232.28
+ },
+ {
+  "i": 269,
+  "pl": "— Jakiż Bóg dobry — zawołała — że zesłał wam tyle szczęścia! Cóż to, podobno Tomasz wziął za kamienicę dziewięćdziesiąt tysięcy, i twój posag ocalony?... Nigdy bym nie przypuszczała...",
+  "start": 2236.0
+ },
+ {
+  "i": 270,
+  "pl": "— Ojciec, ciociu, spodziewał się wziąć więcej i tylko jakiś Żyd, nowonabywca, odstręczył konkurentów — odpowiedziała trochę urażona panna Izabela.",
+  "start": 2248.51
+ },
+ {
+  "i": 271,
+  "pl": "— Ach, moje dziecko, że też nie przekonałaś się jeszcze o niepraktyczności ojca. On może wyobrażać sobie, że dom wart był miliony, a ja swoją drogą wiem od ludzi kompetentnych, że co najwyżej wart jest siedemdziesiąt parę tysięcy.",
+  "start": 2258.17
+ },
+ {
+  "i": 272,
+  "pl": "Przecież co dzień od kilku dni sprzedają się kamienice z licytacji, wiadomo, jakie są i co za nie płacą. Zresztą nie ma o czym mówić; ojciec niech wyobraża sobie, że go oszukano, a ty, Belu, módl się za zdrowie tego Żyda, który dał wam dziewięćdziesiąt tysięcy...",
+  "start": 2273.2
+ },
+ {
+  "i": 273,
+  "pl": "Ale a propos: wiesz, że Kazio Starski wrócił?...",
+  "start": 2290.16
+ },
+ {
+  "i": 274,
+  "pl": "Silny rumieniec wystąpił na twarz panny Izabeli.",
+  "start": 2294.04
+ },
+ {
+  "i": 275,
+  "pl": "— Kiedy? skąd?... — zapytała zmieszana.",
+  "start": 2297.86
+ },
+ {
+  "i": 276,
+  "pl": "— Obecnie z Anglii, dokąd przyjechał prosto z Chin. Zawsze piękny i obecnie jedzie do babki, która, zdaje się, odda mu majątek.",
+  "start": 2301.1
+ },
+ {
+  "i": 277,
+  "pl": "— To w sąsiedztwie cioci?",
+  "start": 2309.9
+ },
+ {
+  "i": 278,
+  "pl": "— Właśnie o tym chcę mówić. Ogromnie dopytywał się o ciebie, a ja będąc przekonana, że już chyba wyleczyłaś się ze swych kaprysów, radziłam mu, ażeby was jutro odwiedził.",
+  "start": 2311.88
+ },
+ {
+  "i": 279,
+  "pl": "— Jak to dobrze!... — zawołała uradowana panna Izabela.",
+  "start": 2322.42
+ },
+ {
+  "i": 280,
+  "pl": "— A widzisz!... — odpowiedziała hrabina całując ją. — Ciotka zawsze o tobie myśli. Dla ciebie jest to wyborna partia, którą tym łatwiej będzie zrobić, że Tomasz ma kapitalik, który powinien mu wystarczyć, a Kazio coś słyszał o zapisie ciotki Hortensji dla ciebie.",
+  "start": 2326.14
+ },
+ {
+  "i": 281,
+  "pl": "No, przypuszczam, że Starski jest trochę zadłużony. W każdym razie to, co mu zostanie z majątku babki, z tym, co ty możesz wziąć po Hortensji, powinno by wam na jakiś czas wystarczyć. A później zobaczymy. On ma jeszcze stryja, ty masz mnie, więc wasze dzieci nie doznają biedy.",
+  "start": 2343.24
+ },
+ {
+  "i": 282,
+  "pl": "Panna Izabela w milczeniu ucałowała ręce ciotki. W tej chwili była tak piękna, że hrabina schwyciwszy ją w objęcia pociągnęła do lustra i śmiejąc się rzekła:",
+  "start": 2361.48
+ },
+ {
+  "i": 283,
+  "pl": "— No, proszę cię, tylko mi jutro tak wyglądaj, a przekonasz się, że w sercu Kazia odnowią się zabliźnione rany... Choć szkoda, żeś go wtedy odrzuciła!... Mielibyście dziś ze sto albo sto pięćdziesiąt tysięcy rubli więcej...",
+  "start": 2372.02
+ },
+ {
+  "i": 284,
+  "pl": "Wyobrażam sobie, że ten biedny chłopak z rozpaczy musiał bardzo wydawać pieniądze. Ale, ale... — dodała hrabina — czy prawda, że chcecie jechać z ojcem do Paryża?...",
+  "start": 2386.4
+ },
+ {
+  "i": 285,
+  "pl": "— Mamy zamiar.",
+  "start": 2396.52
+ },
+ {
+  "i": 286,
+  "pl": "— Proszę cię, Belu — upominała ją ciotka — tego nie rób. Ja właśnie chcę wam zaproponować, ażebyście u mnie spędzili tę resztkę lata. I musisz to zrobić, choćby ze względu na Starskiego. Pojmujesz, że młody chłopak na wsi będzie się nudził, będzie marzył.",
+  "start": 2398.0
+ },
+ {
+  "i": 287,
+  "pl": "Możecie widywać się co dzień, a w takich warunkach najłatwiej będzie przywiązać go, a nawet... zobowiązać...",
+  "start": 2416.0
+ },
+ {
+  "i": 288,
+  "pl": "Panna Izabela zarumieniła się mocniej niż poprzednio i spuściła piękną głowę.",
+  "start": 2423.05
+ },
+ {
+  "i": 289,
+  "pl": "— Ciociu! — szepnęła.",
+  "start": 2428.89
+ },
+ {
+  "i": 290,
+  "pl": "— Ach, moje dziecko, tylko nie baw się ze mną w dyplomatkę. Panna w twoim wieku już powinna wyjść za mąż, a nade wszystko nie powtarzać dawnych błędów.",
+  "start": 2431.13
+ },
+ {
+  "i": 291,
+  "pl": "Kazio jest wyborną partią: nieprędko sprzykrzy ci się, no... a gdyby się sprzykrzył, to... już będzie mężem i na wiele rzeczy musi być pobłażliwym, tak jak i ty dla niego. Gdzież ojciec?",
+  "start": 2440.85
+ },
+ {
+  "i": 292,
+  "pl": "— Ojciec trochę niezdrów...",
+  "start": 2453.55
+ },
+ {
+  "i": 293,
+  "pl": "— Wielki Boże!... Chyba zanadto wzruszyło go niespodziewane szczęście...",
+  "start": 2455.19
+ },
+ {
+  "i": 294,
+  "pl": "— Ojciec właśnie zachorował z gniewu na tego Żyda...",
+  "start": 2459.55
+ },
+ {
+  "i": 295,
+  "pl": "— On wiecznie w złudzeniach! — odparła hrabina podnosząc się z kanapy. — Wstąpię do niego na chwilę i pogadam o waszych wakacjach. Co zaś do ciebie, Belu, spodziewam się, że potrafisz skorzystać z czasu.",
+  "start": 2462.79
+ },
+ {
+  "i": 296,
+  "pl": "Po półgodzinnej, poufałej konwersacji z panem Tomaszem hrabina pożegnała siostrzenicę, jeszcze raz polecając jej Starskiego.",
+  "start": 2474.73
+ },
+ {
+  "i": 297,
+  "pl": "Około dziewiątej pan Tomasz, wbrew zwyczajowi, poszedł spać, a panna Izabela wezwała do swego pokoju na rozmowę kuzynkę Florentynę.",
+  "start": 2485.44
+ },
+ {
+  "i": 298,
+  "pl": "— Wiesz, Floro — rzekła siadając w półleżącej pozycji na szezlongu — powrócił Kazio Starski i jutro ma być u nas.",
+  "start": 2495.24
+ },
+ {
+  "i": 299,
+  "pl": "— Aaa!... — szepnęła panna Florentyna, jakby wypadek ten był już jej wiadomy. — Więc nie gniewa się?... — spytała akcentując ostatni frazes.",
+  "start": 2503.4
+ },
+ {
+  "i": 300,
+  "pl": "— Zapewne... Zresztą nie wiem... — uśmiechnęła się panna Izabela. — Ciotka mówi, że jest bardzo piękny...",
+  "start": 2514.18
+ },
+ {
+  "i": 301,
+  "pl": "— I zadłużony... Ale cóż to szkodzi. Kto dzisiaj nie ma długów!",
+  "start": 2521.2
+ },
+ {
+  "i": 302,
+  "pl": "— Cóż byś powiedziała, Floro, gdybym...",
+  "start": 2525.24
+ },
+ {
+  "i": 303,
+  "pl": "— Gdybyś za niego wyszła?... Naturalnie, powinszowałabym wam obojgu. Ale co na to powie baron, marszałek, Ochocki, a nade wszystko... Wokulski?...",
+  "start": 2527.56
+ },
+ {
+  "i": 304,
+  "pl": "Panna Izabela podniosła się gwałtownie.",
+  "start": 2538.67
+ },
+ {
+  "i": 305,
+  "pl": "— Moja droga, skądże znowu przychodzi ci do głowy ten... Wokulski?...",
+  "start": 2541.35
+ },
+ {
+  "i": 306,
+  "pl": "— Nie mnie on przychodzi do głowy — odparła panna Florentyna skubiąc taśmę swego stanika — tylko przypominam sobie, coś mi mówiła jeszcze w kwietniu... że ten człowiek od roku ścigał cię spojrzeniami, że osacza cię ze wszystkich stron...",
+  "start": 2546.67
+ },
+ {
+  "i": 307,
+  "pl": "Panna Izabela roześmiała się.",
+  "start": 2561.97
+ },
+ {
+  "i": 308,
+  "pl": "— Ach, pamiętam!... Rzeczywiście, tak mi się wówczas zdawało... Dziś jednak, kiedym go poznała trochę lepiej, widzę, że nie należy do tej kategorii ludzi, których można się lękać. Uwielbia mię po cichu, to prawda; ależ tak samo będzie mnie uwielbiał nawet wówczas, gdybym wyszła za... za mąż...",
+  "start": 2563.89
+ },
+ {
+  "i": 309,
+  "pl": "Wielbicielom tego, co Wokulski, gatunku wystarcza spojrzenie, uścisk ręki...",
+  "start": 2583.43
+ },
+ {
+  "i": 310,
+  "pl": "— Czy jesteś tego pewna?",
+  "start": 2588.88
+ },
+ {
+  "i": 311,
+  "pl": "— Najzupełniej. Zresztą przekonałam się, że to, co wydawało mi się sidłami z jego strony, jest tylko interesem. Ojciec pożycza mu trzydzieści tysięcy rubli i kto wie, czy wszystkie jego zabiegi nie do tego były skierowane...",
+  "start": 2590.56
+ },
+ {
+  "i": 312,
+  "pl": "— A jeżeli jest inaczej? — zapytała panna Florentyna, ciągle bawiąc się obszyciem swego stanika.",
+  "start": 2605.28
+ },
+ {
+  "i": 313,
+  "pl": "— Moja droga, dajże spokój! — oburzyła się panna Izabela. — Co ci na tym zależy, ażeby psuć mi humor?",
+  "start": 2611.82
+ },
+ {
+  "i": 314,
+  "pl": "— Tyś to powiedziała, że ci ludzie umieją cierpliwie czekać, usidlać, nawet wszystko ryzykować i łamać...",
+  "start": 2618.72
+ },
+ {
+  "i": 315,
+  "pl": "— Ale nie Wokulski.",
+  "start": 2626.22
+ },
+ {
+  "i": 316,
+  "pl": "— Przypomnij sobie barona.",
+  "start": 2627.58
+ },
+ {
+  "i": 317,
+  "pl": "— Baron obraził go publicznie.",
+  "start": 2628.98
+ },
+ {
+  "i": 318,
+  "pl": "— A ciebie przeprosił.",
+  "start": 2630.68
+ },
+ {
+  "i": 319,
+  "pl": "— Ach, Floro, proszę cię, nie dręcz mnie!... — wybuchnęła panna Izabela. — Gwałtem chcesz zrobić demona z kupczyka, może dlatego, że... tyle straciliśmy na kamienicy... że ojciec jest chory i że... Starski wrócił...",
+  "start": 2632.9
+ },
+ {
+  "i": 320,
+  "pl": "Panna Florentyna zrobiła gest, jakby chcąc jeszcze coś powiedzieć, ale pohamowała się.",
+  "start": 2646.73
+ },
+ {
+  "i": 321,
+  "pl": "— Dobranoc, Belu — rzekła. — Może teraz masz rację...",
+  "start": 2653.29
+ },
+ {
+  "i": 322,
+  "pl": "I wyszła.",
+  "start": 2657.69
+ },
+ {
+  "i": 323,
+  "pl": "Przez całą noc śnił się pannie Izabeli Starski jako mąż, Rossi jako pierwszy platoniczny kochanek, Ochocki jako drugi, a Wokulski jako plenipotent ich majątku. Dopiero około dziesiątej rano obudziła ją panna Florentyna donosząc, że przyszedł Szpigelman i jeszcze jeden Żyd.",
+  "start": 2661.16
+ },
+ {
+  "i": 324,
+  "pl": "— Szpigelman?... Ach, prawda!... Zapomniałam o nim. Powiedz mu, niech przyjdzie później... Czy papo wstał?",
+  "start": 2682.3
+ },
+ {
+  "i": 325,
+  "pl": "— Wstał od godziny. Mówiłam mu właśnie o Żydach, a on prosi cię, ażebyś napisała list do Wokulskiego...",
+  "start": 2688.96
+ },
+ {
+  "i": 326,
+  "pl": "— Po co?...",
+  "start": 2695.38
+ },
+ {
+  "i": 327,
+  "pl": "— Żeby był łaskaw przyjść do nas w południe i uregulować rachunki tych Żydów.",
+  "start": 2696.58
+ },
+ {
+  "i": 328,
+  "pl": "— Prawda, że Wokulski ma nasze pieniądze — rzekła panna Izabela. — Ale mnie pisać o tym do niego nie wypada. Napisz ty, Floro, w imieniu ojca... O, tu jest papier, na moim biurku...",
+  "start": 2701.91
+ },
+ {
+  "i": 329,
+  "pl": "Panna Florentyna napisała żądany list, a tymczasem panna Izabela zaczęła się ubierać. Wiadomość o Żydach zrobiła na niej wrażenie zimnej wody, a myśl o Wokulskim zaniepokoiła ją.",
+  "start": 2713.45
+ },
+ {
+  "i": 330,
+  "pl": "„Więc my naprawdę nie możemy obejść się bez tego człowieka?... — mówiła w duszy. — No, jeżeli ma nasze pieniądze, to naturalnie musi spłacać nasze długi...”",
+  "start": 2726.09
+ },
+ {
+  "i": 331,
+  "pl": "— Bardzo go proś — rzekła do panny Florentyny — ażeby przyjechał jak najśpieszniej... Bo gdyby tych obrzydliwych Żydów zastał u nas Starski...",
+  "start": 2735.3
+ },
+ {
+  "i": 332,
+  "pl": "— Zna on ich dawniej aniżeli my — szepnęła Flora.",
+  "start": 2745.16
+ },
+ {
+  "i": 333,
+  "pl": "— W każdym razie byłoby to okropne. Ty nie wiesz, jakim tonem przemawiał do mnie wczoraj ten... ten...",
+  "start": 2749.04
+ },
+ {
+  "i": 334,
+  "pl": "— Szpigelman — wtrąciła panna Florentyna. — O, to zuchwały Żyd...",
+  "start": 2755.48
+ },
+ {
+  "i": 335,
+  "pl": "Zapieczętowała list i wyszła z nim do przedpokoju, ażeby wyprawić czekających tam Żydów. Panna Izabela uklękła przed alabastrowym posążkiem Matki Boskiej błagając ją, ażeby posłaniec zastał Wokulskiego w domu i ażeby Starski nie spotkał się u nich z Żydami.",
+  "start": 2760.92
+ },
+ {
+  "i": 336,
+  "pl": "Alabastrowa Matka Boska wysłuchała próśb panny Izabeli; w godzinę bowiem, przy śniadaniu, Mikołaj doręczył jej trzy listy.",
+  "start": 2779.62
+ },
+ {
+  "i": 337,
+  "pl": "Jeden był od ciotki hrabiny. Zawiadamiała w nim, że dziś między drugą i trzecią przyjdą do jej ojca lekarze na konsylium, że Kazio Starski wyjeżdża przed wieczorem i że może wpaść do nich lada chwilę.",
+  "start": 2787.37
+ },
+ {
+  "i": 338,
+  "pl": "„Pamiętajże, droga Belciu — kończyła ciotka — postępować tak, ażeby chłopiec myślał o tobie, przez drogę i na wsi, dokąd wy z ojcem za kilka dni musicie przyjechać.",
+  "start": 2801.99
+ },
+ {
+  "i": 339,
+  "pl": "Ja już urządziłam się w ten sposób, że ani w Warszawie nie widział żadnej panny, ani na wsi nie spotka (prócz ciebie, duszko) żadnej innej kobiety. Chyba poczciwą swoją babkę prezesową i jej mało interesujące wnuczki.”",
+  "start": 2813.07
+ },
+ {
+  "i": 340,
+  "pl": "Panna Izabela lekko skrzywiła usta; nie podobał jej się ten nacisk.",
+  "start": 2830.21
+ },
+ {
+  "i": 341,
+  "pl": "— Ciotka tak mnie proteguje — rzekła do panny Florentyny — jakbym już straciła wszelką nadzieję... Nie podoba mi się to!...",
+  "start": 2835.45
+ },
+ {
+  "i": 342,
+  "pl": "I w jej duszy nieco przyćmił się wizerunek pięknego Kazia Starskiego.",
+  "start": 2843.45
+ },
+ {
+  "i": 343,
+  "pl": "Drugi list był od Wokulskiego, który donosił, że będzie służyć o godzinie pierwszej.",
+  "start": 2848.69
+ },
+ {
+  "i": 344,
+  "pl": "— Na którą kazałaś przyjść Żydom, Floro? — spytała panna Izabela.",
+  "start": 2854.3
+ },
+ {
+  "i": 345,
+  "pl": "— Na pierwszą.",
+  "start": 2858.36
+ },
+ {
+  "i": 346,
+  "pl": "— Chwała Bogu! Byle o tej porze nie wpadł do nas Starski — rzekła panna Izabela biorąc do ręki trzeci list. — Jakiś znajomy mi charakter?... — dodała. — Czyje to pismo, Floro?...",
+  "start": 2859.82
+ },
+ {
+  "i": 347,
+  "pl": "— Czy nie poznajesz? — odpowiedziała panna Florentyna spojrzawszy na kopertę. — Krzeszowskiej...",
+  "start": 2871.22
+ },
+ {
+  "i": 348,
+  "pl": "Rumieniec gniewu wystąpił na twarz panny Izabeli.",
+  "start": 2878.06
+ },
+ {
+  "i": 349,
+  "pl": "— Ach, prawda!... — zawołała rzucając list na stół. — Proszę cię, Floro, odeszlij jej to i dopisz na wierzchu: „nieczytane”. Czego ona od nas chce, ta szkaradna kobieta!...",
+  "start": 2881.26
+ },
+ {
+  "i": 350,
+  "pl": "— Łatwo możesz się dowiedzieć — szepnęła panna Florentyna.",
+  "start": 2893.69
+ },
+ {
+  "i": 351,
+  "pl": "— Nie, nie i... nie!... Nie chcę żadnych listów od tej nieznośnej baby... Pewnie znowu jakaś szykana, bo ona nic innego nie pisuje... Proszę cię, Floro, natychmiast odeszlij ten list i... albo zresztą zobacz, co pisze... Ostatni raz przyjmę jej bazgraninę...",
+  "start": 2897.01
+ },
+ {
+  "i": 352,
+  "pl": "Panna Florentyna powoli otworzyła kopertę i zaczęła czytać. Stopniowo na jej obliczu ciekawość ustąpiła miejsca zdziwieniu, a potem zmieszaniu.",
+  "start": 2911.99
+ },
+ {
+  "i": 353,
+  "pl": "— Nie wypada mi tego czytać — szepnęła oddając list pannie Izabeli.",
+  "start": 2922.11
+ },
+ {
+  "i": 354,
+  "pl": "„Droga panno Izabelo! — pisała baronowa. — Wyznaję, że dotychczasowym postępowaniem mogłam zasłużyć na niechęć Pani i ściągnąć na siebie gniew miłosiernego Boga, który tak troskliwie opiekuje się Wami. Dlatego cofam wszystko, upokarzam się przed Tobą, droga Pani, i błagam, ażebyś mi przebaczyła.",
+  "start": 2928.15
+ },
+ {
+  "i": 355,
+  "pl": "Bo czy nie jest dowód łaski Nieba nad Wami, choćby w zesłaniu Wam tego Wokulskiego? Człowiek ułomny jak inni stał się narzędziem Najwyższej Ręki, ażeby mnie ukarać, a Was wynagrodzić.",
+  "start": 2948.19
+ },
+ {
+  "i": 356,
+  "pl": "Nie dość bowiem, że ranił mi w pojedynku męża (któremu również niech Bóg przebaczy wszystkie podłości, jakich się względem mnie dopuścił), ale jeszcze nabył kamienicę, w której zgasło moje ukochane dziecko, i pewnie każe sobie płacić duże komorne.",
+  "start": 2960.67
+ },
+ {
+  "i": 357,
+  "pl": "Wy zaś nie tylko patrzycie na moje klęski, ale jeszcze zyskaliście dwadzieścia tysięcy rubli więcej, niż była warta kamienica.",
+  "start": 2976.09
+ },
+ {
+  "i": 358,
+  "pl": "W zamian za moją skruchę, droga Pani, racz wyrobić u W-go Wokulskiego (który nie wiem, za co gniewa się na mnie), ażeby mi prolongował kontrakt na dalsze lata i nie wypędzał przesadnymi żądaniami z domu, gdzie moja jedyna córka skończyła życie.",
+  "start": 2985.13
+ },
+ {
+  "i": 359,
+  "pl": "Należy to jednak robić ostrożnie, gdyż W-ny Wokulski z niewiadomych mi powodów nie życzy sobie, ażeby o jego nabytku mówiono.",
+  "start": 3001.67
+ },
+ {
+  "i": 360,
+  "pl": "Nie tylko, zamiast sam kupić kamienicę (jak uczciwy człowiek), podstawił lichwiarza Szlangbauma, ale jeszcze, ażeby nadpłacić dwadzieścia tysięcy rubli nad moją sumę, sprowadził do sądu fałszywych licytantów.",
+  "start": 3009.95
+ },
+ {
+  "i": 361,
+  "pl": "Dlaczego tak tajemniczo postępuje? lepiej niż ja musicie Wy wiedzieć, drodzy Państwo, którzy podobno umieściliście u niego swój kapitalik.",
+  "start": 3023.67
+ },
+ {
+  "i": 362,
+  "pl": "Mały on jest, ale przy łasce bożej (która tak oczywiście czuwa nad Wami) i znanej obrotności W-go Wokulskiego przyniesie zapewne procent, który wynagrodzi Państwu gorycze ich dotychczasowego położenia.",
+  "start": 3032.59
+ },
+ {
+  "i": 363,
+  "pl": "Polecając siebie sercu drogiej Pani, a nasze obustronne stosunki niezawodnej sprawiedliwości boskiej, pozostaję zawsze wierną, choć pogardzaną ich kuzynką i uniżoną sługą.",
+  "start": 3046.29
+ },
+ {
+  "i": 364,
+  "pl": "Krzeszowska”",
+  "start": 3058.25
+ },
+ {
+  "i": 365,
+  "pl": "Czytając panna Izabela była blada jak papier. Podniosła się od stołu, zwinęła list i podniosła rękę, jakby z zamiarem rzucenia go komuś w oczy. Nagle, zdjęta strachem, chciała gdzieś uciec czy kogoś zawołać; lecz w tej chwili upamiętała się i poszła do ojca.",
+  "start": 3059.91
+ },
+ {
+  "i": 366,
+  "pl": "Pan Łęcki w pantoflach i płóciennym szlafroku leżał na kanapie i czytał „Kuriera”. Bardzo czule przywitał się z córką, a gdy usiadła, uważnie przypatrzył się jej i rzekł:",
+  "start": 3079.09
+ },
+ {
+  "i": 367,
+  "pl": "— Czy światło złe w tym pokoju, czy mi się zdaje, że panienka jest nie w humorze?...",
+  "start": 3091.08
+ },
+ {
+  "i": 368,
+  "pl": "— Jestem trochę rozstrojona.",
+  "start": 3096.69
+ },
+ {
+  "i": 369,
+  "pl": "— Właśnie uważam, ale to z gorąca. A powinnaś dziś — dodał grożąc jej z uśmiechem — powinnaś dziś, figlarko, dobrze wyglądać, bo ten Kazio, jak mówiła mi wczoraj ciotka, jest do wzięcia...",
+  "start": 3098.69
+ },
+ {
+  "i": 370,
+  "pl": "Panna Izabela milczała, ojciec prawił dalej:",
+  "start": 3111.33
+ },
+ {
+  "i": 371,
+  "pl": "— Prawda, że chłopak trochę zbałamucony ciągłym lataniem po świecie, trochę zadłużony, ale — młody, przystojny, no i szalał za tobą. Joasia ma nadzieję, że prezesowa utrzyma go na wsi przez parę tygodni, a reszta należy już do ciebie... I wiesz, może by to było nieźle?...",
+  "start": 3114.89
+ },
+ {
+  "i": 372,
+  "pl": "Nazwisko piękne... fortuna jakoś zlepi się z różnych kawałków... Przy tym człowiek światowy, bywalec, nawet rodzaj bohatera, jeżeli to prawda, że opłynął kulę ziemską...",
+  "start": 3131.95
+ },
+ {
+  "i": 373,
+  "pl": "— Miałam list od Krzeszowskiej — przerwała mu panna Izabela.",
+  "start": 3143.39
+ },
+ {
+  "i": 374,
+  "pl": "— Oo?... cóż pisze ta wariatka?",
+  "start": 3147.77
+ },
+ {
+  "i": 375,
+  "pl": "— Pisze, że nasz dom kupił nie Szlangbaum, ale Wokulski, i że za pomocą podstawionych licytantów dał za niego o dwadzieścia tysięcy rubli więcej aniżeli wart.",
+  "start": 3151.84
+ },
+ {
+  "i": 376,
+  "pl": "Mówiąc to zdławionym głosem, patrzyła z trwogą na ojca; obawiała się jakiegoś wybuchu. Ale pan Tomasz uniósł się tylko na kanapie i strzeliwszy palcami zawołał:",
+  "start": 3162.21
+ },
+ {
+  "i": 377,
+  "pl": "— Czekaj!... czekaj!... wiesz, że to może być prawda...",
+  "start": 3172.91
+ },
+ {
+  "i": 378,
+  "pl": "— Jak to! — zerwała się z krzesła panna Izabela. — Więc on śmiałby nam darować dwadzieścia tysięcy, a ojciec mówi o tym tak spokojnie?...",
+  "start": 3177.35
+ },
+ {
+  "i": 379,
+  "pl": "— Mówię spokojnie, bo gdybym zaczekał ze sprzedażą, wziąłbym nie dziewięćdziesiąt, ale sto dwadzieścia tysięcy...",
+  "start": 3186.72
+ },
+ {
+  "i": 380,
+  "pl": "— Ależ czekać nie mogliśmy, skoro kamienicę puszczono na licytację...",
+  "start": 3192.86
+ },
+ {
+  "i": 381,
+  "pl": "— Toteż że nie mogliśmy czekać, straciliśmy, a Wokulski zyska, gdyż może czekać.",
+  "start": 3196.84
+ },
+ {
+  "i": 382,
+  "pl": "Panna Izabela po tej uwadze nieco uspokoiła się.",
+  "start": 3202.47
+ },
+ {
+  "i": 383,
+  "pl": "— Więc papo nie uznaje w tym żadnego dobrodziejstwa z jego strony! Bo wczoraj mówił papo o Wokulskim w taki sposób, jakby czuł, że jest przez niego oplątany...",
+  "start": 3205.55
+ },
+ {
+  "i": 384,
+  "pl": "— Cha! cha! cha!... — roześmiał się pan Tomasz. — Cudowna jesteś... nieoceniona. Wczoraj byłem trochę rozstrojony, nawet bardzo i... coś... coś... zaświtało mi w głowie... Ale dzisiaj... Cha! cha! cha!... Niechże sobie wreszcie Wokulski przepłaca kamienice.",
+  "start": 3214.33
+ },
+ {
+  "i": 385,
+  "pl": "Od tego on kupiec, żeby wiedział, ile i za co płaci. Straci na jednym, zyska na drugim. — Ja, co najwyżej, mogę mu tego nie brać za złe, że staje do licytacji mego majątku... Chociaż miałbym prawo podejrzywać jakiś nieczysty interes w takim na przykład... podstawianiu Szlangbauma...",
+  "start": 3228.69
+ },
+ {
+  "i": 386,
+  "pl": "Panna Izabela serdecznie uściskała ojca.",
+  "start": 3246.14
+ },
+ {
+  "i": 387,
+  "pl": "— Tak — rzekła — papo ma rację. Nie umiałam tylko zdać sobie z tego sprawy. Takie podstawianie Żydów przy kupnie najjaśniej dowodzi, że ten pan bawiąc się w przyjaźń robi interesa...",
+  "start": 3249.6
+ },
+ {
+  "i": 388,
+  "pl": "— Naturalnie! — potwierdził pan Tomasz. — Czyliżbyś nie miała rozumieć tak prostej rzeczy. Niezły to może człowiek, ale zawsze kupiec... kupiec!...",
+  "start": 3262.32
+ },
+ {
+  "i": 389,
+  "pl": "W przedpokoju rozległo się mocne dzwonienie.",
+  "start": 3272.64
+ },
+ {
+  "i": 390,
+  "pl": "— To pewnie on. Wyjdę, papo, i zostawię panów samych.",
+  "start": 3275.92
+ },
+ {
+  "i": 391,
+  "pl": "Opuściła sypialnię ojca, lecz w przedpokoju, zamiast Wokulskiego, zobaczyła aż trzech Żydów, głośno rozprawiających z Mikołajem i panną Florentyną. Uciekła do sali i przez myśl przebiegły jej wyrazy:",
+  "start": 3279.43
+ },
+ {
+  "i": 392,
+  "pl": "„Boże!... dlaczego on nie przychodzi...”",
+  "start": 3293.27
+ },
+ {
+  "i": 393,
+  "pl": "W sercu jej kipiała burza uczuć. Panna Izabela potakując zdaniom ojca rozumiała jednak, że to nieprawda, co on mówi, że Wokulski nie zrobił na kamienicy interesu, ale stracił, i tylko dlatego, ażeby ich wydźwignąć z najfatalniejszej pozycji. Lecz przyznając to, czuła nienawiść:",
+  "start": 3295.73
+ },
+ {
+  "i": 394,
+  "pl": "„Podły! podły!... — szeptała. — Jak on śmiał...”",
+  "start": 3317.12
+ },
+ {
+  "i": 395,
+  "pl": "Tymczasem w przedpokoju Żydzi rozpoczęli formalną kłótnię z panną Florentyną. Oświadczyli, że nie ruszą się, dopóki nie dostaną pieniędzy, że panna hrabianka dała wczoraj słowo... A gdy Mikołaj otworzył im drzwi do sieni, poczęli mu wymyślać:",
+  "start": 3321.42
+ },
+ {
+  "i": 396,
+  "pl": "— To jest rozbój!... to oszustwo!... Pieniądze państwo umieją brać i wtedy umieją gadać: mój kochany panie Dawid!... Ale jak przyjdzie...",
+  "start": 3336.1
+ },
+ {
+  "i": 397,
+  "pl": "— A to co znaczy? — odezwał się w tej chwili nowy głos.",
+  "start": 3344.44
+ },
+ {
+  "i": 398,
+  "pl": "Żydzi umilkli.",
+  "start": 3349.3
+ },
+ {
+  "i": 399,
+  "pl": "— „Co to jest?... Co pan tu robisz, panie Szpigelman?...",
+  "start": 3350.67
+ },
+ {
+  "i": 400,
+  "pl": "Panna Izabela poznała głos Wokulskiego.",
+  "start": 3354.51
+ },
+ {
+  "i": 401,
+  "pl": "— Ja, nic... Padam do nóg wielmożnego pana... My tylko za interesem do pana hrabi... — tłomaczył się, zupełnie innym tonem, przed chwilą hałaśliwy Szpigelman.",
+  "start": 3357.95
+ },
+ {
+  "i": 402,
+  "pl": "— Kazali nam państwo dziś przyjść po pieniądze... — wtrącił inny Żyd.",
+  "start": 3368.91
+ },
+ {
+  "i": 403,
+  "pl": "— Właśnie panna hrabianka wczoraj dała słowo, że będziemy dziś spłaceni wszyscy, i co do grosza...",
+  "start": 3373.59
+ },
+ {
+  "i": 404,
+  "pl": "— Będziecie — przerwał Wokulski. — Jestem pełnomocnikiem pana Łęckiego i dziś, o szóstej, załatwię z wami rachunki w moim kantorze.",
+  "start": 3379.11
+ },
+ {
+  "i": 405,
+  "pl": "— Nic nagłego... Po co się wielmożny pan ma tak śpieszyć... — odparł Szpigelman.",
+  "start": 3386.71
+ },
+ {
+  "i": 406,
+  "pl": "— Proszę przyjść o szóstej do mnie, a Mikołaj niechaj tu żadnych interesantów nie przyjmuje, kiedy pan chory.",
+  "start": 3391.97
+ },
+ {
+  "i": 407,
+  "pl": "— Rozumiem, wielmożny panie!... A nasz pan czeka w pokoju sypialnym — odparł Mikołaj.",
+  "start": 3398.33
+ },
+ {
+  "i": 408,
+  "pl": "Gdy zaś Wokulski odszedł, powypychał Żydów za drzwi mówiąc:",
+  "start": 3405.48
+ },
+ {
+  "i": 409,
+  "pl": "— Poszły parchy!... Won!...",
+  "start": 3409.41
+ },
+ {
+  "i": 410,
+  "pl": "— Ny!... ny!... co — się pan tak gniewa?... — mruczeli bardzo zmieszani Żydkowie.",
+  "start": 3411.97
+ },
+ {
+  "i": 411,
+  "pl": "Pan Tomasz przywitał Wokulskiego ze wzruszeniem; trochę drżały mu ręce i trzęsła się głowa.",
+  "start": 3418.19
+ },
+ {
+  "i": 412,
+  "pl": "— No, patrz — mówił — co wyrabiają ci Żydzi, te... te gałgany!... Nachodzą dom... przestraszają mi córkę...",
+  "start": 3424.31
+ },
+ {
+  "i": 413,
+  "pl": "— Kazałem im przyjść o szóstej do mego kantoru i jeżeli pan pozwoli, ureguluję rachunki. Duża to suma?... — zapytał Wokulski.",
+  "start": 3432.2
+ },
+ {
+  "i": 414,
+  "pl": "— Drobiazg, prawie nic... Jakieś pięć do sześciu tysięcy rubli...",
+  "start": 3439.8
+ },
+ {
+  "i": 415,
+  "pl": "— Pięć do sześciu?... — powtórzył Wokulski. — Oni trzej tyle mają u pana?...",
+  "start": 3445.06
+ },
+ {
+  "i": 416,
+  "pl": "— Nie. Im jestem winien ze dwa tysiące, może trochę więcej... Ale, powiadam ci, panie Stanisławie (bo to cała awantura!), ktoś w marcu wykupił moje dawniejsze weksle. Kto? nie wiem; jednakże, na wszelki wypadek, chcę być przygotowany.",
+  "start": 3450.3
+ },
+ {
+  "i": 417,
+  "pl": "Wokulskiemu wyjaśniła się twarz.",
+  "start": 3464.9
+ },
+ {
+  "i": 418,
+  "pl": "— Niech pan spłaca długi — odparł — w miarę zgłaszania się wierzycieli. Dziś zepchniemy tych, którzy mają późniejsze weksle. Więc to wyniesie dwa do trzech tysięcy?...",
+  "start": 3467.51
+ },
+ {
+  "i": 419,
+  "pl": "— Tak, tak... No, ale proszę cię, panie Stanisławie, co za fatalność!... Ty wypłacasz mi za pół roku pięć tysięcy... Czy byłeś łaskaw przynieść pieniądze?",
+  "start": 3478.81
+ },
+ {
+  "i": 420,
+  "pl": "— Naturalnie.",
+  "start": 3487.69
+ },
+ {
+  "i": 421,
+  "pl": "— Bardzo ci jestem wdzięczny. Cóż to jednak za fatalność, że właśnie w chwili, kiedy mamy z Belcią i... z tobą jechać do Paryża, Żydzi wydzierają mi dwa tysiące! Rozumie się z Paryża nic.",
+  "start": null
+ },
+ {
+  "i": 422,
+  "pl": "— Dlaczego? — rzekł Wokulski. — Ja pokryję należność, a pan nie potrzebuje naruszać swego procentu. Śmiało możecie państwo jechać do Paryża.",
+  "start": 3500.93
+ },
+ {
+  "i": 423,
+  "pl": "— Nieoceniony!... — zawołał pan Tomasz rzucając mu się w objęcia. — Bo widzisz, mój drogi — dodał uspokoiwszy się — ja właśnie myślałem, czybyś nie mógł mi zaciągnąć gdzie pożyczki dla spłacenia żydowskich długów, tak... na... siedem, sześć procent...",
+  "start": 3510.45
+ },
+ {
+  "i": 424,
+  "pl": "Wokulski uśmiechnął się z finansowej naiwności pana Tomasza.",
+  "start": 3526.28
+ },
+ {
+  "i": 425,
+  "pl": "— Owszem — rzekł nie mogąc pohamować dobrego humoru — będzie pan miał pożyczkę. Tym Żydom oddamy jakieś trzy tysiące rubli, a pan będzie płacił procentu... Ileż pan chce?",
+  "start": 3530.22
+ },
+ {
+  "i": 426,
+  "pl": "— Siedem... sześć...",
+  "start": 3541.84
+ },
+ {
+  "i": 427,
+  "pl": "— Dobrze — mówił Wokulski — pan będzie płacił sto osiemdziesiąt rubli procentu, a kapitał zostanie nie naruszony.",
+  "start": 3543.56
+ },
+ {
+  "i": 428,
+  "pl": "Pan Tomasz, po raz już nie wiadomo który, zaczął mrugać powiekami i znowu ukazały się łzy.",
+  "start": 3550.71
+ },
+ {
+  "i": 429,
+  "pl": "— Zacny... szlachetny!... — mówił ściskając Wokulskiego. — Bóg cię zesłał...",
+  "start": 3556.73
+ },
+ {
+  "i": 430,
+  "pl": "— Sądzi pan, że mogę robić inaczej?... — szepnął Wokulski.",
+  "start": 3562.3
+ },
+ {
+  "i": 431,
+  "pl": "Zapukano. Wszedł Mikołaj i oznajmił lekarzy.",
+  "start": 3566.08
+ },
+ {
+  "i": 432,
+  "pl": "— Aha!... — zawołał pan Tomasz — to siostra przysyła mi tych panów. Mój Boże! nigdy się jeszcze nie leczyłem, a dziś... Proszę cię, panie Stanisławie, idź teraz do Beli... Mikołaj, zamelduj pana Wokulskiego panience.",
+  "start": 3569.86
+ },
+ {
+  "i": 433,
+  "pl": "„Oto jest moja nagroda... Moje życie!...” — pomyślał Wokulski idąc za Mikołajem. W przedpokoju spotkał lekarzy, obu znajomych sobie, i gorąco polecił pana Tomasza ich opiece.",
+  "start": 3583.59
+ },
+ {
+  "i": 434,
+  "pl": "W salonie czekała go panna Izabela. Była trochę blada, ale tym piękniejsza. Przywitał ją i rzekł wesoło:",
+  "start": 3595.33
+ },
+ {
+  "i": 435,
+  "pl": "— Bardzo jestem szczęśliwy, że podobał się pani wieniec dla Rossiego.",
+  "start": 3603.22
+ },
+ {
+  "i": 436,
+  "pl": "Zatrzymał się. Uderzył go szczególny wyraz twarzy panny Izabeli, która patrzyła na niego z lekkim zdziwieniem, jakby widziała go pierwszy raz w życiu.",
+  "start": 3608.06
+ },
+ {
+  "i": 437,
+  "pl": "Przez chwilę oboje milczeli, wreszcie panna Izabela strzepując jakiś pyłek z popielatej sukni spytała:",
+  "start": 3618.54
+ },
+ {
+  "i": 438,
+  "pl": "— Wszakże to pan kupił naszą kamienicę? — I przypatrywała mu się przymrużonymi oczyma.",
+  "start": 3625.7
+ },
+ {
+  "i": 439,
+  "pl": "Wokulski tak był zaskoczony, że w pierwszej chwili stracił mowę. Zdawało mu się, że w nim nagle zatrzymał się proces myślenia. Bladł i czerwienił się, a nareszcie odzyskawszy przytomność odparł przyciszonym głosem:",
+  "start": 3632.87
+ },
+ {
+  "i": 440,
+  "pl": "— Tak, ja kupiłem.",
+  "start": 3647.14
+ },
+ {
+  "i": 441,
+  "pl": "— Dlaczegóż pan podstawił Żyda do licytacji?",
+  "start": 3649.97
+ },
+ {
+  "i": 442,
+  "pl": "— Dlaczego?... — powtórzył Wokulski patrząc na nią jak wylęknione dziecko. — Dlaczego?... Jestem, widzi pani, kupcem i... takie uwięzienie kapitału mogłoby zaszkodzić memu kredytowi...",
+  "start": 3653.41
+ },
+ {
+  "i": 443,
+  "pl": "— Pan już od dawna interesuje się naszymi sprawami. Zdaje się, że w kwietniu... tak, w kwietniu nabył pan nasz serwis?... — mówiła ciągle tym samym tonem panna Izabela.",
+  "start": 3668.31
+ },
+ {
+  "i": 444,
+  "pl": "Ton ten otrzeźwił Wokulskiego, który podniósł głowę i odparł oschle:",
+  "start": 3679.75
+ },
+ {
+  "i": 445,
+  "pl": "— Serwis państwa jest w każdej chwili do odebrania.",
+  "start": 3684.51
+ },
+ {
+  "i": 446,
+  "pl": "Teraz panna Izabela spuściła oczy. Wokulski spostrzegł to i znowu zmieszał się.",
+  "start": 3688.13
+ },
+ {
+  "i": 447,
+  "pl": "— Więc dlaczego pan to zrobił? — spytała cicho. — Dlaczego pan tak nas... prześladuje?",
+  "start": 3694.55
+ },
+ {
+  "i": 448,
+  "pl": "Można było myśleć, że rozpłacze się. Wokulski stracił wszelką władzę nad sobą.",
+  "start": 3702.19
+ },
+ {
+  "i": 449,
+  "pl": "— Ja państwa prześladuję!... — rzekł zmienionym głosem. — Czyliż znajdziecie sługę... nie... psa... wierniejszego ode mnie?... Od dwu lat o jednym tylko myślę, ażeby usunąć wam z drogi każdą przeszkodę...",
+  "start": 3707.99
+ },
+ {
+  "i": 450,
+  "pl": "W tej chwili zadzwoniono. Panna Izabela drgnęła, Wokulski umilkł.",
+  "start": 3723.04
+ },
+ {
+  "i": 451,
+  "pl": "Mikołaj otworzył drzwi do salonu i rzekł:",
+  "start": 3728.56
+ },
+ {
+  "i": 452,
+  "pl": "— Pan Starski.",
+  "start": 3731.48
+ },
+ {
+  "i": 453,
+  "pl": "Jednocześnie ukazał się na progu mężczyzna średniego wzrostu, zręczny, śniady, z małymi faworytami i wąsikami, i bardzo nieznaczną łysiną. Miał fizjognomię na pół wesołą, na pół drwiącą i od razu zawołał:",
+  "start": 3734.1
+ },
+ {
+  "i": 454,
+  "pl": "— Jakżem kontent, kuzynko, że cię znowu mogę przywitać!...",
+  "start": 3748.38
+ },
+ {
+  "i": 455,
+  "pl": "Panna Izabela w milczeniu podała mu rękę; mocny rumieniec oblał jej twarz, a w oczach zamigotało rozmarzenie.",
+  "start": 3752.14
+ },
+ {
+  "i": 456,
+  "pl": "Wokulski cofnął się do bocznego stołu. Panna Izabela przedstawiła panów:",
+  "start": 3759.56
+ },
+ {
+  "i": 457,
+  "pl": "— Pan... Wokulski... Pan Starski...",
+  "start": 3764.44
+ },
+ {
+  "i": 458,
+  "pl": "Nazwisko Wokulskiego było zaakcentowane w taki sposób, że Starski kiwnąwszy mu głową usiadł o kilka kroków, zwrócony bokiem. W odpowiedzi Wokulski usiadł przy małym stoliku pod ścianą i zaczął oglądać album.",
+  "start": 3767.89
+ },
+ {
+  "i": 459,
+  "pl": "— Kuzynek podobno wraca z Chin? — spytała panna Izabela.",
+  "start": 3782.95
+ },
+ {
+  "i": 460,
+  "pl": "— Teraz z Londynu i jeszcze ciągle myślę, że jestem w okręcie — odpowiedział Starski, dość wyraźnie kalecząc polszczyznę.",
+  "start": 3786.93
+ },
+ {
+  "i": 461,
+  "pl": "Panna Izabela zaczęła mówić po angielsku.",
+  "start": 3795.11
+ },
+ {
+  "i": 462,
+  "pl": "— Spodziewam się, że tym razem kuzynek zabawi w kraju dłużej?",
+  "start": 3797.79
+ },
+ {
+  "i": 463,
+  "pl": "— To zależy — odparł również po angielsku Starski. — Kto jest ten?... — dodał rzucając okiem na Wokulskiego.",
+  "start": 3801.61
+ },
+ {
+  "i": 464,
+  "pl": "— Plenipotent mego ojca. Od czegóż to zależy?...",
+  "start": 3808.39
+ },
+ {
+  "i": 465,
+  "pl": "— Myślę, że kuzynka nie potrzebuje się pytać — odpowiedział z uśmiechem młody człowiek. — To zależy — od hojności mojej babki...",
+  "start": 3812.21
+ },
+ {
+  "i": 466,
+  "pl": "— A ładnie... spodziewałam się komplimentu pod moim adresem...",
+  "start": 3819.51
+ },
+ {
+  "i": 467,
+  "pl": "— Podróżnicy nie mówią komplimentów, gdyż wiedzą, że pod każdą szerokością jeograficzną komplimenta dyskredytują mężczyznę w oczach kobiet.",
+  "start": 3824.55
+ },
+ {
+  "i": 468,
+  "pl": "— W Chinach zrobił kuzyn to odkrycie?",
+  "start": 3833.9
+ },
+ {
+  "i": 469,
+  "pl": "— W Chinach, w Japonii, a nade wszystko w Europie.",
+  "start": 3836.08
+ },
+ {
+  "i": 470,
+  "pl": "— I myśli kuzyn stosować tę zasadę w Polsce?",
+  "start": 3839.1
+ },
+ {
+  "i": 471,
+  "pl": "— Spróbuję i jeżeli pozwolisz, kuzynko, w twoim towarzystwie. Gdyż podobno mamy razem spędzić wakacje. Czy tak?...",
+  "start": 3842.16
+ },
+ {
+  "i": 472,
+  "pl": "— Tak przynajmniej chce ciotka i ojciec. Mnie się jednak nie uśmiecha to, że kuzyn ma zamiar sprawdzać swoje etnograficzne spostrzeżenia.",
+  "start": 3848.86
+ },
+ {
+  "i": 473,
+  "pl": "— Byłby to tylko odwet z mojej strony.",
+  "start": 3857.94
+ },
+ {
+  "i": 474,
+  "pl": "— Ach, więc walka?... — spytała panna Izabela.",
+  "start": 3861.12
+ },
+ {
+  "i": 475,
+  "pl": "— Spłacanie dawnych długów często prowadzi do zgody.",
+  "start": 3864.8
+ },
+ {
+  "i": 476,
+  "pl": "Wokulski z taką uwagą przeglądał album, że żyły nabrzmiały mu na czole.",
+  "start": 3868.36
+ },
+ {
+  "i": 477,
+  "pl": "— Ale zemsta nie prowadzi — odparła panna Izabela.",
+  "start": 3873.4
+ },
+ {
+  "i": 478,
+  "pl": "— Nie zemsta, tylko przypomnienie, że jestem wierzycielem kuzynki.",
+  "start": 3877.02
+ },
+ {
+  "i": 479,
+  "pl": "— Więc to ja mam spłacać dawne długi?... — zaśmiała się panna Izabela. — A, kuzyn nie stracił czasu w podróży.",
+  "start": 3881.22
+ },
+ {
+  "i": 480,
+  "pl": "— Wolałbym go nie stracić na wakacjach — rzekł Starski, znacząco spoglądając jej w oczy.",
+  "start": 3888.82
+ },
+ {
+  "i": 481,
+  "pl": "— To będzie zależało od metody odwetu — odpowiedziała panna Izabela i znowu zarumieniła się.",
+  "start": 3895.38
+ },
+ {
+  "i": 482,
+  "pl": "— Jaśnie pan prosi pana! — rzekł Mikołaj stając we drzwiach salonu.",
+  "start": 3901.36
+ },
+ {
+  "i": 483,
+  "pl": "Rozmowa urwała się, Wokulski złożył album, wstał z krzesła i ukłoniwszy się pannie Izabeli i Starskiemu, z wolna poszedł za służącym.",
+  "start": 3906.68
+ },
+ {
+  "i": 484,
+  "pl": "— Ten pan nie rozumie po angielsku?... Czy on nie obrazi się, żeśmy z nim nie rozmawiali?... — spytał Starski.",
+  "start": 3915.85
+ },
+ {
+  "i": 485,
+  "pl": "— O nie — odpowiedziała panna Izabela.",
+  "start": 3921.63
+ },
+ {
+  "i": 486,
+  "pl": "— Tym lepiej; bo zdawało mi się, że nie był zadowolony z naszego towarzystwa.",
+  "start": 3924.63
+ },
+ {
+  "i": 487,
+  "pl": "— Toteż porzucił je — zakończyła niedbale panna Izabela.",
+  "start": 3928.81
+ },
+ {
+  "i": 488,
+  "pl": "— Przynieś mi kapelusz z sali — rzekł do Mikołaja już w drugim pokoju Wokulski.",
+  "start": 3932.73
+ },
+ {
+  "i": 489,
+  "pl": "Mikołaj zabrał kapelusz i zaniósł go do sypialni pana Tomasza. W przedpokoju usłyszał, że Wokulski oburącz ściskając głowę szepnął:",
+  "start": 3937.95
+ },
+ {
+  "i": 490,
+  "pl": "— Boże miłosierny!...",
+  "start": 3946.11
+ },
+ {
+  "i": 491,
+  "pl": "Gdy Wokulski wszedł do pokoju pana Tomasza, lekarzy już nie było.",
+  "start": 3948.14
+ },
+ {
+  "i": 492,
+  "pl": "— No i wyobraź sobie — zawołał pan Łęcki — co za fatalizm!... Konsylium zabroniło mi jechać do Paryża i pod karą śmierci kazało wynosić się na wieś. Na honor, nie wiem nawet, gdzie uciec przed tymi upałami. Ale i na ciebie także działają, bo jesteś zmieniony... Prawda, jakie to gorące mieszkanie?...",
+  "start": 3952.72
+ },
+ {
+  "i": 493,
+  "pl": "— O tak. Może pozwoli pan — mówił Wokulski wydobywając z kieszeni gruby pakiet — że oddam pieniądze.",
+  "start": 3972.96
+ },
+ {
+  "i": 494,
+  "pl": "— Ehe... doprawdy...",
+  "start": 3980.9
+ },
+ {
+  "i": 495,
+  "pl": "— Tu jest pięć tysięcy rubli jako procent do połowy stycznia. Niech pan z łaski swojej policzy. A tu jest kwit.",
+  "start": 3982.66
+ },
+ {
+  "i": 496,
+  "pl": "Pan Łęcki kilka razy porachował stos nowych sturublówek i podpisał dokument. Odłożywszy zaś pióro rzekł:",
+  "start": 3989.2
+ },
+ {
+  "i": 497,
+  "pl": "— Dobrze, to jedno... A teraz co się tyczy długów...",
+  "start": 3997.25
+ },
+ {
+  "i": 498,
+  "pl": "— Suma dwa do trzech tysięcy rubli, którą pan winien Żydom, dziś będzie spłacona...",
+  "start": 4001.14
+ },
+ {
+  "i": 499,
+  "pl": "— Ale ja, proszę cię, panie Stanisławie, nie chcę darmo... Proszę cię, ażebyś jak najskrupulatniej odtrącał sobie procent...",
+  "start": 4005.92
+ },
+ {
+  "i": 500,
+  "pl": "— Sto dwadzieścia do stu osiemdziesięciu rubli rocznie.",
+  "start": 4013.16
+ },
+ {
+  "i": 501,
+  "pl": "— Tak, tak... — potakiwał pan Tomasz. — Ale... gdybym, ale... potrzebował jeszcze jakiej kwoty, to mam się do kogo udać u ciebie?",
+  "start": 4016.38
+ },
+ {
+  "i": 502,
+  "pl": "— Drugą połowę procentu otrzyma pan w połowie stycznia — odparł Wokulski.",
+  "start": 4025.81
+ },
+ {
+  "i": 503,
+  "pl": "— O tym wiem. Ale widzisz, panie Stanisławie, gdybym tak potrzebował jakiejś części mego kapitału... Nie darmo, pojmujesz... Chętnie zapłacę procent...",
+  "start": 4030.07
+ },
+ {
+  "i": 504,
+  "pl": "— Szósty... — wtrącił Wokulski.",
+  "start": 4039.49
+ },
+ {
+  "i": 505,
+  "pl": "— Tak, szósty... siódmy.",
+  "start": 4041.69
+ },
+ {
+  "i": 506,
+  "pl": "— Nie, panie. Pański kapitał przynosi trzydzieści trzy procent rocznie, więc nie mogę go pożyczać na siedem...",
+  "start": 4043.77
+ },
+ {
+  "i": 507,
+  "pl": "— Dobrze. W takim razie nie pozbawiaj się mego kapitału, ale... Uważasz... może mi jednak coś wypaść...",
+  "start": 4050.85
+ },
+ {
+  "i": 508,
+  "pl": "— Wycofać swój kapitał może pan nawet w połowie stycznia roku przyszłego.",
+  "start": 4057.33
+ },
+ {
+  "i": 509,
+  "pl": "— Boże uchowaj!... Ja mego kapitału nie odbiorę ci nawet za dziesięć lat...",
+  "start": 4061.53
+ },
+ {
+  "i": 510,
+  "pl": "— Ale ja pański kapitał wziąłem tylko na rok...",
+  "start": 4065.47
+ },
+ {
+  "i": 511,
+  "pl": "— Jak to?... Dlaczego?... — dziwił się pan Tomasz, coraz szerzej otwierając oczy.",
+  "start": 4068.93
+ },
+ {
+  "i": 512,
+  "pl": "— Dlatego, że nie wiem, co będzie od dziś za rok. Nie co roku zdarzają się wyjątkowo dobre interesa.",
+  "start": 4073.71
+ },
+ {
+  "i": 513,
+  "pl": "— A propos — rzekł pan Tomasz po chwili przykrego zdumienia. — Co też mówią w mieście: że to ty, panie Wokulski, kupiłeś mój dom?...",
+  "start": 4080.39
+ },
+ {
+  "i": 514,
+  "pl": "— Tak, panie, ja kupiłem pański dom. Ale przed upływem pół roku mogę go panu odstąpić na korzystnych warunkach.",
+  "start": 4089.13
+ },
+ {
+  "i": 515,
+  "pl": "Pan Łęcki poczuł rumieniec na twarzy. Nie chcąc jednak dawać za wygranę zapytał wielkopańskim tonem:",
+  "start": 4096.69
+ },
+ {
+  "i": 516,
+  "pl": "— I ile byś też chciał odstępnego, panie Wokulski?...",
+  "start": 4103.51
+ },
+ {
+  "i": 517,
+  "pl": "— Nic. Oddam go panu za dziewięćdziesiąt tysięcy, a nawet... może taniej...",
+  "start": 4108.31
+ },
+ {
+  "i": 518,
+  "pl": "Pan Tomasz cofnął się, rozłożył ręce, następnie padł na swój wielki fotel i znowu kilka łez spłynęło mu po twarzy.",
+  "start": 4114.2
+ },
+ {
+  "i": 519,
+  "pl": "— Doprawdy, panie Stanisławie — mówił, lekko łkając — widzę, że najlepsze stosunki... mogą zepsuć pieniądze... Czy ja mam ci za złe, żeś kupił ten dom?... Czy ja robię ci wyrzuty?... Ty zaś przemawiasz do mnie tak, jakbyś się obraził.",
+  "start": 4122.96
+ },
+ {
+  "i": 520,
+  "pl": "— Przepraszam pana — przerwał Wokulski. — Ale istotnie jestem trochę rozdrażniony... zapewne z gorąca...",
+  "start": 4139.22
+ },
+ {
+  "i": 521,
+  "pl": "— O, z pewnością! — zawołał pan Tomasz powstając z fotelu i ściskając go za rękę. — Więc... przebaczmy sobie nawzajem cierpkie słówka... Ja się na ciebie nie gniewam, bo wiem... co to jest upał...",
+  "start": 4145.52
+ },
+ {
+  "i": 522,
+  "pl": "Wokulski pożegnał go i wstąpił do salonu. Starskiego już tam nie było, panna Izabela siedziała sama. Zobaczywszy go podniosła się; twarz jej była pogodniejsza.",
+  "start": 4157.94
+ },
+ {
+  "i": 523,
+  "pl": "— Pan wychodzi?",
+  "start": 4169.32
+ },
+ {
+  "i": 524,
+  "pl": "— Właśnie chcę panią pożegnać.",
+  "start": 4170.38
+ },
+ {
+  "i": 525,
+  "pl": "— A o Rossim nie zapomni pan? — rzekła ze słabym uśmiechem.",
+  "start": 4172.54
+ },
+ {
+  "i": 526,
+  "pl": "— O nie. Poproszę, ażeby mu oddano wieniec.",
+  "start": 4177.06
+ },
+ {
+  "i": 527,
+  "pl": "— Pan go sam nie wręczy?... Dlaczegóż to?...",
+  "start": 4180.6
+ },
+ {
+  "i": 528,
+  "pl": "— Dziś w nocy jadę do Paryża — odpowiedział Wokulski.",
+  "start": 4184.0
+ },
+ {
+  "i": 529,
+  "pl": "Ukłonił się i wyszedł.",
+  "start": 4187.86
+ },
+ {
+  "i": 530,
+  "pl": "Przez chwilę panna Izabela stała zdumiona; następnie pobiegła do pokoju ojca.",
+  "start": 4190.4
+ },
+ {
+  "i": 531,
+  "pl": "— Co to znaczy, papo? Wokulski pożegnał się ze mną bardzo chłodno i powiedział, że — dziś w nocy wyjeżdża do Paryża.",
+  "start": 4196.46
+ },
+ {
+  "i": 532,
+  "pl": "— Co?... co?... co?... — zawołał pan Tomasz chwytając się oburącz za głowę. — On z pewnością obraził się...",
+  "start": 4203.62
+ },
+ {
+  "i": 533,
+  "pl": "— Ach... prawda!... Wspomniałam mu o kupnie naszej kamienicy...",
+  "start": 4211.52
+ },
+ {
+  "i": 534,
+  "pl": "— Chryste!... i cóżeś ty zrobiła?... A... wszystko stracone... Teraz rozumiem... Naturalnie, że się obraził... No — dodał po chwili — ale kto mógł przypuścić, że jest tak obraźliwy?... Taki sobie zwyczajny kupiec!...",
+  "start": 4215.84
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

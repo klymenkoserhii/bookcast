@@ -1,0 +1,1388 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to ../../public/lalka/audio/chapter-14.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-14.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Rozdział XIV — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Rozdział XIV · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="../../public/lalka/audio/chapter-14.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Od Wielkiej Nocy panna Izabela często myślała o Wokulskim, a we wszystkich medytacjach uderzał ją niezwykły szczegół: człowiek ten przedstawiał się coraz inaczej.",
+  "start": 5.79
+ },
+ {
+  "i": 1,
+  "pl": "Panna Izabela miała dużo znajomości i niemały spryt do charakteryzowania ludzi. Otóż każdy z jej dotychczasowych znajomych posiadał tę własność, że można go było streścić w jednym zdaniu.",
+  "start": 18.3
+ },
+ {
+  "i": 2,
+  "pl": "Książę był to patriota, jego adwokat — bardzo zręczny, hrabia Łaciński pozował na Anglika, jej ciotka była dumną, prezesowa — dobrą, Ochocki — dziwakiem, a Krzeszowski — karciarzem.",
+  "start": 30.96
+ },
+ {
+  "i": 3,
+  "pl": "Słowem: człowiek — była to jakaś zaleta albo wada, niekiedy zasługa, najczęściej tytuł lub majątek, który miał głowę, ręce i nogi i ubierał się więcej albo mniej modnie.",
+  "start": 44.6
+ },
+ {
+  "i": 4,
+  "pl": "Dopiero w Wokulskim poznała nie tylko nową osobistość, ale niespodziewane zjawisko. Jego niepodobna było określić jednym wyrazem, a nawet stoma zdaniami.",
+  "start": 57.7
+ },
+ {
+  "i": 5,
+  "pl": "Nie był też do nikogo podobny, a jeżeli w ogóle można go było z czymś porównywać, to chyba z jakąś okolicą, przez którą jedzie się cały dzień i gdzie spotyka się równiny i góry, lasy i łąki, wody i pustynie, wsie i miasta.",
+  "start": 69.54
+ },
+ {
+  "i": 6,
+  "pl": "I gdzie jeszcze, spoza mgieł horyzontu, wynurzają się jakieś niejasne widoki, już niepodobne do żadnej rzeczy znanej. Ogarniało ją zdumienie i pytała się: czy to jest gra podnieconej imaginacji, czy naprawdę istota nadludzka, a przynajmniej — pozasalonowa?",
+  "start": 85.18
+ },
+ {
+  "i": 7,
+  "pl": "Wtedy zaczęła sobie rejestrować doznane wrażenia.",
+  "start": 105.66
+ },
+ {
+  "i": 8,
+  "pl": "Pierwszy raz — wcale go nie widziała, czuła tylko zbliżający się jakiś ogromny cień.",
+  "start": 108.95
+ },
+ {
+  "i": 9,
+  "pl": "Był ktoś, który rzucił parę tysięcy rubli na dobroczynność i na ochronę jej ciotki; potem ktoś grał z jej ojcem w karty w resursie i co dzień przegrywał; potem ktoś, który wykupił weksle jej ojca (może to nie Wokulski?...), następnie jej serwis,",
+  "start": 115.05
+ },
+ {
+  "i": 10,
+  "pl": "a następnie dostarczył różnych rzeczy do przyozdobienia grobu Pańskiego.",
+  "start": 133.65
+ },
+ {
+  "i": 11,
+  "pl": "Ten ktoś był to zuchwały dorobkiewicz, który od roku ścigał ją spojrzeniami w teatrach i na koncertach. Był to cyniczny brutal, który dorobił się majątku na podejrzanych spekulacjach po to, ażeby kupić sobie reputację u ludzi, a ją, pannę Izabelę Łęcką, u jej ojca!...",
+  "start": 138.4
+ },
+ {
+  "i": 12,
+  "pl": "Z tej epoki pamiętała tylko jego grubo ciosaną figurę, czerwone ręce i szorstkie obejście, które obok grzeczności innych kupców wydawało się nieznośnym, a na tle wachlarzy, sakwojażów, parasoli, lasek i tym podobnych galanteryj — po prostu śmieszne.",
+  "start": 157.82
+ },
+ {
+  "i": 13,
+  "pl": "Był to przebiegły i bezczelny kupczyk, który w swoim sklepie pozował na upadłego ministra. Był wstrętny, nawet śmiertelnie nienawistny, gdyż poważył się udzielać im zasiłki w formie kupna serwisu albo przegranych w karty do ojca.",
+  "start": 177.94
+ },
+ {
+  "i": 14,
+  "pl": "Dziś jeszcze myśląc o tym, panna Izabela szarpała na sobie suknię. Niekiedy rzuciwszy się na szezlong biła pięściami sprężyny i szeptała:",
+  "start": 194.54
+ },
+ {
+  "i": 15,
+  "pl": "— Nikczemnik!... nikczemnik!...",
+  "start": 203.6
+ },
+ {
+  "i": 16,
+  "pl": "Sam widok niedoli, w jaką staczał się jej dom, już napełniał ją rozpaczą. A cóż dopiero, gdy ktoś wdarł się za zasłonę jej najskrytszych tajemnic i śmiał opatrywać rany, które ukryłaby przed samym Bogiem. Wszystko mogłaby przebaczyć, oprócz tego ciosu, jaki zadano jej dumie.",
+  "start": 206.02
+ },
+ {
+  "i": 17,
+  "pl": "Tu zaszła zmiana dekoracji. Wystąpił inny człowiek, który bez cienia dwuznacznej myśli powiedział jej w oczy, że kupił serwis, ażeby zrobić na nim interes.",
+  "start": 225.74
+ },
+ {
+  "i": 18,
+  "pl": "A zatem on czuł, że panny Izabeli Łęckiej wspierać nie wolno, i gdyby to nawet zrobił, nie tylko nie szukałby rozgłosu albo wdzięczności, ale nawet — nie śmiałby myśleć o tym.",
+  "start": 236.84
+ },
+ {
+  "i": 19,
+  "pl": "Ten sam człowiek wypędził ze sklepu Mraczewskiego, który poważył się złośliwie o niej mówić. Na próżno wrogowie panny Izabeli, baron i baronowa Krzeszowscy, wstawiali się za tym młodzieńcem; na próżno odezwała się za nim hrabina ciotka, która rzadko dziękowała, a jeszcze rzadziej prosiła.",
+  "start": 248.78
+ },
+ {
+  "i": 20,
+  "pl": "Wokulski nie ustąpił... Lecz jedno słówko jej, panny Izabeli, pokonało nieugiętego człowieka; nie tylko cofnął się, ale nawet dał Mraczewskiemu lepszą posadę. Nie robi się takich ustępstw dla kobiety, której się nie czci.",
+  "start": 268.58
+ },
+ {
+  "i": 21,
+  "pl": "Szkoda tylko, że prawie w tej samej chwili w jej czcicielu odezwał się pyszny dorobkiewicz, który na kwestyjną tacę rzucił rulon półimperiałów. Ach, jakież to było kupieckie!... I jak on nic nie rozumie po angielsku, nie ma wyobrażenia o języku, który jest modnym!...",
+  "start": 284.72
+ },
+ {
+  "i": 22,
+  "pl": "Trzecia faza. Zobaczyła Wokulskiego w salonie ciotki w pierwszy dzień Wielkiejnocy i spostrzegła, że on o całą głowę przerasta towarzystwo. Najarystokratyczniejsi ludzie ubiegali się o znajomość z nim, a on, ten brutalny parweniusz, odrzynał się od nich jak ogień od dymu.",
+  "start": 304.56
+ },
+ {
+  "i": 23,
+  "pl": "Chodził niezręcznie, ale śmiało, jakby salon ten był jego niezaprzeczoną własnością, i posępnie słuchał komplimentów, którymi go zasypywano. Potem wezwała go do siebie najczcigodniejsza z matron, prezesowa, i po kilku minutach rozmowy z nim rzewnie zapłakała...",
+  "start": 323.57
+ },
+ {
+  "i": 24,
+  "pl": "Czyżby ten z czerwonymi rękoma parweniusz?...",
+  "start": 342.13
+ },
+ {
+  "i": 25,
+  "pl": "Teraz dopiero spostrzegła panna Izabela, że Wokulski ma twarz niepospolitą. Rysy wyraziste i stanowcze, włos jakby najeżony gniewem, mały wąs, ślad bródki, kształty posągowe, wejrzenie jasne i przejmujące...",
+  "start": 346.86
+ },
+ {
+  "i": 26,
+  "pl": "Gdyby ten człowiek zamiast sklepu posiadał duże dobra ziemskie — byłby bardzo przystojnym; gdyby urodził się księciem — byłby imponująco piękny. W każdym razie przypominał Trostiego, pułkownika strzelców, i — naprawdę — posąg gladiatora zwycięzcy.",
+  "start": 363.18
+ },
+ {
+  "i": 27,
+  "pl": "W tym czasie od panny Izabeli odsunęli się prawie wszyscy.",
+  "start": 383.86
+ },
+ {
+  "i": 28,
+  "pl": "Wprawdzie starsi panowie jeszcze obsypywali ją grzecznościami z powodu piękności i elegancji, za to młodzi, szczególnie utytułowani lub majętni, traktowali ją chłodno a krótko; gdy zaś, zmęczona samotnością i banalnymi frazesami, nieco żywiej odezwała się do którego,",
+  "start": 387.96
+ },
+ {
+  "i": 29,
+  "pl": "patrzył na nią z wyraźnym przestrachem jakby lękając się, że ona chwyci go za szyję i natychmiast pociągnie do ołtarza.",
+  "start": 407.08
+ },
+ {
+  "i": 30,
+  "pl": "Świat salonów kochała panna Izabela na śmierć i życie, wyjść z niego mogła tylko do grobu, ale z każdym rokiem, a nawet miesiącem, mocniej gardziła ludźmi; pojąć nie mogła, ażeby kobietę, tak jak ona piękną, dobrą i dobrze wychowaną, świat opuszczał dlatego tylko, że — nie ma majątku!...",
+  "start": 414.74
+ },
+ {
+  "i": 31,
+  "pl": "„Cóż to za ludzie, Boże miłosierny!...” — szeptała nieraz, patrząc spoza firanek na przejeżdżające powozy elegantów, którzy pod rozmaitymi pozorami odwracali głowę od jej okien, ażeby się nie kłaniać. Czyżby sądzili, że ona wygląda ich?...",
+  "start": 435.96
+ },
+ {
+  "i": 32,
+  "pl": "A przecież istotnie ona do nich wyglądała!...",
+  "start": 452.92
+ },
+ {
+  "i": 33,
+  "pl": "Wówczas gorące łzy napływały jej do oczu; gryzła z gniewu piękne usta i szarpiąc taśmy zasłaniała okna firankami.",
+  "start": 457.74
+ },
+ {
+  "i": 34,
+  "pl": "„Cóż to za ludzie!... Cóż to za ludzie!...” — powtarzała, wstydząc się jednak sama przed sobą rzucić na nich jakiś ostrzejszy epitet, gdyż należeli do świata. Nikczemnikiem, według jej wyobrażeń, można było nazwać tylko Wokulskiego.",
+  "start": 466.68
+ },
+ {
+  "i": 35,
+  "pl": "Na domiar szyderstwa losu z całej niegdyś falangi zostało jej tylko dwu wielbicieli. Ochockim nie łudziła się: on więcej zajmował się jakąś latającą maszyną (co za obłęd!) aniżeli nią. Za to asystowali jej, zresztą nie narzucając się zbytecznie, marszałek i baron.",
+  "start": 483.36
+ },
+ {
+  "i": 36,
+  "pl": "Marszałek nasuwał jej na myśl zabitego i oparzonego wieprza, jakie czasem spotykała w rzeźniczych furgonach na ulicy; baron znowu wydawał się jej podobnym do niewyprawnej skóry, których całe stosy można widywać na wozach.",
+  "start": 505.11
+ },
+ {
+  "i": 37,
+  "pl": "Obaj stanowili dziś ostatnie jej otoczenie, nawet skrzydła, jeżeli, jak mówiono, była naprawdę aniołem!... Okropna kombinacja dwu tych starców prześladowała pannę Izabelę dniem i nocą. Czasem zdawało się jej, że jest potępiona i że już za życia rozpoczęło się dla niej piekło.",
+  "start": 520.83
+ },
+ {
+  "i": 38,
+  "pl": "W podobnych chwilach jak topielec, który zwraca oczy do światła na dalekim brzegu, panna Izabela myślała o Wokulskim. I w bezmiarze goryczy doznawała cienia ulgi wiedząc, że jednak szaleje za nią człowiek niepospolity, o którym dużo mówiono w towarzystwie.",
+  "start": 540.85
+ },
+ {
+  "i": 39,
+  "pl": "Wtedy przychodzili jej na myśl sławni podróżnicy albo zbogaceni przemysłowcy amerykańscy, którzy przez szereg lat ciężko pracowali w kopalniach, a których od czasu do czasu z daleka pokazywano jej na paryskich salonach.",
+  "start": 559.99
+ },
+ {
+  "i": 40,
+  "pl": "„Widzi pani tego — szczebiotała jakaś hrabianka, niedawno wypuszczona z klasztoru, pochylając wachlarz w pewnym kierunku — widzi pani tego pana, który wygląda na woźnicę omnibusów<sup>442<\/sup>?",
+  "start": 575.53
+ },
+ {
+  "i": 41,
+  "pl": "To podobno jakiś wielki człowiek, który coś odkrył, tylko nie wiem co: kopalnię złota czy też biegun północny... Nawet nie pamiętam, jak się nazywa, ale zapewnił mnie jeden margrabia<sup>443<\/sup> z akademii, że ten pan mieszkał dziesięć lat pod biegunem, nie... mieszkał pod ziemią...",
+  "start": 587.99
+ },
+ {
+  "i": 42,
+  "pl": "Okropny człowiek!... Ja będąc na jego miejscu umarłabym z samego strachu... A pani, czy także by umarła?...”",
+  "start": 604.71
+ },
+ {
+  "i": 43,
+  "pl": "Gdyby Wokulski był takim podróżnikiem, a przynajmniej górnikiem, który zrobił miliony, dziesięć lat mieszkając pod ziemią!... Ale on był tylko kupcem, w dodatku — galanteryjnym!...",
+  "start": 613.37
+ },
+ {
+  "i": 44,
+  "pl": "Nie umiał nawet po angielsku, co chwilę odzywał się w nim dorobkiewicz, który w młodym wieku restauracyjnym gościom przynosił jedzenie z kuchni. Taki człowiek, co najwyżej, mógłby być dobrym doradcą, nawet nieocenionym przyjacielem (w gabinecie, gdy nie ma gości).",
+  "start": 624.57
+ },
+ {
+  "i": 45,
+  "pl": "Nawet... mężem, boć spotykają ludzi straszne nieszczęścia. Ale kochankiem... No, to byłoby po prostu śmieszne... W razie potrzeby najarystokratyczniejsze damy kąpią się w błotnych wannach; lecz bawić się w błocie mógłby tylko szaleniec.",
+  "start": 641.23
+ },
+ {
+  "i": 46,
+  "pl": "Czwarta faza. Panna Izabela kilka razy spotkała Wokulskiego w Łazienkach i nawet raczyła odpowiadać na jego ukłony. Między zielonymi drzewami i obok posągów grubianin ten wydał jej się znowu innym aniżeli za kontuarem sklepu. Gdybyż on miał dobra ziemskie, z parkiem, pałacem, sadzawką?...",
+  "start": 661.22
+ },
+ {
+  "i": 47,
+  "pl": "Prawda, że dorobkiewicz, ale podobno szlachcic, synowiec oficera... Przy marszałku i baronie wygląda jak Apollo, arystokracja coraz więcej mówi o nim, a ten wybuch łez prezesowej?...",
+  "start": 683.04
+ },
+ {
+  "i": 48,
+  "pl": "Nadto prezesowa w oczywisty sposób popierała Wokulskiego u swojej przyjaciółki hrabiny i jej siostrzenicy, panny Izabeli.",
+  "start": 696.72
+ },
+ {
+  "i": 49,
+  "pl": "Parogodzinne spacery z ciotką po Łazienkach były tak nudne, a pogadanki o modach, ochronach i projektowanych w świecie małżeństwach tak dokuczliwe, iż panna Izabela miała nawet trochę żalu do Wokulskiego, że nie zbliża się do nich w czasie spaceru i choć z kwadrans nie porozmawia.",
+  "start": 705.47
+ },
+ {
+  "i": 50,
+  "pl": "Dla osoby z towarzystwa ciekawą jest rozmowa z tego rodzaju ludźmi, a pannie Izabeli chłopi na przykład wydawali się nawet zabawnymi swym odrębnym językiem i logiką.",
+  "start": 723.49
+ },
+ {
+  "i": 51,
+  "pl": "Chociaż kupiec galanteryjny, a do tego jeżdżący własnym powozem, nie musi być tak zabawny jak chłop...",
+  "start": 734.95
+ },
+ {
+  "i": 52,
+  "pl": "Bądź co bądź panna Izabela nie doznała przykrej niespodzianki usłyszawszy pewnego dnia od prezesowej, że pojedzie z nią i hrabiną do Łazienek i — że zatrzyma Wokulskiego.",
+  "start": 744.22
+ },
+ {
+  "i": 53,
+  "pl": "— Nudzimy się, niech więc nas bawi — mówiła staruszka.",
+  "start": 755.37
+ },
+ {
+  "i": 54,
+  "pl": "Gdy zaś około pierwszej wjeżdżając do łazienkowskiego parku prezesowa ze znaczącym uśmiechem rzekła do panny Izabeli:",
+  "start": 759.43
+ },
+ {
+  "i": 55,
+  "pl": "— Mam przeczucie, że go tu gdzieś spotkamy...",
+  "start": 767.05
+ },
+ {
+  "i": 56,
+  "pl": "Panna Izabela lekko zarumieniła się i postanowiła wcale nie rozmawiać z Wokulskim, a przynajmniej traktować go z góry, ażeby sobie nic nie wyobrażał. O miłości, naturalnie, w owym „wyobrażaniu sobie” mowy być nie mogło. Panna Izabela jednak nie życzyła sobie nawet poufałej życzliwości.",
+  "start": 771.17
+ },
+ {
+  "i": 57,
+  "pl": "„I ogień jest przyjemny, szczególniej w zimie — myślała — ale... w pewnym oddaleniu.”",
+  "start": 789.65
+ },
+ {
+  "i": 58,
+  "pl": "Tymczasem Wokulskiego nie było w Łazienkach.",
+  "start": 796.83
+ },
+ {
+  "i": 59,
+  "pl": "„Jak to, on nie czekał? — mówiła do siebie panna Izabela — chyba jest chory...”",
+  "start": 800.09
+ },
+ {
+  "i": 60,
+  "pl": "Nie sądziła, ażeby Wokulski miał jakiś pilniejszy interes na świecie aniżeli widzenie się z nią; gdyby się zaś spóźnił, postanowiła nie tylko traktować go z góry, ale nawet okazać mu niezadowolenie.",
+  "start": 804.81
+ },
+ {
+  "i": 61,
+  "pl": "„Jeżeli punktualność — mówiła sobie dalej — jest grzecznością królów<sup>444<\/sup>, to już co najmniej powinna być obowiązkiem kupców!...”",
+  "start": 817.45
+ },
+ {
+  "i": 62,
+  "pl": "Upłynęło pół godziny, godzina, dwie — należało wracać do domu, a Wokulski nie przychodził; nareszcie panie wsiadły do karety: hrabina zimna jak zwykle, prezesowa nieco roztargniona, a panna Izabela rozgniewana.",
+  "start": 825.92
+ },
+ {
+  "i": 63,
+  "pl": "Oburzenie nie zmniejszyło się, gdy wieczorem ojciec powiedział jej, że od południa był na sesji u księcia, gdzie Wokulski przedstawił projekt olbrzymiej spółki handlowej i w zblazowanych magnatach obudził formalny zapał.",
+  "start": 839.6
+ },
+ {
+  "i": 64,
+  "pl": "— Od dawna przeczuwałem — zakończył pan Łęcki — że przy pomocy tego człowieka uwolnię się od troskliwości mojej familii i znowu stanę, jak powinienem!",
+  "start": 853.35
+ },
+ {
+  "i": 65,
+  "pl": "— Ale do spółki, ojcze, potrzeba pieniędzy — odparła panna Izabela lekko wzruszając ramionami.",
+  "start": 864.41
+ },
+ {
+  "i": 66,
+  "pl": "— Dlatego też pozwalam sprzedać naszą kamienicę; wprawdzie długi pochłoną ze sześćdziesiąt tysięcy rubli, ale zawsze zostanie mi jeszcze — co najmniej — czterdzieści.",
+  "start": 871.33
+ },
+ {
+  "i": 67,
+  "pl": "— Ciotka mówiła, że za kamienicę nikt nie da więcej nad sześćdziesiąt...",
+  "start": 881.58
+ },
+ {
+  "i": 68,
+  "pl": "— Ach, ciotka!... — oburzył się pan Tomasz. — Ona zawsze mówi to, co mogłoby mnie zmartwić albo poniżyć. Sześćdziesiąt tysięcy daje Krzeszowska, która utopiłaby nas w łyżce wody... mieszczanka!... Ale rozumie się, ciotka jej potakuje, bo tu chodzi o mój dom, o moje stanowisko...",
+  "start": 885.36
+ },
+ {
+  "i": 69,
+  "pl": "Zarumienił się i zaczął sapać; lecz nie chcąc gniewać się przy córce, pocałował ją w czoło i poszedł do swego gabinetu.",
+  "start": 903.6
+ },
+ {
+  "i": 70,
+  "pl": "„A może ojciec ma rację?... — myślała panna Izabela. — Może on naprawdę jest praktyczniejszy od wszystkich, którzy go tak surowo sądzą? Przecież ojciec pierwszy poznał się na tym... Wokulskim... A jednak cóż za gbur z tego człowieka.",
+  "start": 911.59
+ },
+ {
+  "i": 71,
+  "pl": "Nie przyszedł do Łazienek, choć prezesowa z pewnością musiała go zaangażować<sup>445<\/sup>. Zresztą może i lepiej: pięknie byśmy wyglądały, gdyby spotkał nas kto znajomy na spacerze z kupcem galanteryjnym!”",
+  "start": 925.45
+ },
+ {
+  "i": 72,
+  "pl": "Przez parę dni następnych panna Izabela słyszała tylko o Wokulskim. Salony rozbrzmiewały jego nazwiskiem. Marszałek przysięgał, że Wokulski musi pochodzić ze starożytnego rodu, a baron, znawca męskiej piękności (po pół dnia spędzał przed lustrem), twierdził,",
+  "start": 939.1
+ },
+ {
+  "i": 73,
+  "pl": "że Wokulski jest — „wcale... wcale...” Hrabia Sanocki zakładał się, że jest to pierwszy rozumny człowiek w kraju — hrabia Liciński głosił, że ten kupiec wzorował się na angielskich przemysłowcach, a książę — tylko zacierał ręce i uśmiechając się, mówił: „Aha?...”",
+  "start": 956.56
+ },
+ {
+  "i": 74,
+  "pl": "Nawet Ochocki, odwiedziwszy któregoś dnia pannę Izabelę, opowiedział jej, że byli z Wokulskim na spacerze w Łazienkach...",
+  "start": 974.4
+ },
+ {
+  "i": 75,
+  "pl": "— O czymżeście rozmawiali?... — zapytała zdziwiona. — Bo chyba nie o machinach latających...",
+  "start": 981.22
+ },
+ {
+  "i": 76,
+  "pl": "— Bah! — odmruknął zamyślony kuzynek. — Wokulski jest chyba jedynym człowiekiem w Warszawie, z którym można o tym mówić. To numer...",
+  "start": 986.96
+ },
+ {
+  "i": 77,
+  "pl": "„Jedyny rozumny... jedyny kupiec... jedyny, który może dogadać się z Ochockim?... — myślała panna Izabela. — Czymże jest naprawdę ten człowiek? Ach! już wiem...”",
+  "start": 996.34
+ },
+ {
+  "i": 78,
+  "pl": "Zdawało jej się, że odgadła Wokulskiego. Jest to ambitny spekulant, który chcąc wedrzeć się do salonów pomyślał o ożenieniu się z nią, zubożałą panną znakomitego rodu. Nie w innym też celu skarbił sobie względy jej ojca, hrabiny ciotki i całej arystokracji.",
+  "start": 1008.42
+ },
+ {
+  "i": 79,
+  "pl": "Przekonawszy się jednak, że i bez niej wciśnie się między wielkich panów, nagle ostygnął w miłości i... nawet nie przyszedł do Łazienek!...",
+  "start": 1029.12
+ },
+ {
+  "i": 80,
+  "pl": "„Winszuję mu — mówiła sobie. — Ma wszystkie zalety potrzebne do zrobienia kariery: niebrzydki, zdolny, energiczny, a nade wszystko — bezczelny i nikczemny... Jak on śmiał udawać zakochanego we mnie i z jaką łatwością... Doprawdy, że ci parweniusze zdystansują nas nawet w obłudzie...",
+  "start": 1037.8
+ },
+ {
+  "i": 81,
+  "pl": "Cóż to za nędznik!...”",
+  "start": 1057.22
+ },
+ {
+  "i": 82,
+  "pl": "Oburzona chciała zapowiedzieć Mikołajowi, ażeby nigdy nie wpuścił Wokulskiego za próg salonu... Najwyżej do gabinetu pana, gdyby do nich przyszedł z interesem. Lecz przypomniawszy sobie, że Wokulski wcale nie zapraszał się do nich, zarumieniła się ze wstydu.",
+  "start": 1059.84
+ },
+ {
+  "i": 83,
+  "pl": "Wtem dowiedziała się od pani Meliton o nowym zatargu barona Krzeszowskiego z żoną i o tym, że baronowa kupiła od niego klacz za osiemset rubli, ale — że pewnie ją zwróci, gdyż za kilka dni ma odbyć się wyścig, a baron porobił duże zakłady.",
+  "start": 1075.66
+ },
+ {
+  "i": 84,
+  "pl": "— Może nawet państwo baronowie pogodzą się przy tej okazji — zauważyła pani Meliton.",
+  "start": 1092.02
+ },
+ {
+  "i": 85,
+  "pl": "— Ach, cóż bym dała za to, ażeby baron nie dostał klaczy i przegrał zakłady!... — zawołała panna Izabela.",
+  "start": 1097.8
+ },
+ {
+  "i": 86,
+  "pl": "W parę zaś dni dowiedziała się pod wielkim sekretem od panny Florentyny, że baron nie odzyska swojej klaczy, gdyż kupił ją Wokulski...",
+  "start": 1106.17
+ },
+ {
+  "i": 87,
+  "pl": "Tajemnica była jeszcze tak zachowywaną, że kiedy panna Izabela poszła z wizytą do ciotki, zastała hrabinę i prezesową naradzające się nad pogodzeniem państwa Krzeszowskich za pomocą owej klaczy.",
+  "start": 1115.64
+ },
+ {
+  "i": 88,
+  "pl": "— Nic z tego nie będzie — wtrąciła ze śmiechem panna Izabela. — Baron nie dostanie swojej klaczy.",
+  "start": 1127.78
+ },
+ {
+  "i": 89,
+  "pl": "— Może założysz się? — spytała chłodno hrabina.",
+  "start": 1133.64
+ },
+ {
+  "i": 90,
+  "pl": "— Owszem, jeżeli wygram od cioci tę bransoletę z szafirów...",
+  "start": 1136.52
+ },
+ {
+  "i": 91,
+  "pl": "Zakład stanął, dzięki czemu hrabina i panna Izabela były wysoce zainteresowane w wyścigach.",
+  "start": 1139.96
+ },
+ {
+  "i": 92,
+  "pl": "Przez chwilę panna Izabela lękała się: powiedziano jej, że baron daje Wokulskiemu czterysta rubli odstępnego i że hrabia Liciński podjął się między nimi pośrednictwa. Nawet szeptano w salonie hrabiny, że Wokulski nie dla pieniędzy, ale dla hrabiego musi zgodzić się na ten układ.",
+  "start": 1147.38
+ },
+ {
+  "i": 93,
+  "pl": "A wówczas panna Izabela pomyślała:",
+  "start": 1164.82
+ },
+ {
+  "i": 94,
+  "pl": "„Zgodzi się, jeżeli jest chciwym parweniuszem, ale nie zgodzi się, jeżeli...”",
+  "start": 1167.22
+ },
+ {
+  "i": 95,
+  "pl": "Nie śmiała dokończyć frazesu. Wyręczył ją Wokulski. Nie sprzedał klaczy i sam puścił ją w szranki.",
+  "start": 1173.02
+ },
+ {
+  "i": 96,
+  "pl": "„On jednakże nie jest tak nikczemnym” — rzekła do siebie.",
+  "start": 1180.06
+ },
+ {
+  "i": 97,
+  "pl": "I pod wpływem tej idei rozmawiała z Wokulskim na wyścigach bardzo łaskawie.",
+  "start": 1184.21
+ },
+ {
+  "i": 98,
+  "pl": "Jednakże nawet za ten drobny objaw życzliwości panna Izabela robiła sobie w duchu wymówki:",
+  "start": 1189.39
+ },
+ {
+  "i": 99,
+  "pl": "„Po co on ma wiedzieć, że nas interesuje jego wyścig?... Nie więcej od innych. A po co ja mu powiedziałam, że »musi wygrać...«? Albo co znaczyła jego odpowiedź: »wygram, jeżeli pani zechce...«? On już zapomina, kim jest.",
+  "start": 1194.99
+ },
+ {
+  "i": 100,
+  "pl": "Ale mniejsza, jeżeli za parę grzecznych słówek Krzeszowski rozchoruje się ze złości.”",
+  "start": 1209.23
+ },
+ {
+  "i": 101,
+  "pl": "Krzeszowskiego nienawidziła panna Izabela. Kiedyś umizgał się do niej, a odtrącony, mścił się. Wiedziała, że nazywał ją za oczy — starzejącą się panną, która wyjdzie za swego lokaja. Tego było dosyć, ażeby pamiętać mu całe życie.",
+  "start": 1215.65
+ },
+ {
+  "i": 102,
+  "pl": "Lecz baron, nie poprzestając na nieszczęsnym frazesie, nawet wobec niej zachowywał się cynicznie, drwiąc z jej starych wielbicieli i robiąc aluzje do ich majątkowej ruiny.",
+  "start": 1232.03
+ },
+ {
+  "i": 103,
+  "pl": "Że zaś i panna Izabela od niechcenia przypominała mu jego żonę, mieszczankę, z którą połączył się dla pieniędzy, a nic od niej nie mógł wydobyć, więc toczyła się między nimi walka ostra, czasami nawet przykra.",
+  "start": 1243.49
+ },
+ {
+  "i": 104,
+  "pl": "Dzień wyścigów był dla panny Izabeli triumfem, dla barona — klęską i wstydem. Wprawdzie przyjechał na plac i udawał bardzo wesołego, ale w sercu kipiał mu gniew.",
+  "start": 1258.56
+ },
+ {
+  "i": 105,
+  "pl": "Gdy zaś jeszcze zobaczył, że Wokulski nagrodę i cenę konia złożył na ręce panny Izabeli, stracił władzę nad sobą i przybiegłszy do powozu zrobił skandal.",
+  "start": 1269.62
+ },
+ {
+  "i": 106,
+  "pl": "Dla panny Izabeli impertynenckie spojrzenia barona i otwarte nazwanie Wokulskiego jej wielbicielem były strasznym ciosem. Zabiłaby barona, gdyby to uchodziło dobrze wychowanym kobietom.",
+  "start": 1280.34
+ },
+ {
+  "i": 107,
+  "pl": "Cierpienie jej było tym dokuczliwsze, że hrabina słuchała jego wybuchu spokojnie, prezesowa z zakłopotaniem, a ojciec nie odzywał się nawet, od dawna uważając Krzeszowskiego za wariata, którego należy nie drażnić, ale traktować pobłażliwie.",
+  "start": 1292.62
+ },
+ {
+  "i": 108,
+  "pl": "W takiej chwili (kiedy już zaczęto spoglądać na nich z innych powozów) przyszedł pannie Izabeli na pomoc Wokulski. I nie tylko przerwał baronowi tok jego niezadowoleń, ale wyzwał go na pojedynek.",
+  "start": 1308.44
+ },
+ {
+  "i": 109,
+  "pl": "O tym żadne z nich nie wątpiło; prezesowa wprost zlękła się o swego faworyta, a hrabina zrobiła uwagę, że Wokulski nie mógł postąpić inaczej, ponieważ baron zbliżając się do powozu potrącił go i nie przeprosił.",
+  "start": 1323.66
+ },
+ {
+  "i": 110,
+  "pl": "— Więc sami powiedzcie — mówiła wzruszonym głosem prezesowa — czy godzi się pojedynkować o taką drobnostkę? Wszyscy przecież wiemy, że Krzeszowski jest roztargniony i półgłówek... Najlepszy dowód w tym, co nam nagadał...",
+  "start": 1339.82
+ },
+ {
+  "i": 111,
+  "pl": "— To prawda — odezwał się pan Tomasz — ależ Wokulski nie ma obowiązku wiedzieć o tym, a upomnieć się musiał.",
+  "start": 1354.88
+ },
+ {
+  "i": 112,
+  "pl": "— Pogodzą się! — wtrąciła niedbale hrabina i kazała jechać do domu.",
+  "start": 1362.44
+ },
+ {
+  "i": 113,
+  "pl": "Wtedy to panna Izabela dopuściła się najgorszego wykroczenia przeciw swoim pojęciom i... w znaczący sposób ścisnęła Wokulskiego za rękę.",
+  "start": 1368.02
+ },
+ {
+  "i": 114,
+  "pl": "Już dojeżdżając do rogatek, nie mogła sobie tego darować.",
+  "start": 1379.37
+ },
+ {
+  "i": 115,
+  "pl": "„Jak można było zrobić coś podobnego?... Co sobie taki człowiek pomyśli?...” — mówiła w duchu. Ale wnet ocknęło się w niej uczucie sprawiedliwości i musiała przyznać, że ten człowiek nie jest byle jakim.",
+  "start": 1383.78
+ },
+ {
+  "i": 116,
+  "pl": "„Ażeby zrobić mi przyjemność (bo z pewnością nie miał innych powodów), podstawił baronowi nogę kupując konia... Całą wygranę (stanowczy dowód bezinteresowności) złożył na ochronę, i to na moje ręce (baron widział to). A nade wszystko, jakby odgadując moje myśli, wyzwał go na pojedynek...",
+  "start": 1397.65
+ },
+ {
+  "i": 117,
+  "pl": "No, dzisiejsze pojedynki kończą się zwykle szampanem; ale zawsze baron przekona się, że jeszcze nie jestem tak starą... Nie, w tym Wokulskim jest coś... Szkoda tylko, że jest galanteryjnym kupcem. Przyjemnie byłoby mieć takiego wielbiciela, gdyby... gdyby zajmował inne stanowisko w świecie.”",
+  "start": 1417.42
+ },
+ {
+  "i": 118,
+  "pl": "Wróciwszy do domu panna Izabela opowiedziała pannie Florentynie o wyścigowych przygodach, a w godzinę — już nie myślała o nich.",
+  "start": 1440.26
+ },
+ {
+  "i": 119,
+  "pl": "Gdy zaś ojciec późno w nocy doniósł jej, że Krzeszowski wybrał za sekundanta hrabiego Licińskiego, który bezwarunkowo żąda, ażeby Wokulski został przeproszony przez barona, panna Izabela zrobiła pogardliwy grymas ustami.",
+  "start": 1448.48
+ },
+ {
+  "i": 120,
+  "pl": "„Szczęśliwy człowiek! — myślała. — Mnie obrażają, a jego będą przepraszać. Ja, gdyby ktoś przy mnie obraził ukochaną, nie pozwoliłabym się przeprosić. On, naturalnie, zgodzi się...”",
+  "start": 1462.98
+ },
+ {
+  "i": 121,
+  "pl": "Gdy już położyła się do łóżka i zaczęła usypiać, nagle przyszła jej nowa myśl:",
+  "start": 1475.33
+ },
+ {
+  "i": 122,
+  "pl": "„A jeżeli Wokulski nie zechce przeprosin?... Przecież ten sam hrabia Liciński układał się z nim o klacz i nic nie wskórał!... Ach, Boże, co też mi się snuje po głowie” — odpowiedziała sobie wzruszając ramionami i zasnęła.",
+  "start": 1480.29
+ },
+ {
+  "i": 123,
+  "pl": "Na drugi dzień do południa ojciec, ona i panna Florentyna byli pewni, że Wokulski pogodzi się z baronem i że nawet inaczej nie wypada mu postąpić. Dopiero po południu pan Tomasz wyszedł na miasto i wrócił na obiad bardzo zakłopotany.",
+  "start": 1495.02
+ },
+ {
+  "i": 124,
+  "pl": "— Cóż to, ojcze? — spytała go panna Izabela, uderzona wyrazem jego twarzy.",
+  "start": 1511.34
+ },
+ {
+  "i": 125,
+  "pl": "— Fatalna historia! — odparł pan Tomasz rzucając się na skórzany fotel. — Wokulski odrzucił przeproszenie, a jego sekundanci postawili ostre warunki.",
+  "start": 1516.68
+ },
+ {
+  "i": 126,
+  "pl": "— I kiedyż to?... — spytała ciszej.",
+  "start": 1527.02
+ },
+ {
+  "i": 127,
+  "pl": "— Jutro przed dziewiątą — odpowiedział pan Tomasz i otarł pot z czoła. — Fatalna historia — ciągnął dalej. — Między naszymi wspólnikami popłoch, bo Krzeszowski strzela doskonałe... Gdyby zaś ten człowiek zginął, wszystkie moje rachuby na nic.",
+  "start": 1529.94
+ },
+ {
+  "i": 128,
+  "pl": "Straciłbym w nim prawą rękę... jedynego możliwego wykonawcę moich planów... Jemu jednemu powierzyłbym kapitały i jestem pewny, że miałbym co najmniej osiem tysięcy rubli rocznie... Los prześladuje mnie nie na żarty!...",
+  "start": 1545.78
+ },
+ {
+  "i": 129,
+  "pl": "Zły humor pana domu źle oddziałał na innych; obiadu nikt nie jadł. Po obiedzie pan Tomasz zamknął się w gabinecie i chodził wielkimi krokami, co było dowodem niezwykłego wzruszenia.",
+  "start": 1560.02
+ },
+ {
+  "i": 130,
+  "pl": "Panna Izabela także poszła do swego gabinetu i jak zwykle w chwilach zdenerwowania położyła się na szezlongu. Opanowały ją posępne myśli.",
+  "start": 1573.06
+ },
+ {
+  "i": 131,
+  "pl": "„Krótko trwał mój triumf — mówiła sobie. — Krzeszowski naprawdę dobrze strzela... Jeżeli zabije jedynego człowieka, który dziś ujmuje się za mną, to co? Pojedynek jest istotnie barbarzyńskim zabytkiem.",
+  "start": 1582.36
+ },
+ {
+  "i": 132,
+  "pl": "Bo Wokulski (biorąc go ze strony moralnej) więcej jest wart od Krzeszowskiego, a jednak... może zginąć!... Ostatni człowiek, w którym pokładał nadzieję mój ojciec.”",
+  "start": 1596.79
+ },
+ {
+  "i": 133,
+  "pl": "Tu odezwała się w pannie Izabeli rodowa pycha.",
+  "start": 1608.32
+ },
+ {
+  "i": 134,
+  "pl": "„No — mój ojciec nie potrzebuje przecież łaski Wokulskiego; powierzyłby mu swój kapitał, otoczyłby go protekcją, a on płaciłby mu procenta; w każdym razie szkoda go...”",
+  "start": 1612.48
+ },
+ {
+  "i": 135,
+  "pl": "Przyszedł jej na myśl stary rządca ich niegdyś majątku, który służył u nich trzydzieści lat i którego bardzo lubiła, bardzo mu ufała; może Wokulski obojgu im zastąpiłby nieboszczyka, a jej rozsądnego powiernika i — zginie!...",
+  "start": 1625.25
+ },
+ {
+  "i": 136,
+  "pl": "Jakiś czas leżała z zamkniętymi oczyma nie myśląc o niczym; potem przyszły jej do głowy niesłychanie dziwne kombinacje.",
+  "start": 1645.06
+ },
+ {
+  "i": 137,
+  "pl": "„Co za szczególny traf! — mówiła w sobie. — Jutro walczyć będą z jej powodu dwaj ludzie, którzy ją śmiertelnie obrazili: Krzeszowski złośliwymi drwinami, Wokulski — ofiarami, jakie ośmielił się ponosić dla niej.",
+  "start": 1653.36
+ },
+ {
+  "i": 138,
+  "pl": "Ona mu już prawie przebaczyła i kupno serwisu, i owe weksle, i owe przegrane w karty do ojca, z których przez parę tygodni utrzymywał się cały dom... (Nie, jeszcze mu nie przebaczyła i nie przebaczy nigdy!...) Ale choćby nawet, to jednak — za jej obrazę ujęła się sprawiedliwość boska...",
+  "start": 1667.78
+ },
+ {
+  "i": 139,
+  "pl": "I kto jutro zginie?... Może obaj. W każdym razie ten, który poważył się pannie Izabeli Łęckiej ofiarować pomoc pieniężną. Człowiek taki, jak kochanek Kleopatry<sup>446<\/sup>, żyć nie może...”",
+  "start": 1687.76
+ },
+ {
+  "i": 140,
+  "pl": "Tak myślała zanosząc się od płaczu; żal jej było oddanego sługi, a może i powiernika; ale korzyła się przed wyrokami Opatrzności, która nie przebacza obrazy wyrządzonej pannie Łęckiej.",
+  "start": 1702.28
+ },
+ {
+  "i": 141,
+  "pl": "Gdyby Wokulski mógł w tej chwili zajrzeć w jej duszę, uciekłby z przestrachem i uleczyłby się ze swego obłędu.",
+  "start": 1717.82
+ },
+ {
+  "i": 142,
+  "pl": "Swoją drogą panna Izabela nie spała przez całą noc. Ciągle stał jej przed oczyma obraz jakiegoś francuskiego malarza przedstawiający pojedynek. Pod grupą zielonych drzew dwaj czarno ubrani mężczyźni mierzyli do siebie z pistoletów.",
+  "start": 1727.35
+ },
+ {
+  "i": 143,
+  "pl": "Potem (czego już nie było na obrazie) jeden z nich padł uderzony kulą w głowę. Był to Wokulski. Panna Izabela nawet nie poszła na jego pogrzeb nie chcąc zdradzić się ze wzruszeniem. Ale w nocy parę razy płakała.",
+  "start": 1742.35
+ },
+ {
+  "i": 144,
+  "pl": "Żal jej było tego nadzwyczajnego parweniusza, tego wiernego niewolnika, który swoje zbrodnie względem niej odpokutował śmiercią dla niej.",
+  "start": 1757.96
+ },
+ {
+  "i": 145,
+  "pl": "Zasnęła dopiero o siódmej rano i spała jak drewno do południa. Przed samą dwunastą obudziło ją nerwowe pukanie do drzwi sypialni.",
+  "start": 1768.44
+ },
+ {
+  "i": 146,
+  "pl": "— Kto tam?",
+  "start": 1778.21
+ },
+ {
+  "i": 147,
+  "pl": "— Ja — odpowiedział jej ojciec radosnym głosem. — Wokulski nietknięty, baron raniony w twarz!",
+  "start": 1779.51
+ },
+ {
+  "i": 148,
+  "pl": "— Czy tak?...",
+  "start": 1786.57
+ },
+ {
+  "i": 149,
+  "pl": "Miała migrenę, więc została w łóżku do czwartej po południu. Była kontenta, że baron został ranny, a zdziwiona, że opłakany przez nią Wokulski nie zginął.",
+  "start": 1788.8
+ },
+ {
+  "i": 150,
+  "pl": "Wstawszy tak późno panna Izabela wyszła przed obiadem na krótki spacer w Aleje.",
+  "start": 1799.02
+ },
+ {
+  "i": 151,
+  "pl": "Widok pogodnego nieba, pięknych drzew, przelatujących ptaków i wesołych ludzi zatarł ślady jej nocnych przywidzeń; gdy zaś jeszcze z kilku przejeżdżających powozów spostrzeżono ją i powitano, w sercu jej ocknęło się zadowolenie.",
+  "start": 1804.98
+ },
+ {
+  "i": 152,
+  "pl": "„Jednakże Pan Bóg jest łaskawy — myślała — gdy ocalił człowieka, który może się nam przydać. Ojciec tak liczy na niego, a i ja nabieram ufności. O ileż mniej w życiu doznałabym zawodów mając rozumnego i energicznego przyjaciela.”",
+  "start": 1821.68
+ },
+ {
+  "i": 153,
+  "pl": "Słówko „przyjaciel” nie podobało się jej. Przyjacielem panny Izabeli mógłby być człowiek co najmniej posiadający majątek ziemski. Ale kupiec galanteryjny kwalifikował się tylko na doradcę i wykonawcę.",
+  "start": 1837.54
+ },
+ {
+  "i": 154,
+  "pl": "Po powrocie do domu zaraz poznała, że jej ojciec jest w wybornym humorze.",
+  "start": 1851.18
+ },
+ {
+  "i": 155,
+  "pl": "— Wiesz — mówił — byłem z powinszowaniem u Wokulskiego. To dzielny człowiek, istotny dżentelmen! Już ani myśli o pojedynku i nawet zdaje się żałować barona. Nic nie pomoże, szlachecka krew musi się odezwać, bez względu na kondycję<sup>447<\/sup>...",
+  "start": 1855.7
+ },
+ {
+  "i": 156,
+  "pl": "A potem odprowadziwszy córkę do gabinetu i rzuciwszy parę razy okiem w zwierciadło, dodał:",
+  "start": 1871.34
+ },
+ {
+  "i": 157,
+  "pl": "— No i powiedz sama, czy można nie ufać w opiekę boską? Śmierć tego człowieka byłaby dla mnie ciężkim ciosem — i — został uratowany! Muszę z nim zawiązać bliższe stosunki, a wtedy zobaczymy, kto wyjdzie lepiej: czy książę na swoim wielkim adwokacie, czy ja na moim Wokulskim. Jak sądzisz?",
+  "start": 1876.94
+ },
+ {
+  "i": 158,
+  "pl": "— To samo myślałam przed chwilą — odpowiedziała panna Izabela uderzona zgodnością przeczuć jej własnych i ojca — papuś koniecznie powinien mieć przy sobie zdolnego i zaufanego człowieka.",
+  "start": 1895.92
+ },
+ {
+  "i": 159,
+  "pl": "— Który w dodatku sam garnie się do mnie — dodał pan Tomasz. — Bystry człowiek! on to pojmuje, że więcej zrobi i lepszą zyska reputację pomagając dźwigać się dawnemu rodowi, aniżeli gdyby sam wyrywał się naprzód. Bardzo rozumny człowiek — powtórzył pan Tomasz.",
+  "start": 1907.6
+ },
+ {
+  "i": 160,
+  "pl": "— Choć chwilowo zdobył sobie księcia i całą arystokrację, mnie jednak okazuje najwięcej przywiązania. I nie będzie tego żałował, gdy odzyskam stanowisko...",
+  "start": 1925.38
+ },
+ {
+  "i": 161,
+  "pl": "Panna Izabela patrzyła na cacka ustawione na biurku i myślała, że jednak ojciec łudzi się trochę, sądząc, iż Wokulski garnie się do niego. Nie prostowała jednak omyłki, a na odwrót, przyznawała w duchu, że należy trochę więcej zbliżyć się z tym kupcem i przebaczyć mu jego — stanowisko społeczne.",
+  "start": 1934.92
+ },
+ {
+  "i": 162,
+  "pl": "Adwokat... kupiec... to prawie na jedno wychodzi; jeżeli zaś adwokat może być poufałym księcia, dlaczegóż by... kupiec (ach, jakie to niesmaczne!) nie mógł zostać powiernikiem domu Łęckich?",
+  "start": 1954.18
+ },
+ {
+  "i": 163,
+  "pl": "Obiad, wieczór i kilka dni następnych zeszły pannie Izabeli bardzo przyjemnie. Zastanowiła ją jedna okoliczność, że w ciągu tak krótkiego czasu odwiedziło ich więcej osób aniżeli dawniej w ciągu miesiąca.",
+  "start": 1968.18
+ },
+ {
+  "i": 164,
+  "pl": "Bywały godziny, że w pustym niegdyś salonie teraz rozlegał się gwar śmiechów i rozmów, aż wypoczęte meble dziwiły się natłokowi, a w kuchni szeptano, że pan Łęcki musiał odebrać jakieś wielkie pieniądze.",
+  "start": 1981.76
+ },
+ {
+  "i": 165,
+  "pl": "Nawet damy, które jeszcze na wyścigach nie mogły poznać panny Izabeli, przyszły teraz do niej z wizytami; młodzi zaś panowie, aczkolwiek nie przychodzili, poznawali ją na ulicy i kłaniali się z szacunkiem.",
+  "start": 1994.36
+ },
+ {
+  "i": 166,
+  "pl": "I pan Tomasz miewał teraz gości. Odwiedził go hrabia Sanocki zaklinając, ażeby Wokulski przestał już bawić się wyścigami i pojedynkami, a zajął się spółką. Był hrabia Liciński i opowiadał dziwy o dżentelmenerii Wokulskiego.",
+  "start": 2007.54
+ },
+ {
+  "i": 167,
+  "pl": "Lecz nade wszystko przyjeżdżał tu parę razy książę z prośbą do pana Tomasza, ażeby Wokulski bez względu na zajście z baronem nie zniechęcał się do arystokracji i pamiętał o nieszczęśliwym kraju.",
+  "start": 2024.22
+ },
+ {
+  "i": 168,
+  "pl": "— I niech mu też kuzyn — zakończył książę — wyperswaduje pojedynki. To niepotrzebne; to dobre dla ludzi młodych, ale nie dla poważnych i zasłużonych obywateli...",
+  "start": 2036.94
+ },
+ {
+  "i": 169,
+  "pl": "Pan Tomasz był zachwycony, szczególnie gdy pomyślał, że wszystkie te owacje spotykają go w przeddzień sprzedaży domu; rok temu bliskość podobnego wypadku odstraszała ludzi...",
+  "start": 2049.36
+ },
+ {
+  "i": 170,
+  "pl": "„Zaczynam odzyskiwać należne mi stanowisko” — szepnął pan Tomasz i nagle obejrzał się. Zdawało mu się, że za nim stoi Wokulski. Więc dla uspokojenia się powtórzył parę razy:",
+  "start": 2062.95
+ },
+ {
+  "i": 171,
+  "pl": "„Wynagrodzę go... wynagrodzę... może być pewnym mego poparcia.”",
+  "start": 2075.32
+ },
+ {
+  "i": 172,
+  "pl": "Trzeciego dnia po pojedynku Wokulskiego pannie Izabeli przyniesiono kosztowne pudełko i list, który ją wstrząsnął. Poznała pismo barona.",
+  "start": 2079.4
+ },
+ {
+  "i": 173,
+  "pl": "„Kochana kuzyneczko! Jeżeli przebaczysz mi moje nieszczęsne ożenienie, ja w zamian daruję ci moją małżonkę, która już mnie samemu dokuczyła.",
+  "start": 2089.98
+ },
+ {
+  "i": 174,
+  "pl": "Jako zaś materialny symbol zawartego między nami pokoju na zawsze, posyłam ci ząb, który mi wystrzelił Wny<sup>448<\/sup> Wokulski, zdaje mi się — za to, co ośmieliłem się powiedzieć ci na wyścigach.",
+  "start": 2100.76
+ },
+ {
+  "i": 175,
+  "pl": "Upewniam cię, kochana kuzynko, że jest to ten sam ząb, którym cię dotychczas gryzłem i już gryźć nigdy nie będę. Możesz go wyrzucić na ulicę, lecz pudełeczko racz zachować na pamiątkę.",
+  "start": 2114.98
+ },
+ {
+  "i": 176,
+  "pl": "Przyjmij ten drobiazg od człowieka dziś trochę chorego i wierzaj — nie najgorszego, a będę miał nadzieję, że kiedyś zapomnisz mi moich niedorzecznych złośliwości. Kochający cię i pełen głębokiego szacunku kuzyn Krzeszowski.",
+  "start": 2129.1
+ },
+ {
+  "i": 177,
+  "pl": "P. S. Jeżeli mego zęba nie wyrzucisz za okno, przyszlij mi go na powrót, abym mógł ofiarować go mojej niezapomnianej małżonce. Będzie miała martwić się czym przez kilka dni, co podobno biedaczce jest zalecone przez doktorów.",
+  "start": 2146.1
+ },
+ {
+  "i": 178,
+  "pl": "Ten zaś pan Wokulski jest bardzo miłym i dystyngowanym człowiekiem i wyznaję, że serdecznie go polubiłem, choć mi taką zrobił krzywdę.”",
+  "start": 2161.16
+ },
+ {
+  "i": 179,
+  "pl": "W kosztownym pudełku znajdował się istotnie ząb owinięty w bibułkę.",
+  "start": 2170.14
+ },
+ {
+  "i": 180,
+  "pl": "Panna Izabela po krótkim namyśle odpisała bardzo życzliwy list baronowi oświadczając, że już nie gniewa się i że przyjmuje pudełeczko, a ząb z należytą czcią odsyła jego właścicielowi. Tu już nie można było wątpić, że tylko dzięki Wokulskiemu baron pojednał się z nią i prosił o przebaczenie.",
+  "start": 2176.25
+ },
+ {
+  "i": 181,
+  "pl": "Panna Izabela nieledwie roztkliwiła się swoim triumfem, a dla Wokulskiego uczuła jakby wdzięczność. Zamknęła się w swoim gabinecie i poczęła marzyć.",
+  "start": 2195.79
+ },
+ {
+  "i": 182,
+  "pl": "Marzyła, że Wokulski sprzedał swój sklep, a kupił dobra ziemskie, lecz pozostał naczelnikiem spółki handlowej przynoszącej ogromne zyski. Cała arystokracja przyjmowała go u siebie, ona zaś, panna Izabela, zrobiła go swoim powiernikiem.",
+  "start": 2207.85
+ },
+ {
+  "i": 183,
+  "pl": "On podźwignął ich majątek i podniósł go do dawnej świetności; on spełniał wszystkie jej zlecenia; on narażał się, ile razy była tego potrzeba. On wreszcie wyszukał jej męża, odpowiedniego znakomitości domu Łęckich.",
+  "start": 2225.45
+ },
+ {
+  "i": 184,
+  "pl": "Wszystko to robił, ponieważ kochał ją miłością idealną, więcej niż własne życie. I czuł się zupełnie szczęśliwym, jeżeli uśmiechnęła się do niego, życzliwiej spojrzała albo po jakiejś wyjątkowej zasłudze serdecznie uścisnęła go za rękę.",
+  "start": 2242.03
+ },
+ {
+  "i": 185,
+  "pl": "Gdy zaś Pan Bóg dał jej dzieci, on wyszukiwał im bony i nauczycieli, powiększał ich majątek, a nareszcie, gdy ona zmarła (w tym miejscu łzy zakręciły się w pięknych oczach panny Izabeli), on zastrzelił się na jej grobie...",
+  "start": 2257.35
+ },
+ {
+  "i": 186,
+  "pl": "Nie, przez delikatność, którą ona w nim rozwinęła, zastrzelił się o kilka grobów dalej.",
+  "start": 2271.99
+ },
+ {
+  "i": 187,
+  "pl": "Wejście ojca przerwało ciąg jej fantazji.",
+  "start": 2279.47
+ },
+ {
+  "i": 188,
+  "pl": "— Podobno pisał do ciebie Krzeszowski? — zapytał ciekawie pan Tomasz.",
+  "start": 2283.01
+ },
+ {
+  "i": 189,
+  "pl": "Córka wskazała mu list leżący na biurku i złote pudełko. Pan Tomasz kręcił głową czytając list, a nareszcie rzekł:",
+  "start": 2287.01
+ },
+ {
+  "i": 190,
+  "pl": "— Zawsze wariat, chociaż dobry chłopak. Ale... Wokulski oddał ci rzeczywistą przysługę: zwyciężyłaś śmiertelnego wroga.",
+  "start": 2294.59
+ },
+ {
+  "i": 191,
+  "pl": "— Myślę, ojcze, że należałoby tego pana zaprosić kiedy na obiad... Chciałabym go poznać bliżej.",
+  "start": 2302.6
+ },
+ {
+  "i": 192,
+  "pl": "— Właśnie od kilku dni miałem cię o to samo prosić!... — odpowiedział uradowany pan Tomasz — niepodobna trzymać się na zbyt etykietalnej stopie z człowiekiem tak użytecznym.",
+  "start": 2309.21
+ },
+ {
+  "i": 193,
+  "pl": "— Naturalnie — wtrąciła panna Izabela — przecież nawet wierną służbę dopuszczamy do niejakiej poufałości.",
+  "start": 2322.71
+ },
+ {
+  "i": 194,
+  "pl": "— Uwielbiam twój rozum i takt, Belu!... — zawołał pan Tomasz i zachwycony, pocałował ją naprzód w rękę, potem w czoło.",
+  "start": 2330.83
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

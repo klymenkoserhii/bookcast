@@ -1,0 +1,1133 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to ../../public/lalka/audio/chapter-16.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-16.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Rozdział XVI — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Rozdział XVI · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="../../public/lalka/audio/chapter-16.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Tego dnia, kiedy Wokulski miał przyjść na obiad, panna Izabela wróciła od hrabiny o piątej. Była trochę rozgniewana i bardzo rozmarzona, razem — prześliczna.",
+  "start": 7.85
+ },
+ {
+  "i": 1,
+  "pl": "Spotkało ją dziś szczęście i zawód. Wielki tragik włoski, Rossi<sup>470<\/sup>, znany jej i ciotce jeszcze z Paryża, przyjechał na występy do Warszawy. Natychmiast odwiedził hrabinę i troskliwie wypytywał się o pannę Izabelę.",
+  "start": 18.96
+ },
+ {
+  "i": 2,
+  "pl": "Miał być dziś drugi raz i hrabina specjalnie dla niego zaprosiła siostrzenicę. Tymczasem Rossi nie przyszedł; przysłał tylko list, w którym przepraszał za zawód i usprawiedliwiał się niespodziewaną wizytą jakiejś wysoko położonej osoby.",
+  "start": 34.26
+ },
+ {
+  "i": 3,
+  "pl": "Przed paroma laty, właśnie w Paryżu, Rossi był ideałem panny Izabeli; kochała się w nim, i nawet nie kryła swych uczuć, o ile, rozumie się, było to możliwym dla panienki jej stanowiska.",
+  "start": 48.68
+ },
+ {
+  "i": 4,
+  "pl": "Znakomity artysta wiedział o tym, bywał co dzień w domu hrabiny, grał i deklamował wszystko, co mu kazała panna Izabela, a wyjeżdżając do Ameryki ofiarował jej włoski egzemplarz Romea i Julii<sup>471<\/sup> z dedykacją: „Mdła mucha więcej ma mocy, czci i szczęścia aniżeli Romeo...”<sup>472<\/sup>.",
+  "start": 60.84
+ },
+ {
+  "i": 5,
+  "pl": "Wiadomość o przybyciu Rossiego do Warszawy i o tym, że jej nie zapomniał, wzruszyła pannę Izabelę. Już o pierwszej w południe była u ciotki.",
+  "start": 81.13
+ },
+ {
+  "i": 6,
+  "pl": "Co chwilę wstawała do okna, każdy turkot przyśpieszał bicie jej serca, za każdym uderzeniem dzwonka drgała; zapominała się w rozmowie, na twarz jej wystąpiły silne rumieńce... No — i Rossi nie przyszedł!...",
+  "start": 89.67
+ },
+ {
+  "i": 7,
+  "pl": "A tak dziś była piękną. Ubrała się, umyślnie dla niego w jedwabną sukienkę kremowej barwy (z daleka wyglądało to jak zmięte płótno), miała brylantowe kolczyki (nie większe od ziarn grochu) w uszach i pąsową różę na ramieniu. I tyle. Ale niech żałuje Rossi, że jej nie widział!",
+  "start": 104.38
+ },
+ {
+  "i": 8,
+  "pl": "Po czterogodzinnym oczekiwaniu wróciła do domu oburzona. Mimo jednak gniewu wzięła do rąk egzemplarz Romea i Julii i przeglądając go myślała:",
+  "start": 124.84
+ },
+ {
+  "i": 9,
+  "pl": "„Gdyby też nagle wszedł tu Rossi?...”",
+  "start": 135.51
+ },
+ {
+  "i": 10,
+  "pl": "Nawet byłoby lepiej tu niż u hrabiny. Bez świadków mógłby jej szepnąć jakieś gorętsze słówko; przekonałby się, że ona szanuje jego pamiątki, a nade wszystko — przekonałby się (o czym tak głośno mówi duże lustro), że w tej sukni, z tą różą i na tym błękitnym fotelu wygląda jak bóstwo.",
+  "start": 138.47
+ },
+ {
+  "i": 11,
+  "pl": "Przypomniała sobie, że na obiedzie ma być Wokulski, i mimo woli wzruszyła ramionami. Galanteryjny kupiec po Rossim, którego podziwiał cały świat, wydał jej się tak śmiesznym, że po prostu ogarnęła ją litość.",
+  "start": 159.12
+ },
+ {
+  "i": 12,
+  "pl": "Gdyby Wokulski w tej chwili znalazł się u jej nóg, ona może nawet wsunęłaby mu palce we włosy i bawiąc się nim jak wielkim psem czytałaby tę oto skargę Romea przed Laurentym<sup>473<\/sup>:",
+  "start": 174.04
+ },
+ {
+  "i": 13,
+  "pl": "„Niebo jest tu, gdzie mieszka Julia. Lada pies, kot, lada mysz marna żyje w niebie, może patrzeć na nią; tylko — Romeo nie może! Mdła mucha więcej ma mocy, więcej czci i szczęścia aniżeli Romeo. Jej wolno dotykać drogiej ręki Julii i z płonących ust kraść nieśmiertelne zbawienie.",
+  "start": 186.84
+ },
+ {
+  "i": 14,
+  "pl": "Mucha ma tę wolność, ale Romeo nie ma, bo on wygnany!... O księże, złe duchy wyją, gdy w piekle usłyszą ten wyraz; maszże ty serce, ty, święty spowiednik i przyjaciel, drzeć ze mnie pasy tym strasznym słowem — wygnanie...”<sup>474<\/sup>",
+  "start": 208.35
+ },
+ {
+  "i": 15,
+  "pl": "Westchnęła. — Kto wie, ile razy powtarza sobie te zdania wielki tułacz myśląc o niej?... I może nawet nie ma powiernika!... Wokulski mógłby być takim powiernikiem; on chyba wie, jak za nią można rozpaczać, bo on narażał dla niej życie.",
+  "start": 227.96
+ },
+ {
+  "i": 16,
+  "pl": "Odwróciwszy kilka kartek wstecz znowu czytała:",
+  "start": 243.39
+ },
+ {
+  "i": 17,
+  "pl": "„Romeo! czemuż ty jesteś Romeo? Rzuć tę nazwę albo... przysięgnij być wiernym mojej miłości, a wtedy ja wyprę się rodu Kapuletów... Zresztą — tylko twoje nazwisko jest dla mnie nieprzyjazne, boś ty w istocie dla mnie nie Monteki... O, weź inną nazwę, bo czym jest nazwa?...",
+  "start": 247.95
+ },
+ {
+  "i": 18,
+  "pl": "To, co zwiemy różą, pod inną nazwą również by pachniało: tak i Romeo, bez nazwy Romeo, przecież by całą swą wartość zatrzymał. Więc, Romeo — rzuć twoją nazwę, a w zamian za to, co nawet nie jest cząstką ciebie, weź mnie... ach!... całą...”<sup>475<\/sup>",
+  "start": 270.87
+ },
+ {
+  "i": 19,
+  "pl": "Jakież było dziwne między nimi podobieństwo: on — Rossi, aktor, a ona — panna Łęcka. Rzuć nazwisko, rzuć swój zawód... Tak, ale cóż by wtedy zostało... Zresztą nawet księżniczka krwi mogłaby wyjść za Rossiego i świat tylko podziwiałby jej poświęcenie...",
+  "start": 293.5
+ },
+ {
+  "i": 20,
+  "pl": "Wyjść za Rossiego?... Dbać o jego garderobę teatralną, a może przyszywać mu guziki do nocnych koszul?...",
+  "start": 313.88
+ },
+ {
+  "i": 21,
+  "pl": "Panna Izabela wstrząsnęła się. Kochać go bez nadziei — to dosyć... Kochać i czasami porozmawiać z kim o tej tragicznej miłości... Może by z panną Florentyną. Nie, ona nie ma dosyć uczucia. Daleko lepiej nadawałby się do tego Wokulski.",
+  "start": 321.74
+ },
+ {
+  "i": 22,
+  "pl": "Patrzyłby jej w oczy, cierpiałby za siebie i za nią, ona opowiadałaby mu bolejąc nad własnym i nad jego cierpieniem i w taki sposób bardzo przyjemnie upływałyby im godziny. Kupiec galanteryjny w roli powiernika!... Można by zresztą zapomnieć o tym kupiectwie...",
+  "start": 339.52
+ },
+ {
+  "i": 23,
+  "pl": "W tej samej porze pan Tomasz zakręcając siwego wąsa spacerował po swym gabinecie i myślał:",
+  "start": 358.33
+ },
+ {
+  "i": 24,
+  "pl": "„Wokulski jest to człowiek ogromnie zręczny i energiczny! Gdybym miał takiego plenipotenta (tu westchnął), nie pozbyłbym się majątku... No, już stało się: za to dziś go mam... Z kamienicy zostanie mi czterdzieści, nie — pięćdziesiąt, a może i sześćdziesiąt tysięcy rubli...",
+  "start": 364.77
+ },
+ {
+  "i": 25,
+  "pl": "Nie, nie przesadzajmy, niech pięćdziesiąt tysięcy, no — niechby tylko czterdzieści tysięcy... Dam mu to, on będzie mi płacił z osiem tysięcy rubli rocznie, resztę zaś (jeżeli interes pójdzie w jego rękach, jak się spodziewam), resztę procentów — każę kapitalizować<sup>476<\/sup>...",
+  "start": 386.38
+ },
+ {
+  "i": 26,
+  "pl": "Za pięć, sześć lat suma podwoi się, a już za dziesięć — może wzrosnąć w czwórnasób... Bo to w operacjach handlowych pieniądze szalenie się mnożą... Ale co ja mówię!... Wokulski, jeżeli jest naprawdę genialnym kupcem, powinien mieć i z pewnością ma sto za sto.",
+  "start": 402.42
+ },
+ {
+  "i": 27,
+  "pl": "A w takim razie spojrzę mu w oczy i powiem bez ogródki: »Dawaj ty innym, mój dobrodzieju, piętnaście albo dwadzieścia procent rocznie, ale nie mnie, który się na tym rozumiem.",
+  "start": 419.3
+ },
+ {
+  "i": 28,
+  "pl": "I on, naturalnie, zobaczywszy, z kim ma do czynienia, zmięknie od razu i może nawet wykaże taki dochód, o jakim mi się nie śniło...”",
+  "start": 429.8
+ },
+ {
+  "i": 29,
+  "pl": "Dzwonek w przedpokoju uderzył dwa razy. Pan Tomasz cofnął się w głąb gabinetu i usiadłszy na fotelu wziął do rąk tom przygotowanej na ten cel ekonomii Supińskiego<sup>477<\/sup>. Mikołaj otworzył drzwi i za chwilę ukazał się Wokulski.",
+  "start": 438.67
+ },
+ {
+  "i": 30,
+  "pl": "— A... witam!... — zawołał pan Tomasz wyciągając do niego rękę.",
+  "start": 453.98
+ },
+ {
+  "i": 31,
+  "pl": "Wokulski nisko ukłonił się przed białymi włosami człowieka, którego rad by nazywać swoim ojcem.",
+  "start": 458.34
+ },
+ {
+  "i": 32,
+  "pl": "— Siadajże, panie Stanisławie... Może papierosa?... Proszę cię... Cóż tam słychać?... Czytałem właśnie Supińskiego: tęga głowa!... Tak, narody nie umiejące pracować i oszczędzać zniknąć muszą z powierzchni ziemi... Tylko oszczędność i praca!... Pomimo to nasi wspólnicy zaczynają grymasić, co?...",
+  "start": 465.29
+ },
+ {
+  "i": 33,
+  "pl": "— Niech robią, jak im wygodniej — odparł Wokulski. — Ja na nich nie zyskam ani jednego rubla.",
+  "start": 486.16
+ },
+ {
+  "i": 34,
+  "pl": "— Ale ja nie opuszczę cię, panie Stanisławie — rzekł pan Tomasz tonem przekonania. I dodał po chwili — W tych dniach sprzedaję, to jest dopuszczam do sprzedaży mego domu.",
+  "start": 492.08
+ },
+ {
+  "i": 35,
+  "pl": "Miałem z nim duży kłopot: lokatorowie nie płacą, rządcy złodzieje, a wierzycieli hipotecznych<sup>478<\/sup> musiałem zaspakajać z własnej kieszeni. Nie dziw się, że mnie to w końcu znudziło...",
+  "start": 503.19
+ },
+ {
+  "i": 36,
+  "pl": "— Naturalnie — wtrącił Wokulski.",
+  "start": 514.91
+ },
+ {
+  "i": 37,
+  "pl": "— Mam nadzieję — ciągnął pan Tomasz — że zostanie mi z niego pięćdziesiąt, a choćby czterdzieści tysięcy rubli...",
+  "start": 517.01
+ },
+ {
+  "i": 38,
+  "pl": "— Ile ma pan nadzieję wziąć za ten dom?...",
+  "start": 524.51
+ },
+ {
+  "i": 39,
+  "pl": "— Sto, do stu dziesięciu tysięcy rubli... Cokolwiek jednakże dostanę, tobie oddam, panie Stanisławie.",
+  "start": 527.41
+ },
+ {
+  "i": 40,
+  "pl": "Wokulski pochylił głowę na znak zgody i pomyślał, że jednak pan Tomasz za swoją kamienicę nie dostanie więcej nad dziewięćdziesiąt tysięcy rubli. Tyle bowiem miał w tej chwili do dyspozycji, a nie mógł zaciągać długów bez narażenia swego kredytu.",
+  "start": 536.07
+ },
+ {
+  "i": 41,
+  "pl": "— Tobie oddam, panie Stanisławie — mówił pan Łęcki. — I właśnie chciałem zapytać się, czy przyjmiesz?...",
+  "start": 551.15
+ },
+ {
+  "i": 42,
+  "pl": "— Ależ rozumie się...",
+  "start": 558.67
+ },
+ {
+  "i": 43,
+  "pl": "— I jaki mi dasz procent?",
+  "start": 560.71
+ },
+ {
+  "i": 44,
+  "pl": "— Gwarantuję dwudziesty, a jeżeli interesa pójdą lepiej, to i wyższy — odparł Wokulski dodając w duchu, że więcej nad piętnaście procent nie mógłby dać komu innemu.",
+  "start": 562.61
+ },
+ {
+  "i": 45,
+  "pl": "„Filut!... — pomyślał pan Tomasz. — Sam ma ze sto procentów, a mnie daje dwadzieścia...”",
+  "start": 573.65
+ },
+ {
+  "i": 46,
+  "pl": "Głośno jednak rzekł:",
+  "start": 578.83
+ },
+ {
+  "i": 47,
+  "pl": "— Dobrze, kochany panie Stanisławie. Przyjmuję dwadzieścia procent, bylebyś mi mógł wypłacić z góry.",
+  "start": 580.59
+ },
+ {
+  "i": 48,
+  "pl": "— Będę płacił z góry... co pół roku — odpowiedział Wokuski lękając się, ażeby pan Tomasz nie wydał pieniędzy zbyt prędko.",
+  "start": 587.13
+ },
+ {
+  "i": 49,
+  "pl": "— I na to zgoda — rzekł pan Tomasz tonem wielkiej serdeczności. — Wszystkie zaś zyski — dodał z lekkim akcentem — wszystkie zyski wyższe nad dwadzieścia procent, proszę cię, ażebyś nie dawał mi ich do ręki, choćbym... błagał, rozumiesz?... ale żebyś dołączał do kapitału. Niech rośnie, prawda?...",
+  "start": 595.31
+ },
+ {
+  "i": 50,
+  "pl": "— Panie proszą — rzekł w tej chwili Mikołaj ukazując się we drzwiach gabinetu.",
+  "start": 614.32
+ },
+ {
+  "i": 51,
+  "pl": "Pan Tomasz uroczyście podniósł się z fotelu i ceremonialnym krokiem wprowadził gościa do salonu.",
+  "start": 620.32
+ },
+ {
+  "i": 52,
+  "pl": "Później niejednokrotnie Wokulski usiłował zdać sobie sprawę z salonu i ze sposobu, w jaki tam wszedł; ale całości faktu nie mógł sobie przypomnieć.",
+  "start": 626.67
+ },
+ {
+  "i": 53,
+  "pl": "Pamiętał, że przede drzwiami ukłonił się parę razy panu Tomaszowi, że potem owionęła go jakaś miła woń, skutkiem czego ukłonił się damie w kremowej sukni z pąsową różą przy ramieniu, a potem — innej damie wysokiej i czarno ubranej, która patrzyła na niego z przestrachem.",
+  "start": 636.89
+ },
+ {
+  "i": 54,
+  "pl": "Przynajmniej tak mu się zdawało.",
+  "start": 654.65
+ },
+ {
+  "i": 55,
+  "pl": "Dopiero po chwili spostrzegł, że damą w kremowej sukni była panna Izabela. Siedziała na fotelu, z nieporównanym wdziękiem pochylona w jego stronę, i łagodnie patrząc mu w oczy mówiła:",
+  "start": 657.45
+ },
+ {
+  "i": 56,
+  "pl": "— Ojciec mój, jako pański wspólnik, będzie musiał odbyć długą praktykę, zanim potrafi zadowolnić pana. W jego imieniu proszę o pobłażliwość.",
+  "start": 670.77
+ },
+ {
+  "i": 57,
+  "pl": "Wyciągnęła rękę, której Wokulski ledwo śmiał dotknąć.",
+  "start": 681.3
+ },
+ {
+  "i": 58,
+  "pl": "— Pan Łęcki — odparł — jako wspólnik, potrzebuje mieć tylko zaufanego adwokata i buchaltera, którzy co pewien czas skontrolują rachunki. Reszta należy do nas.",
+  "start": 685.14
+ },
+ {
+  "i": 59,
+  "pl": "Zdawało mu się, że powiedział coś bardzo głupiego, i zarumienił się.",
+  "start": 696.1
+ },
+ {
+  "i": 60,
+  "pl": "— Pan musi mieć dużo zajęcia przy takim magazynie... — wtrąciła czarno ubrana panna Florentyna i przestraszyła się jeszcze mocniej.",
+  "start": 700.48
+ },
+ {
+  "i": 61,
+  "pl": "— Nie tak wiele. Do mnie należy dostarczanie funduszów obrotowych i zawiązywanie stosunków z nabywcami i odbiorcami. Rodzajem zaś towaru i oceną jego wartości zajmuje się administracja sklepu.",
+  "start": 708.74
+ },
+ {
+  "i": 62,
+  "pl": "— Czy to można w każdym razie spuścić się na obcych! — westchnęła panna Florentyna.",
+  "start": 722.38
+ },
+ {
+  "i": 63,
+  "pl": "— Mam doskonałego plenipotenta, a zarazem przyjaciela, który lepiej prowadzi interesa, niżbym ja to potrafił.",
+  "start": 729.49
+ },
+ {
+  "i": 64,
+  "pl": "— Szczęśliwy jesteś, panie Stanisławie... — pochwycił Łęcki. — Nie wyjeżdżasz w tym roku za granicę?",
+  "start": 736.45
+ },
+ {
+  "i": 65,
+  "pl": "— Chcę być w Paryżu na wystawie.",
+  "start": 742.23
+ },
+ {
+  "i": 66,
+  "pl": "— Zazdroszczę panu — odezwała się panna Izabela — Od dwu miesięcy marzę tylko o wystawie paryskiej, ale papa jakoś nie okazuje skłonności do wyjazdu...",
+  "start": 744.27
+ },
+ {
+  "i": 67,
+  "pl": "— Nasz wyjazd całkowicie zależy od pana Wokulskiego — odpowiedział ojciec. — Radzę ci więc jak najczęściej zapraszać go na obiad i podawać smaczny, ażeby miał dobry humor.",
+  "start": 754.54
+ },
+ {
+  "i": 68,
+  "pl": "— Zaręczam, że ile razy będzie pan na nas łaskaw, sama zajrzę do kuchni. Czy jednak dobre chęci wystarczą w tym wypadku...",
+  "start": 765.14
+ },
+ {
+  "i": 69,
+  "pl": "— Z wdzięcznością przyjmuję obietnicę — odparł Wokulski. — Nie wpłynie to jednak na termin wyjazdu państwa do Paryża, ponieważ zależy on tylko od ich woli.",
+  "start": 773.57
+ },
+ {
+  "i": 70,
+  "pl": "— Merci... — szepnęła panna Izabela.",
+  "start": 783.33
+ },
+ {
+  "i": 71,
+  "pl": "Wokulski schylił głowę. „Znam ja to »merci«! — pomyślał — płaci się za nie kulami...”",
+  "start": 786.85
+ },
+ {
+  "i": 72,
+  "pl": "— Państwo pozwolą do stołu?... — wtrąciła panna Florentyna.",
+  "start": 794.42
+ },
+ {
+  "i": 73,
+  "pl": "Przeszli do jadalnego pokoju, gdzie na środku stał okrągły stół nakryty na cztery osoby. Wokulski znalazł się przy nim między panną Izabelą i jej ojcem, naprzeciw panny Florentyny. Już był zupełnie spokojny, tak spokojny, że aż go to przerażało.",
+  "start": 799.06
+ },
+ {
+  "i": 74,
+  "pl": "Opuścił go szał miłości i nawet pytał sam siebie: czy ona jest kobietą, którą kochał?... Bo czy podobna kochać się tak jak on i siedząc o krok od przyczyny swego obłędu czuć taką ciszę w duszy, tak niezmierną ciszę?...",
+  "start": 817.87
+ },
+ {
+  "i": 75,
+  "pl": "Myśl miał tak swobodną, że nie tylko dokładnie widział każde drgnienie fizjognomii swoich współbiesiadników, ale jeszcze (co już było zabawne), patrząc na pannę Izabelę, robił sobie następujący rachunek:",
+  "start": 834.13
+ },
+ {
+  "i": 76,
+  "pl": "„Suknia. Piętnaście łokci surowego jedwabiu po rublu — piętnaście rubli... Koronki z dziesięć rubli, a robota z piętnaście... Razem — czterdzieści rubli suknia, ze sto pięćdziesiąt rubli kolczyki i dziesięć groszy róża...”",
+  "start": 846.86
+ },
+ {
+  "i": 77,
+  "pl": "Mikołaj zaczął podawać potrawy. Wokulski bez najmniejszego apetytu zjadł kilka łyżek chłodniku, zapił portweinem<sup>479<\/sup>, potem spróbował polędwicy i zapił ją piwem. Uśmiechnął się, sam nie wiedząc czemu, i w przystępie jakiejś żakowskiej radości postanowił robić błędy przy stole.",
+  "start": 860.52
+ },
+ {
+  "i": 78,
+  "pl": "Na początek skosztowawszy polędwicy położył nóż i widelec na podstawce obok talerza.",
+  "start": 878.8
+ },
+ {
+  "i": 79,
+  "pl": "Panna Florentyna aż drgnęła, a pan Tomasz z wielką werwą począł opowiadać o wieczorze w Tuileriach<sup>480<\/sup>, podczas którego na żądanie cesarzowej Eugenii<sup>481<\/sup> tańczył z jakąś marszałkową menueta<sup>482<\/sup>.",
+  "start": 884.93
+ },
+ {
+  "i": 80,
+  "pl": "Podano sandacza, którego Wokulski zaatakował nożem i widelcem. Panna Florentyna o mało nie zemdlała, panna Izabela spojrzała na sąsiada z pobłażliwą litością, a pan Tomasz... zaczął także jeść sandacza nożem i widelcem.",
+  "start": 898.63
+ },
+ {
+  "i": 81,
+  "pl": "„Jacyście wy głupi!” — pomyślał Wokulski czując, że budzi się w nim coś niby pogarda dla tego towarzystwa. Na domiar odezwała się panna Izabela, zresztą bez cienia złośliwości:",
+  "start": 913.05
+ },
+ {
+  "i": 82,
+  "pl": "— Musi mnie papa kiedy nauczyć, jak się jada ryby nożem.",
+  "start": 924.07
+ },
+ {
+  "i": 83,
+  "pl": "Wokulskiemu wydało się to wprost niesmaczne. „Widzę, że odkocham się tu przed końcem obiadu...” — rzekł do siebie.",
+  "start": 928.11
+ },
+ {
+  "i": 84,
+  "pl": "— Moja droga — odpowiedział pan Tomasz córce — niejadanie ryb nożem to doprawdy przesąd... Wszak mam rację, panie Wokulski?",
+  "start": 936.01
+ },
+ {
+  "i": 85,
+  "pl": "— Przesąd?... nie powiem — rzekł Wokulski. — Jest to tylko przeniesienie zwyczaju z warunków, gdzie on jest stosowny, do warunków, gdzie nim nie jest.",
+  "start": 944.53
+ },
+ {
+  "i": 86,
+  "pl": "Pan Tomasz aż poruszył się na krześle.",
+  "start": 953.51
+ },
+ {
+  "i": 87,
+  "pl": "— Anglicy uważają to prawie za obrazę... — wydeklamowała panna Florentyna.",
+  "start": 956.45
+ },
+ {
+  "i": 88,
+  "pl": "— Anglicy mają ryby morskie, które można jadać samym widelcem; nasze zaś ryby ościste może jedliby innym sposobem...",
+  "start": 961.57
+ },
+ {
+  "i": 89,
+  "pl": "— O, Anglicy nigdy nie łamią form — broniła się panna Florentyna.",
+  "start": 970.71
+ },
+ {
+  "i": 90,
+  "pl": "— Tak — mówił Wokulski — nie łamią form w warunkach zwykłych, ale w niezwykłych stosują się do prawidła: robić, jak wygodniej. Sam zresztą widywałem bardzo dystyngowanych lordów, którzy baraninę z ryżem jedli palcami, a rosół pili prosto z garnka.",
+  "start": 975.79
+ },
+ {
+  "i": 91,
+  "pl": "Lekcja była ostra. Pan Tomasz jednak przysłuchiwał się jej z zadowoleniem, a panna Izabela prawie z podziwem. Ten kupiec, który jadał baraninę z lordami i wygłaszał tak śmiało teorię posługiwania się nożem przy rybach, urósł w jej wyobraźni.",
+  "start": 993.05
+ },
+ {
+  "i": 92,
+  "pl": "Kto wie, czy teoria nie wydała się jej ważniejszą aniżeli pojedynek z Krzeszowskim.",
+  "start": 1009.97
+ },
+ {
+  "i": 93,
+  "pl": "— Więc pan jest nieprzyjacielem etykiety? — spytała.",
+  "start": 1016.29
+ },
+ {
+  "i": 94,
+  "pl": "— Nie. Nie chcę tylko być jej niewolnikiem.",
+  "start": 1019.69
+ },
+ {
+  "i": 95,
+  "pl": "— Są jednak towarzystwa, w których ona przestrzega się zawsze.",
+  "start": 1023.15
+ },
+ {
+  "i": 96,
+  "pl": "— Tego nie wiem. Ale widziałem najwyższe towarzystwa, w których o niej zapominano w pewnych warunkach.",
+  "start": 1026.43
+ },
+ {
+  "i": 97,
+  "pl": "Pan Tomasz lekko schylił głowę; panna Florentyna zsiniała, panna Izabela patrzyła na Wokulskiego prawie życzliwie. Nawet więcej niż — prawie... Bywały mgnienia, w których marzyło się jej, że Wokulski jest jakimś Harun–al–Raszydem<sup>483<\/sup> ucharakteryzowanym na kupca.",
+  "start": 1033.63
+ },
+ {
+  "i": 98,
+  "pl": "W sercu jej budził się podziw, nawet — sympatia. Z pewnością ten człowiek może być jej powiernikiem; z nim będzie mogła rozmawiać o Rossim.",
+  "start": 1053.15
+ },
+ {
+  "i": 99,
+  "pl": "Po lodach zupełnie zdetonowana panna Florentyna została w jadalni, a reszta towarzystwa przeszła na kawę do gabinetu pana. Właśnie Wokulski skończył swoją filiżankę, kiedy Mikołaj przyniósł panu Tomaszowi na tacy list mówiąc:",
+  "start": 1063.05
+ },
+ {
+  "i": 100,
+  "pl": "— Czeka na odpowiedź, jaśnie panie.",
+  "start": 1079.86
+ },
+ {
+  "i": 101,
+  "pl": "— Ach, od hrabiny... — rzekł pan Tomasz spojrzawszy na adres. — Pozwolicie państwo...",
+  "start": 1083.29
+ },
+ {
+  "i": 102,
+  "pl": "— Jeżeli pan nie ma nic przeciw temu — przerwała panna Izabela uśmiechając się do Wokulskiego — to przejdziemy do salonu, a ojciec tymczasem odpisze...",
+  "start": 1089.38
+ },
+ {
+  "i": 103,
+  "pl": "Wiedziała, że list ten napisał pan Tomasz sam do siebie; koniecznie bowiem potrzebował choć pół godziny przedrzemać się po obiedzie.",
+  "start": 1099.15
+ },
+ {
+  "i": 104,
+  "pl": "— Nie obrazi się pan? — spytał pan Tomasz ściskając Wokulskiego za rękę.",
+  "start": 1106.75
+ },
+ {
+  "i": 105,
+  "pl": "Opuścili z panną Izabelą gabinet i weszli do salonu. Ona z gracją jej tylko właściwą usiadła na fotelu wskazując mu drugi, zaledwie o parę kroków odległy.",
+  "start": 1111.98
+ },
+ {
+  "i": 106,
+  "pl": "Wokulskiemu, kiedy znalazł się z nią sam na sam, krew uderzyła do głowy. Wzburzenie spotęgowało się, gdy spostrzegł, że panna Izabela patrzy na niego jakimś dziwnym wzrokiem, jakby go chciała przeniknąć do dna i przykuć do siebie.",
+  "start": 1123.48
+ },
+ {
+  "i": 107,
+  "pl": "To już nie była ta panna Izabela z kwesty wielkotygodniowej ani nawet z wyścigów; to była osoba rozumna i czująca, która ma go o coś serio zapytać i chce mu coś szczerego powiedzieć.",
+  "start": 1137.74
+ },
+ {
+  "i": 108,
+  "pl": "Wokulski był tak ciekawy tego, co mu powie, i tak stracił wszelką władzę nad sobą, że chyba zabiłby człowieka, który by im w tej chwili przeszkodził. Patrzył na pannę Izabelę w milczeniu i czekał.",
+  "start": 1151.39
+ },
+ {
+  "i": 109,
+  "pl": "Panna Izabela była zakłopotana: dawno już nie doznała takiego zamętu uczuć jak w tej chwili. Przez myśl przebiegały jej zdania: „kupił serwis” — „przegrywał umyślnie w karty do ojca” — „znieważył mnie”,",
+  "start": 1163.9
+ },
+ {
+  "i": 110,
+  "pl": "a potem: „kocha mnie” — „kupił konia wyścigowego” — „pojedynkował się” — „jadał baraninę z lordami w najwyższych towarzystwach...” Pogarda, gniew, podziw, sympatia kolejno potrącały jej duszę jak krople gęsto padającego deszczu;",
+  "start": 1178.2
+ },
+ {
+  "i": 111,
+  "pl": "na dnie zaś tej burzy nurtowała potrzeba zwierzenia się komuś ze swych kłopotów codziennych i ze swych rozmaitych powątpiewań, i ze swej tragicznej miłości do wielkiego aktora.",
+  "start": 1193.46
+ },
+ {
+  "i": 112,
+  "pl": "„Tak, on może być... on będzie moim powiernikiem!...” — myślała panna Izabela topiąc słodkie spojrzenie w zdumionych oczach Wokulskiego i lekko pochylając się naprzód, jakby chciała go pocałować w czoło.",
+  "start": 1205.4
+ },
+ {
+  "i": 113,
+  "pl": "Potem ogarniał ją bezprzyczynowy wstyd: cofała się na poręcz fotelu, rumieniła się i z wolna opuszczała długie rzęsy, jakby ją sen morzył.",
+  "start": 1219.56
+ },
+ {
+  "i": 114,
+  "pl": "Patrząc na grę jej fizjognomii Wokulskiemu przypomniały się cudowne falowania zorzy północnej i owe dziwne melodie bez tonów i bez słów, które niekiedy odzywają się w ludzkiej duszy niby echa lepszego świata.",
+  "start": 1229.73
+ },
+ {
+  "i": 115,
+  "pl": "Rozmarzony, przysłuchiwał się gorączkowemu tykotaniu stołowego zegara i biciu własnych pulsów i dziwił się, że te dwa tak szybkie zjawiska prawie wloką się w porównaniu z biegiem jego myśli.",
+  "start": 1244.43
+ },
+ {
+  "i": 116,
+  "pl": "„Jeżeli jest jakie niebo — mówił sobie — błogosławieni nie doznają wyższego szczęścia aniżeli ja w tej chwili.”",
+  "start": 1257.65
+ },
+ {
+  "i": 117,
+  "pl": "Milczenie trwało już tak długo, że zaczęło być nieprzyzwoitym. Panna Izabela opamiętała się pierwsza.",
+  "start": 1265.88
+ },
+ {
+  "i": 118,
+  "pl": "— Pan miał — rzekła — nieporozumienie z panem Krzeszowskim...",
+  "start": 1272.7
+ },
+ {
+  "i": 119,
+  "pl": "— O wyścigi... — wtrącił pośpiesznie Wokulski. — Baron nie mógł mi darować, że kupiłem jego konia...",
+  "start": 1277.64
+ },
+ {
+  "i": 120,
+  "pl": "Chwilę patrzyła na niego z łagodnym uśmiechem.",
+  "start": 1285.28
+ },
+ {
+  "i": 121,
+  "pl": "— Potem miał pan pojedynek, który... bardzo nas zaniepokoił... — dodała ciszej. — A potem... baron przeprosił mnie — zakończyła szybko, spuszczając oczy. — W liście napisanym z tego powodu do mnie baron mówi o panu z wielkim szacunkiem i przyjaźnią...",
+  "start": 1288.33
+ },
+ {
+  "i": 122,
+  "pl": "— Jestem bardzo... bardzo szczęśliwy... — bąkał Wokulski.",
+  "start": 1305.52
+ },
+ {
+  "i": 123,
+  "pl": "— Z czego, panie?",
+  "start": 1310.9
+ },
+ {
+  "i": 124,
+  "pl": "— Że okoliczności złożyły się w taki sposób... Baron jest człowiekiem dystyngowanym...",
+  "start": 1312.3
+ },
+ {
+  "i": 125,
+  "pl": "Panna Izabela wyciągnęła rękę i zostawiwszy ją na chwilę w rozpalonej dłoni Wokulskiego rzekła:",
+  "start": 1317.69
+ },
+ {
+  "i": 126,
+  "pl": "— Pomimo niewątpliwej dobroci barona ja jednak tylko panu dziękuję. Dziękuję... Są przysługi, których się nieprędko zapomina, i doprawdy... — tu zaczęła mówić wolniej i ciszej — doprawdy, ulżyłby pan memu sumieniu żądając czegoś, co by zrównoważyło pańską... uprzejmość...",
+  "start": 1323.35
+ },
+ {
+  "i": 127,
+  "pl": "Wokulski puścił jej rękę i wyprostował się na krześle. Był tak odurzony, że nie zwrócił uwagi na ten mały wyraz „uprzejmość”.",
+  "start": 1344.22
+ },
+ {
+  "i": 128,
+  "pl": "— Dobrze — odparł. — Jeżeli pani każe, przyznam się nawet... do zasługi. Czy w zamian wolno mi zanieść prośbę do pani?...",
+  "start": 1353.81
+ },
+ {
+  "i": 129,
+  "pl": "— Tak.",
+  "start": 1362.51
+ },
+ {
+  "i": 130,
+  "pl": "— A więc — mówił rozgorączkowany — proszę o jedno: ażebym mógł służyć pani, o ile mi siły starczą. Zawsze i we wszystkim.",
+  "start": 1363.23
+ },
+ {
+  "i": 131,
+  "pl": "— Panie!... — przerwała z uśmiechem panna Izabela — ależ to jest podstęp. Ja chcę spłacić jeden dług, a pan chce mnie zmusić do zaciągania nowych. Czy to właściwe?...",
+  "start": 1372.31
+ },
+ {
+  "i": 132,
+  "pl": "— Co w tym niewłaściwego?... Alboż nie przyjmuje pani usług nawet od posłańców publicznych?...",
+  "start": 1383.35
+ },
+ {
+  "i": 133,
+  "pl": "— Ale im płaci się za to — odpowiedziała figlarnie patrząc mu w oczy.",
+  "start": 1389.17
+ },
+ {
+  "i": 134,
+  "pl": "— I ta tylko jest między mną i nimi różnica, że im płacić potrzeba, a mnie nie wypada. Nawet nie można.",
+  "start": 1393.75
+ },
+ {
+  "i": 135,
+  "pl": "Panna Izabela kręciła głową.",
+  "start": 1399.78
+ },
+ {
+  "i": 136,
+  "pl": "— To, o co proszę — mówił dalej Wokulski — nie przechodzi granicy najzwyklejszych stosunków ludzkich. Panie zawsze rozkazujecie — my zawsze spełniamy, oto wszystko.",
+  "start": 1403.3
+ },
+ {
+  "i": 137,
+  "pl": "Ludzie należący do tej co i pani sfery towarzyskiej wcale nie potrzebowaliby prosić o podobną łaskę; dla nich jest ona codziennym obowiązkiem, nawet prawem. Ja zaś dobijałem się, a dzisiaj błagam o nią, gdyż spełnienie zleceń pani byłoby dla mnie pewnym rodzajem nobilitacji<sup>484<\/sup>.",
+  "start": 1412.9
+ },
+ {
+  "i": 138,
+  "pl": "Boże miłosierny! jeżeli furmani i lokaje mogą nosić barwy pani, z jakiej racji ja nie miałbym zasługiwać na ten zaszczyt?",
+  "start": 1429.96
+ },
+ {
+  "i": 139,
+  "pl": "— Ach, o tym pan mówi?... Dawać panu mojej szarfy nie potrzebuję; pan sam wziął ją gwałtem. A odbierać?... Już za późno, choćby ze względu na list barona.",
+  "start": 1437.9
+ },
+ {
+  "i": 140,
+  "pl": "Znowu podała mu rękę, którą Wokulski ze czcią ucałował. W obocznym pokoju rozległy się kroki i wszedł pan Tomasz wyspany, promieniejący. Jego piękna twarz miała tak serdeczny wyraz, że Wokulski pomyślał:",
+  "start": 1448.45
+ },
+ {
+  "i": 141,
+  "pl": "„Nędznikiem będę, jeżeli twoje trzydzieści tysięcy rubli, poczciwcze, nie przyniosą ci dziesięciu tysięcy rocznie.”",
+  "start": 1461.55
+ },
+ {
+  "i": 142,
+  "pl": "Jeszcze z kwadrans posiedzieli we troje, rozmawiając o niedawnej zabawie w Dolinie Szwajcarskiej<sup>485<\/sup> na cel dobroczynny, o przybyciu Rossiego i o wyjeździe do Paryża. Nareszcie Wokulski z żalem opuścił miłe towarzystwo obiecując przychodzić częściej i współcześnie z nimi jechać do Paryża.",
+  "start": 1470.16
+ },
+ {
+  "i": 143,
+  "pl": "— Zobaczy pan, jak tam będzie wesoło — rzekła panna Izabela na pożegnanie.",
+  "start": 1489.11
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

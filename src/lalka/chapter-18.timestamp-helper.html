@@ -1,0 +1,2748 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to audio/chapter-18.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-18.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Rozdział XVIII — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Rozdział XVIII · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="audio/chapter-18.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Dla pana Ignacego Rzeckiego nadeszła znowu epoka niepokojów i zdumień.",
+  "start": 9.56
+ },
+ {
+  "i": 1,
+  "pl": "Ten sam Wokulski, który rok temu poleciał do Bułgarii, a przed kilkoma tygodniami jak magnat bawił się w wyścigi i pojedynki, ten sam Wokulski nabrał dziś nadzwyczajnego gustu do widowisk teatralnych. I jeszcze żeby choć polskich, ale — włoskich... On, który nie rozumiał po włosku ani wyrazu!",
+  "start": 15.34
+ },
+ {
+  "i": 2,
+  "pl": "Już blisko tydzień trwała ta nowa mania, która dziwiła i gorszyła nie samego tylko pana Ignacego.",
+  "start": 36.28
+ },
+ {
+  "i": 3,
+  "pl": "Raz na przykład stary Szlangbaum, oczywiście w jakiejś ważnej sprawie, przez pół dnia szukał Wokulskiego. Był w sklepie — Wokulski dopiero co wyszedł ze sklepu kazawszy pierwej odnieść aktorowi Rossiemu duży wazon z saskiej porcelany.",
+  "start": 43.3
+ },
+ {
+  "i": 4,
+  "pl": "Pobiegł do mieszkania — Wokulski dopiero co opuścił mieszkanie i pojechał do Bardeta<sup>498<\/sup> po kwiaty.",
+  "start": 57.94
+ },
+ {
+  "i": 5,
+  "pl": "Stary Żyd, ażeby go dopędzić, krzywiąc się wziął dorożkę; ale ponieważ ofiarowywał dorożkarzowi złoty i groszy osiem za kurs, zamiast czterdziestu groszy, więc nim dobili targu za złoty i groszy osiem i dojechali do Bardeta, Wokulski już opuścił zakład ogrodniczy.",
+  "start": 63.62
+ },
+ {
+  "i": 6,
+  "pl": "— A gdzie on pojechał, nie wie pan? — zapytał Szlangbaum ogrodniczka, który za pomocą krzywego noża między najpiękniejszymi kwiatami szerzył zniszczenie.",
+  "start": 82.49
+ },
+ {
+  "i": 7,
+  "pl": "— Czy ja wiem, podobno do teatru — odparł ogrodniczek z taką miną, jakby owym krzywym nożem chciał gardło poderżnąć Szlangbaumowi.",
+  "start": 92.73
+ },
+ {
+  "i": 8,
+  "pl": "Żyd, któremu to właśnie przyszło na myśl, cofnął się czym prędzej z oranżerii i jak kamień wyrzucony z procy wpadł w dorożkę.",
+  "start": 102.34
+ },
+ {
+  "i": 9,
+  "pl": "Ale woźnica (porozumiawszy się już widocznie z krwiożerczymi ogrodnikami) oświadczył, iż za żadne w świecie skarby nie pojedzie dalej, chyba że kupiec da mu czterdzieści groszy za kurs i jeszcze zwróci dwa grosze urwane przy pierwszym kursie.",
+  "start": 110.3
+ },
+ {
+  "i": 10,
+  "pl": "Szlangbaum poczuł słabość około serca i w pierwszej chwili chciał albo wysiąść, albo zawołać policji.",
+  "start": 125.34
+ },
+ {
+  "i": 11,
+  "pl": "Przypomniawszy sobie jednak, jaka teraz w świecie chrześcijańskim panuje złość i niesprawiedliwość, i zajadłość na Żydów, zgodził się na wszystkie warunki bezwstydnego dorożkarza i jęcząc pojechał do teatru.",
+  "start": 131.38
+ },
+ {
+  "i": 12,
+  "pl": "Tu — naprzód nie miał z kim gadać, potem nie chciano z nim gadać, aż nareszcie dowiedział się, że pan Wokulski był dopiero co, ale że w tej chwili pojechał w Aleje Ujazdowskie. Słychać nawet turkot jego powozu w bramie...",
+  "start": 144.06
+ },
+ {
+  "i": 13,
+  "pl": "Szlangbaumowi opadły ręce. Piechotą wrócił do sklepu Wokulskiego, przy okazji po raz setny z rzędu wyklął swego syna za to, że nazywa się Henrykiem, chodzi w surducie i jada trefne potrawy<sup>499<\/sup>, a nareszcie poszedł żalić się przed panem Ignacym.",
+  "start": 158.87
+ },
+ {
+  "i": 14,
+  "pl": "— Nu — mówił lamentującym głosem — co ten pan Wokulski wyrabia najlepszego!... Ja miałem taki interes, żeby on za pięć dni mógł od swego kapitału zarobić trzysta rubli... I ja zarobiłbym ze sto rubli...",
+  "start": 174.8
+ },
+ {
+  "i": 15,
+  "pl": "Ale on sobie jeździ teraz po mieście, a ja na same dorożki wydałem dwa złote i groszy dwadzieścia... Aj! co to za rozbójniki te dorożkarze...",
+  "start": 188.3
+ },
+ {
+  "i": 16,
+  "pl": "Naturalnie, że pan Ignacy upoważnił Szlangbauma do zrobienia interesu i nie tylko zwrócił mu pieniądze wydane na dorożki, ale jeszcze na własny koszt kazał go odwieźć na ulicę Elektoralną, co tak rozczuliło starego Żyda,",
+  "start": 196.64
+ },
+ {
+  "i": 17,
+  "pl": "że odchodząc zdjął ze swego syna rodzicielskie przekleństwo i nawet zaprosił go do siebie na szabasowy obiad.",
+  "start": 210.22
+ },
+ {
+  "i": 18,
+  "pl": "„Bądź jak bądź — mówił do siebie Rzecki — głupia historia z tym teatrem, nade wszystko z tym, że Stach zaniedbuje interesa...”",
+  "start": 217.3
+ },
+ {
+  "i": 19,
+  "pl": "Innym razem wpadł do sklepu powszechnie szanowany mecenas, prawa ręka księcia, prawny doradca całej arystokracji, zapraszając do siebie Wokulskiego na jakąś wieczorną sesję. Pan Ignacy nie wiedział, gdzie posadzić znakomitą osobę i jak cieszyć się z honoru wyrządzonego przez mecenasa jego Stachowi.",
+  "start": 227.18
+ },
+ {
+  "i": 20,
+  "pl": "Tymczasem Stach nie tylko nie wzruszył się dostojnymi zaprosinami na wieczór, ale wprost odmówił, co nawet trochę dotknęło mecenasa, który zaraz wyszedł i pożegnał ich obojętnie.",
+  "start": 245.78
+ },
+ {
+  "i": 21,
+  "pl": "— Dlaczegożeś nie przyjął zaprosin?... — zapytał zrozpaczony pan Ignacy.",
+  "start": 256.88
+ },
+ {
+  "i": 22,
+  "pl": "— Bo muszę być dzisiaj w teatrze — odpowiedział Wokulski.",
+  "start": 261.3
+ },
+ {
+  "i": 23,
+  "pl": "Prawdziwa wszelako zgroza opanowała Rzeckiego, gdy w tym samym dniu inkasent Oberman przyszedł do niego przed siódmą wieczorem prosząc o zrobienie dziennego obrachunku.",
+  "start": 265.8
+ },
+ {
+  "i": 24,
+  "pl": "— Po ósmej... po ósmej... — odpowiedział mu pan Ignacy — Teraz nie ma czasu.",
+  "start": 276.04
+ },
+ {
+  "i": 25,
+  "pl": "— A po ósmej ja nie będę miał czasu — odparł Oberman.",
+  "start": 280.46
+ },
+ {
+  "i": 26,
+  "pl": "— Jak to?... co to?...",
+  "start": 284.0
+ },
+ {
+  "i": 27,
+  "pl": "— A tak, że o wpół do ósmej muszę być z naszym panem w teatrze... — mruknął Oberman, nieznacznie wzruszając ramionami.",
+  "start": 285.66
+ },
+ {
+  "i": 28,
+  "pl": "W tej samej chwili przyszedł pożegnać go uśmiechnięty pan Zięba.",
+  "start": 293.08
+ },
+ {
+  "i": 29,
+  "pl": "— Pan już wychodzi, panie Zięba, ze sklepu?... O trzy kwadranse na siódmą?... — spytał zdumiony pan Ignacy, szeroko otwierając oczy.",
+  "start": 297.26
+ },
+ {
+  "i": 30,
+  "pl": "— Idę z wieńcami dla Rossiego — szepnął grzeczny pan Zięba z jeszcze milszym uśmiechem.",
+  "start": 304.78
+ },
+ {
+  "i": 31,
+  "pl": "Rzecki schwycił się obu rękoma za głowę.",
+  "start": 310.84
+ },
+ {
+  "i": 32,
+  "pl": "— Powariowali z tym teatrem! — zawołał. — Może jeszcze i mnie tam wyciągną?... No, ale to ze mną sprawa!...",
+  "start": 313.6
+ },
+ {
+  "i": 33,
+  "pl": "Czując, że lada dzień i jego zechce namawiać Wokulski, ułożył sobie pan Ignacy mowę, w której nie tylko miał oświadczyć, że nie pójdzie na Włochów, ale jeszcze miał zreflektować Stacha mniej więcej tymi słowy:",
+  "start": 320.86
+ },
+ {
+  "i": 34,
+  "pl": "— Daj spokój... co ci po tych głupstwach!... — i tak dalej.",
+  "start": 334.18
+ },
+ {
+  "i": 35,
+  "pl": "Tymczasem Wokulski, zamiast namawiać go, przyszedł raz około szóstej do sklepu, a zastawszy Rzeckiego nad rachunkami — rzekł:",
+  "start": 339.05
+ },
+ {
+  "i": 36,
+  "pl": "— Mój drogi, dziś Rossi gra Makbeta<sup>500<\/sup>, siądź z łaski swej w pierwszym rzędzie krzeseł (masz tu bilet) i po trzecim akcie podaj mu to album<sup>501<\/sup>...",
+  "start": 347.43
+ },
+ {
+  "i": 37,
+  "pl": "I bez żadnej ceremonii, a nawet bez dalszych wyjaśnień doręczył panu Ignacemu album z widokami Warszawy i warszawianek, co razem mogło kosztować z pięćdziesiąt rubli!...",
+  "start": 357.72
+ },
+ {
+  "i": 38,
+  "pl": "Pan Ignacy uczuł się głęboko obrażony. Wstał ze swego fotelu, zmarszczył brwi i już otworzył usta, ażeby wybuchnąć, kiedy Wokulski opuścił nagle sklep nawet nie patrząc na niego.",
+  "start": 369.82
+ },
+ {
+  "i": 39,
+  "pl": "No i naturalnie pan Ignacy musiał pójść do teatru, ażeby nie zrobić przykrości Stachowi.",
+  "start": 381.54
+ },
+ {
+  "i": 40,
+  "pl": "W teatrze trafił się panu Ignacemu cały szereg niespodzianek.",
+  "start": 388.92
+ },
+ {
+  "i": 41,
+  "pl": "Przede wszystkim wszedł on na schody prowadzące na galerię, gdzie bywał zwykle za swoich dawnych, dobrych czasów.",
+  "start": 392.88
+ },
+ {
+  "i": 42,
+  "pl": "Dopiero woźny przypomniał mu, że ma bilet do pierwszego rzędu krzeseł, obrzucając go przy tym spojrzeniami, które mówiły, że ciemnozielony surdut pana Rzeckiego, album pod pachą, a nawet fizjognomia à la Napoleon III wydają się niższym organom władzy teatralnej mocno podejrzanymi.",
+  "start": 399.1
+ },
+ {
+  "i": 43,
+  "pl": "Zawstydzony, zeszedł pan Ignacy na dół do frontowego przysionka ściskając pod pachą album i kłaniając się wszystkim damom, około których miał zaszczyt przechodzić. Ta uprzejmość, do której nie nawykli warszawiacy, już w przysionku zrobiła wrażenie.",
+  "start": 417.84
+ },
+ {
+  "i": 44,
+  "pl": "Zaczęto pytać się: kto to jest? a chociaż nie poznano osoby, w lot jednakże spostrzeżono, że cylinder pana Ignacego pochodzi sprzed lat dziesięciu, krawat sprzed pięciu, a ciemnozielony surdut i obcisłe spodnie w kratki sięgają nierównie dawniejszej epoki.",
+  "start": 434.07
+ },
+ {
+  "i": 45,
+  "pl": "Powszechnie brano go za cudzoziemca; lecz gdy spytał kogoś ze służby: którędy iść do krzeseł? — wybuchnął śmiech.",
+  "start": 452.21
+ },
+ {
+  "i": 46,
+  "pl": "— Pewnie jakiś szlachcic z Wołynia — mówili eleganci. — Ale co on ma pod pachą?...",
+  "start": 459.99
+ },
+ {
+  "i": 47,
+  "pl": "— Może bigos albo pneumatyczną poduszkę...",
+  "start": 466.13
+ },
+ {
+  "i": 48,
+  "pl": "Osmagany szyderstwem, oblany zimnym potem, dostał się nareszcie pan Ignacy do upragnionych krzeseł.",
+  "start": 469.67
+ },
+ {
+  "i": 49,
+  "pl": "Było ledwie po siódmej i widzowie dopiero zaczęli się gromadzić; ten i ów wchodził do krzeseł w kapeluszu na głowie, loże były puste i tylko na galeriach czerniała masa ludu, a na paradyzie już wymyślano i wołano policji.",
+  "start": 476.67
+ },
+ {
+  "i": 50,
+  "pl": "„O ile się zdaje, zebranie będzie bardzo ożywione” — mruknął z bladym uśmiechem nieszczęśliwy pan Ignacy sadowiąc się w pierwszym rzędzie.",
+  "start": 491.85
+ },
+ {
+  "i": 51,
+  "pl": "Z początku patrzył tylko na prawą dziurkę w kurtynie ślubując, że nie oderwie od niej oczu. W parę minut jednakże ochłonął ze wzruszenia, a nawet nabrał takiego animuszu, że począł oglądać się.",
+  "start": 501.06
+ },
+ {
+  "i": 52,
+  "pl": "Sala wydała mu się jakaś niewielka i brudna i dopiero gdy zastanawiał się nad przyczynami tych zmian, przypomniał sobie, że ostatni raz był w teatrze na występie Dobrskiego w Halce<sup>502<\/sup>, mniej więcej przed szesnastoma laty.",
+  "start": 515.3
+ },
+ {
+  "i": 53,
+  "pl": "Tymczasem sala napełniała się, a widok pięknych kobiet, zasiadających w lożach, do reszty orzeźwił pana Ignacego.",
+  "start": 529.36
+ },
+ {
+  "i": 54,
+  "pl": "Stary subiekt wydobył nawet małą lornetkę i zaczął przypatrywać się fizjognomiom; przy tej zaś okazji zrobił smutne odkrycie, że i jemu przypatrują się z amfiteatru<sup>503<\/sup>, z dalszych rzędów krzeseł, ba! nawet z lóż...",
+  "start": 536.62
+ },
+ {
+  "i": 55,
+  "pl": "Gdy zaś przeniósł swoje zdolności psychiczne od oka do ucha, pochwycił wyrazy latające jak osy:",
+  "start": 549.96
+ },
+ {
+  "i": 56,
+  "pl": "— Cóż to za oryginał?...",
+  "start": 556.98
+ },
+ {
+  "i": 57,
+  "pl": "— Ktoś z prowincji.",
+  "start": 558.64
+ },
+ {
+  "i": 58,
+  "pl": "— Ale skąd on wyrwał taki surdut?...",
+  "start": 559.66
+ },
+ {
+  "i": 59,
+  "pl": "— Uważasz pan jego breloki przy dewizce? Skandal!...",
+  "start": 562.26
+ },
+ {
+  "i": 60,
+  "pl": "— Albo kto się tak dziś czesze?...",
+  "start": 565.5
+ },
+ {
+  "i": 61,
+  "pl": "Niewiele brakowało, ażeby pan Ignacy upuścił swoje album i cylinder i uciekł z gołą głową z teatru. Na szczęście, w ósmym rzędzie krzeseł zobaczył znajomego fabrykanta pierników, który w odpowiedzi na ukłon Rzeckiego opuścił swoje miejsce i zbliżył się do pierwszego rzędu.",
+  "start": 568.19
+ },
+ {
+  "i": 62,
+  "pl": "— Na miłość boską, panie Pifke — szepnął zalany potem — usiądź pan na moim miejscu i oddaj mi swoje...",
+  "start": 585.95
+ },
+ {
+  "i": 63,
+  "pl": "— Z największą chęcią — odparł głośno rumiany fabrykant. — Cóż, źle tu panu?... Pyszne miejsce!...",
+  "start": 593.51
+ },
+ {
+  "i": 64,
+  "pl": "— Doskonałe. Ale ja wolę dalej... Gorąco mi...",
+  "start": 601.23
+ },
+ {
+  "i": 65,
+  "pl": "— Tam tak samo, ale mogę usiąść. A co to masz pan za paczkę?...",
+  "start": 603.95
+ },
+ {
+  "i": 66,
+  "pl": "Teraz dopiero Rzecki przypomniał sobie obowiązek.",
+  "start": 607.73
+ },
+ {
+  "i": 67,
+  "pl": "— Uważa pan, drogi panie Pifke, jakiś wielbiciel tego... tego Rossiego...",
+  "start": 611.19
+ },
+ {
+  "i": 68,
+  "pl": "— Ba, któż by Rossiego nie uwielbiał! — odpowiedział Pifke. — Mam libretto<sup>504<\/sup> do Makbeta, może panu dać?...",
+  "start": 616.43
+ },
+ {
+  "i": 69,
+  "pl": "— Owszem. Ale... ten wielbiciel, uważa pan, kupił u nas kosztowny album i prosił, ażeby po trzecim akcie wręczyć je Rossiemu...",
+  "start": 622.47
+ },
+ {
+  "i": 70,
+  "pl": "— Zrobię to z przyjemnością! — zawołał otyły Pifke pchając się na miejsce Rzeckiego.",
+  "start": 630.21
+ },
+ {
+  "i": 71,
+  "pl": "Pan Ignacy miał jeszcze kilka bardzo przykrych chwil. Musiał wydobyć się z pierwszego rzędu krzeseł, gdzie zebrani eleganci spoglądali na jego surdut i na jego krawat, i na jego aksamitną kamizelkę z ironicznymi uśmiechami.",
+  "start": 636.51
+ },
+ {
+  "i": 72,
+  "pl": "Potem musiał wejść do ósmego rzędu krzeseł, gdzie wprawdzie bez ironii patrzono na jego garnitur, ale gdzie musiał potrącać o kolana siedzących dam...",
+  "start": 650.13
+ },
+ {
+  "i": 73,
+  "pl": "— Stokrotnie przepraszam — mówił zawstydzony. — Ale tak ciasno...",
+  "start": 659.68
+ },
+ {
+  "i": 74,
+  "pl": "— Potrzebujesz pan nie mówić brzydkie słowo — odpowiedziała mu jedna z dam, w której nieco podmalowanych oczach pan Ignacy nie dojrzał jednak gniewu za swój postępek. Był przecież tak zażenowany, że chętnie poszedłby do spowiedzi, byle tylko oczyścić duszę z plamy owych potrącań.",
+  "start": 664.06
+ },
+ {
+  "i": 75,
+  "pl": "Nareszcie znalazł krzesło i odetchnął. Tu przynajmniej nie zwracano na niego uwagi, częścią z powodu skromnego miejsca, jakie zajmował, częścią, że teatr był przepełniony i już zaczęło się widowisko.",
+  "start": 682.65
+ },
+ {
+  "i": 76,
+  "pl": "Gra artystów z początku nie obchodziła go, oglądał się więc po sali i przede wszystkim spostrzegł Wokulskiego. Siedział on w czwartym rzędzie i wpatrywał się bynajmniej nie w Rossiego, ale w lożę, którą zajmowała panna Izabela z panem Tomaszem i hrabiną.",
+  "start": 696.03
+ },
+ {
+  "i": 77,
+  "pl": "Rzecki parę razy w życiu widział ludzi zamagnetyzowanych i zdawało mu się, że Wokulski ma taki wyraz fizjognomii, jak gdyby był zamagnetyzowany przez ową lożę. Siedział bez ruchu, jak człowiek śpiący, z szeroko otwartymi oczyma.",
+  "start": 713.72
+ },
+ {
+  "i": 78,
+  "pl": "Kto by jednakże tak oczarował Wokulskiego? Pan Ignacy nie mógł się domyślić. Zauważył przecie inną rzecz: ile razy nie było Rossiego na scenie, panna Izabela obojętnie oglądała się po sali albo rozmawiała z ciotką.",
+  "start": 730.1
+ },
+ {
+  "i": 79,
+  "pl": "Lecz gdy wyszedł Makbet-Rossi, przysłaniała twarz do połowy wachlarzem i cudownymi, rozmarzonymi oczyma zdawała się pożerać aktora.",
+  "start": 744.54
+ },
+ {
+  "i": 80,
+  "pl": "Czasami wachlarz z białych piór opadał jej na kolana, a wtedy Rzecki na twarzy panny Izabeli spostrzegał ten sam wyraz zamagnetyzowania, który go tak zdziwił w fizjognomii Wokulskiego.",
+  "start": 754.92
+ },
+ {
+  "i": 81,
+  "pl": "Spostrzegł jeszcze inne rzeczy. Kiedy piękne oblicze panny Izabeli wyrażało najwyższy zachwyt, wtedy Wokulski pocierał sobie ręką wierzch głowy.",
+  "start": 768.64
+ },
+ {
+  "i": 82,
+  "pl": "A wówczas, jakby na komendę, z galerii i z paradyzu odzywały się gwałtowne oklaski i wrzaskliwe okrzyki: „Brawo, brawo Rossi!...” Zdawało się nawet panu Ignacemu, że gdzieś w tym chórze odróżnia zmęczony głos inkasenta Obermana, który pierwszy zaczynał wrzeszczeć, a ostatni milknął.",
+  "start": 778.69
+ },
+ {
+  "i": 83,
+  "pl": "„Do diabła! — pomyślał — czyżby Wokulski dyrygował klakierami<sup>505<\/sup>?”",
+  "start": 797.66
+ },
+ {
+  "i": 84,
+  "pl": "Ale wnet odpędził to nieusprawiedliwione podejrzenie. Rossi bowiem grał znakomicie i klaskali mu wszyscy z równym zapałem. Najmocniej jednak pan Pifke, jowialny fabrykant pierników, który stosownie do umowy po trzecim akcie z wielkim hałasem podał Rossiemu album.",
+  "start": 803.28
+ },
+ {
+  "i": 85,
+  "pl": "Wielki aktor nie kiwnął nawet głową Pifkemu; natomiast złożył głęboki ukłon w kierunku loży, gdzie siedziała panna Izabela, a może — tylko w tym kierunku.",
+  "start": 821.62
+ },
+ {
+  "i": 86,
+  "pl": "„Przywidzenia!... przywidzenia!... — myślał pan Ignacy opuszczając teatr po ostatnim akcie. — Stach przecie nie byłby aż tak głupi...”",
+  "start": 833.64
+ },
+ {
+  "i": 87,
+  "pl": "W rezultacie jednak pan Ignacy nie był niezadowolony z pobytu w teatrze.",
+  "start": 841.54
+ },
+ {
+  "i": 88,
+  "pl": "Gra Rossiego podobała mu się; niektóre sceny, jak morderstwo króla Dunkana albo ukazanie się ducha Banka<sup>506<\/sup>, zrobiły na nim potężne wrażenie, a już całkiem był oczarowany zobaczywszy, jak Makbet bije się na rapiery<sup>507<\/sup>.",
+  "start": 847.14
+ },
+ {
+  "i": 89,
+  "pl": "Toteż wychodząc z teatru nie miał pretensji do Wokulskiego; owszem, zaczął nawet podejrzywać, że kochany Stach tylko dla zrobienia mu przyjemności wymyślił komedię z wręczeniem podarunku Rossiemu.",
+  "start": 861.5
+ },
+ {
+  "i": 90,
+  "pl": "„On wie, poczciwy Stach — myślał — że tylko przynaglony mogłem pójść na włoskich aktorów... No i dobrze się stało. Pysznie gra ten facet i muszę zobaczyć go drugi raz... Zresztą — dodał po chwili — kto ma tyle pieniędzy co Stach, może robić prezenta aktorom.",
+  "start": 875.12
+ },
+ {
+  "i": 91,
+  "pl": "Ja wprawdzie wolałbym jaką ładnie zbudowaną aktorkę, ale... Ja jestem człowiek innej epoki, nawet nazywają mnie bonapartystą i romantykiem...”",
+  "start": 891.5
+ },
+ {
+  "i": 92,
+  "pl": "Myślał tak i mruczał po cichu, gdyż nurtowała go inna myśl, którą chciał w sobie zagłuszyć:",
+  "start": 901.98
+ },
+ {
+  "i": 93,
+  "pl": "„Dlaczego Stach tak dziwnie przypatrywał się loży, w której siedziała hrabina, pan Łęcki i panna Łęcka?... Czyliżby?... Eh! cóż znowu... Wokulski ma przecież zbyt wiele rozumu, ażeby mógł przypuszczać, że coś z tego być może...",
+  "start": 908.69
+ },
+ {
+  "i": 94,
+  "pl": "Każde dziecko pojęłoby od razu, że ta panna, w ogóle zimna jak lód, dziś szaleje za Rossim... Jak ona na niego patrzyła, jak się nawet czasami zapominała i jeszcze gdzie, w teatrze, wobec tysiąca osób!... Nie, to głupstwo. Słusznie nazywają mnie romantykiem...”",
+  "start": 923.93
+ },
+ {
+  "i": 95,
+  "pl": "I znowu usiłował myśleć o czym innym. Poszedł nawet (mimo późnej nocy) do restauracji, gdzie grała muzyka złożona ze skrzypców, fortepianu i arfy. Zjadł pieczeń z kartoflami i z kapustą, wypił kufel piwa, potem drugi kufel, potem trzeci i czwarty... nawet siódmy...",
+  "start": 942.31
+ },
+ {
+  "i": 96,
+  "pl": "Zrobiło mu się tak jakoś raźnie, że cisnął arfiarce na talerz dwie czterdziestówki i zaczął śpiewać pod nosem. A potem przyszło mu do głowy, że — koniecznie, ale to koniecznie powinien zaprezentować się czterem Niemcom, którzy przy bocznym stoliku jedzą pekeflejsz<sup>508<\/sup> z grochem.",
+  "start": 962.09
+ },
+ {
+  "i": 97,
+  "pl": "„Dlaczego ja miałbym się im prezentować?... Niech oni mnie się zaprezentują” — myślał pan Ignacy.",
+  "start": 982.4
+ },
+ {
+  "i": 98,
+  "pl": "I w tej chwili opanowała go idea, że tamci czterej panowie powinni mu się zaprezentować, jako starszemu wiekiem tudzież byłemu oficerowi węgierskiej piechoty, która przecież porządnie biła Niemców.",
+  "start": 989.74
+ },
+ {
+  "i": 99,
+  "pl": "Zawołał nawet usługującą dziewczynę w celu wysłania jej do owych czterech panów jedzących pekeflejsz, gdy wtem muzyka złożona ze skrzypców, arfy i fortepianu zagrała... Marsyliankę<sup>509<\/sup>.",
+  "start": 1004.6
+ },
+ {
+  "i": 100,
+  "pl": "Pan Ignacy przypomniał sobie Węgry, piechotę, Augusta Katza i czując, że mu łzy nabiegają do oczu, że się lada chwilę rozpłacze, porwał ze stołu swój cylinder sprzed wojny francusko-pruskiej<sup>510<\/sup> i rzuciwszy na stół rubla wybiegł z restauracji.",
+  "start": 1018.11
+ },
+ {
+  "i": 101,
+  "pl": "Dopiero gdy na ulicy owionęło go świeże powietrze, oparł się o słup latarni gazowej i spytał:",
+  "start": 1036.78
+ },
+ {
+  "i": 102,
+  "pl": "— Do diabła, czyżbym się upił?... Ba! siedem kufli...",
+  "start": 1043.52
+ },
+ {
+  "i": 103,
+  "pl": "Wrócił do domu starając się iść jak najprościej i teraz dopiero przekonał się, że warszawskie chodniki są nadzwyczaj nierówne: co kilkanaście kroków bowiem musiał zbaczać albo w stronę rynsztoka, albo w stronę kamienic.",
+  "start": 1048.79
+ },
+ {
+  "i": 104,
+  "pl": "Potem (dla przekonania samego siebie, że jego umysłowe zdolności znajdują się w kwitnącym stanie) zaczął rachować gwiazdy na niebie.",
+  "start": 1062.77
+ },
+ {
+  "i": 105,
+  "pl": "— Raz... dwa... trzy... siedem... siedem... Co to jest siedem?... Ach, siedem kufli piwa... Czyżbym naprawdę?... Po co ten Stach wysłał mnie do teatru!...",
+  "start": 1071.33
+ },
+ {
+  "i": 106,
+  "pl": "Do domu trafił od razu i od razu znalazł dzwonek. Zadzwoniwszy jednak aż siedem razy na stróża, uczuł potrzebę oparcia się o kąt, zawarty między bramą i ścianą, i usiłował zliczyć, nie z potrzeby, ale ot, tak sobie: ile też upłynie minut, zanim mu stróż otworzy?",
+  "start": 1087.92
+ },
+ {
+  "i": 107,
+  "pl": "W tym celu wydobył zegarek z sekundnikiem i przekonał się, że — już jest wpół do drugiej.",
+  "start": 1106.42
+ },
+ {
+  "i": 108,
+  "pl": "— Podły stróż! — mruknął. — Ja muszę wstać o szóstej, a on do wpół do drugiej trzyma mnie na ulicy...",
+  "start": 1113.84
+ },
+ {
+  "i": 109,
+  "pl": "Szczęściem, stróż natychmiast otworzył furtkę, przez którą pan Ignacy krokiem zupełnie pewnym, a nawet więcej niż pewnym, bardzo pewnym, przeszedł całą sień czując, że jego cylinder siedzi mu trochę na bakier, ale tylko troszeczkę.",
+  "start": 1122.33
+ },
+ {
+  "i": 110,
+  "pl": "Następnie bez żadnej trudności znalazłszy drzwi swego mieszkania usiłował po kilka razy na próżno wprowadzić klucz do zamku. Czuł dziurkę pod palcem, ściskał w ręce klucz tak mocno jak nigdy i mimo to nie mógł trafić.",
+  "start": 1137.29
+ },
+ {
+  "i": 111,
+  "pl": "— Czyliżbym naprawdę?...",
+  "start": 1153.79
+ },
+ {
+  "i": 112,
+  "pl": "W tej właśnie chwili otworzyły się drzwi, a współcześnie jego jednooki pudel Ir, nie podnosząc się z pościeli, parę razy szczeknął:",
+  "start": 1156.09
+ },
+ {
+  "i": 113,
+  "pl": "— Tak... tak!...",
+  "start": 1165.65
+ },
+ {
+  "i": 114,
+  "pl": "— Milcz, ty podła świnio!... — mruknął pan Ignacy i nie zapalając lampy, rozebrał się i położył do łóżka.",
+  "start": 1166.92
+ },
+ {
+  "i": 115,
+  "pl": "Sny miał okropne. Śniło mu się czy tylko przywidywało, że ciągle jest w teatrze i że widzi Wokulskiego z szeroko otwartymi oczyma, zapatrzonego w jedną lożę. W loży tej siedziała hrabina, pan Łęcki i panna Izabela. Rzeckiemu zdawało się, że Wokulski patrzy tak na pannę Izabelę.",
+  "start": 1174.78
+ },
+ {
+  "i": 116,
+  "pl": "— Niepodobna! — mruknął. — Stach nie jest aż tak głupi...",
+  "start": 1195.13
+ },
+ {
+  "i": 117,
+  "pl": "Tymczasem (wszystko w marzeniu) panna Izabela podniosła się z fotelu i wyszła z loży, a Wokulski za nią, wciąż patrząc jak człowiek zamagnetyzowany.",
+  "start": 1199.82
+ },
+ {
+  "i": 118,
+  "pl": "Panna Izabela opuściła teatr, przeszła plac Teatralny i lekkim krokiem wbiegła na ratuszową wieżę<sup>511<\/sup>, a Wokulski za nią, wciąż patrząc jak człowiek zamagnetyzowany.",
+  "start": 1208.8
+ },
+ {
+  "i": 119,
+  "pl": "A potem z ganku ratuszowej wieży panna Izabela, uniósłszy się jak ptak, przepłynęła na gmach teatralny, a Wokulski, chcąc lecieć za nią, runął z wysokości dziesięciu pięter na ziemię.",
+  "start": 1220.3
+ },
+ {
+  "i": 120,
+  "pl": "— Jezus! Maria!... — jęknął Rzecki zrywając się z łóżka.",
+  "start": 1233.26
+ },
+ {
+  "i": 121,
+  "pl": "— Tak!... tak!... — odszczeknął mu Ir przez sen.",
+  "start": 1237.24
+ },
+ {
+  "i": 122,
+  "pl": "— No, już widzę, że jestem zupełnie pijany — mruknął pan Ignacy kładąc się znowu i niecierpliwie naciągając kołdrę, pod którą drżał.",
+  "start": 1241.8
+ },
+ {
+  "i": 123,
+  "pl": "Kilka minut leżał z otwartymi oczami i znowu przywidziało mu się, że jest w teatrze, akurat po zakończeniu trzeciego aktu, w chwili kiedy fabrykant Pifke miał podać Rossiemu album Warszawy i jej piękności.",
+  "start": 1250.42
+ },
+ {
+  "i": 124,
+  "pl": "Pan Ignacy wytęża wzrok (Pifke bowiem jego zastępuje), wytęża wzrok i z najwyższym przerażeniem widzi, że niecny Pifke zamiast kosztownego albumu podaje Włochowi jakąś paczkę owiniętą w papier i niedbale zawiązaną szpagatem.",
+  "start": 1264.18
+ },
+ {
+  "i": 125,
+  "pl": "I jeszcze gorsze rzeczy widzi pan Ignacy. Włoch bowiem uśmiecha się ironicznie, odwiązuje szpagat, odwija papier i wobec panny Izabeli, Wokulskiego, hrabiny i tysiąca innych widzów ukazuje... żółte nankinowe<sup>512<\/sup> spodnie z fartuszkiem na przodzie i ze strzemiączkami u dołu.",
+  "start": 1278.04
+ },
+ {
+  "i": 126,
+  "pl": "Właśnie te same, których pan Ignacy używał w epoce sławnej kampanii sewastopolskiej<sup>513<\/sup>!...",
+  "start": 1297.94
+ },
+ {
+  "i": 127,
+  "pl": "Na domiar okropności nędzny Pifke wrzeszczy: „Oto jest dar panów: Stanisława Wokulskiego, kupca, i Ignacego Rzeckiego, jego dysponenta!” Cały teatr wybucha śmiechem; wszystkie oczy i wszystkie wskazujące palce skierowują się na ósmy rząd krzeseł i właśnie na to krzesło, gdzie siedzi pan Ignacy.",
+  "start": 1304.37
+ },
+ {
+  "i": 128,
+  "pl": "Nieszczęśliwy chce zaprotestować, lecz czuje, że głos zastyga mu w gardle, a na domiar niedoli on sam — zapada się gdzieś.",
+  "start": 1326.65
+ },
+ {
+  "i": 129,
+  "pl": "Zapada się w niezmierny, niezgłębiony ocean nicości, w którym będzie spoczywał na wieki wieczne nie objaśniwszy widzów teatralnych, że nankinowe spodnie z fartuszkiem i strzemiączkami wykradziono mu podstępem ze zbioru jego osobistych pamiątek.",
+  "start": 1333.57
+ },
+ {
+  "i": 130,
+  "pl": "Po nocy fatalnie spędzonej Rzecki obudził się dopiero o trzy kwadranse na siódmą<sup>514<\/sup>. Własnym oczom nie chciał wierzyć patrząc na zegarek, ale w końcu uwierzył.",
+  "start": 1352.41
+ },
+ {
+  "i": 131,
+  "pl": "Uwierzył nawet w to, że wczoraj był nieco podchmielony; o czym zresztą wymownie świadczył lekki ból głowy i ogólna ociężałość członków.",
+  "start": 1365.02
+ },
+ {
+  "i": 132,
+  "pl": "Wszystkie te jednak chorobliwe objawy mniej trwożyły pana Ignacego aniżeli jeden straszny symptom, oto: nie chciało mu się iść do sklepu!...",
+  "start": 1373.48
+ },
+ {
+  "i": 133,
+  "pl": "Co gorsze: nie tylko czuł lenistwo, ale nawet zupełny brak ambicji; zamiast bowiem wstydzić się swego upadku i walczyć z próżniaczymi instynktami, on, Rzecki, wynajdywał sobie powody do jak najdłuższego zatrzymania się w pokoju.",
+  "start": 1384.23
+ },
+ {
+  "i": 134,
+  "pl": "To zdawało mu się, że Ir jest chory, to, że rdzewieje nigdy nie używana dubeltówka, to znowu, że jest jakiś błąd w zielonej firance, która zasłaniała okna, a nareszcie, że herbata jest za gorąca i trzeba ją pić wolniej niż zwykle.",
+  "start": 1400.5
+ },
+ {
+  "i": 135,
+  "pl": "W rezultacie pan Ignacy spóźnił się o czterdzieści minut do sklepu i ze spuszczoną głową przekradł się do kantorka. Zdawało mu się, że każdy z „panów” (a jak na złość wszyscy przyszli dziś na czas!), że każdy z najwyższą wzgardą patrzy na jego podsiniałe oczy, ziemistą cerę i lekko drżące ręce.",
+  "start": 1415.24
+ },
+ {
+  "i": 136,
+  "pl": "„Gotowi jeszcze myśleć, że oddawałem się rozpuście!” — westchnął nieszczęsny pan Ignacy.",
+  "start": 1434.0
+ },
+ {
+  "i": 137,
+  "pl": "Potem wydobył księgi, umaczał pióro i niby to zaczął rachować. Był przekonany, że cuchnie piwem jak stara beczka, którą już wyrzucono z piwnicy, i zupełnie serio począł rozważać: czy nie należało podać się do dymisji po spełnieniu całego szeregu tak haniebnych występków?",
+  "start": 1439.86
+ },
+ {
+  "i": 138,
+  "pl": "„Spiłem się... późno wróciłem do domu... późno wstałem... o czterdzieści minut spóźniłem się do sklepu...”",
+  "start": 1458.16
+ },
+ {
+  "i": 139,
+  "pl": "W tej chwili zbliżył się do niego Klejn z jakimś listem.",
+  "start": 1465.24
+ },
+ {
+  "i": 140,
+  "pl": "— Było na kopercie napisane: „bardzo pilno”, więc otworzyłem — rzekł mizerny subiekt podając papier Rzeckiemu.",
+  "start": 1469.01
+ },
+ {
+  "i": 141,
+  "pl": "Pan Ignacy otworzył i czytał:",
+  "start": 1477.44
+ },
+ {
+  "i": 142,
+  "pl": "„Człowieku głupi czy nikczemny! Pomimo tylu życzliwych ostrzeżeń kupujesz jednak dom, który stanie się grobem twego w tak nieuczciwy sposób zdobytego majątku...”",
+  "start": 1480.59
+ },
+ {
+  "i": 143,
+  "pl": "Pan Ignacy rzucił okiem na wiersz ostatni, ale nie znalazł podpisu: list był anonimowy. Spojrzał na kopertę — miała adres Wokulskiego. Czytał dalej:",
+  "start": 1494.0
+ },
+ {
+  "i": 144,
+  "pl": "„Jaki zły los postawił cię na drodze pewnej szlachetnej damy, której o mało nie zabiłeś męża, a dziś chcesz jej wydrzeć dom, gdzie zmarła jej ukochana córka?... I po co to robisz?... Dlaczego płacisz, jeżeli prawda, aż dziewięćdziesiąt tysięcy rubli za kamienicę niewartą siedemdziesięciu tysięcy?...",
+  "start": 1504.64
+ },
+ {
+  "i": 145,
+  "pl": "Są to sekreta twojej czarnej duszy, które kiedyś sprawiedliwość boska odkryje, a zacni ludzie ukarzą pogardą.",
+  "start": 1527.4
+ },
+ {
+  "i": 146,
+  "pl": "Zastanów się więc, póki czas. Nie gub swej duszy i majątku i nie zatruwaj spokoju zacnej damie, która w nieutulonym żalu po stracie córki tę jedną ma dziś pociechę, że może przesiadywać w pokoju, gdzie nieszczęśliwe dziecię oddało Bogu ducha. Upamiętaj się, zaklinam cię — życzliwa...”",
+  "start": 1536.75
+ },
+ {
+  "i": 147,
+  "pl": "Skończywszy czytanie pan Ignacy potrząsnął głową.",
+  "start": 1559.5
+ },
+ {
+  "i": 148,
+  "pl": "— Nic nie rozumiem — rzekł. — Chociaż bardzo wątpię o życzliwości tej damy.",
+  "start": 1562.95
+ },
+ {
+  "i": 149,
+  "pl": "Klejn lękliwie obejrzał się dokoła sklepu, a widząc, że ich nikt nie śledzi, zaczął szeptać:",
+  "start": 1568.76
+ },
+ {
+  "i": 150,
+  "pl": "— Bo to, uważa pan, nasz stary podobno kupuje dom Łęckiego, który właśnie jutro mają wierzyciele sprzedać przez licytację...",
+  "start": 1575.06
+ },
+ {
+  "i": 151,
+  "pl": "— Stach... to jest... pan Wokulski kupuje dom?",
+  "start": 1583.54
+ },
+ {
+  "i": 152,
+  "pl": "— Tak, tak... — potakiwał Klejn głową. — Ale kupuje nie na własne imię, tylko za pośrednictwem starego Szlangbauma... Tak przynajmniej mówią w domu, bo i ja tam mieszkam.",
+  "start": 1586.6
+ },
+ {
+  "i": 153,
+  "pl": "— Za dziewięćdziesiąt tysięcy rubli?...",
+  "start": 1596.98
+ },
+ {
+  "i": 154,
+  "pl": "— Właśnie. A że baronowa Krzeszowska chciałaby kupić tę kamienicę za siedemdziesiąt tysięcy rubli, więc anonim zapewne pochodzi od niej. Nawet założyłbym się, że od niej, bo to piekielna baba...",
+  "start": 1599.42
+ },
+ {
+  "i": 155,
+  "pl": "Gość, przybyły do sklepu z zamiarem kupienia parasola, oderwał Klejna od Rzeckiego. Panu Ignacemu zaczęły krążyć po głowie bardzo szczególne myśli.",
+  "start": 1612.19
+ },
+ {
+  "i": 156,
+  "pl": "„Jeżeli ja — mówił do siebie — przez zmarnowanie jednego wieczora narobiłem tyle zamętu w sklepie, to niby — jakiego zamętu w interesach narobi Stach, który marnuje dziś dnie i tygodnie na teatry włoskie, i zresztą — nawet nie wiem na co?...”",
+  "start": 1620.89
+ },
+ {
+  "i": 157,
+  "pl": "W tej chwili jednak przypomniał sobie, że w sklepie z jego winy zamęt jest niewielki, prawie go nie ma, i że interes handlowy w ogóle idzie świetnie. Nawet co prawda to i sam Wokulski, pomimo dziwnego trybu życia, nie zaniedbuje obowiązków kierownika instytucji.",
+  "start": 1636.73
+ },
+ {
+  "i": 158,
+  "pl": "„Ale po co on chce uwięzić dziewięćdziesiąt tysięcy rubli w murach?... Skąd się i tu znowu biorą ci Łęccy?... Czyliżby... Eh! Stasiek taki głupi nie jest...”",
+  "start": 1653.98
+ },
+ {
+  "i": 159,
+  "pl": "Swoją drogą niepokoiła go myśl kupna kamienicy.",
+  "start": 1668.24
+ },
+ {
+  "i": 160,
+  "pl": "„Zapytam się Henryka Szlangbauma” — rzekł, wstając od kantorka.",
+  "start": 1672.26
+ },
+ {
+  "i": 161,
+  "pl": "W oddziale tkanin mały, zgarbiony Szlangbaum, z czerwonymi oczyma i wyrazem zajadłości na twarzy, kręcił się jak zwykłe, skacząc po drabince albo nurzając się między sztukami perkalu.",
+  "start": 1677.51
+ },
+ {
+  "i": 162,
+  "pl": "Tak już przywykł do swojej gorączkowej roboty, że choć nie było interesantów, on ciągle wydostawał jakąś sztukę, odwijał i zawijał, ażeby następnie umieścić ją na właściwym miejscu.",
+  "start": 1690.82
+ },
+ {
+  "i": 163,
+  "pl": "Zobaczywszy pana Ignacego Szlangbaum zawiesił swoją jałową pracę i otarł pot z czoła.",
+  "start": 1703.18
+ },
+ {
+  "i": 164,
+  "pl": "— Ciężko, co?... — rzekł.",
+  "start": 1709.03
+ },
+ {
+  "i": 165,
+  "pl": "— Bo po co pan przekładasz te graty, skoro nie ma gości w sklepie? — odparł Rzecki.",
+  "start": 1712.5
+ },
+ {
+  "i": 166,
+  "pl": "— Bah!... gdybym tego nie robił, zapomniałbym, gdzie co leży... stawy zaśniedziałyby w członkach... Zresztą — jużem przywykł... Pan ma jaki interes do mnie?...",
+  "start": 1718.86
+ },
+ {
+  "i": 167,
+  "pl": "Rzecki stropił się na chwilę.",
+  "start": 1729.04
+ },
+ {
+  "i": 168,
+  "pl": "— Nie... Tak chciałem zobaczyć, jak panu tu idzie — odpowiedział pan Ignacy rumieniąc się, o ile to było możliwe w jego wieku.",
+  "start": 1730.78
+ },
+ {
+  "i": 169,
+  "pl": "„Czyżby i on mnie posądzał i śledził?... — błysnęło w głowie Szlangbaumowi i gniew go ogarnął. — Tak, ma ojciec rację... Dziś wszyscy huzia! na Żydów. Niedługo już trzeba będzie zapuścić pejsy i włożyć jarmułkę<sup>515<\/sup>...”",
+  "start": 1738.94
+ },
+ {
+  "i": 170,
+  "pl": "„On coś wie!” — pomyślał Rzecki i rzekł głośno:",
+  "start": 1753.5
+ },
+ {
+  "i": 171,
+  "pl": "— Podobno... podobno szanowny ojciec pański kupuje jutro kamienicę... kamienicę pana Łęckiego?...",
+  "start": 1756.98
+ },
+ {
+  "i": 172,
+  "pl": "— Nic o tym nie wiem — odpowiedział Szlangbaum spuszczając oczy. W duchu zaś dodał:",
+  "start": 1764.01
+ },
+ {
+  "i": 173,
+  "pl": "„Mój stary kupuje dom dla Wokulskiego, a oni myślą i pewnie mówią: ot, patrzajcie, znowu Żyd, lichwiarz zrujnował jednego katolika i pana z panów...”",
+  "start": 1769.77
+ },
+ {
+  "i": 174,
+  "pl": "„Coś wie, tylko gadać nie chce — myślał Rzecki. — Zawsze Żyd...”",
+  "start": 1780.02
+ },
+ {
+  "i": 175,
+  "pl": "Pokręcił się jeszcze po sali, co Szlangbaum uważał za dalszy ciąg posądzeń i śledzenia go, i wrócił do siebie, wzdychając.",
+  "start": 1785.02
+ },
+ {
+  "i": 176,
+  "pl": "„To jest okropne, że Stach ma więcej zaufania do Żydów aniżeli do mnie...”",
+  "start": 1794.1
+ },
+ {
+  "i": 177,
+  "pl": "„Po co on jednak kupuje ten dom, po co wdaje się z Łęckimi... A może nie kupuje?... Może to tylko pogłoski?...”",
+  "start": 1798.48
+ },
+ {
+  "i": 178,
+  "pl": "Tak się lękał uwięzienia w murach dziewięćdziesięciu tysięcy rubli gotówki, że cały dzień tylko o tym myślał. Była chwila, że chciał wprost zapytać Wokulskiego, ale — zabrakło mu odwagi.",
+  "start": 1805.4
+ },
+ {
+  "i": 179,
+  "pl": "„Stach — mówił w sobie — wdaje się dziś tylko z panami, a ufa Żydom. Co jemu po starym Rzeckim!...”",
+  "start": 1817.71
+ },
+ {
+  "i": 180,
+  "pl": "Więc postanowił pójść jutro do sądu i zobaczyć, czy naprawdę stary Szlangbaum kupi dom Łęckich i czy, jak mówił Klejn, dolicytuje go do dziewięćdziesięciu tysięcy rubli. Jeżeli to się sprawdzi, będzie znakiem, że wszystko inne jest prawdą.",
+  "start": 1824.76
+ },
+ {
+  "i": 181,
+  "pl": "W południe wpadł do sklepu Wokulski i zaczął rozmawiać z Rzeckim wypytując go o wczorajszy teatr i o to: dlaczego uciekł z pierwszego rzędu krzeseł, a album kazał doręczyć Rossiemu przez Pifkego.",
+  "start": 1840.62
+ },
+ {
+  "i": 182,
+  "pl": "Ale pan Ignacy miał w sercu tyle żalów i tyle wątpliwości co do swego kochanego Stacha, że odpowiadał mu półgębkiem i z nachmurzoną twarzą.",
+  "start": 1853.4
+ },
+ {
+  "i": 183,
+  "pl": "Więc i Wokulski umilknął i opuścił sklep z goryczą w duszy.",
+  "start": 1863.35
+ },
+ {
+  "i": 184,
+  "pl": "„Wszyscy odwracają się ode mnie — mówił sobie — nawet Ignacy... Nawet on... Ale ty mi to wynagrodzisz!...” — dodał już na ulicy, patrząc w stronę Alei Ujazdowskiej.",
+  "start": 1868.01
+ },
+ {
+  "i": 185,
+  "pl": "Po wyjściu Wokulskiego ze sklepu Rzecki ostrożnie wypytał się „panów”, w którym sądzie i o której godzinie odbywają się licytacje domów. Potem uprosił Lisieckiego o zastępstwo na jutro między dziesiątą z rana a drugą po południu i z podwójną gorliwością zabrał się do swoich rachunków.",
+  "start": 1878.65
+ },
+ {
+  "i": 186,
+  "pl": "Machinalnie (choć bez błędu) dodawał długie jak Nowy Świat kolumny cyfr, a w przerwach myślał:",
+  "start": 1899.55
+ },
+ {
+  "i": 187,
+  "pl": "„Dzisiaj zmarnowałem blisko godzinę, jutro zmarnuję z pięć godzin, a wszystko dlatego, że Stach więcej ufa Szlangbaumom aniżeli mnie... Na co jemu kamienica?... Po jakiego diabła wdaje się z tym bankrutem Łęckim?...",
+  "start": 1905.45
+ },
+ {
+  "i": 188,
+  "pl": "Skąd mu strzeliło do łba latać na włoski teatr i jeszcze dawać kosztowne prezenta temu przybłędzie Rossiemu?...”",
+  "start": 1919.49
+ },
+ {
+  "i": 189,
+  "pl": "Nie podnosząc głowy od ksiąg siedział przy kantorku do szóstej, a tak był zatopiony w robocie, że już nie tylko nie przyjmował pieniędzy, ale nawet nie widział i nie słyszał gości, którzy roili się i hałasowali w sklepie jak olbrzymie pszczoły w ulu.",
+  "start": 1926.64
+ },
+ {
+  "i": 190,
+  "pl": "Nie spostrzegł też jednego najmniej spodziewanego gościa, którego „panowie” witali okrzykami i głośnymi pocałunkami.",
+  "start": 1941.34
+ },
+ {
+  "i": 191,
+  "pl": "Dopiero gdy przybysz stanąwszy nad nim krzyknął mu w ucho:",
+  "start": 1949.73
+ },
+ {
+  "i": 192,
+  "pl": "— Panie Ignacy, to ja!...",
+  "start": 1953.91
+ },
+ {
+  "i": 193,
+  "pl": "Rzecki ocknął się, podniósł głowę, brwi i oczy w górę i zobaczył Mraczewskiego...",
+  "start": 1956.13
+ },
+ {
+  "i": 194,
+  "pl": "— Hę?... — spytał pan Ignacy przypatrując się młodemu elegantowi, który opalił się, zmężniał, a nade wszystko utył.",
+  "start": 1962.29
+ },
+ {
+  "i": 195,
+  "pl": "— No, co... no, co słychać?... — ciągnął pan Ignacy podając mu rękę. — Co z polityki?...",
+  "start": 1971.0
+ },
+ {
+  "i": 196,
+  "pl": "— Nic nowego — odparł Mraczewski. — Kongres w Berlinie robi swoje, Austriacy wezmą Bośnię<sup>516<\/sup>.",
+  "start": 1977.24
+ },
+ {
+  "i": 197,
+  "pl": "— No, no, no... żarty, żarty!... A o małym Napoleonku co słychać?",
+  "start": 1983.4
+ },
+ {
+  "i": 198,
+  "pl": "— Uczy się w Anglii w szkole wojskowej i podobno kocha się w jakiejś aktorce...",
+  "start": 1988.06
+ },
+ {
+  "i": 199,
+  "pl": "— Zaraz kocha się!... — powtórzył drwiąco pan Ignacy. — A do Francji nie wraca?... Jakże się pan miewasz?... Skądeś się tu wziął?... No, gadaj prędko — zawołał Rzecki wesoło, uderzając go w ramię. — Kiedyżeś przyjechał?...",
+  "start": 1993.16
+ },
+ {
+  "i": 200,
+  "pl": "— A to cała historia! — odpowiedział Mraczewski rzucając się na fotel. — Przyjechaliśmy tu dziś z Suzinem o jedynastej... Od pierwszej do trzeciej byliśmy z nim u Wokulskiego, a po trzeciej wpadłem na chwilę do matki i na chwilę do pani Stawskiej... Pyszna kobieta, co?...",
+  "start": 2006.52
+ },
+ {
+  "i": 201,
+  "pl": "— Stawska?... Stawska?... — przypominał sobie Rzecki trąc czoło.",
+  "start": 2022.68
+ },
+ {
+  "i": 202,
+  "pl": "— Znasz ją pan przecie. Ta piękna, co to ma córeczkę... Co to się tak podobała panu...",
+  "start": 2027.16
+ },
+ {
+  "i": 203,
+  "pl": "— Ach, ta!... wiem... Nie mnie się podobała — westchnął Rzecki — tylko myślałem, że dobra byłaby z niej żona dla Stacha...",
+  "start": 2032.18
+ },
+ {
+  "i": 204,
+  "pl": "— Paradny pan jesteś — roześmiał się Mraczewski. — Przecież ona ma męża...",
+  "start": 2040.3
+ },
+ {
+  "i": 205,
+  "pl": "— Męża?",
+  "start": 2044.36
+ },
+ {
+  "i": 206,
+  "pl": "— Naturalnie. Zresztą znane nazwisko. Przed czterema laty uciekł biedak za granicę, bo posądzili go o zabicie tej...",
+  "start": 2045.32
+ },
+ {
+  "i": 207,
+  "pl": "— Ach, pamiętam!... Więc to on?... Dlaczegóż nie wrócił, boć przecie okazało się, że nie winien?...",
+  "start": 2052.42
+ },
+ {
+  "i": 208,
+  "pl": "— Rozumie się, że nie winien — prawił Mraczewski. — Ale swoją drogą, jak dmuchnął do Ameryki, tak po dziś dzień nie ma o nim wiadomości. Pewnie biedak gdzieś zmarniał, a kobieta została ani panną, ani wdową... Okropny los!...",
+  "start": 2058.58
+ },
+ {
+  "i": 209,
+  "pl": "Utrzymywać cały dom z haftu, z gry na fortepianie, z lekcyj angielskiego... pracować cały dzień jak wół i jeszcze nie mieć męża... Biedne te kobiety!... My byśmy, panie Ignacy, tak długo nie wytrwali w cnocie, co?... O, wariat stary...",
+  "start": 2071.98
+ },
+ {
+  "i": 210,
+  "pl": "— Kto wariat? — spytał Rzecki, zdumiony nagłym przejściem w rozmowie.",
+  "start": 2086.5
+ },
+ {
+  "i": 211,
+  "pl": "— Któż by, jeżeli nie Wokulski — odparł Mraczewski. — Suzin jedzie do Paryża i chce go gwałtem zabrać, bo ma tam robić jakieś ogromne zakupy towarów. Nasz stary nie zapłaciłby grosza za podróż, miałby książęce życie, bo Suzin im dalej od żony, tym szerzej rozpuszcza kieszeń...",
+  "start": 2090.82
+ },
+ {
+  "i": 212,
+  "pl": "E! i jeszcze zarobiłby z dziesięć tysięcy rubli.",
+  "start": 2107.78
+ },
+ {
+  "i": 213,
+  "pl": "— Stach... to jest nasz pryncypał zarobiłby z dziesięć tysięcy? — spytał Rzecki.",
+  "start": 2111.06
+ },
+ {
+  "i": 214,
+  "pl": "— Naturalnie. Ale cóż, kiedy tak już zgłupiał...",
+  "start": 2115.46
+ },
+ {
+  "i": 215,
+  "pl": "— No, no... panie Mraczewski!... — zgromił go pan Ignacy",
+  "start": 2118.22
+ },
+ {
+  "i": 216,
+  "pl": "— Ale słowo honoru, że zgłupiał. Bo przecież wiem, że jedzie na wystawę do Paryża, i to lada tydzień...",
+  "start": 2121.44
+ },
+ {
+  "i": 217,
+  "pl": "— Tak.",
+  "start": 2127.44
+ },
+ {
+  "i": 218,
+  "pl": "— Więc nie wolałby jechać z Suzinem, nic nie wydać i jeszcze tyle zarobić?... Przez dwie godziny błagał go Suzin: „Jedź ze mną, Stanisławie Piotrowiczu”, prosił, kłaniał się i na nic... Wokulski nie i nie!... Mówił, że ma tutaj jakieś interesa...",
+  "start": 2128.76
+ },
+ {
+  "i": 219,
+  "pl": "— No, ma... — wtrącił Rzecki.",
+  "start": 2142.82
+ },
+ {
+  "i": 220,
+  "pl": "— O tak, ma... — przedrzeźniał go Mraczewski. — Największy jego interes jest nie zrażać Suzina, który pomógł mu zrobić majątek, dziś daje mu ogromny kredyt i nieraz mówił do mnie, że nie uspokoi się, dopóki Stanisław Piotrowicz nie odłoży sobie choć z milion rubli...",
+  "start": 2145.72
+ },
+ {
+  "i": 221,
+  "pl": "I takiemu przyjacielowi odmawiać tak drobnej usługi, zresztą bardzo dobrze opłaconej! — oburzał się Mraczewski.",
+  "start": 2161.62
+ },
+ {
+  "i": 222,
+  "pl": "Pan Ignacy otworzył usta, lecz przygryzł je. O mało że się nie wygadał w tej chwili, iż Wokulski kupuje dom Łęckiego i że tak wielkie prezenta daje Rossiemu.",
+  "start": 2168.23
+ },
+ {
+  "i": 223,
+  "pl": "Do kantorka zbliżył się Klejn z Lisieckim. Mraczewski spostrzegłszy, że są nie zajęci, zaczął rozmawiać z nimi, a pan Ignacy znowu został sam nad swoją księgą.",
+  "start": 2179.65
+ },
+ {
+  "i": 224,
+  "pl": "„Nieszczęście! — myślał. — Dlaczego ten Stach nie jedzie darmo do Paryża i jeszcze zniechęca do siebie Suzina?... Jaki zły duch spętał go z tymi Łęckimi... Czyżby?... Eh! przecie on aż tak głupim nie jest... A swoją drogą, szkoda tej podróży i dziesięciu tysięcy rubli...",
+  "start": 2190.77
+ },
+ {
+  "i": 225,
+  "pl": "Mój Boże! jak się to ludzie zmieniają...”",
+  "start": 2209.05
+ },
+ {
+  "i": 226,
+  "pl": "Schylił głowę i posuwając palcem z dołu do góry albo z góry na dół, sumował kolumny cyfr długich jak Nowy Świat i Krakowskie Przedmieście. Sumował bez błędu, nawet z cicha mruczał, a jednocześnie myślał sobie, że jego Stach znajduje się na jakiejś fatalnej pochyłości.",
+  "start": 2212.08
+ },
+ {
+  "i": 227,
+  "pl": "„To darmo — szeptał mu głos ukryty na samym dnie duszy — to darmo!... Stach wklepał się w grubą awanturę... I z pewnością w polityczną awanturę, bo taki człowiek jak on nie wariowałby dla kobiety, choćby nawet była nią sama — panna... Ach, do diabła! omyliłem się...",
+  "start": 2230.45
+ },
+ {
+  "i": 228,
+  "pl": "Wyrzeka się, gardzi dziesięcioma tysiącami rubli, on, który osiem lat temu musiał pożyczać ode mnie po dziesięć rubli na miesiąc, ażeby za to wykarmić się jak nędzarz...",
+  "start": 2251.35
+ },
+ {
+  "i": 229,
+  "pl": "A teraz rzuca w błoto dziesięć tysięcy rubli, pakuje w kamienicę dziewięćdziesiąt tysięcy, robi aktorom prezenta po kilkadziesiąt rubli... Jak mi Bóg miły, nic nie rozumiem! I to niby jest pozytywista, człowiek realnie myślący...",
+  "start": 2262.21
+ },
+ {
+  "i": 230,
+  "pl": "Mnie nazywają starym romantykiem, ale przecież takich głupstw nie robiłbym... No, chociaż jeżeli zabrnął w politykę...”",
+  "start": 2279.63
+ },
+ {
+  "i": 231,
+  "pl": "Na tych medytacjach upłynął mu czas do zamknięcia sklepu. Głowa go trochę bolała, więc wyszedł na spacer na Nowy Zjazd i wróciwszy do domu wcześnie spać się położył.",
+  "start": 2287.78
+ },
+ {
+  "i": 232,
+  "pl": "„Jutro — mówił do siebie — zrozumiem ostatecznie, co się święci. Jeżeli Szlangbaum kupi dom Łęckiego i da dziewięćdziesiąt tysięcy rubli, to znaczy, że go naprawdę Stach podstawił i już jest skończonym wariatem... A może też Stach nie kupuje kamienicy, może to wszystko plotki?...”",
+  "start": 2300.98
+ },
+ {
+  "i": 233,
+  "pl": "Zasnął i śniło mu się, że w oknie jakiegoś wielkiego domu widzi pannę Izabelę, do której stojący obok niego Wokulski chce biec. Na próżno zatrzymuje go pan Ignacy, aż pot oblewa mu całe ciało. Wokulski wyrywa mu się i znika w bramie kamienicy.",
+  "start": 2321.42
+ },
+ {
+  "i": 234,
+  "pl": "„Stachu, wróć się!...” — krzyczy pan Ignacy widząc, że dom poczyna się chwiać.",
+  "start": 2340.29
+ },
+ {
+  "i": 235,
+  "pl": "Jakoż dom zawala się. Panna Izabela, uśmiechnięta, wylatuje z niego jak ptak, a Wokulskiego nie widać...",
+  "start": 2345.7
+ },
+ {
+  "i": 236,
+  "pl": "„Może wbiegł na podwórko i ocalał...” — myśli pan Ignacy i budzi się z mocnym biciem serca.",
+  "start": 2352.84
+ },
+ {
+  "i": 237,
+  "pl": "Nazajutrz pan Ignacy budzi się na kilka minut przed szóstą; przypomina sobie, że to dziś właśnie licytują kamienicę Łęckiego, że ma przypatrzeć się temu widowisku, i zrywa się z łóżka jak sprężyna.",
+  "start": 2360.77
+ },
+ {
+  "i": 238,
+  "pl": "Biegnie boso do wielkiej miednicy, oblewa się cały zimną wodą i patrząc na swoje patykowate nogi mruczy:",
+  "start": 2373.81
+ },
+ {
+  "i": 239,
+  "pl": "„Zdaje mi się, że trochę utyłem.”",
+  "start": 2380.79
+ },
+ {
+  "i": 240,
+  "pl": "Przy skomplikowanym procesie mycia się pan Ignacy robi dziś taki zgiełk, że budzi Ira. Brudny pudel otwiera jedyne oko, jakie mu pozostało, i snadź dostrzegłszy niezwykłe ożywienie swego pana zeskakuje z kufra na podłogę.",
+  "start": 2383.99
+ },
+ {
+  "i": 241,
+  "pl": "Przeciąga się, ziewa, wydłuża w tył jedną nogę, potem drugą nogę, potem na chwilę siada naprzeciw okna, za którym słychać bolesny krzyk zarzynanej kury, i zmiarkowawszy, że naprawdę nic się nie stało, wraca na swoją pościel.",
+  "start": 2401.07
+ },
+ {
+  "i": 242,
+  "pl": "Jest przy tym tak ostrożny czy może rozgniewany na pana Ignacego za fałszywy alarm, że odwraca się grzbietem do pokoju, a nosem i ogonem do ściany, jak gdyby panu Ignacemu chciał powiedzieć:",
+  "start": 2415.29
+ },
+ {
+  "i": 243,
+  "pl": "„Już ja tam wolę nie widzieć twojej chudości.”",
+  "start": 2428.29
+ },
+ {
+  "i": 244,
+  "pl": "Rzecki ubiera się w okamgnieniu i z piorunującą szybkością wypija herbatę nie patrząc ani na samowar, ani na służącego, który go przyniósł. Potem biegnie do sklepu jeszcze zamkniętego, przez trzy godziny rachuje bez względu na ruch gości i rozmowy „panów” i punkt o dziesiątej mówi do Lisieckiego:",
+  "start": 2432.93
+ },
+ {
+  "i": 245,
+  "pl": "— Panie Lisiecki, wrócę o drugiej...",
+  "start": 2451.09
+ },
+ {
+  "i": 246,
+  "pl": "— Koniec świata! — mruczy Lisiecki. — Musiało trafić się coś nadzwyczajnego, jeżeli ten safanduła wychodzi o takiej porze do miasta...",
+  "start": 2454.01
+ },
+ {
+  "i": 247,
+  "pl": "Stanąwszy na chodniku przed sklepem pan Ignacy dostaje ataku wyrzutów sumienia.",
+  "start": 2463.54
+ },
+ {
+  "i": 248,
+  "pl": "„Co ja dziś wyrabiam?... — myśli. — Co mnie obchodzą licytacje choćby pałaców, nie tylko kamienic?...”",
+  "start": 2468.4
+ },
+ {
+  "i": 249,
+  "pl": "I waha się: czy iść do sądu, czy wracać do sklepu? W tej chwili widzi na Krakowskim przejeżdżającą dorożkę, a w niej damę wysoką, chudą i mizerną, w czarnym kostiumie. Dama właśnie patrzy na ich sklep, a Rzecki w jej zapadłych oczach i lekko posiniałych ustach spostrzega wyraz głębokiej nienawiści.",
+  "start": 2473.98
+ },
+ {
+  "i": 250,
+  "pl": "„Dalibóg, że to baronowa Krzeszowska... — mruczy pan Ignacy. — Oczywiście, jedzie na licytację... Awantura!...”",
+  "start": 2494.02
+ },
+ {
+  "i": 251,
+  "pl": "Budzą się w nim jednak wątpliwości. Kto wie, czy baronowa jedzie do sądu; może to wszystko plotki?... „Warto sprawdzić” — myśli pan Ignacy, zapomina o swoich obowiązkach dysponenta i najstarszego subiekta i poczyna iść za dorożką.",
+  "start": 2502.0
+ },
+ {
+  "i": 252,
+  "pl": "Nędzne konie wloką się tak powoli, że pan Ignacy może obserwować wehikuł na całej przestrzeni do kolumny Zygmunta. W tym miejscu dorożka skręca na lewo, a Rzecki myśli:",
+  "start": 2516.82
+ },
+ {
+  "i": 253,
+  "pl": "„Rozumie się, że jedzie baba na Miodową<sup>517<\/sup>. Taniej kosztowałaby ją podróż na miotle...”",
+  "start": 2527.32
+ },
+ {
+  "i": 254,
+  "pl": "Przez dom Rezlera<sup>518<\/sup> (który przypomina mu onegdajszą pijatykę!) i część Senatorskiej<sup>519<\/sup> pan Ignacy dostaje się na Miodową.",
+  "start": 2535.37
+ },
+ {
+  "i": 255,
+  "pl": "Tu przechodząc około składu herbaty Nowickiego<sup>520<\/sup> wstępuje na chwilę, ażeby powiedzieć właścicielowi: „dzień dobry!”, i szybko ucieka, dalej mrucząc:",
+  "start": 2544.45
+ },
+ {
+  "i": 256,
+  "pl": "„Co on sobie pomyśli zobaczywszy mnie o tej godzinie na ulicy?... Naturalnie pomyśli, że jestem najpodlejszy dysponent, który zamiast siedzieć w sklepie, łajdaczy się po mieście... Oto los!...”",
+  "start": 2553.23
+ },
+ {
+  "i": 257,
+  "pl": "Przez pozostałą część drogi do sądu trapi pana Ignacego sumienie. Przybiera ono postać olbrzyma z brodą w żółtym jedwabnym kitlu i takichże spodniach, który dobrodusznie a zarazem ironicznie patrząc mu w oczy mówi:",
+  "start": 2565.64
+ },
+ {
+  "i": 258,
+  "pl": "„Powiedz mi pan, panie Rzecki, jaki to porządny kupiec wałęsa się o tej porze po mieście? Pan jesteś taki kupiec jak ja baletnik...”",
+  "start": 2580.28
+ },
+ {
+  "i": 259,
+  "pl": "I pan Ignacy czuje, że nie może nic odpowiedzieć surowemu sędziemu. Rumieni się, potnieje i już chce wracać do swoich ksiąg (w taki jednakże sposób, ażeby go zobaczył Nowicki), gdy nagle widzi przed sobą dawny pałac Paca.",
+  "start": 2589.82
+ },
+ {
+  "i": 260,
+  "pl": "„Tu będzie licytacja!” — mówi pan Ignacy i zapomina o skrupułach. Olbrzym z brodą, w żółtym jedwabnym kitlu, rozpływa się przed oczyma jego duszy jak mgła.",
+  "start": 2606.5
+ },
+ {
+  "i": 261,
+  "pl": "Rozejrzawszy się w sytuacji pan Ignacy przede wszystkim spostrzega, że do gmachu sądowego prowadzą dwie olbrzymie bramy i dwoje drzwi. Następnie widzi cztery różnej wielkości gromady starozakonnych z minami bardzo poważnymi.",
+  "start": 2617.84
+ },
+ {
+  "i": 262,
+  "pl": "Pan Ignacy nie wie, dokąd iść; idzie jednak do tych drzwi, przed którymi stoi najwięcej starozakonnych, domyślając się, że tam właśnie odbywa się licytacja.",
+  "start": 2631.88
+ },
+ {
+  "i": 263,
+  "pl": "W tej chwili przed gmach sądu zajeżdża powóz, a w nim pan Łęcki. Pan Ignacy nie może pohamować czci dla jego pięknych, siwych wąsów i podziwu dla jego humoru.",
+  "start": 2643.29
+ },
+ {
+  "i": 264,
+  "pl": "Pan Łęcki bowiem nie wygląda tak jak bankrut, któremu licytują kamienicę, ale jak milioner, który przyjechał do rejenta, ażeby podnieść drobną sumę stu kilkudziesięciu tysięcy rubli.",
+  "start": 2654.01
+ },
+ {
+  "i": 265,
+  "pl": "Pan Łęcki wysiada uroczyście z powozu, triumfalnym krokiem zbliża się do drzwi sądowych, a jednocześnie z drugiej strony ulicy przybiega do niego dżentelmen mający wszelakie pozory próżniaka, który jednakże jest adwokatem. Po bardzo krótkim, a nawet niedbałym powitaniu pan Łęcki pyta dżentelmena:",
+  "start": 2667.45
+ },
+ {
+  "i": 266,
+  "pl": "— Cóż?... kiedyż?...",
+  "start": 2688.47
+ },
+ {
+  "i": 267,
+  "pl": "— Za godzinkę... może trochę dłużej... — odpowiada dżentelmen.",
+  "start": 2689.77
+ },
+ {
+  "i": 268,
+  "pl": "— Wyobraź pan sobie — mówi z dobrotliwym uśmiechem pan Łęcki — że przed tygodniem jeden mój znajomy wziął dwakroć za dom<sup>521<\/sup>, który go kosztował sto pięćdziesiąt tysięcy. A że mój kosztował mnie sto tysięcy, więc powinienem wziąć w tym stosunku ze sto dwadzieścia pięć...",
+  "start": 2693.41
+ },
+ {
+  "i": 269,
+  "pl": "— Hum!... hum!... — mruczy adwokat.",
+  "start": 2711.77
+ },
+ {
+  "i": 270,
+  "pl": "— Będziesz się pan śmiał — ciągnie pan Tomasz — z tego, co powiem (bo wy lubicie żartować z przeczuć i snów), a jednak dziś śniło mi się, że mój dom poszedł za sto dwadzieścia tysięcy... Mówię to panu przed licytacją, uważasz?... Za parę godzin przekonasz się, że nie należy śmiać się ze snów...",
+  "start": 2713.97
+ },
+ {
+  "i": 271,
+  "pl": "Są rzeczy na niebie i ziemi...",
+  "start": 2731.07
+ },
+ {
+  "i": 272,
+  "pl": "— Hum!... hum!... — odpowiada adwokat i obaj panowie wchodzą w pierwsze drzwi gmachu.",
+  "start": 2733.65
+ },
+ {
+  "i": 273,
+  "pl": "„Chwała Bogu! — myślał pan Ignacy. — Jeżeli Łęcki weźmie sto dwadzieścia tysięcy za swój dom, to znaczy, że Stach nie zapłaci za niego dziewięćdziesięciu tysięcy rubli.”",
+  "start": 2739.5
+ },
+ {
+  "i": 274,
+  "pl": "Wtem ktoś lekko dotyka jego ramienia. Pan Ignacy ogląda się i widzi za sobą starego Szlangbauma.",
+  "start": 2749.34
+ },
+ {
+  "i": 275,
+  "pl": "— Czy może pan mnie szuka? — pyta sędziwy Żyd, bystro patrząc mu w oczy.",
+  "start": 2756.61
+ },
+ {
+  "i": 276,
+  "pl": "— Nie, nie... — odpowiada zmieszany pan Ignacy.",
+  "start": 2762.11
+ },
+ {
+  "i": 277,
+  "pl": "— Pan nie ma do mnie żaden interes?... — powtarza Szlangbaum mrugając czerwonymi powiekami.",
+  "start": 2764.91
+ },
+ {
+  "i": 278,
+  "pl": "— Nie, nie...",
+  "start": 2770.83
+ },
+ {
+  "i": 279,
+  "pl": "— Git! — mruczy Szlangbaum i odchodzi między swoich współwyznawców.",
+  "start": 2772.03
+ },
+ {
+  "i": 280,
+  "pl": "Panu Ignacemu robi się zimno: obecność Szlangbauma w tym miejscu budzi w nim nowe podejrzenie. Aby je rozproszyć, pan Ignacy pyta stojącego przy drzwiach woźnego, gdzie odbywają się licytacje. Woźny wskazuje mu schody.",
+  "start": 2776.49
+ },
+ {
+  "i": 281,
+  "pl": "Pan Ignacy biegnie na górę i wpada do jednej sali. Uderza go tłum starozakonnych, słuchających z największym skupieniem jakiejś mowy. Rzecki poznaje, że w tej chwili toczy się tu sprawa przed sądem, że przemawia prokurator i że chodzi o grube oszustwo.",
+  "start": 2790.49
+ },
+ {
+  "i": 282,
+  "pl": "W sali jest duszno; mowę prokuratora tłumi nieco hałas dorożek. Sędziowie wyglądają, jakby drzemali, adwokat ziewa, oskarżony ma minę, jakby chciał oszukać sąd najwyższej instancji, starozakonni przypatrują mu się ze współczuciem, a oskarżenia słuchają z uwagą.",
+  "start": 2807.35
+ },
+ {
+  "i": 283,
+  "pl": "Niektórzy przy każdym silniejszym zarzucie prokuratora krzywią się i syczą: „aj-waj!...”",
+  "start": 2825.79
+ },
+ {
+  "i": 284,
+  "pl": "Pan Ignacy opuszcza salę; nie dla tej sprawy tu przyszedł.",
+  "start": 2831.81
+ },
+ {
+  "i": 285,
+  "pl": "Znalazłszy się w przedsionku, pan Ignacy chce iść na drugie piętro; jednocześnie omija go schodząca stamtąd baronowa Krzeszowska w towarzystwie mężczyzny, który ma powierzchowność znudzonego nauczyciela języków starożytnych.",
+  "start": 2836.68
+ },
+ {
+  "i": 286,
+  "pl": "Jest to jednak adwokat, o czym świadczy srebrny znaczek przypięty do klapy bardzo wytartego fraka; szaraczkowe<sup>522<\/sup> zaś spodnie kapłana sprawiedliwości są na kolanach tak wytłoczone, jak gdyby ich właściciel, zamiast bronić swoich klientów, nieustannie oświadczał się bogini Temidzie.",
+  "start": 2850.34
+ },
+ {
+  "i": 287,
+  "pl": "— Więc jeżeli dopiero za godzinę — mówi jękliwym głosem pani Krzeszowska — w takim razie pójdę teraz do Kapucynów<sup>523<\/sup>... Nie sądzi pan...",
+  "start": 2869.53
+ },
+ {
+  "i": 288,
+  "pl": "— Nie sądzę, ażeby wizyta pani u Kapucynów wpłynęła na przebieg licytacji — odpowiada znudzony adwokat.",
+  "start": 2878.65
+ },
+ {
+  "i": 289,
+  "pl": "— Gdyby jednak pan mecenas szczerze chciał, gdyby pobiegał...",
+  "start": 2885.51
+ },
+ {
+  "i": 290,
+  "pl": "Mecenas w wytłoczonych spodniach niecierpliwie potrząsa ręką.",
+  "start": 2889.41
+ },
+ {
+  "i": 291,
+  "pl": "— Ach, pani dobrodziejko — mówi — ja już tyle nabiegałem się w sprawie tej licytacji, że choćby dzisiaj należy mi się spoczynek. W dodatku mam za kilka minut urzędówkę<sup>524<\/sup> o zabójstwo... Widzi pani te piękne damy?... Wszystkie idą słuchać mojej obrony... Efektowna sprawa!...",
+  "start": 2893.37
+ },
+ {
+  "i": 292,
+  "pl": "— Więc pan mecenas opuszcza mnie? — wykrzykuje baronowa.",
+  "start": 2909.07
+ },
+ {
+  "i": 293,
+  "pl": "— Ależ będę... będę na sali — przerywa jej adwokat — będę przy licytacji, tylko niech mi pani zostawi choć parę minut do pomyślenia o moim zabójcy...",
+  "start": 2913.23
+ },
+ {
+  "i": 294,
+  "pl": "I wpada w otwarte drzwi, nakazując woźnemu, ażeby nikogo nie wpuszczał.",
+  "start": 2923.33
+ },
+ {
+  "i": 295,
+  "pl": "— O Boże! — mówi baronowa na cały głos — nędzny zabójca ma obrońcę, ale biedna, samotna kobieta na próżno szuka człowieka, który by ujął się za jej honorem, za jej spokojem, za jej mieniem...",
+  "start": 2928.21
+ },
+ {
+  "i": 296,
+  "pl": "Ponieważ pan Ignacy nie chce być tym człowiekiem, więc spiesznie ucieka na dół, potrącając młode, piękne i eleganckie kobiety, które przypędziła tu żądza wysłuchania sławnego procesu o zabójstwo.",
+  "start": 2942.11
+ },
+ {
+  "i": 297,
+  "pl": "To lepsze aniżeli teatr; aktorzy bowiem urzędowego widowiska grają jeżeli nie lepiej, to z pewnością realniej od dramatycznych.",
+  "start": 2954.87
+ },
+ {
+  "i": 298,
+  "pl": "Na schodach wciąż rozlegają się lamentacje pani Krzeszowskiej i śmiechy młodych, pięknych i eleganckich kobiet, śpieszących na oglądanie zabójcy, pokrwawionej odzieży, siekiery, którą zabił swoją ofiarę, i spoconych sędziów.",
+  "start": 2965.08
+ },
+ {
+  "i": 299,
+  "pl": "Pan Ignacy ucieka z sieni aż na drugą stronę ulicy; na rogu Kapitulnej i Miodowej wpada do cukierni i kryje się w tak ciemnym kącie, w którym nie mogłaby już poznać go nawet pani Krzeszowska.",
+  "start": 2979.38
+ },
+ {
+  "i": 300,
+  "pl": "Każe sobie podać filiżankę pienistej czekolady, zasłania się podartą gazetą i widzi, że w tym małym pokoiku znajduje się drugi, jeszcze ciemniejszy kąt, w którym mieści się pewien okazałej tuszy jegomość i jakiś zgarbiony Żyd.",
+  "start": 2993.08
+ },
+ {
+  "i": 301,
+  "pl": "Pan Ignacy myśli, że okazały jegomość jest co najmniej hrabią i właścicielem wielkich dóbr na Ukrainie, a Żyd jego faktorem; tymczasem zaś słucha toczącej się między nimi rozmowy.",
+  "start": 3007.86
+ },
+ {
+  "i": 302,
+  "pl": "Panie dobrodzieju — mówi zgarbiony Żyd — żeby nie to, że pana dobrodzieja nikt nie zna w Warszawie, to ja bym panu za ten interes nie dał nawet dziesięć rubli. A tak zarobi pan dobrodziej dwadzieścia pięć...",
+  "start": 3020.19
+ },
+ {
+  "i": 303,
+  "pl": "— I wystoję się z godzinę w dusznej sali! — odmrukuje jegomość.",
+  "start": 3033.22
+ },
+ {
+  "i": 304,
+  "pl": "— Prawda — ciągnie dalej Żyd — że w naszym wieku ciężko stoić, no, ale takie pieniądze to też nie chodzą piechotą... A jaką pan będzie miał reputację, kiedy się dowiedzą, że pan dobrodziej chciał kupić kamienicę za osiemdziesiąt tysięcy rubli?...",
+  "start": 3037.74
+ },
+ {
+  "i": 305,
+  "pl": "— Niech będzie. Ale dwadzieścia pięć rubli gotówką na stół...",
+  "start": 3053.1
+ },
+ {
+  "i": 306,
+  "pl": "— Niech Bóg zabroni! — odpowiada Żyd. — Pan dobrodziej dostanie do ręki pięć rubli, a dwadzieścia pójdzie na dług tego nieszczęśliwego Seliga Kupferman, co już przez dwa lata grosza od pana nie widział, choć ma wyrok.",
+  "start": 3056.94
+ },
+ {
+  "i": 307,
+  "pl": "Okazały pan uderza ręką w stół marmurowy i chce wychodzić. Zgarbiony Żyd chwyta go za połę surduta, znowu sadza na krześle i ofiaruje sześć rubli gotówką.",
+  "start": 3070.08
+ },
+ {
+  "i": 308,
+  "pl": "Po kilkuminutowym targu strony godzą się na osiem rubli, z których siedem będą wypłacone po licytacji, a rubel natychmiast. Żyd opiera się, ale majestatyczny pan jednym argumentem rozcina jego wahania:",
+  "start": 3081.41
+ },
+ {
+  "i": 309,
+  "pl": "— Przecież, do diabła, muszę oddać za herbatę i ciastka!",
+  "start": 3094.86
+ },
+ {
+  "i": 310,
+  "pl": "Żyd wzdycha, z zatłuszczonej portmonetki wydobywa najbardziej podarty papierek i wyprostowawszy go kładzie na marmurowym stole. Następnie wstaje i leniwie opuszcza ciemny pokoik, a pan Ignacy przez dziurkę gazety poznaje w nim starego Szlangbauma.",
+  "start": 3098.56
+ },
+ {
+  "i": 311,
+  "pl": "Pan Ignacy spiesznie dopija czekoladę i ucieka z cukierni na ulicę. Już obrzydła mu licytacja, której ma pełne uszy i pełną głowę.",
+  "start": 3115.24
+ },
+ {
+  "i": 312,
+  "pl": "Chce w jakiś sposób przepędzić zbywający mu czas i spostrzegłszy otwarty kościół Kapucynów kieruje się do niego będąc pewnym, że w świątyni znajdzie spokój, przyjemny chłodek, a nade wszystko, że tam przynajmniej nie usłyszy o licytacji.",
+  "start": 3123.92
+ },
+ {
+  "i": 313,
+  "pl": "Wchodzi do kościoła i istotnie znajduje ciszę i chłód, a nadto nieboszczyka na katafalku otoczonego świecami, które się jeszcze nie palą, i kwiatami, które już nie pachną. Od pewnego czasu pan Ignacy nie lubi widoku trumny, więc skręca na lewo i widzi klęczącą — na posadzce w czarnym stroju kobietę.",
+  "start": 3140.0
+ },
+ {
+  "i": 314,
+  "pl": "Jest to baronowa Krzeszowska, kornie zgięta ku ziemi; bije się w piersi i co chwilę podnosi chustkę do oczu.",
+  "start": 3161.09
+ },
+ {
+  "i": 315,
+  "pl": "„Jestem pewny, iż modli się o to, ażeby dom Łęckiego poszedł za sześćdziesiąt tysięcy rubli” — myśli pan Ignacy. Lecz że i widok pani Krzeszowskiej nie wydaje mu się ponętnym, więc cofa się na palcach i przechodzi na prawą stronę kościoła.",
+  "start": 3168.87
+ },
+ {
+  "i": 316,
+  "pl": "Tu znajduje się tylko parę kobiet: jedna półgłosem odmawia różaniec, druga śpi. Zresztą nikogo więcej, tylko spoza filaru wychyla się średniego wzrostu mężczyzna, energicznie wyprostowany, pomimo siwych włosów, i szepczący modlitwę z zadartą głową.",
+  "start": 3183.57
+ },
+ {
+  "i": 317,
+  "pl": "Rzecki poznaje w nim pana Łęckiego i myśli:",
+  "start": 3201.85
+ },
+ {
+  "i": 318,
+  "pl": "„Jestem pewny, że ten prosi Boga, ażeby jego dom poszedł za sto dwadzieścia tysięcy rubli...”",
+  "start": 3204.19
+ },
+ {
+  "i": 319,
+  "pl": "Potem spiesznie opuszcza kościół zastanawiając się, w jaki też sposób dobry Bóg zadowolni<sup>525<\/sup> sprzeczne żądania pani baronowej Krzeszowskiej i pana Tomasza Łęckiego?",
+  "start": 3210.01
+ },
+ {
+  "i": 320,
+  "pl": "Nie znalazłszy, czego szukał, ani w cukierni, ani w kościele, pan Ignacy zaczyna spacerować po ulicy, niedaleko sądowego gmachu.",
+  "start": 3221.72
+ },
+ {
+  "i": 321,
+  "pl": "Jest bardzo zmieszany; zdaje mu się, że każdy przechodzień patrzy mu drwiąco w oczy, jakby mówił: „Nie wolałbyś to, stary łobuzie, pilnować sklepu?”, i że z każdej dorożki wyskoczy który z „panów” donosząc mu, że sklep spalił się lub zawalił.",
+  "start": 3229.52
+ },
+ {
+  "i": 322,
+  "pl": "Więc znowu myśli: czyby nie lepiej było dać za wygraną licytacji, a wrócić do swoich ksiąg i kantorka, gdy nagle słyszy rozpaczliwy krzyk.",
+  "start": 3245.82
+ },
+ {
+  "i": 323,
+  "pl": "To jakiś Żydek wychylił się przez okno sali sądowej i coś wrzasnął do gromady swoich współwyznawców, którzy na to hasło rzucili się do drzwi tłocząc się, potrącając spokojnych przechodniów i tupiąc niecierpliwie nogami jak spłoszone stado owiec w ciasnej owczarni.",
+  "start": 3255.93
+ },
+ {
+  "i": 324,
+  "pl": "„Aha, już zaczęła się licytacja!...” — mówi do siebie pan Ignacy idąc za nimi na górę.",
+  "start": 3273.95
+ },
+ {
+  "i": 325,
+  "pl": "W tej chwili czuje, że ktoś pochwycił go z tyłu za ramię, i odwróciwszy głowę widzi owego majestatycznego pana, który od Szlangbauma dostał w cukierni rubla zadatku. Okazały pan widocznie bardzo się śpieszy, gdyż obu pięściami toruje sobie drogę pośród zbitej masy ciał starozakonnych wołając:",
+  "start": 3279.39
+ },
+ {
+  "i": 326,
+  "pl": "— Na bok, parchy, kiedy ja idę na licytację!...",
+  "start": 3298.49
+ },
+ {
+  "i": 327,
+  "pl": "Żydzi wbrew swoim zwyczajom usuwają się i patrzą na niego z podziwem.",
+  "start": 3301.31
+ },
+ {
+  "i": 328,
+  "pl": "— Jakie on musi mieć pieniądze! — mruczy jeden z nich do swego sąsiada.",
+  "start": 3306.51
+ },
+ {
+  "i": 329,
+  "pl": "Pan Ignacy, który jest nieskończenie mniej śmiałym aniżeli okazały jegomość, zamiast pchać się jak on, zdaje się na łaskę i niełaskę losu. Prąd starozakonnych ogarnia go ze wszystkich stron.",
+  "start": 3311.83
+ },
+ {
+  "i": 330,
+  "pl": "Przed sobą widzi zatłuszczony kołnierz, brudny szalik i jeszcze brudniejszą szyję; za sobą czuje zapach świeżej cebuli; z prawej strony jakaś szpakowata broda opiera mu się na obojczyku, a z lewej silny łokieć uciska mu rękę aż do ścierpnięcia.",
+  "start": 3324.93
+ },
+ {
+  "i": 331,
+  "pl": "Gniotą go, popychają, szarpią za odzież. Ktoś chwyta go za nogi, ktoś sięga do kieszeni, ktoś uderza go między łopatki. Nadchodzi chwila, w której pan Ignacy sądzi, że połamią mu klatkę piersiową. Podnosi oczy do nieba i widzi, że jest we drzwiach. Już, już... zaduszą go...",
+  "start": 3341.67
+ },
+ {
+  "i": 332,
+  "pl": "Nagle czuje przed sobą puste miejsce, uderza głową w czyjeś wdzięki, nie dosyć starannie zasłonięte połą surduta, i — jest w sali.",
+  "start": 3358.97
+ },
+ {
+  "i": 333,
+  "pl": "Odetchnął... Za nim rozlegają się krzyki i wymyślania licytantów, a od czasu do czasu upomnienia woźnego:",
+  "start": 3369.86
+ },
+ {
+  "i": 334,
+  "pl": "— Czego panowie tak się tłoczą... Cóż to, panowie są bydło czy co?...",
+  "start": 3376.99
+ },
+ {
+  "i": 335,
+  "pl": "„Nie wiedziałem, że tak trudno dostać się na licytację!...” — wzdycha pan Ignacy.",
+  "start": 3382.6
+ },
+ {
+  "i": 336,
+  "pl": "Mija dwie sale, tak puste, że nie widać w nich ani krzesła na podłodze, ani gwoździa w ścianie. Sale te tworzą przysionek jednego z wydziałów sprawiedliwości, lecz są widne i wesołe. Przez otwarte okna wlewają się tu potoki słonecznych blasków i gorący lipcowy wiatr nasycony warszawskimi pyłami.",
+  "start": 3387.46
+ },
+ {
+  "i": 337,
+  "pl": "Pan Ignacy słyszy świegot wróbli i nieustanny turkot dorożek i doznaje dziwnego uczucia dysharmonii.",
+  "start": 3406.6
+ },
+ {
+  "i": 338,
+  "pl": "„Czy podobna — mówi — ażeby sąd wyglądał tak pusto jak niewynajęte mieszkanie i — tak wesoło?...”",
+  "start": 3414.0
+ },
+ {
+  "i": 339,
+  "pl": "Zdaje mu się, że zakratowane okna i szare ściany, połyskujące wilgocią, a obwieszone kajdanami, nierównie lepiej odpowiadałyby sali, w której skazują ludzi na wieczne lub doczesne więzienia.",
+  "start": 3421.84
+ },
+ {
+  "i": 340,
+  "pl": "Ale otóż i sala główna, do której biegną wszyscy starozakonni i gdzie skupia się cały interes licytacji. Jest to pokój tak rozległy, że można by w nim tańcować we czterdzieści par mazura, gdyby nie niska bariera, która dzieli go na dwie części: cywilną i licytacyjną.",
+  "start": 3435.33
+ },
+ {
+  "i": 341,
+  "pl": "W części cywilnej znajduje się kilka wyplatanych kanap, w części licytacyjnej — estrada, a na niej duży stół, mający formę rogala pokrytego zielonym suknem. Za stołem spostrzega pan Ignacy trzech dygnitarzów mających łańcuchy na szyi i senatorską powagę na obliczach; są to komornicy.",
+  "start": 3455.33
+ },
+ {
+  "i": 342,
+  "pl": "Na stole przed każdym dygnitarzem leży stos papierów reprezentujących wystawione na sprzedaż nieruchomości. Zaś między stołem i barierą, tudzież przed barierą, tłoczy się ciżba interesantów.",
+  "start": 3476.73
+ },
+ {
+  "i": 343,
+  "pl": "Wszyscy oni mają zadarte głowy i patrzą na komorników ze skupieniem ducha, którego mogliby im pozazdrościć natchnieni asceci przypatrujący się świętym wizjom.",
+  "start": 3490.52
+ },
+ {
+  "i": 344,
+  "pl": "W sali pomimo otwartych okien unosi się woń środkująca między zapachem hiacyntu i starego kitu. Pan Ignacy domyśla się, że jest to woń chałatów<sup>526<\/sup>.",
+  "start": 3500.96
+ },
+ {
+  "i": 345,
+  "pl": "Wyjąwszy turkotu<sup>527<\/sup> dorożek, w sali jest dosyć cicho. Komornicy milczą, zatopieni w swoich aktach, licytanci również milczą, zapatrzeni w komorników; reszta zaś publiczności, zebrana w cywilnej połowie izby i podzielona na grupy, wprawdzie szemrze, ale po cichu.",
+  "start": 3514.0
+ },
+ {
+  "i": 346,
+  "pl": "Nie mają interesu, ażeby ich słyszano.",
+  "start": 3531.86
+ },
+ {
+  "i": 347,
+  "pl": "Tym więc głośniej rozlega się jęk baronowej Krzeszowskiej, która trzymając swego adwokata za klapy fraka mówi z gorączkowym pośpiechem:",
+  "start": 3534.83
+ },
+ {
+  "i": 348,
+  "pl": "— Błagam pana, nie odchodź... No... dam panu wszystko, co zechcesz...",
+  "start": 3544.29
+ },
+ {
+  "i": 349,
+  "pl": "— Tylko, pani baronowo, bez żadnych pogróżek! — odpowiada adwokat.",
+  "start": 3549.01
+ },
+ {
+  "i": 350,
+  "pl": "— Ja przecież nie grożę, ale nie opuszczaj mnie pan!... — deklamuje z prawdziwym uczuciem baronowa.",
+  "start": 3553.23
+ },
+ {
+  "i": 351,
+  "pl": "— Przyjdę na licytację, ależ teraz muszę iść do mego zabójcy...",
+  "start": 3559.65
+ },
+ {
+  "i": 352,
+  "pl": "— Tak!... więc nędzny morderca więcej budzi w panu współczucia aniżeli opuszczona kobieta, której mienie, honor, spokój...",
+  "start": 3563.81
+ },
+ {
+  "i": 353,
+  "pl": "Nagabany<sup>528<\/sup> adwokat ucieka tak szybko, że jego spodnie wydają się jeszcze bardziej wytłoczonymi na kolanach, aniżeli są w istocie. Baronowa chce za nim biec, lecz w tej chwili pada w objęcia jakiegoś jegomości, który używa bardzo szafirowych okularów i ma fizjognomię zakrystiana.",
+  "start": 3574.07
+ },
+ {
+  "i": 354,
+  "pl": "— O co pani chodzi, droga pani? — mówi słodko jegomość w szafirowych okularach. — Żaden adwokat nie podbije pani ceny domu... to ja jezdem od tego... Desz pani jeden procent od każdego tysiąca rubli wyżej nad sumę początkową i dwadzieścia rubelków na koszta...",
+  "start": 3591.87
+ },
+ {
+  "i": 355,
+  "pl": "Baronowa Krzeszowska odskakuje od niego i wygiąwszy się w tył jak artystka grająca tragiczną rolę odpowiada mu jednym tylko wyrazem:",
+  "start": 3609.28
+ },
+ {
+  "i": 356,
+  "pl": "— Szatanie!...",
+  "start": 3619.44
+ },
+ {
+  "i": 357,
+  "pl": "Jegomość w okularach poznaje, że źle trafił, i cofa się skonsternowany. Jednocześnie zabiega mu drogę inny jegomość, mający minę skończonego łajdaka, i coś mu szepcze przez kilka minut, z bardzo ożywioną gestykulacją.",
+  "start": 3621.66
+ },
+ {
+  "i": 358,
+  "pl": "Pan Ignacy jest pewny, że ci dwaj panowie pobiją się; oni jednak rozchodzą się bardzo spokojnie, a jegomość z miną łajdaka zbliża się do baronowej Krzeszowskiej i mówi półgłosem:",
+  "start": 3636.44
+ },
+ {
+  "i": 359,
+  "pl": "— Jeżeli pani baronowa coś zaryzykuje, możemy nie dopuścić nawet do siedemdziesięciu tysięcy rubli.",
+  "start": 3647.02
+ },
+ {
+  "i": 360,
+  "pl": "— Zbawco!... — woła baronowa. — Widzisz przed sobą kobietę skrzywdzoną i osamotnioną, której mienie, honor i spokój...",
+  "start": 3652.78
+ },
+ {
+  "i": 361,
+  "pl": "— Co mi tam honor — mówi jegomość z łajdacką fizjognomią. — Da pani dziesięć rubli zadatku?",
+  "start": 3660.34
+ },
+ {
+  "i": 362,
+  "pl": "Odchodzą oboje w najdalszy kąt sali i przed oczyma pana Ignacego kryją się za grupą starozakonnych. W tej grupie znajduje się stary Szlangbaum i młody Żydek bez zarostu, tak blady i wycieńczony, że pan Ignacy sądzi, iż bardzo niedawno musiał wstąpić w związki małżeńskie.",
+  "start": 3666.46
+ },
+ {
+  "i": 363,
+  "pl": "Stary Szlangbaum coś wykłada wycieńczonemu Żydkowi, któremu coraz więcej baranieją oczy; co by mu jednak wykładał? Pan Ignacy nie może się domyśleć.",
+  "start": 3685.26
+ },
+ {
+  "i": 364,
+  "pl": "Odwraca się więc w drugą stronę sali i spostrzega o parę kroków od siebie pana Łęckiego z jego adwokatem, który widocznie nudzi się i chciałby gdzieś iść.",
+  "start": 3696.3
+ },
+ {
+  "i": 365,
+  "pl": "— Gdyby choć sto piętnaście... no — sto dziesięć tysięcy!... — mówi pan Łęcki. — Przecież pan adwokat musisz znać jakie sposoby...",
+  "start": 3705.99
+ },
+ {
+  "i": 366,
+  "pl": "— Hum!... hum!... — mówi adwokat, tęsknie spoglądając na drzwi. — Pan żąda zbyt wysokiej ceny... Sto dwadzieścia tysięcy za dom, za który dawano sześćdziesiąt...",
+  "start": 3713.97
+ },
+ {
+  "i": 367,
+  "pl": "— Ależ, panie, on kosztował mnie sto tysięcy...",
+  "start": 3724.09
+ },
+ {
+  "i": 368,
+  "pl": "— Tak... Hum!... hum!... Trochę pan przepłacił...",
+  "start": 3726.89
+ },
+ {
+  "i": 369,
+  "pl": "— Ja też — przerywa mu pan Łęcki — żądam tylko stu dziesięciu... I zdaje mi się, że kiedy jak kiedy, ale w tym razie powinien by mi pan adwokat dopomóc... Są przecież jakieś sposoby, których ja nie znam nie będąc prawnikiem...",
+  "start": 3730.89
+ },
+ {
+  "i": 370,
+  "pl": "— Hum!... hum!... — mruczy adwokat. Na szczęście, jeden z kolegów (odziany również we frak ze srebrnym znaczkiem) wywołuje go z sali; w minutę zaś później zbliża się do pana Łęckiego jegomość w szafirowych okularach, z miną zakrystiana, i mówi:",
+  "start": 3746.33
+ },
+ {
+  "i": 371,
+  "pl": "— O co panu chodzi, panie hrabio?... Żaden adwokat nie podbije panu ceny domu... Od tego ja jezdem... Desz pan hrabia dwadzieścia rubli na koszta i jeden procent od każdego tysiąca nad sześćdziesiąt tysięcy...",
+  "start": 3762.24
+ },
+ {
+  "i": 372,
+  "pl": "Pan Łęcki patrzy na zakrystiana z wielką pogardą; kładzie nawet obie ręce w kieszenie spodni (co jemu samemu wydaje się dziwnym) i mówi:",
+  "start": 3776.26
+ },
+ {
+  "i": 373,
+  "pl": "— Dam jeden procent od każdego tysiąca wyżej nad sto dwadzieścia tysięcy rubli...",
+  "start": 3784.76
+ },
+ {
+  "i": 374,
+  "pl": "Zakrystian w szafirowych okularach kłania się, poruszając przy tym lewą łopatką, i odpowiada:",
+  "start": 3790.34
+ },
+ {
+  "i": 375,
+  "pl": "— Przepreszem pana hrabiego...",
+  "start": 3796.48
+ },
+ {
+  "i": 376,
+  "pl": "— Stój! — przerywa pan Łęcki. — Wyżej nad sto dziesięć...",
+  "start": 3798.24
+ },
+ {
+  "i": 377,
+  "pl": "— Przepreszem.",
+  "start": 3801.64
+ },
+ {
+  "i": 378,
+  "pl": "— Nad sto.",
+  "start": null
+ },
+ {
+  "i": 379,
+  "pl": "— Przepreszem.",
+  "start": 3803.42
+ },
+ {
+  "i": 380,
+  "pl": "— Niech was pioruny!... Więc ile chcesz?...",
+  "start": null
+ },
+ {
+  "i": 381,
+  "pl": "— Jeden procencik od sumy wyższej nad siedemdziesiąt i dwadzieścia rubelków na koszta... — mówi kłaniając się do ziemi zakrystian.",
+  "start": 3807.16
+ },
+ {
+  "i": 382,
+  "pl": "— Dziesięć rubli weźmiesz? — pyta fiołkowy z gniewu pan Łęcki.",
+  "start": 3816.66
+ },
+ {
+  "i": 383,
+  "pl": "— Ja i rubelkiem nie pogardzę...",
+  "start": 3821.34
+ },
+ {
+  "i": 384,
+  "pl": "Pan Łęcki wydobywa wspaniały pugilares, z niego cały pęk szeleszczących dziesięciorublówek i jedną z nich daje zakrystianowi, który schyla się do ziemi.",
+  "start": 3823.22
+ },
+ {
+  "i": 385,
+  "pl": "— Zobaczy jaśnie wielmożny pan... — szepcze zakrystian.",
+  "start": 3833.22
+ },
+ {
+  "i": 386,
+  "pl": "Obok pana Ignacego stoi dwóch Żydów: jeden wysoki, śniady, z brodą tak czarną, że wpada w kolor granatowy, drugi łysy, z tak długimi faworytami, że walają mu klapy surduta. Dżentelmen z faworytami na widok dziesięciorublówek pana Łęckiego uśmiecha się i mówi półgłosem do pięknego bruneta:",
+  "start": 3836.64
+ },
+ {
+  "i": 387,
+  "pl": "— Pan wydzysz te pyniądze u ten szlachcic... Pan słyszysz, jak ony klaskają?... Ony tak czeszą szę, że mnie widzą... Pan to rozumysz, panie Cynader?...",
+  "start": 3857.16
+ },
+ {
+  "i": 388,
+  "pl": "— Łęcki jest pański klient? — pyta piękny brunet.",
+  "start": 3868.9
+ },
+ {
+  "i": 389,
+  "pl": "— Dlaczego on nie ma bycz mój?",
+  "start": 3873.1
+ },
+ {
+  "i": 390,
+  "pl": "— Co on ma? — mówi brunet.",
+  "start": 3875.72
+ },
+ {
+  "i": 391,
+  "pl": "— On ma... on ma — szostre w Krakowie, która, rozumysz pan, zapysała dla jego córki...",
+  "start": 3877.58
+ },
+ {
+  "i": 392,
+  "pl": "— A jeżeli ona nic nie zapisała?...",
+  "start": 3884.84
+ },
+ {
+  "i": 393,
+  "pl": "Dżentelmen z faworytami na chwilę tropi się.",
+  "start": 3887.54
+ },
+ {
+  "i": 394,
+  "pl": "— Tylko mi pan nie mów takie głupie gadanie!... Dlaczego szostra z Krakowa nie ma im zapysać, kiedy ona jest chora?...",
+  "start": 3891.11
+ },
+ {
+  "i": 395,
+  "pl": "— Ja nic nie wiem — odpowiada piękny brunet. (Pan Ignacy przyznaje w duchu, że tak pięknego mężczyzny nigdy jeszcze nie widział.)",
+  "start": 3899.42
+ },
+ {
+  "i": 396,
+  "pl": "— Ale on ma córkę, panie Cynader... — mówi niespokojnie właściciel bujnych faworytów. — Pan zna jego córkę, tę pannę Izabelę, panie Cynader?... Ja sam dałbym jej, no bez targu, sto rubli...",
+  "start": 3908.59
+ },
+ {
+  "i": 397,
+  "pl": "— Ja bym dał sto pięćdziesiąt — mówi piękny brunet — ale swoją drogą Łęcki to niepewny interes.",
+  "start": 3921.61
+ },
+ {
+  "i": 398,
+  "pl": "— Niepewny?... A pan Wokulski to co?...",
+  "start": 3927.25
+ },
+ {
+  "i": 399,
+  "pl": "— Pan Wokulski, no... to jest wielki interes — odpowiada brunet. — Ale ona jest głupia i Łęcki jest głupi, i oni wszyscy są głupi. I oni zgubią tego Wokulskiego, a on im nie da rady...",
+  "start": 3929.91
+ },
+ {
+  "i": 400,
+  "pl": "Panu Ignacemu pociemniało w oczach.",
+  "start": 3942.95
+ },
+ {
+  "i": 401,
+  "pl": "„Jezus, Maria! — szepcze. — Więc już nawet przy licytacjach mówią o Wokulskim i o niej... I jeszcze przewidują, że go zgubi... Jezus! Maria!...”",
+  "start": 3945.41
+ },
+ {
+  "i": 402,
+  "pl": "Około stołu zajętego przez komorników robi się mały zamęt; wszyscy widzowie pchają się w tamtym kierunku. Stary Szlangbaum również zbliża się do stołu, a po drodze kiwa na zniszczonego Żydka i nieznacznie mruga na okazałego pana, z którym niedawno rozmawiał w cukierni.",
+  "start": 3954.27
+ },
+ {
+  "i": 403,
+  "pl": "Współcześnie wbiega adwokat pani Krzeszowskiej, nie patrząc na nią zajmuje miejsce przed stołem i mruczy do komornika:",
+  "start": 3973.56
+ },
+ {
+  "i": 404,
+  "pl": "— Prędzej, panie, prędzej, bo dalibóg! nie ma czasu...",
+  "start": 3980.22
+ },
+ {
+  "i": 405,
+  "pl": "W kilka zaś minut po adwokacie wchodzi do sali nowa grupa osób. Jest tam para małżonków należących, zdaje się, do profesji rzeźniczej, jest stara dama z kilkunastoletnim wnukiem i dwu panów: jeden czerstwy i siwy, drugi kędzierzawy, wyglądający na suchotnika.",
+  "start": 3983.16
+ },
+ {
+  "i": 406,
+  "pl": "Obaj mają potulne fizjognomie i podniszczone odzienia, lecz na ich widok Żydzi poczynają szemrać i pokazywać palcami z wyrazem podziwu i szacunku. Obaj stają tak blisko pana Ignacego, że ten mimo woli musi wysłuchać rad, jakich siwy jegomość udziela kędzierzawemu:",
+  "start": 4002.5
+ },
+ {
+  "i": 407,
+  "pl": "— Rób, mówię tobie, Ksawery, jak ja. Ja nie śpieszę się, jak Boga kocham. Już trzy lata, mówię tobie, chcę kupić niewielki domik<sup>529<\/sup>, ot taki sobie za sto, za dwieście tysięcy, na stare lata, ale nie śpieszę się.",
+  "start": 4021.66
+ },
+ {
+  "i": 408,
+  "pl": "Wyczytuję ja sobie, które chaty idą na licytację, ogląduję ja ich sobie powoli, kalkuluję ja sobie w głowie, a potem zachodzę ja sobie tu i słucham, co ludzie dają.",
+  "start": 4035.44
+ },
+ {
+  "i": 409,
+  "pl": "I kiedy, mówię tobie, już nabrałem doświadczenia i w tym roku chciałem już co kupić, ceny jak raz w niepraktykowany sposób skoczyły, psiakrew, i muszę na nowo kalkulować!... Ale jak we dwu poczniem się przysłuchiwać, to mówię tobie, ubijemy interes...",
+  "start": 4046.34
+ },
+ {
+  "i": 410,
+  "pl": "— Czycho!... — zawołano od stołu.",
+  "start": 4063.44
+ },
+ {
+  "i": 411,
+  "pl": "W sali ucichło, a pan Ignacy słucha opisu kamienicy położonej tu i tu, mającej trzy oficyny i trzy piętra, plac, ogród itd. W trakcie tego ważnego aktu pan Łęcki robi się na przemian blady i fioletowy, a pani Krzeszowska co chwilę podnosi do nosa kryształowy flakonik w złotej oprawie.",
+  "start": 4066.23
+ },
+ {
+  "i": 412,
+  "pl": "— Znam ten dom! — wykrzykuje nagle jegomość w szafirowych okularach z miną zakrystiana. — Znam ten dom!... Z zamkniętymi oczami wart sto dwadzieścia tysięcy rubli...",
+  "start": 4088.38
+ },
+ {
+  "i": 413,
+  "pl": "— Co pan zawracasz! — odzywa się stojący obok baronowej Krzeszowskiej pan z fizjognomią łajdaka. — Co to za dom?... Rudera... trupiarnia!...",
+  "start": 4099.74
+ },
+ {
+  "i": 414,
+  "pl": "Pan Łęcki robi się bardzo fioletowy. Kiwa na zakrystiana i pyta go szeptem:",
+  "start": 4109.1
+ },
+ {
+  "i": 415,
+  "pl": "— Kto jest tamten łotr?",
+  "start": 4115.16
+ },
+ {
+  "i": 416,
+  "pl": "— Tamten?... — pyta zakrystian. — To szubrawczyna!... Niech pan hrabia nie zważa na niego... — I mówi na cały głos: — Słowo honoru, za ten dom śmiało można dać sto trzydzieści tysięcy...",
+  "start": 4116.98
+ },
+ {
+  "i": 417,
+  "pl": "— Kto jest ten nikczemnik? — pyta baronowa jegomościa z łajdacką miną. — Kto jest ten w niebieskich okularach?...",
+  "start": 4128.42
+ },
+ {
+  "i": 418,
+  "pl": "— Tamten?... — odpowiada zapytany. — To znany szubrawiec... niedawno siedział na Pawiaku<sup>530<\/sup>... Niech pani na niego nie zważa... Plunąć nie warto...",
+  "start": 4135.98
+ },
+ {
+  "i": 419,
+  "pl": "— Cicho tam!... — woła urzędowy głos od stołu.",
+  "start": 4143.82
+ },
+ {
+  "i": 420,
+  "pl": "Zakrystian mruga na pana Łęckiego uśmiechając się familiarnie i pcha się do stołu między licytantów. Jest ich czterech: adwokat baronowej, okazały pan, stary Szlangbaum i zniszczony Żydek, obok którego staje zakrystian.",
+  "start": 4149.28
+ },
+ {
+  "i": 421,
+  "pl": "— Sześćdziesiąt tysięcy i pięćset rubli — mówi cicho adwokat pani Krzeszowskiej.",
+  "start": 4166.16
+ },
+ {
+  "i": 422,
+  "pl": "— Dalibóg! więcej nie warto... — wtrąca jegomość z miną łajdaka.",
+  "start": 4171.24
+ },
+ {
+  "i": 423,
+  "pl": "Baronowa triumfalnie spogląda na pana Łęckiego.",
+  "start": 4175.64
+ },
+ {
+  "i": 424,
+  "pl": "— Sześćdziesiąt pięć... — odzywa się majestatyczny pan.",
+  "start": 4179.08
+ },
+ {
+  "i": 425,
+  "pl": "— Sześćdziesiąt pięć tysięcy i sto rubli — bełkocze blady Żydek.",
+  "start": 4182.42
+ },
+ {
+  "i": 426,
+  "pl": "— Sześćdziesiąt sześć... — dodaje Szlangbaum.",
+  "start": 4186.18
+ },
+ {
+  "i": 427,
+  "pl": "— Siedemdziesiąt tysięcy! — wrzeszczy zakrystian.",
+  "start": 4188.94
+ },
+ {
+  "i": 428,
+  "pl": "— Ach! ach! ach!... — wybucha płaczem baronowa upadając na wyplataną kanapkę.",
+  "start": 4191.6
+ },
+ {
+  "i": 429,
+  "pl": "Jej adwokat szybko odchodzi od stołu i biegnie bronić zabójcy.",
+  "start": 4197.5
+ },
+ {
+  "i": 430,
+  "pl": "— Siedemdziesiąt pięć tysięcy!... — woła okazały pan.",
+  "start": 4201.34
+ },
+ {
+  "i": 431,
+  "pl": "— Umieram!... — jęczy baronowa.",
+  "start": 4204.44
+ },
+ {
+  "i": 432,
+  "pl": "W sali robi się ruch. Stary Litwin chwyta pod rękę baronową, którą odbiera mu Maruszewicz, nie wiadomo skąd przybyły na ten uroczysty wypadek. Zanosząca się od płaczu baronowa, wsparta na Maruszewiczu, opuszcza salę złorzecząc przy tym swemu adwokatowi, sądowi, licytantom i komornikom.",
+  "start": 4206.4
+ },
+ {
+  "i": 433,
+  "pl": "Pan Łęcki blado uśmiecha się, a tymczasem zniszczony Żydek mówi:",
+  "start": 4225.76
+ },
+ {
+  "i": 434,
+  "pl": "— Osiemdziesiąt tysięcy i sto rubli...",
+  "start": 4229.4
+ },
+ {
+  "i": 435,
+  "pl": "— Osiemdziesiąt pięć... — wtrąca Szlangbaum.",
+  "start": 4231.92
+ },
+ {
+  "i": 436,
+  "pl": "Pan Łęcki cały zamienia się we wzrok i słuch. Wzrokiem dostrzega już tylko trzech licytantów, a słuchem chwyta wyrazy otyłego pana:",
+  "start": 4234.88
+ },
+ {
+  "i": 437,
+  "pl": "— Osiemdziesiąt osiem tysięcy...",
+  "start": 4243.3
+ },
+ {
+  "i": 438,
+  "pl": "— Osiemdziesiąt osiem i sto rubli — mówi mizerny Żydek.",
+  "start": 4245.02
+ },
+ {
+  "i": 439,
+  "pl": "— Niech będzie dziewięćdziesiąt — kończy stary Szlangbaum uderzając ręką w stół.",
+  "start": 4248.2
+ },
+ {
+  "i": 440,
+  "pl": "— Dziewięćdziesiąt tysięcy — mówi komornik — po raz pierwszy...",
+  "start": 4253.9
+ },
+ {
+  "i": 441,
+  "pl": "Pan Łęcki zapomniawszy o etykiecie pochyla się do zakrystiana i szepcze mu:",
+  "start": 4256.96
+ },
+ {
+  "i": 442,
+  "pl": "— Licytuj że pan!...",
+  "start": 4260.86
+ },
+ {
+  "i": 443,
+  "pl": "— Co się pan tak skrobiesz?... — pyta zakrystian zniszczonego Żydka.",
+  "start": 4262.58
+ },
+ {
+  "i": 444,
+  "pl": "— A co się pan rozbijasz? — odzywa się do zakrystiana drugi komornik. — Kupisz pan dom czy co?... Wynoś się pan!...",
+  "start": 4266.14
+ },
+ {
+  "i": 445,
+  "pl": "— Dziewięćdziesiąt tysięcy po raz drugi!... — woła komornik.",
+  "start": 4272.66
+ },
+ {
+  "i": 446,
+  "pl": "Pan Łęcki robi się szary na twarzy.",
+  "start": 4275.82
+ },
+ {
+  "i": 447,
+  "pl": "— Dziewięćdziesiąt tysięcy rubli po raz... trzeci!... — powtarza komornik i uderza małym młotkiem o zielone sukno.",
+  "start": 4277.8
+ },
+ {
+  "i": 448,
+  "pl": "— Szlangbaum kupił!... — odzywa się jakiś głos na sali.",
+  "start": 4285.7
+ },
+ {
+  "i": 449,
+  "pl": "Pan Łęcki toczy dokoła błędnym wzrokiem i teraz dopiero spostrzega swego adwokata.",
+  "start": 4289.9
+ },
+ {
+  "i": 450,
+  "pl": "— A, panie mecenasie — mówi drżącym głosem — tak się nie godzi!...",
+  "start": 4296.56
+ },
+ {
+  "i": 451,
+  "pl": "— Co się nie godzi?...",
+  "start": 4300.9
+ },
+ {
+  "i": 452,
+  "pl": "— Nie godzi się... to jest nieuczciwie!... — powtarza wzburzony pan Łęcki.",
+  "start": 4302.22
+ },
+ {
+  "i": 453,
+  "pl": "— Co się nie godzi?... — odpowiada już nieco podrażniony adwokat. — Po spłaceniu hipotecznych długów zyskuje pan trzydzieści tysięcy rubli...",
+  "start": 4306.66
+ },
+ {
+  "i": 454,
+  "pl": "— Ale mnie ten dom kosztował sto tysięcy, a mógł był pójść, gdyby lepiej pilnowano... za sto dwadzieścia tysięcy...",
+  "start": 4314.82
+ },
+ {
+  "i": 455,
+  "pl": "— Tak — potwierdza zakrystian — dom wart ze sto dwadzieścia tysięcy...",
+  "start": 4321.94
+ },
+ {
+  "i": 456,
+  "pl": "— O!... słyszy pan, panie mecenasie?... — mówi pan Łęcki. — Gdyby się dopilnowano...",
+  "start": 4326.06
+ },
+ {
+  "i": 457,
+  "pl": "— Ależ, panie, proszę mi nie mówić impertynencyj!... Słucha pan rad pokątnych doradców, łotrów z Pawiaka...",
+  "start": 4330.76
+ },
+ {
+  "i": 458,
+  "pl": "— O, bardzo proszę... — odpowiada obrażony zakrystian. — Nie każdy jest łotrem, kto siedział na Pawiaku... A co do udzielania rad...",
+  "start": 4338.62
+ },
+ {
+  "i": 459,
+  "pl": "— Tak... dom był wart sto dwadzieścia tysięcy!... — odzywa się całkiem nieoczekiwanie sprzymierzeniec w osobie jegomościa z łajdacką miną.",
+  "start": 4347.32
+ },
+ {
+  "i": 460,
+  "pl": "Pan Łęcki patrzy na niego szklanymi oczyma, ale jeszcze nie może zorientować się w sytuacji. Nie żegna się z adwokatem, nakłada w sali kapelusz i wychodząc mruczy:",
+  "start": 4356.44
+ },
+ {
+  "i": 461,
+  "pl": "„Straciłem przez Żydów i adwokatów ze trzydzieści tysięcy rubli... Można było dostać sto dwadzieścia tysięcy...”",
+  "start": 4365.72
+ },
+ {
+  "i": 462,
+  "pl": "I stary Szlangbaum już wychodzi; wtem zastępuje mu drogę pan Cynader, ów piękny brunet, któremu równego nigdy nie widział pan Ignacy.",
+  "start": 4373.32
+ },
+ {
+  "i": 463,
+  "pl": "— Co to pan za interesa robi, panie Szlangbaum? — mówi piękny brunet. — Ten dom można było kupić za siedemdziesiąt jeden tysięcy. On dziś więcej niewart...",
+  "start": 4383.92
+ },
+ {
+  "i": 464,
+  "pl": "— Dla jednego niewart, dla drugiego wart; ja zawsze robię tylko dobre interesa — odpowiada zamyślony Szlangbaum.",
+  "start": 4394.38
+ },
+ {
+  "i": 465,
+  "pl": "Nareszcie i Rzecki opuszcza salę, w której odbywa się inna licytacja i gromadzi się nowa publiczność. Pan Ignacy z wolna schodzi ze schodów i myśli:",
+  "start": 4404.62
+ },
+ {
+  "i": 466,
+  "pl": "„A więc dom kupił Szlangbaum, i to za dziewięćdziesiąt tysięcy, jak przepowiedział Klejn. No, ależ Szlangbaum to przecie nie Wokulski... Stach nie zrobiłby takiego głupstwa... Nie!... I z tą panną Izabelą farsa, plotki...”",
+  "start": 4414.97
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

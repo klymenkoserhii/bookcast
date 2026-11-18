@@ -1,0 +1,2533 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to ../../public/lalka-2/audio/chapter-01.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-01.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Tom II · Rozdział I — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Tom II · Rozdział I · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="../../public/lalka-2/audio/chapter-01.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Sytuacja polityczna jest tak niepewna, że wcale by mnie nie zdziwiło, gdyby około grudnia wybuchła wojna.",
+  "start": 35.76
+ },
+ {
+  "i": 1,
+  "pl": "Ludziom ciągle się zdaje, że wojna może być tylko na wiosnę; widać zapomnieli, że wojny: pruska i francuska, rozpoczynały się w lecie<sup>572<\/sup>. Nie rozumiem zaś, skąd wyrósł przesąd przeciw kampaniom zimowym?...",
+  "start": 44.13
+ },
+ {
+  "i": 2,
+  "pl": "W zimie stodoły są pełne, a droga jak mur; tymczasem na wiosnę u chłopa jest przednówek, a drogi jak ciasto; przejedzie bateria i możesz się w tym miejscu kąpać.",
+  "start": 57.31
+ },
+ {
+  "i": 3,
+  "pl": "Lecz z drugiej strony — zimowe noce, które ciągną się po kilkanaście godzin, potrzeba ciepłej odzieży i mieszkań dla wojska, tyfus... Doprawdy, nieraz dziękuję Bogu, że mnie nie stworzył Moltkem<sup>573<\/sup>; on musi kręcić głową, nieborak!...",
+  "start": 68.55
+ },
+ {
+  "i": 4,
+  "pl": "Austriacy, a raczej Węgrzy już na dobre wleźli do Bośni i Hercegowiny, gdzie ich bardzo niegościnnie przyjmują. Znalazł się nawet jakiś Hadżi Loja<sup>574<\/sup>, podobno znakomity partyzant, który im napędza dużo zgryzot. Szkoda mi węgierskiej piechoty, ale też i dzisiejsi Węgrzy diabła warci.",
+  "start": 84.45
+ },
+ {
+  "i": 5,
+  "pl": "Kiedy ich w 49 roku dusił szwarcgelber<sup>575<\/sup>, krzyczeli: każdy naród ma prawo bronić swojej wolności!... A dziś co?... Sami pchają się do Bośni, gdzie ich nie wołano, a broniących się Bośniaków nazywają złodziejami i rozbójnikami.",
+  "start": 105.18
+ },
+ {
+  "i": 6,
+  "pl": "Dalibóg coraz mniej rozumiem politykę! I kto wie, czy Stach Wokulski nie ma racji, że przestał się nią zajmować (jeżeli przestał?...).",
+  "start": 121.08
+ },
+ {
+  "i": 7,
+  "pl": "Ale co ja rozprawiam o polityce, skoro w moim własnym życiu zaszła ogromna zmiana. Kto by uwierzył, że już od tygodnia nie zajmuję się sklepem; tymczasowo, rozumie się, bo inaczej chyba oszalałbym z nudów.",
+  "start": 131.63
+ },
+ {
+  "i": 8,
+  "pl": "Rzecz jest taka. Pisze do mnie Stach z Paryża (prosił mnie o to samo przed wyjazdem), ażebym się zaopiekował kamienicą, którą kupił od Łęckich. „Nie miała baba kłopotu!...”, myślę, ale cóż robić?... Zdałem sklep Lisieckiemu i Szlangbaumowi, a sam — jazda w Aleje Jerozolimskie na zwiady.",
+  "start": 143.29
+ },
+ {
+  "i": 9,
+  "pl": "Przed wyjściem pytam Klejna, który mieszka w Stachowej kamienicy, aby mi powiedział, jak tam idzie. Zamiast odpowiedzieć, wziął się za głowę.",
+  "start": 161.96
+ },
+ {
+  "i": 10,
+  "pl": "— Jest tam jaki rządca?",
+  "start": 170.0
+ },
+ {
+  "i": 11,
+  "pl": "— Jest — mówi Klejn krzywiąc się. — Mieszka na trzecim piętrze od frontu.",
+  "start": 171.96
+ },
+ {
+  "i": 12,
+  "pl": "— Dosyć!... — mówię — dosyć, panie Klejn!... — (Nie lubię bowiem słuchać cudzych opinii pierwej, nim zobaczę na własne oczy. Zresztą Klejn, chłopak młody, łatwo mógłby wpaść w zarozumiałość pomiarkowawszy, że starsi zapytują go o informacje.)",
+  "start": 176.58
+ },
+ {
+  "i": 13,
+  "pl": "Ha! trudno... Posyłam tedy do odprasowania mój kapelusz, płacę dwa złote, na wszelki wypadek biorę do kieszeni krócicę<sup>576<\/sup> i maszeruję gdzieś aż za kościół Aleksandra<sup>577<\/sup>.",
+  "start": 189.8
+ },
+ {
+  "i": 14,
+  "pl": "Patrzę: dom żółty o trzech piętrach, numer ten sam, ba!... nawet już na tabliczce znajduję nazwisko Stanisława Wokulskiego... (Widocznie kazał ją przybić stary Szlangbaum.)",
+  "start": 201.3
+ },
+ {
+  "i": 15,
+  "pl": "Wchodzę na podwórko... oj! niedobrze... Pachnie bestia jak apteka. Śmietnik naładowany do wysokości pierwszego piętra, wszystkimi zaś rynsztokami płyną mydliny. Dopiero teraz spostrzegłem, że na parterze w dziedzińcu znajduje się „Pralnia paryska”, z dziewuchami jak dwugarbne wielbłądy.",
+  "start": 212.8
+ },
+ {
+  "i": 16,
+  "pl": "To dodało mi otuchy.",
+  "start": 232.92
+ },
+ {
+  "i": 17,
+  "pl": "Wołam tedy: „Stróż!...” Przez chwilę nie widać nikogo, nareszcie pokazuje się baba tłusta i tak zasmolona, że nie mogę pojąć, jakim sposobem podobna ilość brudu mieści się w sąsiedztwie pralni, i do tego paryskiej.",
+  "start": 235.72
+ },
+ {
+  "i": 18,
+  "pl": "— Gdzie stróż? — pytam dotykając ręką kapelusza.",
+  "start": 249.22
+ },
+ {
+  "i": 19,
+  "pl": "— A czego to?... — odwarknęła baba.",
+  "start": 252.5
+ },
+ {
+  "i": 20,
+  "pl": "— Przychodzę w imieniu właściciela domu.",
+  "start": 254.94
+ },
+ {
+  "i": 21,
+  "pl": "— Stróż siedzi w kozie — mówi baba.",
+  "start": 257.76
+ },
+ {
+  "i": 22,
+  "pl": "— Za cóż to?",
+  "start": 260.5
+ },
+ {
+  "i": 23,
+  "pl": "— O!... ciekawy pan!... — wrzasnęła. — Za to, że mu gospodarz pensji nie płaci.",
+  "start": 261.6
+ },
+ {
+  "i": 24,
+  "pl": "Ładnych rzeczy dowiaduję się na wstępie!",
+  "start": 267.08
+ },
+ {
+  "i": 25,
+  "pl": "Naturalnie poszedłem od stróża do rządcy, na trzecie piętro. Już na drugim piętrze słyszę krzyk dzieci, jakieś trzaskanie i głos kobiety wołającej:",
+  "start": 269.86
+ },
+ {
+  "i": 26,
+  "pl": "— A gałgany!... a nicponie!... a masz!... a masz!...",
+  "start": 279.28
+ },
+ {
+  "i": 27,
+  "pl": "Drzwi otwarte, we drzwiach jakaś jejmość w nieco białym kaftaniku wali troje dzieci rzemieniem aż świszcze.",
+  "start": 283.42
+ },
+ {
+  "i": 28,
+  "pl": "— Przepraszam — mówię — czy nie przeszkadzam?...",
+  "start": 291.36
+ },
+ {
+  "i": 29,
+  "pl": "Na mój widok dzieci rozpierzchły się w głąb mieszkania, a jejmość w kaftaniku chowając za siebie rzemień zapytała zmieszana:",
+  "start": 293.72
+ },
+ {
+  "i": 30,
+  "pl": "— Czy nie pan gospodarz?...",
+  "start": 301.9
+ },
+ {
+  "i": 31,
+  "pl": "— Nie gospodarz, ale... przychodzę w jego imieniu do szanownego małżonka pani... Jestem Rzecki...",
+  "start": 304.1
+ },
+ {
+  "i": 32,
+  "pl": "Jejmość chwilę przypatrywała mi się z niedowierzaniem, nareszcie rzekła:",
+  "start": 310.74
+ },
+ {
+  "i": 33,
+  "pl": "— Wicek, biegnij do składu po ojca... A pan może pozwoli do saloniku...",
+  "start": 315.04
+ },
+ {
+  "i": 34,
+  "pl": "Między mną i drzwiami wyrwał się obdarty chłopak i dopadłszy do schodów począł zjeżdżać na poręczy na dół. Ja zaś, zażenowany, wszedłem do saloniku, którego główną ozdobę stanowiła kanapa z wyłażącym na środku włosieniem.",
+  "start": 320.1
+ },
+ {
+  "i": 35,
+  "pl": "— Oto los rządcy — odezwała się pani wskazując mi nie mniej obdarte krzesło. — Mój mąż służy niby to bogatym panom, a gdyby nie chodził do składu węgli i nie przepisywał u adwokatów, nie mielibyśmy co włożyć w usta.",
+  "start": 336.0
+ },
+ {
+  "i": 36,
+  "pl": "— Oto nasze mieszkanie, niech pan spojrzy — mówiła — za trzy ciupy dopłacamy sto osiemdziesiąt rubli rocznie...",
+  "start": 350.76
+ },
+ {
+  "i": 37,
+  "pl": "Nagle od strony kuchni doleciało nas niepokojące syczenie. Jejmość w kaftaniku wybiegła szepcząc po drodze:",
+  "start": 356.96
+ },
+ {
+  "i": 38,
+  "pl": "— Kaziu! idź do sali i uważaj na tego pana...",
+  "start": 364.0
+ },
+ {
+  "i": 39,
+  "pl": "Istotnie, weszła do pokoju dziewczynka bardzo mizerna, w brązowej sukience i brudnych pończoszkach. Usiadła na krześle przy drzwiach i wpatrywała się we mnie wzrokiem o tyle podejrzliwym, o ile smutnym. Nigdy bym doprawdy nie sądził, że na stare lata wezmą mnie za złodzieja...",
+  "start": 367.33
+ },
+ {
+  "i": 40,
+  "pl": "Siedzieliśmy tak z pięć minut milcząc i obserwując się wzajemnie, gdy nagle rozległ się krzyk i łoskot na schodach i w tej chwili wbiegł z sieni ów obdarty chłopak, zwany Wickiem, za którym ktoś gniewnie wołał:",
+  "start": 384.36
+ },
+ {
+  "i": 41,
+  "pl": "— A szelmo!... dam ja ci...",
+  "start": 397.14
+ },
+ {
+  "i": 42,
+  "pl": "Odgadłem, że Wicek musi mieć żywy temperament i że ten, kto mu wymyśla, jest jego ojcem. Jakoż istotnie, ukazał się sam pan rządca w poplamionym surducie i spodniach u dołu oberwanych. Miał przy tym gęsty, szpakowaty zarost i czerwone oczy.",
+  "start": 399.8
+ },
+ {
+  "i": 43,
+  "pl": "Wszedł, grzecznie ukłonił mi się i zapytał:",
+  "start": 416.74
+ },
+ {
+  "i": 44,
+  "pl": "— Wszak mam honor z panem Wokulskim?",
+  "start": 418.98
+ },
+ {
+  "i": 45,
+  "pl": "— Nie, panie, jestem tylko przyjacielem i dysponentem pana Wokulskiego...",
+  "start": 421.68
+ },
+ {
+  "i": 46,
+  "pl": "— A tak!... — przerwał mi wyciągając do uścisku rękę. — Miałem przyjemność zauważyć pana w sklepie... Piękny sklep! — westchnął. — Z takich sklepów rodzą się kamienice, a... a z majątków ziemskich — takie oto mieszkania...",
+  "start": 425.96
+ },
+ {
+  "i": 47,
+  "pl": "— Pan dobrodziej miał majątek? — spytałem.",
+  "start": 441.62
+ },
+ {
+  "i": 48,
+  "pl": "— Ba!... Ale co tam... Zapewne chce pan poznać bilans tej kamienicy? — odparł rządca. — Otóż powiem krótko. Mamy dwa rodzaje lokatorów: jedni już od pół roku nie płacą nikomu, inni płacą magistratowi kary lub zaległe podatki za gospodarza.",
+  "start": 444.06
+ },
+ {
+  "i": 49,
+  "pl": "Przy tym stróż nie odbiera pensji, dach zacieka, cyrkuł ekscytuje nas, ażebyśmy wywieźli śmiecie, jeden lokator wytoczył nam proces o piwnicę, a dwu lokatorów procesuje się o obelgi z powodu strychu...",
+  "start": 460.8
+ },
+ {
+  "i": 50,
+  "pl": "Co się zaś tyczy — dodał po chwili, nieco zmieszany — co się zaś tyczy dziewięćdziesięciu rubli, które ja będę winien szanownemu panu Wokulskiemu...",
+  "start": 474.88
+ },
+ {
+  "i": 51,
+  "pl": "— Nie niepokój się pan — przerwałem mu. — Stach, to jest pan Wokulski, zapewne umorzy pański dług do października, a następnie zawrze z panem nowy układ.",
+  "start": 483.72
+ },
+ {
+  "i": 52,
+  "pl": "Ubogi eks-właściciel majątku ziemskiego serdecznie uściskał mi obie ręce.",
+  "start": 494.04
+ },
+ {
+  "i": 53,
+  "pl": "Taki rządca, który miał kiedyś własne dobra, wydawał mi się bardzo ciekawą osobistością; ale jeszcze ciekawszym wydał mi się dom, który nie przynosi żadnych dochodów.",
+  "start": 499.58
+ },
+ {
+  "i": 54,
+  "pl": "Z natury jestem nieśmiały: wstydzę się rozmawiać z nieznanymi ludźmi, a prawie boję się wchodzić do cudzych mieszkań... (Boże miłosierny! jak ja już dawno nie byłem w cudzym mieszkaniu...) Tym razem jednak wstąpił we mnie jakiś diabeł i koniecznie zapragnąłem poznać lokatorów tej dziwnej kamienicy.",
+  "start": 510.02
+ },
+ {
+  "i": 55,
+  "pl": "W roku 1849 bywało goręcej, a przecie szedł człowiek naprzód!...",
+  "start": 526.72
+ },
+ {
+  "i": 56,
+  "pl": "— Panie — odezwałem się do rządcy — czy byłbyś łaskaw... przedstawić mnie niektórym lokatorom?... Stach... to jest pan Wokulski... prosił mnie o zajęcie się jego interesami, dopóki nie wróci z Paryża...",
+  "start": 533.35
+ },
+ {
+  "i": 57,
+  "pl": "— Paryż!... — westchnął rządca. — Znam Paryż jeszcze z roku 1859. Pamiętam, jak przyjmowali cesarza<sup>578<\/sup>, kiedy wracał z kampanii włoskiej<sup>579<\/sup>...",
+  "start": 547.88
+ },
+ {
+  "i": 58,
+  "pl": "— Pan — zawołałem — pan widziałeś triumfalny powrót Napoleona do Paryża?...",
+  "start": 558.94
+ },
+ {
+  "i": 59,
+  "pl": "Wyciągnął do mnie rękę i odparł:",
+  "start": 565.34
+ },
+ {
+  "i": 60,
+  "pl": "— Widziałem lepszą rzecz, panie... Podczas kampanii byłem we Włoszech i widziałem, jak Włosi przyjmowali Francuzów w wigilię bitwy pod Magentą<sup>580<\/sup>...",
+  "start": 567.64
+ },
+ {
+  "i": 61,
+  "pl": "— Pod Magentą?... W roku 1859?... — spytałem.",
+  "start": 577.34
+ },
+ {
+  "i": 62,
+  "pl": "— Pod Magentą, panie...",
+  "start": 581.44
+ },
+ {
+  "i": 63,
+  "pl": "Popatrzyliśmy sobie w oczy z tym eks-obywatelem<sup>581<\/sup>, który nie mógł zdobyć się na wywabienie plam ze swego surduta. Popatrzyliśmy sobie — mówię — w oczy. Magenta... Rok 1859... Eh! Boże miłosierny...",
+  "start": 584.43
+ },
+ {
+  "i": 64,
+  "pl": "— Powiedz pan — rzekłem — jak to was przyjmowali Włosi w wigilię bitwy pod Magentą?",
+  "start": 600.59
+ },
+ {
+  "i": 65,
+  "pl": "Ubogi eks-obywatel siadł na wytartym fotelu i mówił:",
+  "start": 607.69
+ },
+ {
+  "i": 66,
+  "pl": "— W roku 1859, panie Rzecki... Zdaje mi się, że mam honor...",
+  "start": 611.69
+ },
+ {
+  "i": 67,
+  "pl": "— Tak, panie, jestem Rzecki, porucznik, panie, węgierskiej piechoty, panie...",
+  "start": 618.72
+ },
+ {
+  "i": 68,
+  "pl": "Znowu popatrzyliśmy sobie w oczy. Eh! Boże miłosierny...",
+  "start": 622.62
+ },
+ {
+  "i": 69,
+  "pl": "— Mów pan dalej, panie szlachcicu — rzekłem ściskając go za rękę.",
+  "start": 627.88
+ },
+ {
+  "i": 70,
+  "pl": "— W roku 1859 — prawił eks-obywatel — byłem o dziewiętnaście lat młodszy niż dziś i miałem z dziesięć tysięcy rubli rocznie... Na owe czasy! panie Rzecki... Co prawda, brało się nie tylko procent, ale i coś z kapitału. Więc, jak przyszło uwłaszczenie<sup>582<\/sup>...",
+  "start": 632.3
+ },
+ {
+  "i": 71,
+  "pl": "— No — rzekłem — chłopi są także ludźmi, panie...",
+  "start": 652.3
+ },
+ {
+  "i": 72,
+  "pl": "— Wirski — wtrącił rządca.",
+  "start": 655.24
+ },
+ {
+  "i": 73,
+  "pl": "— Panie Wirski — rzekłem — chłopi...",
+  "start": 657.7
+ },
+ {
+  "i": 74,
+  "pl": "— Wszystko mi jedno — przerwał — czym są chłopi. Dość że w roku 1859 miałem z dziesięć tysięcy rubli dochodu (łącznie z pożyczkami) i byłem we Włoszech. Ciekawy byłem, jak wygląda kraj, z którego wypędzają Szwaba...",
+  "start": 659.74
+ },
+ {
+  "i": 75,
+  "pl": "A żem nie miał żony i dzieci, nie miałem dla kogo oszczędzać życia, więc przez amatorstwo jechałem z przednią strażą francuską... Szliśmy pod Magentę, panie Rzecki, choć nie wiedzieliśmy jeszcze, ani dokąd idziemy, ani kto z nas jutro zobaczy zachodzące słońce...",
+  "start": 677.3
+ },
+ {
+  "i": 76,
+  "pl": "Pan zna to uczucie, kiedy człowiek niepewny jutra znajdzie się w kompanii ludzi również niepewnych jutra?...",
+  "start": 694.72
+ },
+ {
+  "i": 77,
+  "pl": "— Czy ja znam!... — Jedź pan dalej, panie Wirski...",
+  "start": 701.1
+ },
+ {
+  "i": 78,
+  "pl": "— Niech mnie kaczki zdepczą — mówił ubogi eks-obywatel — że to są najpiękniejsze chwile w życiu. Jesteś młody, wesół, zdrów, nie masz na karku żony i dzieci, pijesz i śpiewasz, i co chwilę spoglądasz na jakąś ciemną ścianę, za którą ukrywa się nasze jutro... Hej!",
+  "start": 705.44
+ },
+ {
+  "i": 79,
+  "pl": "— wołasz — lejcie mi wina bo nie wiem, co jest za tą ciemną ścianą... Hej!... wina. Nawet pocałunków... panie Rzecki — szepnął nachylając się rządca.",
+  "start": 725.38
+ },
+ {
+  "i": 80,
+  "pl": "— Więc tedy, jakeście szli z przednią strażą pod Magentę?... — przerwałem mu.",
+  "start": 737.44
+ },
+ {
+  "i": 81,
+  "pl": "— Szliśmy z kirasjerami<sup>583<\/sup> — mówił rządca. — Pan znasz kirasjerów, panie Rzecki?... Na niebie świeci jedno słońce, ale w szwadronie kirasjerów jest sto słońc...",
+  "start": 742.58
+ },
+ {
+  "i": 82,
+  "pl": "— Ciężka to jazda — wtrąciłem. — Piechota gryzie ją jak stalowy dziadek orzechy...",
+  "start": 754.42
+ },
+ {
+  "i": 83,
+  "pl": "— Zbliżamy się tedy, panie Rzecki, do jakiejś włoskiej mieściny, aż chłopi tamtejsi dają znać, że niedaleko stoi korpus austriacki. Szlemy<sup>584<\/sup> ich tedy do miasteczka z rozkazem, a właściwie z prośbą, ażeby mieszkańcy, gdy nas zobaczą, nie wydawali żadnych okrzyków...",
+  "start": 760.62
+ },
+ {
+  "i": 84,
+  "pl": "— Rozumie się — rzekłem. — Kiedy nieprzyjaciel w sąsiedztwie...",
+  "start": 778.48
+ },
+ {
+  "i": 85,
+  "pl": "— W pół godziny — ciągnął rządca — jesteśmy w mieście. Ulica wąska, po obu stronach naród, ledwie można przejechać czwórkami, a w oknach i na balkonach kobiety... Jakie kobiety, panie Rzecki!... Każda ma w ręku bukiet z róż. Ci, którzy stoją na ulicy, ani pary z ust... bo Austriacy blisko...",
+  "start": 781.82
+ },
+ {
+  "i": 86,
+  "pl": "Ale tamte, co na balkonach, skubią, panie, swoje bukiety i spoconych, pyłem okrytych kirasjerów zasypują listkami z róż jak śniegiem... Ach, panie Rzecki, gdybyś widział ten śnieg: amarantowy, różowy, biały, i te ręce, i te Włoszki...",
+  "start": 804.0
+ },
+ {
+  "i": 87,
+  "pl": "Pułkownik tylko dotykał ust i na prawo, i na lewo słał pocałunki. A tymczasem śnieg różanych listków zasypywał złote kirysy<sup>585<\/sup>, hełmy i parskające konie... Na domiar jakiś stary Włoch, z krzywym kijem i siwymi włosami do kołnierza, zastąpił drogę pułkownikowi.",
+  "start": 823.6
+ },
+ {
+  "i": 88,
+  "pl": "Schwycił za szyję jego konia, pocałował go i krzyknąwszy: Eviva Italia!<sup>586<\/sup>, padł trupem na miejscu... — Taka była nasza wigilia przed Magenta!",
+  "start": 842.84
+ },
+ {
+  "i": 89,
+  "pl": "To mówił eks-obywatel, a z oczu spływały mu łzy na poplamiony surdut.",
+  "start": 852.96
+ },
+ {
+  "i": 90,
+  "pl": "— Niech mnie diabli wezmą, panie Wirski! — zawołałem — jeżeli Stach nie odda panu darmo tego mieszkania.",
+  "start": 859.0
+ },
+ {
+  "i": 91,
+  "pl": "— Sto osiemdziesiąt rubli dopłacam! — szlochał rządca.",
+  "start": 867.07
+ },
+ {
+  "i": 92,
+  "pl": "Obtarliśmy oczy.",
+  "start": 871.75
+ },
+ {
+  "i": 93,
+  "pl": "— Panie — mówię — Magenta Magentą, a interes interesem. Może przedstawisz mnie pan kilku lokatorom.",
+  "start": 873.47
+ },
+ {
+  "i": 94,
+  "pl": "— Chodź pan — odpowiedział rządca zrywając się z obdartego fotelu. — Chodź pan, pokażę panu najosobliwszych...",
+  "start": 881.65
+ },
+ {
+  "i": 95,
+  "pl": "Wybiegł z saloniku i wtykając głowę do drzwi, zdaje mi się do kuchennych zawołał:",
+  "start": 889.61
+ },
+ {
+  "i": 96,
+  "pl": "— Maniu! ja wychodzę... A z tobą, Wicek, obrachujemy się wieczorem...",
+  "start": 894.89
+ },
+ {
+  "i": 97,
+  "pl": "— Ja nie gospodarz, żeby się tatko ze mną rachował — odpowiedział mu dziecięcy głos.",
+  "start": 899.17
+ },
+ {
+  "i": 98,
+  "pl": "— Daruj mu pan — szepnąłem do rządcy.",
+  "start": 904.53
+ },
+ {
+  "i": 99,
+  "pl": "— Akurat!... — odparł. — Nie zasnąłby, gdyby nie dostał wałów. Dobry chłopak — mówił — sprytny chłopak, ale szelma!...",
+  "start": 906.89
+ },
+ {
+  "i": 100,
+  "pl": "Wyszliśmy z mieszkania i zatrzymaliśmy się przede drzwiami obok schodów. Rządca ostrożnie zapukał, a mnie wszystka krew uciekła z głowy do serca, a z serca do nóg. Może nawet z nóg uciekłaby do butów i gdzieś het! po schodach aż do bramy, gdyby nie odpowiedziano z wnętrza:",
+  "start": 914.59
+ },
+ {
+  "i": 101,
+  "pl": "— Proszę!...",
+  "start": 932.69
+ },
+ {
+  "i": 102,
+  "pl": "Wchodzimy.",
+  "start": null
+ },
+ {
+  "i": 103,
+  "pl": "Trzy łóżka. Na jednym z książką w ręku i nogami opartymi o poręcz leży jakiś młody człowiek z czarnym zarostem i w studenckim mundurku; na dwu zaś innych łóżkach pościel wyglądała tak, jakby przez ten pokój przeleciał huragan i wszystko do góry nogami przewrócił.",
+  "start": 935.34
+ },
+ {
+  "i": 104,
+  "pl": "Widzę też kufer, pustą walizkę tudzież mnóstwo książek leżących na półkach, na kufrze i na podłodze. Jest nareszcie kilka krzeseł giętych i zwyczajnych i niepoliturowany stół, na którym przyjrzawszy się uważniej spostrzegłem wymalowaną szachownicę i poprzewracane szachy.",
+  "start": 952.48
+ },
+ {
+  "i": 105,
+  "pl": "W tej chwili mdło mi się zrobiło; obok szachów bowiem spostrzegłem dwie trupie główki: w jednej był tytuń, a w drugiej... cukier!...",
+  "start": 972.02
+ },
+ {
+  "i": 106,
+  "pl": "— Czego to? — zapytał młody człowiek z czarnym zarostem nie podnosząc się z łóżka.",
+  "start": 984.17
+ },
+ {
+  "i": 107,
+  "pl": "— Pan Rzecki, plenipotent<sup>587<\/sup> gospodarza... — odezwał się rządca wskazując na mnie.",
+  "start": 990.09
+ },
+ {
+  "i": 108,
+  "pl": "Młody człowiek oparł się na łokciu i bystro patrząc na mnie rzekł:",
+  "start": 995.89
+ },
+ {
+  "i": 109,
+  "pl": "— Gospodarza?... W tej chwili ja tu jestem gospodarzem i wcale sobie nie przypominam, ażebym mianował plenipotentem tego pana...",
+  "start": 999.67
+ },
+ {
+  "i": 110,
+  "pl": "Odpowiedź była tak uderzająco prosta, że obaj z Wirskim osłupieliśmy. Młody człowiek tymczasem ociężale podniósł się z łóżka i bez zbytniego pośpiechu począł zapinać spodnie i kamizelkę.",
+  "start": 1007.98
+ },
+ {
+  "i": 111,
+  "pl": "Pomimo całej systematyczności, z jaką oddawał się temu zajęciu, jestem pewny, że przynajmniej połowa guzików jego garderoby pozostała nie zapiętą.",
+  "start": 1020.66
+ },
+ {
+  "i": 112,
+  "pl": "— Aaa!... — ziewnął.",
+  "start": 1031.74
+ },
+ {
+  "i": 113,
+  "pl": "— Niech panowie siadają — rzekł manewrując ręką w taki sposób, że nie wiedziałem, czy każe nam umieścić się w walizie czy na podłodze.",
+  "start": 1034.23
+ },
+ {
+  "i": 114,
+  "pl": "— Gorąco, panie Wirski — dodał — prawda?... Aaa!...",
+  "start": 1042.89
+ },
+ {
+  "i": 115,
+  "pl": "— Właśnie sąsiad z przeciwka skarży się na panów dobrodziejów!... — odparł z uśmiechem rządca.",
+  "start": 1047.39
+ },
+ {
+  "i": 116,
+  "pl": "— O cóż to?",
+  "start": 1053.09
+ },
+ {
+  "i": 117,
+  "pl": "— Że panowie chodzą nago po pokoju...",
+  "start": 1054.21
+ },
+ {
+  "i": 118,
+  "pl": "Młody człowiek oburzył się.",
+  "start": 1056.51
+ },
+ {
+  "i": 119,
+  "pl": "— Zwariował stary czy co?... On może chce, żebyśmy się ubierali w futra na taką spiekotę?... Bezczelność! słowo honoru daję...",
+  "start": 1058.25
+ },
+ {
+  "i": 120,
+  "pl": "— No — mówił rządca — niech panowie raczą uwzględnić, że on ma dorosłą córkę.",
+  "start": 1065.35
+ },
+ {
+  "i": 121,
+  "pl": "— A cóż mnie do tego?... Ja nie jestem jej ojcem. Stary błazen! słowo honoru, i przy tym łże, bo nago nie chodzimy.",
+  "start": 1070.59
+ },
+ {
+  "i": 122,
+  "pl": "— Sam widziałem... — wtrącił rządca.",
+  "start": 1077.39
+ },
+ {
+  "i": 123,
+  "pl": "— Słowo honoru, kłamstwo! — zawołał młody człowiek rumieniąc się z gniewu. — Prawda, że Maleski chodzi bez koszuli, ale w majtkach, a Patkiewicz chodzi bez majtek, lecz za to w koszuli. Panna Leokadia więc widzi cały garnitur...",
+  "start": 1079.79
+ },
+ {
+  "i": 124,
+  "pl": "— Tak, i musi zasłaniać wszystkie okna — odparł rządca.",
+  "start": 1094.23
+ },
+ {
+  "i": 125,
+  "pl": "— To stary zasłania, nie ona — odparł student machając ręką. — Ona wygląda przez szpary między firanką a oknem. Zresztą, proszę pana: jeżeli pannie Leokadii wolno drzeć się na całe podwórko, to znowu Maleski i Patkiewicz mają prawo chodzić po swoim pokoju, jak im się podoba.",
+  "start": 1098.27
+ },
+ {
+  "i": 126,
+  "pl": "Mówiąc to młody człowiek spacerował wielkimi krokami. Ile razy zaś stanął do nas tyłem, rządca mrugał na mnie i robił miny oznaczające wielką desperację. Po chwili milczenia odezwał się:",
+  "start": 1114.87
+ },
+ {
+  "i": 127,
+  "pl": "— Panowie dobrodzieje winni nam są za cztery miesiące...",
+  "start": 1127.53
+ },
+ {
+  "i": 128,
+  "pl": "— O, znowu swoje!... — wykrzyknął młody człowiek wsadzając ręce w kieszenie. — Ileż razy jeszcze będę musiał powtarzać panu, ażeby pan o tych głupstwach nie gadał ze mną, tylko albo z Patkiewiczem, albo z Maleskim?...",
+  "start": 1130.87
+ },
+ {
+  "i": 129,
+  "pl": "To przecież tak łatwo pamiętać: Maleski płaci za miesiące parzyste, luty, kwiecień, czerwiec, a Patkiewicz za nieparzyste: marzec, maj, lipiec...",
+  "start": 1142.45
+ },
+ {
+  "i": 130,
+  "pl": "— Ależ nikt z panów nigdy nie płaci! — zawołał zniecierpliwiony rządca.",
+  "start": 1150.87
+ },
+ {
+  "i": 131,
+  "pl": "— A któż winien, że pan nie przychodzi we właściwej porze?!... — wrzasnął młody człowiek wytrząsając rękoma. — Sto razy słyszałeś pan, że do Maleskiego należą miesiące parzyste, a do Patkiewicza nieparzyste...",
+  "start": 1155.67
+ },
+ {
+  "i": 132,
+  "pl": "— A do pana dobrodzieja?...",
+  "start": 1168.53
+ },
+ {
+  "i": 133,
+  "pl": "— A do mnie, łaskawy panie, żadne — wołał młody człowiek grożąc nam pod nosami — bo ja z zasady nie płacę za komorne. Komu mam płacić?... Za co?... Cha! cha! dobrzy sobie...",
+  "start": 1170.49
+ },
+ {
+  "i": 134,
+  "pl": "Począł chodzić jeszcze prędzej po pokoju śmiejąc się i gniewając. Nareszcie zaczął świstać i wyglądać przez okno, hardo odwróciwszy się tyłem do nas...",
+  "start": 1181.55
+ },
+ {
+  "i": 135,
+  "pl": "Mnie już zabrakło cierpliwości.",
+  "start": 1192.05
+ },
+ {
+  "i": 136,
+  "pl": "— Pozwoli pan zrobić uwagę — odezwałem się — że takie nieszanowanie umowy jest dość oryginalne... Ktoś daje panu mieszkanie, a pan uważa za stosowne nie płacić mu...",
+  "start": 1195.07
+ },
+ {
+  "i": 137,
+  "pl": "— Kto mi daje mieszkanie?!... — wrzasnął młody człowiek siadając na oknie i huśtając się w tył, jakby miał zamiar rzucić się z trzeciego piętra. — Ja sam zająłem to mieszkanie i będę w nim dopóty, dopóki mnie nie wyrzucą. Umowy!... paradni są z tymi umowami...",
+  "start": 1205.74
+ },
+ {
+  "i": 138,
+  "pl": "Jeżeli społeczeństwo chce, ażebym mu płacił za mieszkanie, to niechaj samo płaci mi tyle za korepetycje, żeby z nich wystarczyło na komorne... Paradni są!... Ja za trzy godziny lekcyj co dzień mam piętnaście rubli na miesiąc, za jedzenie biorą ode mnie dziewięć rubli, za pranie i usługę trzy...",
+  "start": 1222.18
+ },
+ {
+  "i": 139,
+  "pl": "A mundur, a wpis?... I jeszcze chcą, żebym za mieszkanie płacił. Wyrzućcie mnie na ulicę — mówił zirytowany — niech mnie złapie hycel i da pałą w łeb... Do tego macie prawo, ale nie do uwag i wymówek...",
+  "start": 1239.12
+ },
+ {
+  "i": 140,
+  "pl": "— Nie rozumiem pańskiego uniesienia — rzekłem spokojnie.",
+  "start": 1252.21
+ },
+ {
+  "i": 141,
+  "pl": "— Mam się czego unosić! — odparł młody człowiek huśtając się coraz mocniej w stronę podwórka. — Społeczeństwo, jeżeli nie zabiło mnie przy urodzeniu, jeżeli każe mi się uczyć i zdawać kilkanaście egzaminów, zobowiązało się tym samym, że mi da pracę ubezpieczającą mój byt...",
+  "start": 1255.97
+ },
+ {
+  "i": 142,
+  "pl": "Tymczasem albo nie daje mi pracy, albo oszukuje mnie na wynagrodzeniu... Jeżeli więc społeczność względem mnie nie dotrzymuje umowy, z jakiej racji żąda, abym ja jej dotrzymywał względem niego. Zresztą co tu gadać, z zasady nie płacę komornego, i basta.",
+  "start": 1273.27
+ },
+ {
+  "i": 143,
+  "pl": "Tym bardziej że obecny właściciel domu nie budował tego domu; nie wypalał cegieł, nie rozrabiał wapna, nie murował, nie narażał się na skręcenie karku. Przyszedł z pieniędzmi, może ukradzionymi, zapłacił innemu, który może także okradł kogo, i na tej zasadzie chce mnie zrobić swoim niewolnikiem.",
+  "start": 1289.91
+ },
+ {
+  "i": 144,
+  "pl": "Kpiny ze zdrowego rozsądku!",
+  "start": 1308.12
+ },
+ {
+  "i": 145,
+  "pl": "— Pan Wokulski — rzekłem powstając z krzesła — nie okradł nikogo... Dorobił się majątku pracą i oszczędnością...",
+  "start": 1310.47
+ },
+ {
+  "i": 146,
+  "pl": "— Daj pan spokój! — przerwał młody człowiek. — Mój ojciec był zdolnym lekarzem, pracował dniem i nocą, miał niby to dobre zarobki i oszczędził... raptem trzysta rubli na rok!",
+  "start": 1318.73
+ },
+ {
+  "i": 147,
+  "pl": "A że wasza kamienica kosztuje dziewięćdziesiąt tysięcy rubli, więc na kupienie jej za cenę uczciwej pracy mój ojciec musiałby żyć i zapisywać recepty przez trzysta lat... Nie uwierzę zaś, ażeby ten nowy właściciel pracował od trzystu lat...",
+  "start": 1329.45
+ },
+ {
+  "i": 148,
+  "pl": "W głowie zaczęło mi krążyć od tych wywodów; młody człowiek zaś mówił dalej:",
+  "start": 1343.51
+ },
+ {
+  "i": 149,
+  "pl": "— Możecie nas wypędzić, owszem!... Wtedy dopiero przekonacie się, coście stracili.",
+  "start": 1348.13
+ },
+ {
+  "i": 150,
+  "pl": "Wszystkie praczki, wszystkie kucharki z tej kamienicy stracą humor, a pani Krzeszowska już bez przeszkody zacznie śledzić swoich sąsiadów, rachować każdego gościa, który przychodzi do nich z wizytą, i każde ziarno kaszy, które sypią do garnka... Owszem, wypędźcie nas!...",
+  "start": 1352.95
+ },
+ {
+  "i": 151,
+  "pl": "Wtedy dopiero panna Leokadia zacznie wyśpiewywać swoje gamy i wokalizy<sup>588<\/sup> z rana sopranem, a po południu kontraltem... I diabli wezmą dom, w którym my jedni jako tako utrzymujemy porządek!",
+  "start": 1367.99
+ },
+ {
+  "i": 152,
+  "pl": "Zabraliśmy się do odejścia.",
+  "start": 1382.17
+ },
+ {
+  "i": 153,
+  "pl": "— Więc pan stanowczo nie zapłaci komornego? — spytałem.",
+  "start": 1384.03
+ },
+ {
+  "i": 154,
+  "pl": "— Ani myślę.",
+  "start": 1387.71
+ },
+ {
+  "i": 155,
+  "pl": "— Może choć od października zacznie pan płacić?",
+  "start": 1388.93
+ },
+ {
+  "i": 156,
+  "pl": "— Nie, panie. Niedługo już będę żył, więc pragnę przeprowadzić choćby jedną zasadę: jeżeli społeczność chce, ażeby jednostki szanowały umowę względem niej, niechaj sama wykonywa ją względem jednostek.",
+  "start": 1391.91
+ },
+ {
+  "i": 157,
+  "pl": "Jeżeli ja mam komuś płacić za komorne, niech inni tyle płacą mi za lekcje, żeby mi na komorne wystarczyło. Rozumie pan?...",
+  "start": 1403.83
+ },
+ {
+  "i": 158,
+  "pl": "— Nie wszystko, panie — odparłem.",
+  "start": 1411.55
+ },
+ {
+  "i": 159,
+  "pl": "— Nic dziwnego — rzekł młody człowiek. — Na starość mózg więdnie i nie jest zdolny przyjmować nowych prawd...",
+  "start": 1414.01
+ },
+ {
+  "i": 160,
+  "pl": "Ukłoniliśmy się sobie nawzajem i wyszliśmy obaj z rządcą. Młody człowiek zamknął za nami drzwi, lecz za chwilę wybiegł na schody i zawołał:",
+  "start": 1420.87
+ },
+ {
+  "i": 161,
+  "pl": "— A niechaj komornik przyprowadzi ze sobą dwu stójkowych<sup>589<\/sup>, bo mnie będą musieli wynosić z mieszkania...",
+  "start": 1429.37
+ },
+ {
+  "i": 162,
+  "pl": "— Owszem, panie! — odpowiedziałem mu z grzecznym ukłonem, myśląc w głębi duszy, że nie godzi się jednak wyrzucać takiego oryginała.",
+  "start": 1435.91
+ },
+ {
+  "i": 163,
+  "pl": "Kiedy szczególny młodzieniec ostatecznie cofnął się do pokoju i zamknął drzwi na klucz dając tym sposobem do zrozumienia, że konferencję z nami uważa za skończoną, zatrzymałem się w połowie schodów i rzekłem do rządcy:",
+  "start": 1443.83
+ },
+ {
+  "i": 164,
+  "pl": "— Widzę, macie tu kolorowe szyby, co?",
+  "start": 1457.45
+ },
+ {
+  "i": 165,
+  "pl": "— O, bardzo kolorowe.",
+  "start": 1460.53
+ },
+ {
+  "i": 166,
+  "pl": "— Ale są zakurzone...",
+  "start": 1462.03
+ },
+ {
+  "i": 167,
+  "pl": "— O, bardzo zakurzone — odparł rządca.",
+  "start": 1463.37
+ },
+ {
+  "i": 168,
+  "pl": "— I myślę — dodałem — że ten młody człowiek pod względem niepłacenia komornego dotrzyma słowa, co?",
+  "start": 1466.19
+ },
+ {
+  "i": 169,
+  "pl": "— Panie — zawołał rządca — on to nic. On mówi, że nie zapłaci, no i nie płaci; ale tamci dwaj nic nie mówią i także nie płacą. To są, panie Rzecki, nadzwyczajni lokatorowie!... Oni jedni nigdy nie robią mi zawodu.",
+  "start": 1472.03
+ },
+ {
+  "i": 170,
+  "pl": "Mimo woli, i nie wiem nawet dlaczego, pokręciłem głową, choć przeczuwam, że gdybym był właścicielem podobnego domu, kręciłbym głową cały dzień.",
+  "start": 1485.03
+ },
+ {
+  "i": 171,
+  "pl": "— Więc tu nikt nie płaci, a przynajmniej nie płaci regularnie? — zapytałem eks-obywatela.",
+  "start": 1493.79
+ },
+ {
+  "i": 172,
+  "pl": "— I nie ma się czemu dziwić — odparł pan Wirski. — W domu, z którego od tylu lat komorne pobierają wierzyciele, najuczciwszy lokator musi się znarowić<sup>590<\/sup>. Pomimo to mamy kilku bardzo punktualnych, na przykład baronowa Krzeszowska...",
+  "start": 1499.29
+ },
+ {
+  "i": 173,
+  "pl": "— Co?!... — zawołałem. — Ach, prawda, że baronowa tu mieszka... Chciała nawet kupić ten dom...",
+  "start": 1515.25
+ },
+ {
+  "i": 174,
+  "pl": "— I kupi go — szepnął rządca — tylko, panowie, trzymajcie się ostro!... Kupi go, choćby miała oddać cały swój majątek... A niemały to majątek, choć pan baron mocno go nadszarpnął...",
+  "start": 1521.21
+ },
+ {
+  "i": 175,
+  "pl": "Wciąż stałem na połowie schodów, pod oknem z żółtymi, czerwonymi i niebieskimi szybami. Wciąż stałem zapatrzony we wspomnienie pani baronowej, którą widziałem zaledwie kilka razy w życiu i zawsze przedstawiała mi się jako osoba bardzo ekscentryczna.",
+  "start": 1532.47
+ },
+ {
+  "i": 176,
+  "pl": "Umie być pobożną i zawziętą, pokorną i ordynaryjną...",
+  "start": 1548.67
+ },
+ {
+  "i": 177,
+  "pl": "— Cóż to za kobieta, panie Wirski? — spytałem. — To niezwykła kobieta, panie...",
+  "start": 1554.25
+ },
+ {
+  "i": 178,
+  "pl": "— Jak wszystkie histeryczki — mruknął eks-obywatel. — Straciła córeczkę, mąż ją porzucił... Same awantury!...",
+  "start": 1560.17
+ },
+ {
+  "i": 179,
+  "pl": "— Pójdziemy do niej, panie — rzekłem schodząc na drugie piętro. Czułem w sobie takie męstwo, że baronowa nie tylko nie trwożyła mnie, lecz prawie pociągała.",
+  "start": 1567.95
+ },
+ {
+  "i": 180,
+  "pl": "Ale kiedy stanęliśmy pode drzwiami i rządca zadzwonił, doznałem skurczu w łydkach. Nie mogłem ruszyć się z miejsca i tylko dlatego nie uciekłem. W jednej chwili opuściła mnie odwaga, przypomniałem sobie sceny z licytacji...",
+  "start": 1582.93
+ },
+ {
+  "i": 181,
+  "pl": "Obrócił się klucz w zamku, stuknęła zasuwka i w uchylonych drzwiach ukazała się twarz niestarej jeszcze dziewczyny, ubranej w biały czepeczek.",
+  "start": 1597.85
+ },
+ {
+  "i": 182,
+  "pl": "— A kto to? — spytała dziewczyna.",
+  "start": 1607.69
+ },
+ {
+  "i": 183,
+  "pl": "— Ja, rządca.",
+  "start": 1610.35
+ },
+ {
+  "i": 184,
+  "pl": "— Czego pan chce?",
+  "start": 1611.65
+ },
+ {
+  "i": 185,
+  "pl": "— Przychodzę z pełnomocnikiem właściciela.",
+  "start": 1613.23
+ },
+ {
+  "i": 186,
+  "pl": "— A ten pan czego chce?",
+  "start": 1616.09
+ },
+ {
+  "i": 187,
+  "pl": "— Ten pan właśnie jest pełnomocnikiem.",
+  "start": 1617.93
+ },
+ {
+  "i": 188,
+  "pl": "— Więc jak mam powiedzieć?...",
+  "start": 1620.79
+ },
+ {
+  "i": 189,
+  "pl": "— Powiedz pani — odparł już zirytowany rządca — że przychodzimy pogadać o lokalu...",
+  "start": 1623.05
+ },
+ {
+  "i": 190,
+  "pl": "— Aha!",
+  "start": 1629.15
+ },
+ {
+  "i": 191,
+  "pl": "Zamknęła drzwi i odeszła. Upłynęło ze dwie albo trzy minuty, zanim wróciła na powrót i po otworzeniu wielu zamków wprowadziła nas do pustego salonu.",
+  "start": 1629.99
+ },
+ {
+  "i": 192,
+  "pl": "Dziwny był widok tego salonu. Meble okryte ciemnopopielatymi pokrowcami, to samo fortepian, to samo pająk zawieszony u sufitu; nawet stojące w kątach kolumny z posążkami miały także popielate koszule.",
+  "start": 1641.63
+ },
+ {
+  "i": 193,
+  "pl": "W ogóle robił on wrażenie pokoju, którego właściciel wyjechał zostawiwszy tylko służbę bardzo dbałą o porządek domu.",
+  "start": 1657.09
+ },
+ {
+  "i": 194,
+  "pl": "Za drzwiami było słychać rozmowę na głos kobiecy i męski. Kobiecy należał do baronowej; męski znałem dobrze, ale nie mogłem sobie przypomnieć, czyj jest.",
+  "start": 1665.23
+ },
+ {
+  "i": 195,
+  "pl": "— Przysięgłabym — mówiła baronowa — że utrzymuje z nią stosunki. Onegdaj przysłał jej przez posłańca bukiet...",
+  "start": 1676.41
+ },
+ {
+  "i": 196,
+  "pl": "— Hum!... Hum!... — wtrącił głos męski.",
+  "start": 1684.03
+ },
+ {
+  "i": 197,
+  "pl": "— Bukiet, który ta obrzydliwa kokietka, dla oszukania mnie, kazała natychmiast wyrzucić za okno...",
+  "start": 1686.69
+ },
+ {
+  "i": 198,
+  "pl": "— Przecież baron na wsi... tak daleko od Warszawy... — odparł mężczyzna.",
+  "start": 1692.55
+ },
+ {
+  "i": 199,
+  "pl": "— Ale ma tu przyjaciół — zawołała baronowa. — I gdybym nie znała pana, przypuszczałabym, że pośredniczysz mu w tych bezeceństwach.",
+  "start": 1697.73
+ },
+ {
+  "i": 200,
+  "pl": "— Ależ, pani!... — zaprotestował głos męski. I w tej samej chwili rozległy się dwa pocałunki, sądzę, że w rękę.",
+  "start": 1705.21
+ },
+ {
+  "i": 201,
+  "pl": "— No, no, panie Maruszewicz, bez czułości!... Znam ja was. Obsypujecie pieszczotami kobietę, dopóki wam nie zaufa, a potem trwonicie jej majątek i żądacie rozwodu...",
+  "start": 1713.23
+ },
+ {
+  "i": 202,
+  "pl": "„Więc to Maruszewicz — pomyślałem. — Ładna para...”",
+  "start": 1723.95
+ },
+ {
+  "i": 203,
+  "pl": "— Ja jestem zupełnie inny — odparł ciszej męski głos za drzwiami i znowu rozległy się dwa pocałunki, z pewnością w rękę.",
+  "start": 1727.03
+ },
+ {
+  "i": 204,
+  "pl": "Spojrzałem na eks-obywatela. Podniósł oczy do sufitu, a ramiona prawie do wysokości uszu.",
+  "start": 1735.73
+ },
+ {
+  "i": 205,
+  "pl": "— Frant<sup>591<\/sup>!... — szepnął wskazując na drzwi.",
+  "start": 1742.65
+ },
+ {
+  "i": 206,
+  "pl": "— Znasz go pan?...",
+  "start": 1745.83
+ },
+ {
+  "i": 207,
+  "pl": "— Bah!...",
+  "start": 1746.87
+ },
+ {
+  "i": 208,
+  "pl": "— Więc — mówiła baronowa w drugim pokoju — niechże pan zaniesie do Św. Krzyża<sup>592<\/sup> te dziewięć rubli na trzy wotywy<sup>593<\/sup>, na intencję, ażeby Bóg go upamiętał... Nie — dodała po chwili nieco zmienionym głosem.",
+  "start": 1748.09
+ },
+ {
+  "i": 209,
+  "pl": "— Niech będzie jedna wotywa za niego, a dwie za duszę mojej nieszczęśliwej dzieweczki.",
+  "start": 1761.87
+ },
+ {
+  "i": 210,
+  "pl": "Przerwało jej ciche szlochanie.",
+  "start": 1768.79
+ },
+ {
+  "i": 211,
+  "pl": "— Niechże się pani uspokoi!... — łagodnie reflektował<sup>594<\/sup> ją Maruszewicz.",
+  "start": 1771.15
+ },
+ {
+  "i": 212,
+  "pl": "— Idź pan już, idź... — odparła.",
+  "start": 1776.23
+ },
+ {
+  "i": 213,
+  "pl": "Nagle otworzyły się drzwi salonu i jak wryty stanął na progu Maruszewicz, za którym ujrzałem żółtawą twarz i zaczerwienione oczy pani baronowej. Rządca i ja podnieśliśmy się z krzeseł.",
+  "start": 1778.31
+ },
+ {
+  "i": 214,
+  "pl": "Maruszewicz cofnął się w głąb drugiego pokoju i widocznie wyszedł innymi drzwiami, a pani baronowa zawołała gniewnie:",
+  "start": 1791.84
+ },
+ {
+  "i": 215,
+  "pl": "— Marysia!... Marysia!...",
+  "start": 1799.98
+ },
+ {
+  "i": 216,
+  "pl": "Wbiegła dziewczyna w białym, jak wyżej, czepeczku, w ciemnej sukni i białym fartuchu. W ubraniu tym wyglądałaby na dozorczynię chorych, gdyby jej oczy nie rzucały za wiele iskier.",
+  "start": 1802.54
+ },
+ {
+  "i": 217,
+  "pl": "— Jak mogłaś wprowadzić tu tych panów? — zapytała ją baronowa.",
+  "start": 1815.14
+ },
+ {
+  "i": 218,
+  "pl": "— Pani przecie kazała prosić...",
+  "start": 1819.94
+ },
+ {
+  "i": 219,
+  "pl": "— Głupia... precz!... — syknęła baronowa. Następnie zwróciła się do nas:",
+  "start": 1822.02
+ },
+ {
+  "i": 220,
+  "pl": "— Czego pan chce, panie Wirski?",
+  "start": 1827.0
+ },
+ {
+  "i": 221,
+  "pl": "— Pan Rzecki jest plenipotentem właściciela domu — odparł rządca.",
+  "start": 1829.14
+ },
+ {
+  "i": 222,
+  "pl": "— A, a!... To dobrze... — mówiła baronowa, powoli wchodząc do salonu i nie prosząc nas, żebyśmy usiedli. Rysopis tej damy: czarna suknia, żółtawa twarz, sinawe usta, zaczerwienione z płaczu oczy i włosy gładko uczesane. Skrzyżowała ręce na piersiach jak Napoleon I i patrząc na mnie rzekła:",
+  "start": 1834.2
+ },
+ {
+  "i": 223,
+  "pl": "— A, a, a!... To pan jest plenipotentem, zdaje mi się, że pana Wokulskiego... Czy tak?... Niechże mu pan powie, że albo ja wyprowadzę się z tego mieszkania, za które płacę mu siedemset rubli bardzo regularnie, wszak prawda, panie Wirski?...",
+  "start": 1856.78
+ },
+ {
+  "i": 224,
+  "pl": "Rządca ukłonił się.",
+  "start": 1873.04
+ },
+ {
+  "i": 225,
+  "pl": "— Albo — ciągnęła baronowa — pan Wokulski usunie ze swego domu te brudy i niemoralność...",
+  "start": 1874.14
+ },
+ {
+  "i": 226,
+  "pl": "— Niemoralność? — spytałem.",
+  "start": 1882.48
+ },
+ {
+  "i": 227,
+  "pl": "— Tak, panie — potwierdziła baronowa kiwając głową. — Te praczki, które przez cały dzień śpiewają jakieś wstrętne piosenki na dole, a wieczorem śmieją się nad moją głową u tych... studentów... Ci zbrodniarze, którzy na mnie rzucają z góry papierosy albo leją wodę...",
+  "start": 1884.62
+ },
+ {
+  "i": 228,
+  "pl": "Ta nareszcie pani Stawska, o której nie wiem, czym jest: wdową czy rozwódką, ani z czego się utrzymuje... Ta pani bałamuci mężów żonom cnotliwym, a tak strasznie nieszczęśliwym...",
+  "start": 1901.46
+ },
+ {
+  "i": 229,
+  "pl": "Zaczęła mrugać oczyma i rozpłakała się.",
+  "start": 1913.24
+ },
+ {
+  "i": 230,
+  "pl": "— Okropność!... — mówiła łkając. — Być przykutą do tak wstrętnego domu przez pamięć dla dziecka, której nic już nie wydrze z serca. Wszakże ona biegała po tych wszystkich pokojach... Ona bawiła się tam, od podwórza... I wyglądała oknem, przez które mnie, matce–sierocie, wyjrzeć dzisiaj nie wolno...",
+  "start": 1916.32
+ },
+ {
+  "i": 231,
+  "pl": "Chcą mnie wypędzić stąd... wszyscy chcą mnie wypędzić... wszystkim zawadzam... A przecież ja stąd nie mogę wyprowadzić się, bo każda deska tej podłogi nosi ślady jej nóżek... w każdej ścianie uwiązł jej śmiech albo płacz...",
+  "start": 1935.34
+ },
+ {
+  "i": 232,
+  "pl": "Upadła na kanapę i zaniosła się od łkania.",
+  "start": 1948.52
+ },
+ {
+  "i": 233,
+  "pl": "— Ach! — płakała — ludzie są okrutniejsi od zwierząt... Chcą mnie wygnać stąd, gdzie moja dziecina wydała ostatnie tchnienie... Jej łóżeczko i wszystkie zabawki leżą na swoich miejscach... Sama ścieram kurze w jej pokoju, ażeby nie poruszyć najmniejszego sprzętu...",
+  "start": 1951.22
+ },
+ {
+  "i": 234,
+  "pl": "Każdy cal<sup>595<\/sup> podłogi wydeptałam kolanami, wycałowałam ślady mojej dzieciny, a oni mnie chcą wygnać!... Wygnajcież stąd pierwej mój ból, moją tęskonotę, moją rozpacz...",
+  "start": 1968.18
+ },
+ {
+  "i": 235,
+  "pl": "Zasłoniła twarz i szlochała rozdzierającym głosem. Spostrzegłem, że rządcy nos czerwienieje, a i ja sam uczułem łzy pod powiekami.",
+  "start": 1981.51
+ },
+ {
+  "i": 236,
+  "pl": "Rozpacz baronowej po zmarłym dziecku tak mnie rozbroiła, że nie miałem odwagi mówić z nią o podwyższeniu komornego. Płacz zaś jej tak znowu denerwował, że gdyby nie wzgląd na drugie piętro, wyskoczyłbym chyba oknem.",
+  "start": 1991.33
+ },
+ {
+  "i": 237,
+  "pl": "W rezultacie chcąc za jakąkolwiek cenę utulić szlochającą kobietę, odezwałem się z całą łagodnością:",
+  "start": 2006.0
+ },
+ {
+  "i": 238,
+  "pl": "— Proszę pani, niech się pani uspokoi... Czego pani żąda od nas?... Czym możemy służyć?...",
+  "start": 2013.54
+ },
+ {
+  "i": 239,
+  "pl": "W głosie moim było tyle współczucia, że rządcy nos jeszcze bardziej poczerwieniał. Pani baronowej zaś obeschło jedno oko, lecz jeszcze płakała drugim, na znak, że nie uważa swojej akcji za skończoną, a mnie za pobitego.",
+  "start": 2019.77
+ },
+ {
+  "i": 240,
+  "pl": "— Żądam... żądam — mówiła wśród westchnień — żądam, aby mnie nie wypędzano z miejsca, gdzie umarło moje dziecko... i gdzie wszystko mi je przypomina. Nie mogę, no... nie mogę oderwać się od jej pokoju... nie mogę ruszyć jej sprzętów i zabawek... Podłością jest w taki sposób wyzyskiwać niedolę.",
+  "start": 2034.25
+ },
+ {
+  "i": 241,
+  "pl": "— Któż ją wyzyskuje? — spytałem.",
+  "start": 2053.81
+ },
+ {
+  "i": 242,
+  "pl": "— Wszyscy, począwszy od gospodarza, który każe mi płacić siedemset rubli...",
+  "start": 2056.38
+ },
+ {
+  "i": 243,
+  "pl": "— A, wybacz pani baronowa! — zawołał rządca. — Siedem pysznych pokoi, dwie kuchnie jak salony, dwa schowki... Niech pani komu odstąpi ze trzy pokoje: przecież są dwa frontowe wejścia.",
+  "start": 2061.7
+ },
+ {
+  "i": 244,
+  "pl": "— Nic nikomu nie odstąpię — odparła stanowczo — gdyż jestem pewna, że mój zbłąkany mąż lada dzień opamięta się i powróci...",
+  "start": 2073.38
+ },
+ {
+  "i": 245,
+  "pl": "— W takim razie trzeba płacić siedemset rubli...",
+  "start": 2080.56
+ },
+ {
+  "i": 246,
+  "pl": "— Jeżeli nie więcej... — szepnąłem.",
+  "start": 2085.0
+ },
+ {
+  "i": 247,
+  "pl": "Pani baronowa spojrzała tak, jakby chciała mnie spalić wzrokiem i utopić we łzach. Oj! co to za setna kobietka... Aż mi zimno, kiedy o niej pomyślę.",
+  "start": 2086.98
+ },
+ {
+  "i": 248,
+  "pl": "— Mniejsza o komorne — rzekła.",
+  "start": 2097.96
+ },
+ {
+  "i": 249,
+  "pl": "— Bardzo rozsądnie! — pochwalił ją Wirski kłaniając się.",
+  "start": 2100.14
+ },
+ {
+  "i": 250,
+  "pl": "— Mniejsza o pretensje gospodarza... Ale przecież nie mogę płacić siedmiuset rubli za lokal w podobnym domu...",
+  "start": 2104.12
+ },
+ {
+  "i": 251,
+  "pl": "— Czego pani baronowa chce od domu? — spytałem.",
+  "start": 2110.92
+ },
+ {
+  "i": 252,
+  "pl": "— Ten dom jest hańbą uczciwych ludzi — zawołała gestykulując rękoma. — Więc nie od siebie, ale w imieniu moralności proszę...",
+  "start": 2114.18
+ },
+ {
+  "i": 253,
+  "pl": "— O co?",
+  "start": 2122.9
+ },
+ {
+  "i": 254,
+  "pl": "— O usunięcie tych studentów, którzy mieszkają nade mną, nie pozwalają mi wyjrzeć oknem na podwórze i demoralizują wszystkie...",
+  "start": 2124.14
+ },
+ {
+  "i": 255,
+  "pl": "Nagle zerwała się z kanapy.",
+  "start": 2131.9
+ },
+ {
+  "i": 256,
+  "pl": "— O! słyszy pan? — rzekła wskazując na drzwi, które prowadziły do pokoju od strony dziedzińca.",
+  "start": 2134.44
+ },
+ {
+  "i": 257,
+  "pl": "Istotnie, usłyszałem głos ekscentrycznego brunecika, który z trzeciego piętra wołał:",
+  "start": 2141.38
+ },
+ {
+  "i": 258,
+  "pl": "— Marysiu!... Marysiu, chodź do nas...",
+  "start": 2146.94
+ },
+ {
+  "i": 259,
+  "pl": "— Marysiu! — krzyknęła baronowa.",
+  "start": 2150.6
+ },
+ {
+  "i": 260,
+  "pl": "— Przecież jestem... Czego pani chce? — odparła nieco zarumieniona służąca.",
+  "start": 2152.54
+ },
+ {
+  "i": 261,
+  "pl": "— Ani mi się rusz z domu!... Oto ma pan... — mówiła baronowa — tak jest po całych dniach. A wieczorem chodzą do nich praczki... Panie! — zawołała składając pobożnie ręce — wygnajcie tych nihilistów<sup>596<\/sup>, bo to źródło zepsucia i niebezpieczeństwa dla całego domu...",
+  "start": 2157.58
+ },
+ {
+  "i": 262,
+  "pl": "Oni w trupich główkach trzymają herbatę i cukier... Oni kośćmi ludzkimi poprawiają węgle w samowarze... Oni chcą tu kiedy przynieść całego nieboszczyka!...",
+  "start": 2174.78
+ },
+ {
+  "i": 263,
+  "pl": "Zaczęła znowu tak płakać, iż myślałem, że dostanie spazmów.",
+  "start": 2184.84
+ },
+ {
+  "i": 264,
+  "pl": "— Panowie ci — rzekłem — nie płacą komornego, więc bardzo być może...",
+  "start": 2188.78
+ },
+ {
+  "i": 265,
+  "pl": "Baronowej obeschły oczy.",
+  "start": 2193.3
+ },
+ {
+  "i": 266,
+  "pl": "— Ależ naturalnie — przerwała mi — że musicie ich wypędzić... Lecz, panie! — zawołała — jakkolwiek są oni źli i zepsuci, to przecież gorszą od nich jest ta... ta Stawska!...",
+  "start": 2195.24
+ },
+ {
+  "i": 267,
+  "pl": "Zdziwiłem się zobaczywszy płomień nienawiści, jaki błysnął w oczach pani baronowej przy wymówieniu nazwy: Stawska.",
+  "start": 2206.83
+ },
+ {
+  "i": 268,
+  "pl": "— Pani Stawska tu mieszka? — spytałem mimo woli. — Ta piękna?...",
+  "start": 2214.98
+ },
+ {
+  "i": 269,
+  "pl": "— O... nowa ofiara!... — wykrzyknęła baronowa wskazując na mnie i z pałającymi oczyma zaczęła mówić głębokim głosem:",
+  "start": 2218.96
+ },
+ {
+  "i": 270,
+  "pl": "— Ależ, człowieku siwowłosy, zastanów się, co robisz?... Wszakże to kobieta, której mąż oskarżony o zabójstwo uciekł za granicę... A z czego ona żyje?... Z czego się tak stroi?...",
+  "start": 2227.28
+ },
+ {
+  "i": 271,
+  "pl": "— Pracuje kobiecisko jak wół — szepnął rządca.",
+  "start": 2239.2
+ },
+ {
+  "i": 272,
+  "pl": "— O... i ten!... — zawołała baronowa. — Mój mąż (jestem pewna, że to on) przysyła jej ze wsi bukiety... Rządca tego domu kocha się w niej i bierze od niej komorne z dołu co miesiąc...",
+  "start": 2242.8
+ },
+ {
+  "i": 273,
+  "pl": "— Ależ, pani!... — zaprotestował eks-obywatel, a jego oblicze stało się tak rumiane jak nos.",
+  "start": 2255.48
+ },
+ {
+  "i": 274,
+  "pl": "— Nawet ten poczciwy niedołęga Maruszewicz — ciągnęła baronowa — nawet on po całych dniach wygląda do niej oknem...",
+  "start": 2261.36
+ },
+ {
+  "i": 275,
+  "pl": "Dramatyczny głos baronowej przeszedł znowu w szlochanie.",
+  "start": 2269.3
+ },
+ {
+  "i": 276,
+  "pl": "— I pomyśleć — jęczała — że taka kobieta ma córkę, córkę... którą wychowuje dla piekła, a ja... O! wierzę w sprawiedliwość... wierzę w miłosierdzie boskie, ale nie rozumiem... tak... nic nie rozumiem tych wyroków, które mnie pozbawiły, a jej zostawiają dziecko... tej... tej... Panie!",
+  "start": 2272.92
+ },
+ {
+  "i": 277,
+  "pl": "— wybuchnęła z nową siłą głosu — możesz zostawić nawet tych nihilistów, ale ją... musisz wygnać!... Niech lokal po niej stoi pustką... będę za niego płacić, byle ona nie miała dachu nad głową...",
+  "start": 2293.96
+ },
+ {
+  "i": 278,
+  "pl": "Ten wykrzyknik już całkiem mi się nie podobał. Dałem znak rządcy, że wychodzimy, i kłaniając się rzekłem ozięble:",
+  "start": 2305.88
+ },
+ {
+  "i": 279,
+  "pl": "— Pozwoli pani baronowa, że w tej sprawie zadecyduje sam gospodarz, pan Wokulski.",
+  "start": 2315.62
+ },
+ {
+  "i": 280,
+  "pl": "Baronowa rozkrzyżowała ręce jak człowiek trafiony kulą w piersi.",
+  "start": 2322.07
+ },
+ {
+  "i": 281,
+  "pl": "— Ach!... więc tak?... — szepnęła. — Więc już i pan i... ten, ten... Wokulski związaliście się z nią?... Ha!... zaczekam tedy na sprawiedliwość boską...",
+  "start": 2326.55
+ },
+ {
+  "i": 282,
+  "pl": "Wyszliśmy, nie zatrzymywani dłużej; na schodach zatoczyłem się jak pijany.",
+  "start": 2339.47
+ },
+ {
+  "i": 283,
+  "pl": "— Co pan wiesz o tej pani Stawskiej? — zapytałem Wirskiego.",
+  "start": 2345.63
+ },
+ {
+  "i": 284,
+  "pl": "— Najuczciwsza kobieta — odparł. — Młode to, piękne i pracuje na cały dom... Bo emerytura jej matki ledwie starczy na komorne...",
+  "start": 2349.63
+ },
+ {
+  "i": 285,
+  "pl": "— Ma matkę?",
+  "start": 2358.17
+ },
+ {
+  "i": 286,
+  "pl": "— Ma. Także dobra kobiecina.",
+  "start": 2359.43
+ },
+ {
+  "i": 287,
+  "pl": "— A ile płacą za lokal?",
+  "start": 2361.99
+ },
+ {
+  "i": 288,
+  "pl": "— Trzysta rubli — odpowiedział rządca. — To, panie, jakbyśmy z ołtarza zdejmowali...",
+  "start": 2363.94
+ },
+ {
+  "i": 289,
+  "pl": "— Pójdziemy do tych pań — rzekłem.",
+  "start": 2369.6
+ },
+ {
+  "i": 290,
+  "pl": "— Z największą chęcią! — zawołał. — A co o nich plecie ta wariatka, niech pan nie słucha. Ona nienawidzi Stawskiej, nie wiem nawet za co. Chyba za to, że jest piękna i ma córeczkę jak cherubinek...",
+  "start": 2371.52
+ },
+ {
+  "i": 291,
+  "pl": "— Gdzie mieszkają?",
+  "start": 2383.18
+ },
+ {
+  "i": 292,
+  "pl": "— W prawej oficynie, na pierwszym piętrze.",
+  "start": 2384.16
+ },
+ {
+  "i": 293,
+  "pl": "Nie pamiętam nawet, kiedy zeszliśmy ze schodów frontowych, a kiedy minęliśmy podwórko i weszliśmy na pierwsze piętro oficyny. Tak ciągle stała mi przed oczyma pani Stawska i Wokulski... Mój Boże! jaka by to była piękna para; ale i cóż z tego, kiedy ona ma męża.",
+  "start": 2386.33
+ },
+ {
+  "i": 294,
+  "pl": "Chociaż to są sprawy, do których najmniej miałbym ochoty mieszać się. Mnie się wydaje tak, im wydałoby się owak, a losowi jeszcze inaczej...",
+  "start": 2403.71
+ },
+ {
+  "i": 295,
+  "pl": "Los! los!... on dziwnie zbliża ludzi. Gdybym przed laty nie zeszedł do piwnicy Hopfera, do Machalskiego, nie poznałbym się z Wokulskim. Gdybym jego znowu nie wyprawił do teatru, on może nie spotkałby się z panną Łęcką. Raz mimo woli nawarzyłem mu piwa i już nie chcę powtarzać tego po raz drugi.",
+  "start": 2413.89
+ },
+ {
+  "i": 296,
+  "pl": "Niech sam Bóg radzi o swej czeladzi...",
+  "start": 2436.13
+ },
+ {
+  "i": 297,
+  "pl": "Gdy stanęliśmy pode drzwiami mieszkania pani Stawskiej, rządca uśmiechnął się filuternie i szepnął:",
+  "start": 2439.01
+ },
+ {
+  "i": 298,
+  "pl": "— Uważa pan... naprzód dowiemy się, czy młoda jest w domu. Jest co widzieć, panie!...",
+  "start": 2445.69
+ },
+ {
+  "i": 299,
+  "pl": "— Wiem, wiem...",
+  "start": 2451.61
+ },
+ {
+  "i": 300,
+  "pl": "Rządca nie dzwonił, ale zapukał raz i drugi. Nagle drzwi otworzyły się dość gwałtownie i stanęła w nich gruba i niska służąca z zawiniętymi rękawami i z mydłem na rękach, których mógłby jej pozazdrościć atleta.",
+  "start": 2453.09
+ },
+ {
+  "i": 301,
+  "pl": "— O, to pan rządca!... — zawołała. — Myślałam, że znowu jaki tam...",
+  "start": 2468.19
+ },
+ {
+  "i": 302,
+  "pl": "— Cóż, dobijał się kto?... — spytał Wirski z akcentem oburzenia w głosie.",
+  "start": 2472.95
+ },
+ {
+  "i": 303,
+  "pl": "— Nie dobijał się nijaki — z chłopska odparła służąca — ino jeden przysłał dziś bukiet. Mówią, że to ten Marusiewicz z przeciwka...",
+  "start": 2477.89
+ },
+ {
+  "i": 304,
+  "pl": "— Łotr! — syknął rządca.",
+  "start": 2487.69
+ },
+ {
+  "i": 305,
+  "pl": "— Mężczyzny wszystkie takie. Niech mu się co podoba, to zaraz będzie lazł jak ćma w ogień.",
+  "start": 2489.79
+ },
+ {
+  "i": 306,
+  "pl": "— A panie obie są? — spytał Wirski.",
+  "start": 2495.81
+ },
+ {
+  "i": 307,
+  "pl": "Gruba służąca spojrzała na mnie podejrzliwie.",
+  "start": 2498.99
+ },
+ {
+  "i": 308,
+  "pl": "— Pan rządca z tym panem?",
+  "start": 2502.41
+ },
+ {
+  "i": 309,
+  "pl": "— Z tym panem. To plenipotent gospodarza.",
+  "start": 2504.17
+ },
+ {
+  "i": 310,
+  "pl": "— A młody on czy stary? — badała dalej, przypatrując mi się jak sędzia śledczy.",
+  "start": 2507.15
+ },
+ {
+  "i": 311,
+  "pl": "— Widzisz przecie, że stary!... — odparł rządca.",
+  "start": 2512.39
+ },
+ {
+  "i": 312,
+  "pl": "— W średnim wieku... — wtrąciłem. (Oni, dalibóg, niedługo piętnastoletnich chłopców zaczną nazywać starymi.)",
+  "start": 2515.29
+ },
+ {
+  "i": 313,
+  "pl": "— Są obie panie — mówiła służąca. — Tylko co do pani młodszej przyszła jedna dziewczynka wydawać lekcje. Ale pani starsza jest w swoim pokoju.",
+  "start": 2522.97
+ },
+ {
+  "i": 314,
+  "pl": "— Phy! — mruknął rządca. — Wreszcie powiedz pani starszej...",
+  "start": 2533.49
+ },
+ {
+  "i": 315,
+  "pl": "Weszliśmy do kuchni, gdzie stała balia pełna mydlin i dziecinnej bielizny. Na sznurze zawieszonym w pobliżu komina suszyły się również dziecinne spódniczki, koszule i pończoszki. (Jak to zaraz znać, że w mieszkaniu jest dziecko!)",
+  "start": 2538.52
+ },
+ {
+  "i": 316,
+  "pl": "Spoza uchylonych drzwi usłyszeliśmy głos już starszej kobiety.",
+  "start": 2554.66
+ },
+ {
+  "i": 317,
+  "pl": "— Z rządcą?... jakiś pan? — mówiła niewidzialna dama. — Może to Ludwiczek, bo akurat śnił mi się...",
+  "start": 2559.6
+ },
+ {
+  "i": 318,
+  "pl": "— Niech panowie idą — rzekła służąca otwierając drzwi do saloniku.",
+  "start": 2568.2
+ },
+ {
+  "i": 319,
+  "pl": "Salonik nieduży, koloru perłowego. Szafirowe sprzęty, pianino, w obu oknach pełno kwiatów białych i różowych, na ścianach premia Towarzystwa Sztuk Pięknych<sup>597<\/sup>, na stole lampa ze szkłem w formie tulipana.",
+  "start": 2572.95
+ },
+ {
+  "i": 320,
+  "pl": "Po cmentarnym salonie pani Krzeszowskiej z meblami w ciemnych pokrowcach wydało mi się tu weselej. Pokój wyglądał, jakby oczekiwano na gościa. Ale jego sprzęty zanadto symetrycznie ustawione dokoła stołu świadczyły, że gość jeszcze nie przyjechał.",
+  "start": 2587.77
+ },
+ {
+  "i": 321,
+  "pl": "Po chwili z przeciwległych drzwi wyszła osoba w wieku poważnym, ubrana w popielatą suknię. Uderzył mnie prawie biały kolor jej włosów, obok twarzy mizernej, lecz niezbyt starej i bardzo regularnej. Rysy tej damy były mi gdzieś znajome.",
+  "start": 2606.4
+ },
+ {
+  "i": 322,
+  "pl": "Tymczasem rządca zapiął swój poplamiony surdut na dwa guziki i ukłoniwszy się z elegancją prawdziwego szlachcica rzekł:",
+  "start": 2623.66
+ },
+ {
+  "i": 323,
+  "pl": "— Pozwoli pani zaprezentować: pan Rzecki, plenipotent naszego gospodarza, a mój kolega...",
+  "start": 2632.3
+ },
+ {
+  "i": 324,
+  "pl": "Spojrzeliśmy sobie obaj w oczy. Wyznaję, że byłem trochę zdziwiony naszym koleżeństwem... Wirski spostrzegł to i dodał z uśmiechem:",
+  "start": 2639.59
+ },
+ {
+  "i": 325,
+  "pl": "— Mówię: kolega, gdyż obaj widzieliśmy równie ciekawe rzeczy będąc za granicą.",
+  "start": 2648.57
+ },
+ {
+  "i": 326,
+  "pl": "— Szanowny pan był za granicą? no proszę!... — odezwała się staruszka.",
+  "start": 2654.19
+ },
+ {
+  "i": 327,
+  "pl": "— W roku 1849 i nieco później — wtrąciłem.",
+  "start": 2659.47
+ },
+ {
+  "i": 328,
+  "pl": "— A czy szanowny pan nie zetknął się gdzie przypadkowo z Ludwikiem Stawskim?",
+  "start": 2664.95
+ },
+ {
+  "i": 329,
+  "pl": "— Ależ, pani dobrodziejko! — zawołał Wirski śmiejąc się i kłaniając. — Pan Rzecki był za granicą przed trzydziestu laty, a zięć pani wyjechał dopiero przed czterema...",
+  "start": 2669.97
+ },
+ {
+  "i": 330,
+  "pl": "Staruszka machnęła ręką, jakby odganiając muchę.",
+  "start": 2680.71
+ },
+ {
+  "i": 331,
+  "pl": "— Prawda! — rzekła — co też ja plotę... Ale tak ciągle myślę o Ludwiczku... Niechże panowie raczą spocząć...",
+  "start": 2684.41
+ },
+ {
+  "i": 332,
+  "pl": "Usiedliśmy, przy czym eks-obywatel znowu ukłonił się poważnej damie, a ona jemu.",
+  "start": 2692.89
+ },
+ {
+  "i": 333,
+  "pl": "Teraz dopiero spostrzegłem, że popielata suknia staruszki jest w wielu miejscach pocerowana, i dziwna melancholia ogarnęła mnie na widok tych dwojga ludzi w poplamionym surducie i w pocerowanej sukni, którzy zachowywali się jak książęta. Nad nimi już przeszedł wszystko wyrównywający pług czasu.",
+  "start": 2699.73
+ },
+ {
+  "i": 334,
+  "pl": "— Bo zapewne pan nie wie o naszym zmartwieniu — rzekła poważna dama zwracając się do mnie. — Mój zięć przed czterema laty miał bardzo przykrą sprawę, najniesłuszniej... Zamordowano tu jakąś straszną lichwiarkę... Ach, Boże! nie ma o czym mówić...",
+  "start": 2719.69
+ },
+ {
+  "i": 335,
+  "pl": "Dosyć, że ktoś z bliskich ostrzegł go, że na niego pada posądzenie... Najniewinniej, panie...",
+  "start": 2737.11
+ },
+ {
+  "i": 336,
+  "pl": "— Rzecki — wtrącił eks-obywatel.",
+  "start": 2745.11
+ },
+ {
+  "i": 337,
+  "pl": "— Najniesprawiedliwiej, panie Rzecki... No i on... biedak, uciekł za granicę. W roku zeszłym znalazł się istotny morderca, ogłoszono niewinność Ludwika, ale i cóż, kiedy on już od dwu lat nie pisał...",
+  "start": 2748.63
+ },
+ {
+  "i": 338,
+  "pl": "Tu pochyliła się do mnie z fotelu i rzekła szeptem:",
+  "start": 2761.79
+ },
+ {
+  "i": 339,
+  "pl": "— Helenka, córka moja, panie...",
+  "start": 2766.92
+ },
+ {
+  "i": 340,
+  "pl": "— Rzecki — odezwał się rządca.",
+  "start": 2769.22
+ },
+ {
+  "i": 341,
+  "pl": "— Córka moja, panie Rzecki, rujnuje się... szczerze mówię, że się rujnuje na ogłoszenia po zagranicznych pismach, a tu nic i nic... Kobieta młoda, panie...",
+  "start": 2771.76
+ },
+ {
+  "i": 342,
+  "pl": "— Rzecki — powiedział Wirski.",
+  "start": 2782.38
+ },
+ {
+  "i": 343,
+  "pl": "— Kobieta młoda, panie Rzecki, niebrzydka.",
+  "start": 2784.46
+ },
+ {
+  "i": 344,
+  "pl": "— Prześliczna! — wtrącił rządca z zapałem.",
+  "start": 2787.58
+ },
+ {
+  "i": 345,
+  "pl": "— Byłam trochę do niej podobna — ciągnęła sędziwa dama wzdychając i kiwając głową eks-obywatelowi. — Jest tedy córka moja niebrzydka i młoda, już jedno dziecko ma i... może tęskni za innymi. Chociaż, panie Wirski, przysięgam, że nigdy od niej o tym nie słyszałam...",
+  "start": 2790.7
+ },
+ {
+  "i": 346,
+  "pl": "Cierpi i milczy, ale że cierpi, domyślam się. Ja także miałam trzydzieści lat...",
+  "start": 2809.68
+ },
+ {
+  "i": 347,
+  "pl": "— Kto z nas ich nie miał! — ciężko westchnął rządca.",
+  "start": 2815.8
+ },
+ {
+  "i": 348,
+  "pl": "Skrzypnęły drzwi i wbiegła mała dziewczynka z drutami w ręku.",
+  "start": 2820.07
+ },
+ {
+  "i": 349,
+  "pl": "— Proszę babci! — zawołała — ja nigdy nie skończę kaftanika dla mojej lalki...",
+  "start": 2824.19
+ },
+ {
+  "i": 350,
+  "pl": "— Heluniu! — odezwała się staruszka surowo. — Ty nie ukłoniłaś się...",
+  "start": 2829.35
+ },
+ {
+  "i": 351,
+  "pl": "Dziewczynka zrobiła dwa dygi, na które ja odpowiedziałem niezręcznie, a pan Wirski jak hrabia, i mówiła dalej, pokazując babce druty, przy których chwiał się czarny, włóczkowy kwadracik.",
+  "start": 2834.29
+ },
+ {
+  "i": 352,
+  "pl": "— Proszę babci, nadejdzie zima i moja lalka nie będzie miała w czym wyjść na ulicę... Proszę babci, znowu mi spadło oczko.",
+  "start": 2846.33
+ },
+ {
+  "i": 353,
+  "pl": "(Prześliczne dziecko... Boże miłosierny! dlaczego Stach nie jest jego ojcem. Może nie szalałby tak...)",
+  "start": 2854.83
+ },
+ {
+  "i": 354,
+  "pl": "Babcia przepraszając nas wzięła włóczkę i druty, a w tej chwili weszła do salonu pani Stawska...",
+  "start": 2861.85
+ },
+ {
+  "i": 355,
+  "pl": "Muszę sobie przyznać, że ja na jej widok zachowałem się z godnością; ale Wirski zupełnie stracił głowę. Zerwał się z krzesła jak student, zapiął surdut jeszcze na jeden guzik, powiem nawet: zarumienił się, i zaczął bełkotać:",
+  "start": 2868.39
+ },
+ {
+  "i": 356,
+  "pl": "— Pozwoli pani zaprezentować sobie: pan Rzecki, plenipotent naszego gospodarza...",
+  "start": 2885.09
+ },
+ {
+  "i": 357,
+  "pl": "— Bardzo mi przyjemnie — odpowiedziała pani Stawska kłaniając mi się ze spuszczonymi oczyma. Ale silny rumieniec i ślad obawy na jej twarzy upewniły mnie, że nie jestem przyjemnym gościem.",
+  "start": 2890.45
+ },
+ {
+  "i": 358,
+  "pl": "„Poczekaj! — myślę. I wyobraziłem sobie, że na moim miejscu jest w tym pokoju Wokulski. — Poczekaj, zaraz cię przekonam, że nie masz się nas czego lękać.”",
+  "start": 2901.69
+ },
+ {
+  "i": 359,
+  "pl": "Tymczasem pani Stawska usiadłszy na krześle była tak zmieszana, że zaczęła coś poprawiać około sukienki swojej córeczki. Jej matka również straciła humor, a rządca kompletnie zbaraniał. „Poczekajcie!” — myślę i przybrawszy bardzo surowy wyraz twarzy odezwałem się:",
+  "start": 2911.75
+ },
+ {
+  "i": 360,
+  "pl": "— Panie dawno mieszkają w tym domu?",
+  "start": 2930.48
+ },
+ {
+  "i": 361,
+  "pl": "— Pięć lat... — odpowiada pani Stawska rumieniąc się jeszcze mocniej. Jej matka aż drgnęła na fotelu.",
+  "start": 2934.18
+ },
+ {
+  "i": 362,
+  "pl": "— Ile panie płacą?",
+  "start": 2941.36
+ },
+ {
+  "i": 363,
+  "pl": "— Dwadzieścia pięć rubli miesięcznie... — szepnęła młoda pani. Jednocześnie pobladła, zaczęła skubać sukienkę i z pewnością mimo woli rzuciła na Wirskiego takie błagalne spojrzenie, że... że gdybym był Wokulskim, zaraz bym się o nią oświadczył...",
+  "start": 2943.0
+ },
+ {
+  "i": 364,
+  "pl": "— Jesteśmy — dodała jeszcze ciszej — jesteśmy winne panom za lipiec...",
+  "start": 2959.78
+ },
+ {
+  "i": 365,
+  "pl": "Zachmurzyłem się jak Lucyper<sup>598<\/sup> i nabrawszy tyle tchu, ile było powietrza w mieszkaniu rzekłem:",
+  "start": 2965.34
+ },
+ {
+  "i": 366,
+  "pl": "— Nic panie nie są nam aż do... października. Właśnie Stach... — to jest pan Wokulski pisze mi, że to istny rozbój brać trzysta rubli za trzy pokoje na tej ulicy.",
+  "start": 2971.68
+ },
+ {
+  "i": 367,
+  "pl": "Pan Wokulski nie może pozwolić na podobne zdzierstwo i kazał mi zawiadomić panie, że ten lokal od października będzie do wynajęcia za dwieście rubli. A jeżeli panie nie życzą sobie...",
+  "start": 2985.28
+ },
+ {
+  "i": 368,
+  "pl": "Rządca aż posunął się w tył z fotelem. Staruszka złożyła ręce, a pani Stawska patrzyła na mnie wielkimi oczyma. Oto dopiero oczy!... i jak ona nimi umie patrzeć!... Przysięgam, że gdybym był Wokulskim, oświadczyłbym się jej na poczekaniu.",
+  "start": 2997.72
+ },
+ {
+  "i": 369,
+  "pl": "Z męża już pewnie nie ma nawet kosteczki, jeżeli nie pisał przez dwa lata. Wreszcie, od czego są rozwody?... Na co Stach ma taki majątek?...",
+  "start": 3014.96
+ },
+ {
+  "i": 370,
+  "pl": "Znowu skrzypnęły drzwi i ukazała się w nich może dwunastoletnia dziewczynka, w pasterce<sup>599<\/sup> na głowie i z paczką kajetów w ręce. Było to dziecko z twarzą rumianą i pełną, lecz nie zdradzającą zbyt wielkiej inteligencji.",
+  "start": 3025.3
+ },
+ {
+  "i": 371,
+  "pl": "Ukłoniła się nam, ukłoniła się pani Stawskiej i jej matce, ucałowała w oba policzki małą Helenkę i wyszła, oczywiście do domu. Następnie wróciła się z kuchni i zarumieniona powyżej oczu, spytała pani Stawskiej:",
+  "start": 3040.26
+ },
+ {
+  "i": 372,
+  "pl": "— Pojutrze o której mogę przyjść?",
+  "start": 3054.82
+ },
+ {
+  "i": 373,
+  "pl": "— Pojutrze, kochanko... Przyjdź o czwartej — odpowiedziała pani Stawska również zmieszana.",
+  "start": 3056.86
+ },
+ {
+  "i": 374,
+  "pl": "Gdy dziewczynka ostatecznie wyszła, matka pani Stawskiej odezwała się niezadowolnym tonem:",
+  "start": 3063.85
+ },
+ {
+  "i": 375,
+  "pl": "— I to nazywa się lekcja, Boże odpuść... Helenka pracuje z nią przynajmniej półtorej godziny i za taką lekcję bierze czterdzieści groszy...",
+  "start": 3070.71
+ },
+ {
+  "i": 376,
+  "pl": "— Mateczko! — przerwała pani Stawska, błagalnie patrząc na nią.",
+  "start": 3079.73
+ },
+ {
+  "i": 377,
+  "pl": "(Gdybym był Wokulskim, już bym z nią wracał od ślubu. Co to za kobieta!... co za rysy... co za gra fizjognomii. W życiu nie widziałem nic podobnego!... A rączka, a figurka, a wzrost, a ruchy, a oczy, oczy!...)",
+  "start": 3084.17
+ },
+ {
+  "i": 378,
+  "pl": "Po chwili kłopotliwego milczenia odezwała się znowu młoda pani:",
+  "start": 3097.87
+ },
+ {
+  "i": 379,
+  "pl": "— Bardzo jesteśmy wdzięczne panu Wokulskiemu za warunki, na jakich zostawia nam ten lokal!... Jest to chyba jedyny wypadek, ażeby gospodarz sam zniżał komorne. Ale nie wiem, czy... wypada nam korzystać z jego uprzejmości?...",
+  "start": 3103.52
+ },
+ {
+  "i": 380,
+  "pl": "— To nie uprzejmość, pani, to uczciwość szlachetnego człowieka! — wtrącił rządca. — Mnie pan Wokulski również zniżył komorne i przyjąłem... Ulica, proszę pani, trzeciorzędna, ruch mały...",
+  "start": 3119.62
+ },
+ {
+  "i": 381,
+  "pl": "— Ale o lokatorów na niej łatwo — wtrąciła pani Stawska.",
+  "start": 3131.62
+ },
+ {
+  "i": 382,
+  "pl": "— Wolimy dawnych, znanych nam ze spokójności i porządku — powiedziałem.",
+  "start": 3135.56
+ },
+ {
+  "i": 383,
+  "pl": "— Ma pan słuszność — pochwaliła mnie siwowłosa dama. — Porządek w mieszkaniu to pierwsza zasada, której przestrzegamy... Nawet jeżeli Helunia potnie kiedy papierki i rzuci je na podłogę, zaraz zmiata je Franusia...",
+  "start": 3141.47
+ },
+ {
+  "i": 384,
+  "pl": "— Przecie ja, proszę babci, wycinam tylko koperty, bo piszę list do tatki, ażeby już wracał — odezwała się dziewczynka.",
+  "start": 3156.04
+ },
+ {
+  "i": 385,
+  "pl": "Po obliczu pani Stawskiej przeleciał cień jakby żalu i zmęczenia.",
+  "start": 3163.34
+ },
+ {
+  "i": 386,
+  "pl": "— I nic, żadnej wiadomości? — spytał rządca.",
+  "start": 3169.01
+ },
+ {
+  "i": 387,
+  "pl": "Młoda pani z wolna potrząsnęła głową; nie jestem pewny, czy nie westchnęła, ale tak cicho...",
+  "start": 3173.13
+ },
+ {
+  "i": 388,
+  "pl": "— Oto los młodej i niebrzydkiej kobiety! — zawołała starsza dama. — Nie panna, nie mężatka...",
+  "start": 3180.36
+ },
+ {
+  "i": 389,
+  "pl": "— Mateczko!...",
+  "start": 3187.4
+ },
+ {
+  "i": 390,
+  "pl": "— Nie wdowa, nie rozwódka, słowem — nie wiadomo co i nie wiadomo za co... Ty, Helenko, mów sobie, co chcesz, a ja ci powiadam, że Ludwik już nie żyje...",
+  "start": 3188.4
+ },
+ {
+  "i": 391,
+  "pl": "— Mateczko!... mateczko!...",
+  "start": 3198.32
+ },
+ {
+  "i": 392,
+  "pl": "— Tak — ciągnęła matka z uniesieniem. — My go tu wszyscy oczekujemy każdego dnia, o każdej godzinie, ale to na nic... Albo umarł, albo zaparł się ciebie, więc nie masz obowiązku czekać...",
+  "start": 3200.3
+ },
+ {
+  "i": 393,
+  "pl": "Obu paniom łzy nabiegły do oczu: matce z gniewu, a córce... Czy ja wiem?... Może z żalu za złamanym życiem.",
+  "start": 3212.97
+ },
+ {
+  "i": 394,
+  "pl": "Nagle przeleciała mi przez głowę myśl, którą (gdyby nie o mnie chodziło) poczytałbym za genialną. Zresztą mniejsza o jej nazwę.",
+  "start": 3221.55
+ },
+ {
+  "i": 395,
+  "pl": "Dość, że było w mojej twarzy i całej postaci coś takiego, że gdy poprawiłem się na krześle, założyłem nogę na nogę i odchrząknąłem, wszyscy wlepili we mnie spojrzenia — nawet mała Helenka.",
+  "start": 3229.59
+ },
+ {
+  "i": 396,
+  "pl": "— Znajomość nasza — rzekłem — zbyt jest krótka, ażebym śmiał...",
+  "start": 3241.9
+ },
+ {
+  "i": 397,
+  "pl": "— Wszystko jedno! — przerwał mi pan Wirski. — Dobre usługi przyjmuje się nawet od nieznajomych.",
+  "start": 3246.5
+ },
+ {
+  "i": 398,
+  "pl": "— Znajomość nasza — mówiłem skarciwszy go wzrokiem — jest wprawdzie niedługa. Pozwolą panie jednak, ażebym nie tylko ja, ile pan Wokulski użył swoich wpływów do odszukania małżonka pani...",
+  "start": 3252.62
+ },
+ {
+  "i": 399,
+  "pl": "— Aaa!... — jęknęła starsza dama w sposób, którego nie mógłbym uważać za objaw radości.",
+  "start": 3267.32
+ },
+ {
+  "i": 400,
+  "pl": "— Mateczko! — wtrąciła pani Stawska.",
+  "start": 3274.2
+ },
+ {
+  "i": 401,
+  "pl": "— Heluniu — rzekła babcia stanowczo — idź do swojej lalki i rób jej kaftanik. Oczko już znalazłam, idź...",
+  "start": 3277.22
+ },
+ {
+  "i": 402,
+  "pl": "Dziewczynka była trochę zdziwiona, może nawet zaciekawiona, ale ucałowała ręce babci i matce i wyszła ze swymi drutami.",
+  "start": 3284.62
+ },
+ {
+  "i": 403,
+  "pl": "— Proszę pana — ciągnęła staruszka — jeżeli mamy mówić szczerze, to mnie nie tyle chodzi... To jest... nie wierzę, ażeby Ludwik żył. Kto przez dwa lata nie pisze...",
+  "start": 3292.66
+ },
+ {
+  "i": 404,
+  "pl": "— Mamo, dosyć!...",
+  "start": 3303.66
+ },
+ {
+  "i": 405,
+  "pl": "— O nie! — przerwała matka. — Jeżeli ty jeszcze nie czujesz swego położenia, to już ja je rozumiem. Nie można żyć z taką wieczną nadzieją czy groźbą...",
+  "start": 3305.24
+ },
+ {
+  "i": 406,
+  "pl": "— Mamo droga, o moim szczęściu i obowiązkach ja tylko mam prawo...",
+  "start": 3315.12
+ },
+ {
+  "i": 407,
+  "pl": "— Nie mów mi o szczęściu — wybuchnęła matka. — Ono skończyło się w dniu, kiedy twój mąż uciekł przed sądem, który dowiedział się o jakichś ciemnych jego stosunkach z lichwiarką. Że był niewinny, wiem, na to gotowa byłam przysiąc. Ale nie rozumiem ani ja, ani ty, po co on u niej bywał.",
+  "start": 3319.78
+ },
+ {
+  "i": 408,
+  "pl": "— Mamo! — przecież ci panowie są obcy... — zawołała z desperacją pani Stawska.",
+  "start": 3339.67
+ },
+ {
+  "i": 409,
+  "pl": "— Ja obcy?... — spytał rządca tonem wymówki; ale powstał z krzesełka i ukłonił się.",
+  "start": 3345.77
+ },
+ {
+  "i": 410,
+  "pl": "— I pan nie jesteś obcy, i ten pan — rzekła staruszka wskazując na mnie. — To musi być uczciwy człowiek...",
+  "start": 3352.48
+ },
+ {
+  "i": 411,
+  "pl": "Teraz ja ukłoniłem się.",
+  "start": 3359.64
+ },
+ {
+  "i": 412,
+  "pl": "— Więc mówię panu — ciągnęła staruszka, bystro patrząc mi w oczy — żyjemy w ciągłej niepewności co do mego zięcia i niepewność ta zatruwa nam spokój. Ale ja, wyznam szczerze, więcej boję się jego powrotu...",
+  "start": 3362.02
+ },
+ {
+  "i": 413,
+  "pl": "Pani Stawska zasłoniła twarz chustką i wybiegła do swego pokoju.",
+  "start": 3376.32
+ },
+ {
+  "i": 414,
+  "pl": "— Płacz sobie, płacz... — mówiła grożąc za nią rozdrażniona staruszka. — Takie łzy, chociaż bolesne, lepsze są od tych, które co dzień wylewasz...",
+  "start": 3380.46
+ },
+ {
+  "i": 415,
+  "pl": "— Panie — zwróciła się do mnie — przyjmę wszystko, co nam Bóg zeszle, ale czuję, że gdyby ten człowiek wrócił, zabiłby do reszty szczęście mojego dziecka. Przysięgnę — dodała ciszej — że ona go już nie kocha, choć sama nie wie o tym, ale jestem pewna, że... pojechałaby do niego, gdyby ją wezwał!...",
+  "start": 3390.4
+ },
+ {
+  "i": 416,
+  "pl": "Tłumione łkanie przerwało jej mowę. Spojrzeliśmy po sobie z Wirskim i pożegnaliśmy sędziwą damę.",
+  "start": 3411.2
+ },
+ {
+  "i": 417,
+  "pl": "— Pani — rzekłem na odchodnym — nim rok upłynie, przyniosę wiadomość o jej zięciu. A może — szepnąłem z mimowolnym uśmiechem — sprawy ułożą się tak, że... wszyscy będziemy zadowoleni... Wszyscy... nawet ci, których tu nie ma!...",
+  "start": 3419.37
+ },
+ {
+  "i": 418,
+  "pl": "Staruszka spojrzała na mnie pytającym wzrokiem, alem nic nie odpowiedział. Jeszcze raz pożegnałem ją i wyszliśmy obaj z rządcą nie dopytując się już o panią Stawską.",
+  "start": 3435.33
+ },
+ {
+  "i": 419,
+  "pl": "— A niechże pan zagląda do nas choćby co wieczór!... — zawołała sędziwa dama, gdy już byliśmy w kuchni.",
+  "start": 3447.24
+ },
+ {
+  "i": 420,
+  "pl": "Naturalnie, że będę zaglądał... Czy uda mi się moja kombinacja ze Stachem? Bóg raczy wiedzieć. Tam gdzie serce wchodzi w grę, na nic wszelkie rachuby. Ale spróbuję rozwiązać ręce kobiecie, a i to coś znaczy.",
+  "start": 3454.22
+ },
+ {
+  "i": 421,
+  "pl": "Po opuszczeniu mieszkania pani Stawskiej i jej matki rozeszliśmy się z rządcą domu, bardzo z siebie zadowoleni. To jakiś dobry człeczyna. Ale kiedy wróciwszy do siebie zastanowiłem się nad skutkami mego przeglądu lokatorów, ażem się schwycił za głowę.",
+  "start": 3469.0
+ },
+ {
+  "i": 422,
+  "pl": "Miałem uregulować finanse kamienicy i otóż uregulowałem je tak, że na pewno dochód zmniejszył się o trzysta rubli rocznie. Ha! może tym rychlej Stach opatrzy się i sprzeda swój nabytek, który wcale nie był mu potrzebny.",
+  "start": 3486.28
+ },
+ {
+  "i": 423,
+  "pl": "Ir wciąż mi niedomaga. Polityka stoi w jednej mierze: ciągła niepewność...",
+  "start": 3502.31
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

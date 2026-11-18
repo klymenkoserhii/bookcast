@@ -1,0 +1,2063 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to ../../public/lalka/audio/chapter-12.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-12.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Rozdział XII — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Rozdział XII · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="../../public/lalka/audio/chapter-12.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Wokulski powoli otwierał list pani Meliton przypominając sobie niedawne wypadki.",
+  "start": 7.77
+ },
+ {
+  "i": 1,
+  "pl": "Zdawało się mu, że w nie oświetlonej części gabinetu jeszcze widzi ciemną gęstwinę łazienkowskich drzew, niewyraźne sylwetki obdartusów, którzy mu zastąpili drogę, a później wzgórek ze studnią, gdzie Ochocki zwierzał mu się ze swych pomysłów. Lecz gdy spojrzał na światło, mgliste obrazy znikały.",
+  "start": 13.87
+ },
+ {
+  "i": 2,
+  "pl": "Widział lampę z zielonym daszkiem, stos papierów, brązy stojące na biurku i chwilami myślał, że Ochocki ze swymi machinami latającymi i jego własna rozpacz były tylko snem.",
+  "start": 33.83
+ },
+ {
+  "i": 3,
+  "pl": "„Co on za geniusz? — mówił do siebie Wokulski — to zwyczajny marzyciel!... I panna Izabela taka sama kobieta jak inne... Wyjdzie za mnie — dobrze; nie wyjdzie — to przecież nie umrę.”",
+  "start": 46.68
+ },
+ {
+  "i": 4,
+  "pl": "Rozłożył list i czytał:",
+  "start": 59.3
+ },
+ {
+  "i": 5,
+  "pl": "„Panie! Ważna wiadomość: za kilka dni Łęckim sprzedają kamienicę, a jedynym kupcem będzie baronowa Krzeszowska, ich kuzynka i nieprzyjaciółka.",
+  "start": 62.26
+ },
+ {
+  "i": 6,
+  "pl": "Wiem z pewnością, że zapłaci za dom tylko sześćdziesiąt tysięcy rubli; a w takim razie resztka posagu panny Izabeli, w kwocie trzydziestu tysięcy rubli, przepadnie.",
+  "start": 73.26
+ },
+ {
+  "i": 7,
+  "pl": "Chwila jest bardzo pomyślna, gdyż panna Izabela, postawiona między biedą, a wyjściem za marszałka, chętnie zgodzi się na każdą inną kombinację. Domyślam się, że tym razem nie postąpisz Pan z nastręczającą się okazją jak z wekslami Łęckiego, które podarłeś w moich oczach.",
+  "start": 82.8
+ },
+ {
+  "i": 8,
+  "pl": "Pamiętaj Pan: kobiety tak lubią być ściskane, że dla spotęgowania efektu trzeba je niekiedy przydeptać nogą. Im zrobisz Pan to bezwzględniej, tym pewniej cię pokocha. Pamiętaj Pan!...",
+  "start": 100.72
+ },
+ {
+  "i": 9,
+  "pl": "Zresztą możesz Pan sprawić Beli małą przyjemność. Baron Krzeszowski przyciśnięty potrzebą sprzedał własnej żonie swoją ulubioną klacz, która w tych dniach ma się ścigać i na którą wiele rachował.",
+  "start": 114.7
+ },
+ {
+  "i": 10,
+  "pl": "O ile znam stosunki, Bela byłaby szczerze kontenta, gdyby ani baron, ani jego żona nie posiadali tej klaczy w dniu wyścigów. Baron byłby zawstydzony, że sprzedał klacz, a baronowa zrozpaczona, gdyby klacz wygrawszy komu innemu przyniosła zysk.",
+  "start": 128.68
+ },
+ {
+  "i": 11,
+  "pl": "Bardzo subtelne są te wielkoświatowe komeraże<sup>381<\/sup>, ale spróbuj je Pan zużytkować. Okazja zaś nastręcza się, gdyż, o ilem słyszała, niejaki Maruszewicz, przyjaciel obojga Krzeszowskich, ma Panu zaproponować kupno tej klaczy.",
+  "start": 145.02
+ },
+ {
+  "i": 12,
+  "pl": "Pamiętaj Pan, że kobiety są niewolnicami tylko tych, którzy potrafią je mocno trzymać i dogadzać ich kaprysom.",
+  "start": 162.64
+ },
+ {
+  "i": 13,
+  "pl": "Doprawdy, zaczynam wierzyć, że urodziłeś się Pan pod szczęśliwą gwiazdą. Szczerze życzliwa.",
+  "start": 171.82
+ },
+ {
+  "i": 14,
+  "pl": "A. M.”",
+  "start": 178.36
+ },
+ {
+  "i": 15,
+  "pl": "Wokulski głęboko odetchnął; obie wiadomości były ważne. Drugi raz przeczytał list podziwiając szorstki styl pani Meliton i uśmiechając się przy uwagach, jakie robiła nad swoją płcią.",
+  "start": 181.08
+ },
+ {
+  "i": 16,
+  "pl": "Mocno trzymać ludzi czy okoliczności to leżało w naturze Wokulskiego; wszystko i wszystkich chwytałby za kark, wyjąwszy — pannę Izabelę. Ona jedna była istotą, której wobec siebie chciał zostawić absolutną wolność, jeżeli nie panowanie.",
+  "start": 193.7
+ },
+ {
+  "i": 17,
+  "pl": "Mimo woli spojrzał na bok; służący stał przy drzwiach.",
+  "start": 211.56
+ },
+ {
+  "i": 18,
+  "pl": "— Idź spać — rzekł.",
+  "start": 215.74
+ },
+ {
+  "i": 19,
+  "pl": "— Żaraż pójdę, tylko był tu jeszcze pan — odparł służący.",
+  "start": 217.7
+ },
+ {
+  "i": 20,
+  "pl": "— Jaki pan?",
+  "start": 223.06
+ },
+ {
+  "i": 21,
+  "pl": "— Żosztawił bilet, leży na biurku.",
+  "start": 224.22
+ },
+ {
+  "i": 22,
+  "pl": "Na biurku leżał bilet Maruszewicza.",
+  "start": 226.74
+ },
+ {
+  "i": 23,
+  "pl": "— Aha!... Cóż ten pan mówił?",
+  "start": 229.82
+ },
+ {
+  "i": 24,
+  "pl": "— On niby, żeby tak, to nicz nie mówił. Tylko pytał się: kiedy pan jeszt w domu? A ja powiedziałem: koło dziesiąty ż rana, i wtedy on powiedział, że przyjdzie jutro o dziesiąty, ino na minutkę.",
+  "start": 232.68
+ },
+ {
+  "i": 25,
+  "pl": "— Dobrze, dobranoc ci!",
+  "start": 246.08
+ },
+ {
+  "i": 26,
+  "pl": "— Upadam do nóg, proszę łaski pana.",
+  "start": 248.24
+ },
+ {
+  "i": 27,
+  "pl": "Służący wyszedł, Wokulski czuł się zupełnie otrzeźwiony. Ochocki i jego latające maszyny zmalały mu w oczach. Miał znowu energię jak wówczas, kiedy wyjeżdżał do Bułgarii. Wtedy szedł po majątek, a dziś ma okazję rzucić jego część dla panny Izabeli.",
+  "start": 251.59
+ },
+ {
+  "i": 28,
+  "pl": "Kłuły go wyrazy listu pani Meliton: „postawiona między biedą i wyjściem za marszałka...” Otóż ona nigdy nie znajdzie się w tym położeniu... A wydźwignie ją nie jakiś tam Ochocki, za pomocą swojej maszyny, ale on...",
+  "start": 270.78
+ },
+ {
+  "i": 29,
+  "pl": "Czuł w sobie taką siłę, iż gdyby w tej chwili sufit z dwoma piętrami spadł mu na głowę, chyba utrzymałby go.",
+  "start": 286.3
+ },
+ {
+  "i": 30,
+  "pl": "Wydobył z biurka swój notatnik i począł rachować:",
+  "start": 294.61
+ },
+ {
+  "i": 31,
+  "pl": "„Klacz wyścigowa — głupstwo... Wydam najwyżej tysiąc rubli, z których wróci się przynajmniej część... Dom rs. 60 000, posag panny Izabeli rs. 30 000, razem rs. 90 000. Bagatela... prawie trzecia część mego majątku... W każdym razie za dom wróci mi się ze 60 000 albo i więcej...",
+  "start": 298.23
+ },
+ {
+  "i": 32,
+  "pl": "No!... trzeba skłonić Łęckiego, ażeby te 30 000 mnie powierzył; będę mu płacił 5000 rubli rocznie jako dywidendę<sup>382<\/sup>... Chyba im wystarczy?... Konia oddam berejterowi<sup>383<\/sup>, niech on zajmie się puszczeniem go na wyścigi...",
+  "start": 322.97
+ },
+ {
+  "i": 33,
+  "pl": "O dziesiątej będzie u mnie Maruszewicz, o jedenastej pojadę do adwokata... Pieniądze dostanę na ósmy procent — 7200 rubli rocznie; a że mam na pewno piętnaście procent... No i dom coś przynosi... A co powiedzą moi wspólnicy?... Ach, dużo mnie to obchodzi!...",
+  "start": 339.53
+ },
+ {
+  "i": 34,
+  "pl": "Mam 45 000 rubli rocznie, ubędzie 12–13 000 rubli, zostanie 32 000 rubli... Żona moja nudzić by się nie powinna... W ciągu roku wycofam się z tej kamienicy, choćby ze stratą 30 000 rubli... Wreszcie to nie jest strata, to jej posag...”",
+  "start": 356.69
+ },
+ {
+  "i": 35,
+  "pl": "Północ. Wokulski zaczął się rozbierać. Pod wpływem jasno określonego celu uspokoiły się rozstrojone nerwy. Zgasił światło, położył się i patrząc na firanki, którymi bujał wiatr wpadający przez otwarte okno, zasnął jak kamień.",
+  "start": 373.99
+ },
+ {
+  "i": 36,
+  "pl": "Wstał o siódmej rano tak rześki i wesoły, że zwróciło to uwagę służącego, który zaczął kręcić się po pokoju.",
+  "start": 391.8
+ },
+ {
+  "i": 37,
+  "pl": "— Czegóż to chcesz? — zapytał Wokulski.",
+  "start": 399.77
+ },
+ {
+  "i": 38,
+  "pl": "— Ja nicz. Ino, proszę pana, stróż chce, ale nie śmi prosić, żeby pan pofatygował się i potrzymał mu dzieczko do krztu.",
+  "start": 402.31
+ },
+ {
+  "i": 39,
+  "pl": "— A a a!... A pytał się, czy ja chcę, żeby on miał dziecko?",
+  "start": 411.89
+ },
+ {
+  "i": 40,
+  "pl": "— Nie pytał się, bo pan był wtedy na wojnie.",
+  "start": 416.49
+ },
+ {
+  "i": 41,
+  "pl": "— No dobrze. Będę jego kumem.",
+  "start": 419.99
+ },
+ {
+  "i": 42,
+  "pl": "— To może by mnie pan teraz podarował sztary szurdut, bo jakże ja będę na krzcinach?",
+  "start": 422.65
+ },
+ {
+  "i": 43,
+  "pl": "— Dobrze, weź ten surdut.",
+  "start": 428.73
+ },
+ {
+  "i": 44,
+  "pl": "— A reperaczyja?...",
+  "start": 430.89
+ },
+ {
+  "i": 45,
+  "pl": "— O, głupi jesteś, nie nudź mnie... Każ zreperować, choć nie wiem co...",
+  "start": 432.71
+ },
+ {
+  "i": 46,
+  "pl": "— Bo ja chciałbym, proszę pana, akszamitny kołmirz.",
+  "start": 437.91
+ },
+ {
+  "i": 47,
+  "pl": "— Przyszyj sobie aksamitny kołnierz i idź do diabła.",
+  "start": 442.06
+ },
+ {
+  "i": 48,
+  "pl": "— Czałkiem beż potrzeby gniewa się pan, bo przecie to dla pańszkiego honoru, nie dla mego — odparł służący i wychodząc trzasnął drzwiami.",
+  "start": 446.26
+ },
+ {
+  "i": 49,
+  "pl": "Czuł, że jego pan jest w wyjątkowo dobrym usposobieniu.",
+  "start": 456.64
+ },
+ {
+  "i": 50,
+  "pl": "Ubrawszy się Wokulski usiadł do rachunków pijąc przy tym czystą herbatę. Po ukończeniu ich napisał depeszę do Moskwy o asygnację<sup>384<\/sup> na sto tysięcy rubli i drugą do ajenta w Wiedniu, ażeby wstrzymał pewne obstalunki.",
+  "start": 461.44
+ },
+ {
+  "i": 51,
+  "pl": "Na kilka minut przed dziesiątą wszedł Maruszewicz. Młody człowiek wydawał się jeszcze bardziej zniszczonym i onieśmielonym aniżeli wczoraj.",
+  "start": 475.38
+ },
+ {
+  "i": 52,
+  "pl": "— Pozwoli pan — odezwał się Maruszewicz po kilku słowach powitania — że od razu położę karty na stół... Chodzi o oryginalną propozycję...",
+  "start": 484.42
+ },
+ {
+  "i": 53,
+  "pl": "— Słucham najoryginalniejszej...",
+  "start": 494.29
+ },
+ {
+  "i": 54,
+  "pl": "— Pani baronowa Krzeszowska (jestem przyjacielem obojga baronostwa) — mówił zniszczony młodzieniec — pragnie zbyć klacz wyścigową. Zaraz pomyślałem, że pan przy swoich stosunkach może życzyłby sobie posiadać podobnego konia...",
+  "start": 497.45
+ },
+ {
+  "i": 55,
+  "pl": "Jest ogromna szansa wygranej, gdyż biegają prócz niej w wyścigu tylko dwa konie, znacznie słabsze...",
+  "start": 511.99
+ },
+ {
+  "i": 56,
+  "pl": "— Dlaczegóż pani baronowa sama nie puszcza tej klaczy?",
+  "start": 518.69
+ },
+ {
+  "i": 57,
+  "pl": "— Ona?... Ona jest śmiertelną nieprzyjaciółką wyścigów!",
+  "start": 522.27
+ },
+ {
+  "i": 58,
+  "pl": "— Po cóż więc kupiła klacz wyścigową?",
+  "start": 527.4
+ },
+ {
+  "i": 59,
+  "pl": "— Dla dwu przyczyn — odparł młody człowiek.",
+  "start": 530.42
+ },
+ {
+  "i": 60,
+  "pl": "— Naprzód baron, potrzebując pieniędzy na pokrycie długu honorowego<sup>385<\/sup>, oświadczył, że zastrzeli się, jeżeli nie dostanie ośmiuset rubli, choćby za swoją ukochaną klacz, a po wtóre, baronowa nie życzy sobie, aby jej mąż przyjmował udział w wyścigach.",
+  "start": 533.16
+ },
+ {
+  "i": 61,
+  "pl": "Więc kupiła klacz, ale dziś biedaczka choruje ze wstydu i rozpaczy i chciałaby pozbyć się jej za jakąkolwiek bądź cenę.",
+  "start": 550.1
+ },
+ {
+  "i": 62,
+  "pl": "— Mianowicie?",
+  "start": 559.41
+ },
+ {
+  "i": 63,
+  "pl": "— Osiemset rubli — odparł młody człowiek, spuszczając oczy.",
+  "start": 561.34
+ },
+ {
+  "i": 64,
+  "pl": "— Gdzie jest koń?",
+  "start": 565.88
+ },
+ {
+  "i": 65,
+  "pl": "— W maneżu<sup>386<\/sup> Millera.",
+  "start": 567.0
+ },
+ {
+  "i": 66,
+  "pl": "— A dokumenta?",
+  "start": 568.9
+ },
+ {
+  "i": 67,
+  "pl": "— Oto są — odpowiedział już weselej młody człowiek wydobywając paczkę papierów z bocznej kieszeni surduta.",
+  "start": 570.32
+ },
+ {
+  "i": 68,
+  "pl": "— Możemy zaraz skończyć? — spytał Wokulski przeglądając papiery.",
+  "start": 577.82
+ },
+ {
+  "i": 69,
+  "pl": "— Natychmiast.",
+  "start": 581.66
+ },
+ {
+  "i": 70,
+  "pl": "— Po obiedzie pójdziemy obejrzeć konia?",
+  "start": 583.02
+ },
+ {
+  "i": 71,
+  "pl": "— O, naturalnie...",
+  "start": 585.2
+ },
+ {
+  "i": 72,
+  "pl": "— Niech pan pisze kwit — rzekł Wokulski i wydobył pieniądze z biurka.",
+  "start": 586.42
+ },
+ {
+  "i": 73,
+  "pl": "— Na osiemset?... naturalnie!... — mówił młody człowiek.",
+  "start": 590.92
+ },
+ {
+  "i": 74,
+  "pl": "Szybko wziął papier i pióro i zaczął pisać. Wokulski zauważył, że młodzieńcowi trochę drżały ręce i twarz mu się mieniła.",
+  "start": 595.03
+ },
+ {
+  "i": 75,
+  "pl": "Kwit był napisany według wszelkich form. Wokulski położył osiem sturublówek i schował papiery. W chwilę później młody człowiek, ciągle zmieszany, opuścił gabinet; zbiegając zaś ze schodów, myślał:",
+  "start": 602.24
+ },
+ {
+  "i": 76,
+  "pl": "„Podły jestem, tak, podły... Ale ostatecznie za kilka dni zwrócę babie dwieście rubli i powiem, że dołożył je Wokulski poznawszy bliżej zalety konia. Oni przecież nie zetkną się, ani baron z żoną, ani ten... kupczyk z nimi... Kwit kazał sobie pisać... wyborny!...",
+  "start": 614.72
+ },
+ {
+  "i": 77,
+  "pl": "Jak to znać geszefciarza<sup>387<\/sup> i parweniusza... O! strasznie jestem ukarany za moją lekkomyślność...”",
+  "start": 632.06
+ },
+ {
+  "i": 78,
+  "pl": "O jedynastej Wokulski wyszedł na ulicę z zamiarem udania się do adwokata.",
+  "start": 639.85
+ },
+ {
+  "i": 79,
+  "pl": "Ledwie jednak stanął przed bramą, wnet trzej dorożkarze na widok jasnego paltota i białego kapelusza współcześnie zacięli konie. Jeden wjechał drugiemu dyszlem w otwarty powóz, trzeci zaś chcąc ich wyminąć o mało nie rozbił tragarza niosącego ciężką szafę.",
+  "start": 645.31
+ },
+ {
+  "i": 80,
+  "pl": "Wszczął się hałas, bitwa na baty, świstanie policjantów, zbiegowisko i w rezultacie — dwaj najgorętsi dorożkarze sami siebie własnymi powozami odwieźli do cyrkułu.",
+  "start": 661.43
+ },
+ {
+  "i": 81,
+  "pl": "„Zła wróżba — pomyślał Wokulski i nagle uderzył się w czoło. — Pyszny interes! — mówił w sobie — idę do adwokata, ażeby mi kupił dom a nie wiem, ani jak dom wygląda, ani nawet gdzie leży.”",
+  "start": 673.52
+ },
+ {
+  "i": 82,
+  "pl": "Wrócił na powrót do swego mieszkania i w kapeluszu na głowie, z laską pod pachą, począł przerzucać kalendarz. Szczęściem słyszał, że dom Łęckich<sup>388<\/sup> znajduje się gdzieś w okolicach Alei Jerozolimskiej; pomimo to upłynęło kilka minut, nim odszukał ulicę i numer.",
+  "start": 685.91
+ },
+ {
+  "i": 83,
+  "pl": "„Ładnie bym się zarekomendował adwokatowi! — myślał schodząc ze schodów. — Jednego dnia namawiam ludzi, aby mi powierzyli kapitały, a drugiego kupuję kota w worku. Naturalnie, że od razu skompromitowałbym albo siebie, albo... pannę Izabelę.”",
+  "start": 703.1
+ },
+ {
+  "i": 84,
+  "pl": "Skoczył w przejeżdżającą dorożkę i kazał skręcić ku Alei Jerozolimskiej. Na rogu wysiadł i poszedł piechotą w jedną z poprzecznych ulic.",
+  "start": 720.9
+ },
+ {
+  "i": 85,
+  "pl": "Dzień był piękny, niebo prawie bez obłoku, bruk bez kurzu. Okna domów pootwierane, niektóre dopiero myto; figlarny wiatr miotał spódnicami pokojówek, przy czym można było spostrzec, że warszawska służba łatwiej odważa się myć okna na trzecim piętrze aniżeli własne nogi.",
+  "start": 730.06
+ },
+ {
+  "i": 86,
+  "pl": "Z wielu mieszkań odzywały się fortepiany, z wielu podwórek katarynki albo monotonne nawoływania piaskarzy, szczotkarzy, tandeciarzy i im podobnych przedsiębiorców.",
+  "start": 750.38
+ },
+ {
+  "i": 87,
+  "pl": "Tu i owdzie pod bramą ziewał stróż odziany w niebieską bluzę; kilka psów goniło się po ulicy, którą nikt nie przejeżdżał; małe dzieci bawiły się odzieraniem kory z młodych kasztanów, którym jeszcze nie zdążyły pociemnieć jasnozielone liście.",
+  "start": 762.1
+ },
+ {
+  "i": 88,
+  "pl": "W ogóle ulica przedstawiała się czysto, spokojnie i wesoło. Na drugim jej końcu widać nawet było odrobinę horyzontu i kępę drzew; lecz wiejski ten pejzaż, niestosowny dla Warszawy, zasłaniano teraz rusztowaniami i ścianą z cegły.",
+  "start": 777.98
+ },
+ {
+  "i": 89,
+  "pl": "Idąc prawym chodnikiem dostrzegł Wokulski na lewo, mniej więcej w połowie ulicy, dom niezwykle żółtej barwy. Warszawa posiada bardzo wiele żółtych domów; jest to chyba najżółciejsze miasto pod słońcem.",
+  "start": 796.54
+ },
+ {
+  "i": 90,
+  "pl": "Ta jednak kamienica wydawała się żółciejszą od innych i na wystawie przedmiotów żółtych (jakiej zapewne doczekamy się kiedyś) otrzymałaby pierwszą nagrodę.",
+  "start": 811.02
+ },
+ {
+  "i": 91,
+  "pl": "Podszedłszy bliżej Wokulski przekonał się, że nie tylko on zwrócił uwagę na szczególną kamienicę; nawet psy, częściej tu niż na jakimkolwiek innym murze, składały wizytowe bilety.",
+  "start": 822.23
+ },
+ {
+  "i": 92,
+  "pl": "„Do licha! — szepnął — zdaje mi się, że to właśnie jest ów dom...”",
+  "start": 836.71
+ },
+ {
+  "i": 93,
+  "pl": "Istotnie, była to kamienica Łęckich.",
+  "start": 842.02
+ },
+ {
+  "i": 94,
+  "pl": "Zaczął się przypatrywać. Dom był trzypiętrowy; miał parę żelaznych balkonów i każde piętro zbudowane w innym stylu. Za to w architekturze bramy panował tylko jeden motyw, mianowicie: wachlarz. Górna część wrót miała formę rozłożonego wachlarza, którym mogłaby się chłodzić przedpotopowa olbrzymka.",
+  "start": 845.68
+ },
+ {
+  "i": 95,
+  "pl": "Na obu skrzydłach bramy były wyrzeźbione ogromne prostokąty, które w rogach również ozdobiono do połowy otwartymi wachlarzami.",
+  "start": 867.14
+ },
+ {
+  "i": 96,
+  "pl": "Najcenniejszym jednak upiększeniem bramy były umieszczone w pośrodku jej skrzydeł dwie rzeźby przedstawiające główki gwoździ, ale tak wielkich, jakby nimi była przytwierdzona brama do kamienicy, a kamienica do Warszawy.",
+  "start": 876.8
+ },
+ {
+  "i": 97,
+  "pl": "Prawdziwą osobliwość stanowiła sień wjazdowa posiadająca bardzo lichą podłogę, ale za to bardzo ładne krajobrazy na ścianach. Było tam tyle wzgórz, lasów, skał i potoków, że mieszkańcy domu śmiało mogli nie wyjeżdżać na letnie mieszkania.",
+  "start": 892.35
+ },
+ {
+  "i": 98,
+  "pl": "Podwórko, otoczone ze wszystkich stron trzypiętrowymi oficynami, wyglądało jak dno obszernej studni, napełnionej wonnym powietrzem. W każdym rogu były drzwi, a w jednym aż dwoje drzwi; pod oknem mieszkania stróża znajdował się śmietnik i wodociąg.",
+  "start": 910.34
+ },
+ {
+  "i": 99,
+  "pl": "Wokulski mimochodem spojrzał w klatkę głównych schodów, do których prowadziły szklane drzwi. Schody zdawały się być mocno brudnymi; za to obok znajdowała się nisza, a w niej — nimfa z dzbankiem nad głową i utrąconym nosem.",
+  "start": 929.11
+ },
+ {
+  "i": 100,
+  "pl": "Ponieważ dzbanek miał zabarwienie amarantowe, twarz nimfy żółte, piersi zielone, a nogi niebieskie, można było odgadnąć, że nimfa stoi naprzeciw okna posiadającego kolorowe szyby.",
+  "start": 944.67
+ },
+ {
+  "i": 101,
+  "pl": "„No, tak!...” — mruknął Wokulski tonem, który nie zdradzał zbyt wielkiego zachwytu.",
+  "start": 957.53
+ },
+ {
+  "i": 102,
+  "pl": "W tej chwili z prawej oficyny wyszła piękna kobieta z małą dziewczynką.",
+  "start": 962.65
+ },
+ {
+  "i": 103,
+  "pl": "— Teraz, proszę mamy, pójdziemy do ogrodu? — pytało dziecko.",
+  "start": 967.75
+ },
+ {
+  "i": 104,
+  "pl": "— Nie, kochanie. Teraz pójdziemy do sklepu, a do ogrodu po obiedzie — odpowiedziała pani bardzo przyjemnym głosem.",
+  "start": 971.49
+ },
+ {
+  "i": 105,
+  "pl": "Była to wysoka szatynka z szarymi oczami, o klasycznych rysach<sup>389<\/sup>. Spojrzeli na siebie oboje z Wokulskim i — dama zarumieniła się.",
+  "start": 978.77
+ },
+ {
+  "i": 106,
+  "pl": "„Skąd ja ją znam?” — pomyślał Wokulski wychodząc z bramy na ulicę.",
+  "start": 987.41
+ },
+ {
+  "i": 107,
+  "pl": "Dama obejrzała się, lecz spostrzegłszy go odwróciła głowę.",
+  "start": 991.85
+ },
+ {
+  "i": 108,
+  "pl": "„Tak — myślał — widziałem ją w kwietniu na grobach, a później w sklepie. Nawet Rzecki zwracał mi na nią uwagę i mówił, że ma śliczne nogi. Istotnie ładne.”",
+  "start": 996.49
+ },
+ {
+  "i": 109,
+  "pl": "Cofnął się znowu w bramę i począł czytać spis mieszkańców.",
+  "start": 1006.5
+ },
+ {
+  "i": 110,
+  "pl": "„Co?... Baronowa Krzeszowska na drugim piętrze!... Co?... co?... Maruszewicz w lewej oficynie na pierwszym?, Szczególny zbieg okoliczności. Trzecie piętro od frontu studenci... Ale kto może być ta piękność? Prawa oficyna, pierwsze piętro — Jadwiga Misiewicz, emerytka, i Helena Stawska z córeczką.",
+  "start": 1012.32
+ },
+ {
+  "i": 111,
+  "pl": "Z pewnością ona.”",
+  "start": 1038.02
+ },
+ {
+  "i": 112,
+  "pl": "Wszedł na podwórko i oglądał się. Prawie wszystkie okna były otwarte.",
+  "start": 1040.03
+ },
+ {
+  "i": 113,
+  "pl": "W tylnej oficynie na dole była pralnia zatytułowana paryską; na trzecim piętrze było słychać kucie szewskiego młotka, poniżej na gzemsie gruchało parę gołębi, a na drugim piętrze tej samej oficyny od kilku minut rozlegały się miarowe dźwięki fortepianu i krzykliwy sopran śpiewający gamę:",
+  "start": 1045.35
+ },
+ {
+  "i": 114,
+  "pl": "— A!... a!... a!... a!... a!... a!... a!... a!...",
+  "start": 1066.69
+ },
+ {
+  "i": 115,
+  "pl": "Wysoko nad sobą, na trzecim piętrze, Wokulski usłyszał silny bas męski, który mówił:",
+  "start": 1070.71
+ },
+ {
+  "i": 116,
+  "pl": "— O! znowu zażyła kussiny<sup>390<\/sup>... Już z niej wyłazi soliter... Marysiu!... chodź no do nas...",
+  "start": 1076.95
+ },
+ {
+  "i": 117,
+  "pl": "Jednocześnie z okna na drugim piętrze wychyliła się głowa kobiety wołającej:",
+  "start": 1085.63
+ },
+ {
+  "i": 118,
+  "pl": "— Marysiu!... wracaj mi zaraz do domu... Marysiu!...",
+  "start": 1089.79
+ },
+ {
+  "i": 119,
+  "pl": "„Słowo daję, że to pani Krzeszowska” — szepnął Wokulski.",
+  "start": 1093.79
+ },
+ {
+  "i": 120,
+  "pl": "W tej chwili usłyszał charakterystyczny szelest: z trzeciego piętra padł strumień wody, trafił na wychyloną głowę pani Krzeszowskiej i rozprysnął się po podwórku.",
+  "start": 1097.63
+ },
+ {
+  "i": 121,
+  "pl": "— Marysiu!... chodź do nas... — wołał bas.",
+  "start": 1108.05
+ },
+ {
+  "i": 122,
+  "pl": "— Nikczemnicy!... — odpowiedziała pani Krzeszowska odwracając twarz w górę.",
+  "start": 1111.31
+ },
+ {
+  "i": 123,
+  "pl": "Nowy strumień wody lunął z trzeciego piętra i zatamował jej mowę. Zarazem wychylił się stamtąd młody człowiek z czarnym zarostem i zobaczywszy cofającą się fizjognomię pani Krzeszowskiej zawołał pięknym basem:",
+  "start": 1116.17
+ },
+ {
+  "i": 124,
+  "pl": "— Ach, to pani dobrodziejka!... Bardzo przepraszam...",
+  "start": 1129.43
+ },
+ {
+  "i": 125,
+  "pl": "Odpowiedział mu z mieszkania pani Krzeszowskiej spazmatyczny płacz niewieści:",
+  "start": 1133.09
+ },
+ {
+  "i": 126,
+  "pl": "— O, ja nieszczęśliwa!... Przysięgnę, że to on, nikczemnik, nasadził na mnie tych bandytów... Wywdzięcza mi się, żem go wydobyła z nędzy!... Żem kupiła jego konia!...",
+  "start": 1138.29
+ },
+ {
+  "i": 127,
+  "pl": "Tymczasem na dole praczki prały bieliznę, na trzecim piętrze szewc kuł, a na drugim w tylnej oficynie dźwięczał fortepian i rozlegała się wrzaskliwa gama:",
+  "start": 1150.07
+ },
+ {
+  "i": 128,
+  "pl": "— A!... a!... a!... a!... a!... a!... a!... a!...",
+  "start": 1160.81
+ },
+ {
+  "i": 129,
+  "pl": "„Wesoły dom, nie ma co...” — szepnął Wokulski otrzepując krople wody, które mu spadły na rękaw.",
+  "start": 1163.48
+ },
+ {
+  "i": 130,
+  "pl": "Wyszedł z podwórza na ulicę i jeszcze raz obejrzawszy nieruchomość, której miał zostać panem, skręcił w Aleję Jerozolimską. Tu wziął dorożkę i pojechał do adwokata.",
+  "start": 1170.22
+ },
+ {
+  "i": 131,
+  "pl": "W przedpokoju adwokata zastał paru obdartych Żydków i starą kobietę w chustce na głowie.",
+  "start": 1181.54
+ },
+ {
+  "i": 132,
+  "pl": "Przez otwarte drzwi na lewo widać było szafy zapełnione aktami, trzech dependentów<sup>391<\/sup> szybko piszących i kilku gości z waszecia<sup>392<\/sup>, z których jeden miał fizjognomię kryminalną, a reszta bardzo znudzone.",
+  "start": 1187.74
+ },
+ {
+  "i": 133,
+  "pl": "Stary lokaj z siwymi wąsami i podejrzliwym wejrzeniem zdjął z Wokulskiego palto i zapytał:",
+  "start": 1202.1
+ },
+ {
+  "i": 134,
+  "pl": "— Wielmożny pan na dłuższy interes?",
+  "start": 1207.74
+ },
+ {
+  "i": 135,
+  "pl": "— Na krótszy.",
+  "start": 1210.98
+ },
+ {
+  "i": 136,
+  "pl": "Wprowadził Wokulskiego do sali na prawo.",
+  "start": 1212.61
+ },
+ {
+  "i": 137,
+  "pl": "— Jak mam zameldować?",
+  "start": 1215.35
+ },
+ {
+  "i": 138,
+  "pl": "Wokulski podał bilet i został sam. W sali były sprzęty kryte amarantowym utrechtem jak w wagonach pierwszej klasy — kilka ozdobnych szaf z pięknie oprawnymi książkami, które tak wyglądały, jakby ich nigdy nie czytano — na stole zaś parę ilustracji i albumów, które zdaje się, oglądali wszyscy.",
+  "start": 1217.79
+ },
+ {
+  "i": 139,
+  "pl": "W jednym rogu sali stał gipsowy posąg bogini Temidy<sup>393<\/sup> z mosiężnymi wagami i brudnymi kolanami.",
+  "start": 1238.1
+ },
+ {
+  "i": 140,
+  "pl": "— Pan mecenas prosi!... — odezwał się służący przez uchylone drzwi.",
+  "start": 1246.8
+ },
+ {
+  "i": 141,
+  "pl": "Gabinet znakomitego adwokata miał sprzęty kryte brązową skórą, w oknach brązowego koloru firanki, a na ściennych obiciach brązowe desenie. Sam gospodarz odziany był w brązowy surdut i trzymał w ręku bardzo długi cybuch, u góry zakończony funtowym bursztynem i piórkiem.",
+  "start": 1251.54
+ },
+ {
+  "i": 142,
+  "pl": "— Byłem pewny, że dziś powitam szanownego pana u siebie — rzekł adwokat podsuwając Wokulskiemu fotel na kółkach i prostując nogą dywan, który się nieco zmarszczył. — Jednym wyrazem — ciągnął adwokat — możemy rachować na jakieś trzysta tysięcy rubli udziałów w naszej spółce.",
+  "start": 1270.86
+ },
+ {
+  "i": 143,
+  "pl": "A że do rejenta pójdziemy jak najrychlej i gotówkę ściągniemy co do grosza, w tym może pan rachować na mnie...",
+  "start": 1290.54
+ },
+ {
+  "i": 144,
+  "pl": "Wszystko to mówił akcentując ważniejsze wyrazy, ściskał Wokulskiego za rękę i obserwował go spod oka.",
+  "start": 1297.57
+ },
+ {
+  "i": 145,
+  "pl": "— A tak... spółka!... — powtórzył Wokulski usiadłszy na fotelu. — To rzecz tych panów, ile zbiorą gotówki.",
+  "start": 1305.55
+ },
+ {
+  "i": 146,
+  "pl": "— No, zawsze kapitał... — wtrącił adwokat.",
+  "start": 1314.11
+ },
+ {
+  "i": 147,
+  "pl": "— Mam go bez spółki.",
+  "start": 1317.41
+ },
+ {
+  "i": 148,
+  "pl": "— Dowód zaufania...",
+  "start": 1318.95
+ },
+ {
+  "i": 149,
+  "pl": "— Wystarcza mi własne.",
+  "start": 1320.75
+ },
+ {
+  "i": 150,
+  "pl": "Adwokat umilkł i pośpiesznie zaczął ssać dym z piórka.",
+  "start": 1322.98
+ },
+ {
+  "i": 151,
+  "pl": "— Mam prośbę do mecenasa — rzekł po chwili Wokulski.",
+  "start": 1328.1
+ },
+ {
+  "i": 152,
+  "pl": "Adwokat utopił w nim spojrzenie pragnąc odgadnąć: co to za prośba? Od natury jej bowiem zależał sposób słuchania. Widocznie jednak nie odkrył nic groźnego, gdyż jego fizjognomia przybrała wyraz poważnej, lecz serdecznej życzliwości.",
+  "start": 1332.12
+ },
+ {
+  "i": 153,
+  "pl": "— Chcę kupić kamienicę — ciągnął Wokulski.",
+  "start": 1349.1
+ },
+ {
+  "i": 154,
+  "pl": "— Już?... — spytał mecenas podnosząc brwi i schylając głowę. — Winszuję, bardzo winszuję... Dom handlowy nie na próżno nazywa się domem... Kamienica dla kupca jest jak strzemię dla jeźdźca; pewniej siedzi na interesach.",
+  "start": 1352.62
+ },
+ {
+  "i": 155,
+  "pl": "Handel nie oparty na tak realnej podstawie, jaką jest dom, jest tylko kramarstwem. O jakąż to chodzi kamienicę, jeżeli szanowny pan raczysz mnie już zaszczycać swoim zaufaniem?",
+  "start": 1366.64
+ },
+ {
+  "i": 156,
+  "pl": "— Ma być w tych dniach licytowany dom pana Łęckiego...",
+  "start": 1378.3
+ },
+ {
+  "i": 157,
+  "pl": "— Znam — przerwał adwokat. — Mury wcale dobre, rzeczy drewniane należałoby stopniowo zmienić, w rezerwie ogród... Licytuje baronowa Krzeszowska do sześćdziesięciu tysięcy rubli, konkurentów zapewne nie będzie, kupimy najwyżej za sześćdziesiąt tysięcy rubli.",
+  "start": 1382.48
+ },
+ {
+  "i": 158,
+  "pl": "— Choćby za dziewięćdziesiąt tysięcy, a nawet i więcej — wtrącił Wokulski.",
+  "start": 1400.76
+ },
+ {
+  "i": 159,
+  "pl": "— Po co?... — skoczył na fotelu adwokat. — Baronowa poza sześćdziesiąt tysięcy nie wyjdzie, domów nikt dziś nie kupuje... Wcale dobry interes...",
+  "start": 1405.2
+ },
+ {
+  "i": 160,
+  "pl": "— Dla mnie będzie dobrym nawet za dziewięćdziesiąt tysięcy.",
+  "start": 1413.6
+ },
+ {
+  "i": 161,
+  "pl": "— Ale lepszym za sześćdziesiąt pięć tysięcy...",
+  "start": 1417.48
+ },
+ {
+  "i": 162,
+  "pl": "— Nie chcę obdzierać mego przyszłego wspólnika.",
+  "start": 1420.52
+ },
+ {
+  "i": 163,
+  "pl": "— Wspólnika?... — zawołał adwokat. — Ależ szanowny pan Łęcki jest stanowczym bankrutem; po prostu skrzywdziłbyś go pan, naddając mu jakieś kilka tysięcy rubli. Znam pogląd jego siostry, hrabiny, na tę sprawę...",
+  "start": 1423.44
+ },
+ {
+  "i": 164,
+  "pl": "W chwili gdy pan Łęcki zostanie bez grosza przy duszy, jego urocza córka, którą wszyscy uwielbiamy, wyjdzie za barona albo marszałka...",
+  "start": 1436.42
+ },
+ {
+  "i": 165,
+  "pl": "Oczy Wokulskiego tak dziko błysnęły, że adwokat umilkł. Przypatrywał mu się, rozmyślał... Nagle uderzył się ręką w czoło.",
+  "start": 1445.42
+ },
+ {
+  "i": 166,
+  "pl": "— Szanowny pan — rzekł — jesteś zdecydowany dać dziewięćdziesiąt tysięcy rubli za tę ruderę?...",
+  "start": 1454.58
+ },
+ {
+  "i": 167,
+  "pl": "— Tak — odparł głucho Wokulski.",
+  "start": 1460.86
+ },
+ {
+  "i": 168,
+  "pl": "— Sześćdziesiąt od dziewięćdziesięciu... posag panny Izabeli... — mruknął adwokat. — Aha!...",
+  "start": 1463.84
+ },
+ {
+  "i": 169,
+  "pl": "Fizjognomia i cała postawa jego zmieniła się do niepoznania. Pociągnął z wielkiego bursztynu ogromny kłąb dymu, rozparł się na fotelu i trzęsąc ręką w stronę Wokulskiego mówił:",
+  "start": 1471.76
+ },
+ {
+  "i": 170,
+  "pl": "— Rozumiemy się, panie Wokulski. Wyznam ci, że jeszcze przed pięcioma minutami podejrzewałem cię, sam nie wiem o co, bo interesa twoje są czyste. Ale w tej chwili, wierz mi, masz we mnie tylko człowieka życzliwego i... sprzymierzeńca...",
+  "start": 1483.3
+ },
+ {
+  "i": 171,
+  "pl": "— Teraz ja pana nie rozumiem — szepnął spuszczając oczy Wokulski.",
+  "start": 1497.96
+ },
+ {
+  "i": 172,
+  "pl": "Adwokatowi na policzkach wystąpiły ceglaste rumieńce. Zadzwonił — wszedł służący.",
+  "start": 1503.7
+ },
+ {
+  "i": 173,
+  "pl": "— Nie wpuszczać tu nikogo, dopóki nie zawołam — rzekł.",
+  "start": 1508.56
+ },
+ {
+  "i": 174,
+  "pl": "— Słucham pana mecenasa — odparł markotny lokaj.",
+  "start": 1512.04
+ },
+ {
+  "i": 175,
+  "pl": "Znowu zostali we dwu.",
+  "start": 1516.34
+ },
+ {
+  "i": 176,
+  "pl": "— Panie... Stanisławie — zaczął adwokat. — Pan wie, co to jest nasza arystokracja i jej dodatki?...",
+  "start": 1519.12
+ },
+ {
+  "i": 177,
+  "pl": "Jest to parę tysięcy ludzi, którzy wysysają cały kraj, topią pieniądze za granicą, przywożą stamtąd najgorsze nałogi, zarażają nimi klasy średnie, niby to zdrowe, i — sami giną bez ratunku: ekonomicznie, fizjologicznie i moralnie.",
+  "start": 1526.18
+ },
+ {
+  "i": 178,
+  "pl": "Gdyby zmusić ich do pracy, gdyby skrzyżować z innymi warstwami, może... byłby z tego jaki pożytek, bo jużci są to organizacje subtelniejsze od naszych. Rozumie pan... skrzyżować, ale... nie wyrzucać na podtrzymanie ich trzydziestu tysięcy rubli.",
+  "start": 1543.8
+ },
+ {
+  "i": 179,
+  "pl": "Otóż do skrzyżowania pomagam panu, ale do strwonienia trzydziestu tysięcy rubli — nie!...",
+  "start": 1564.2
+ },
+ {
+  "i": 180,
+  "pl": "— Nic nie rozumiem pana — odparł cicho Wokulski.",
+  "start": 1572.58
+ },
+ {
+  "i": 181,
+  "pl": "— Rozumiesz, tylko nie ufasz mi. Wielka to cnota nieufność, leczyć z niej pana nie będę. Tyle ci powiem: Łęcki-bankrut może zostać... krewnym nawet kupca, a tym bardziej kupca-szlachcica. Ale Łęcki z trzydziestoma tysiącami rubli w kieszeni!...",
+  "start": 1577.82
+ },
+ {
+  "i": 182,
+  "pl": "— Panie mecenasie — przerwał Wokulski — czy zechce pan w moim imieniu stanąć do licytacji tego domu?",
+  "start": 1600.94
+ },
+ {
+  "i": 183,
+  "pl": "— Stanę, lecz ponad to, co da pani Krzeszowska, postąpię najwyżej parę tysięcy. Wybacz pan, panie Wokulski, ale sam z sobą licytować się nie będę.",
+  "start": 1608.84
+ },
+ {
+  "i": 184,
+  "pl": "— A jeżeli znajdzie się trzeci licytant?",
+  "start": 1619.08
+ },
+ {
+  "i": 185,
+  "pl": "— Ha! w takim razie i jego zdystansuję, ażeby dogodzić pańskiemu kaprysowi.",
+  "start": 1621.9
+ },
+ {
+  "i": 186,
+  "pl": "Wokulski wstał.",
+  "start": 1628.08
+ },
+ {
+  "i": 187,
+  "pl": "— Dziękuję panu — rzekł — za parę słów szczerszych. Ma pan rację, ale i ja mam moje racje... Pieniądze przyniosę panu jutro; teraz — do widzenia...",
+  "start": 1629.39
+ },
+ {
+  "i": 188,
+  "pl": "— Żal mi pana — odpowiedział adwokat ściskając go za rękę.",
+  "start": 1641.46
+ },
+ {
+  "i": 189,
+  "pl": "— Dlaczegóż to?",
+  "start": 1645.6
+ },
+ {
+  "i": 190,
+  "pl": "— Dlatego, panie, że kto chce zdobyć, musi zwyciężyć, zdusić przeciwnika, nie zaś karmić go z własnej spiżarni. Popełniasz pan błąd, który cię raczej odsunie, aniżeli zbliży do celu.",
+  "start": 1647.0
+ },
+ {
+  "i": 191,
+  "pl": "— Myli się pan.",
+  "start": 1660.52
+ },
+ {
+  "i": 192,
+  "pl": "— Romantyk!... romantyk!... — powtarzał adwokat z uśmiechem.",
+  "start": 1661.98
+ },
+ {
+  "i": 193,
+  "pl": "Wokulski wybiegł z domu adwokata i wsiadłszy w dorożkę kazał się wieźć w stronę ulicy Elektoralnej<sup>394<\/sup>. Był zirytowany tym, że adwokat odkrył jego tajemnicę, i tym, że krytykował jego metodę postępowania.",
+  "start": 1668.84
+ },
+ {
+  "i": 194,
+  "pl": "Naturalnie, że kto chce zdobyć, musi zdusić przeciwnika; ależ tu zdobyczą miała być panna Izabela!...",
+  "start": 1683.48
+ },
+ {
+  "i": 195,
+  "pl": "Wysiadł przed niepozornym sklepikiem, nad którym wisiał czarny szyld z żółtawym napisem: „Kantor wekslu<sup>395<\/sup> i loterii S. Szlangbauma.”",
+  "start": 1690.83
+ },
+ {
+  "i": 196,
+  "pl": "Sklep był otwarty; za kontuarem, obitym blachą i od publiczności oddzielonym drucianą siatką, siedział stary Żyd z łysą głową i siwą brodą, jakby przylepioną do „Kuriera”.",
+  "start": 1702.81
+ },
+ {
+  "i": 197,
+  "pl": "— Dzień dobry, panie Szlangbaum! — zawołał Wokulski.",
+  "start": 1717.44
+ },
+ {
+  "i": 198,
+  "pl": "Żyd podniósł głowę i z czoła zsunął okulary na oczy.",
+  "start": 1721.44
+ },
+ {
+  "i": 199,
+  "pl": "— Ach, to pan dobrodziej?... — odparł ściskając go za rękę. — Co to, czy już i pan potrzebuje pieniędzy?...",
+  "start": 1725.6
+ },
+ {
+  "i": 200,
+  "pl": "— Nie — odpowiedział Wokulski rzucając się na wyplatane krzesło przed kontuarem. A ponieważ wstyd mu było od razu objaśnić, po co przyszedł, więc spytał:",
+  "start": 1733.64
+ },
+ {
+  "i": 201,
+  "pl": "— Cóż słychać, panie Szlangbaum?",
+  "start": 1743.74
+ },
+ {
+  "i": 202,
+  "pl": "— Źle! — odpowiedział starzec. — Na Żydów zaczyna się prześladowanie<sup>396<\/sup>. Może to i dobrze. Jak nas będą kopać i pluć, i dręczyć, wtedy może upamiętają się i te młode Żydki, co jak mój Henryk poubierali się w surduty i nie zachowują swoje religie.",
+  "start": 1746.34
+ },
+ {
+  "i": 203,
+  "pl": "— Kto was prześladuje! — odparł Wokulski.",
+  "start": 1765.86
+ },
+ {
+  "i": 204,
+  "pl": "— Pan chce dowody?... — spytał Żyd. — Ma pan dowód w ten „Kurieru”. Ja onegdaj posłałem do nich szaradę. Pan zgaduje szarady?... Posłałem taką:",
+  "start": 1768.9
+ },
+ {
+  "i": 205,
+  "pl": "Pan wie, co to?... Pierwsze i drugie — to jest: ko–za; pierwsze i trzecie — to jest ko–ki, a wszystkie — to są: Ko–za–ki. A pan wie, co oni mi odpisali?... Zaraz...",
+  "start": 1793.25
+ },
+ {
+  "i": 206,
+  "pl": "Podniósł „Kurier” i czytał:",
+  "start": 1808.22
+ },
+ {
+  "i": 207,
+  "pl": "— „Odpowiedzie od redakcje. Panu W. W. Encyklopedie większe Orgelbranda<sup>397<\/sup>...” Nie to... „Panu Motylkowi. Frak kładzie się...” Nie to... A, jest!... „Panu S. Szlangbaumowi: Pańska szarada polityczna nie jest gramatyczna.” — Proszę pana: co tu jest z polityki?",
+  "start": 1809.64
+ },
+ {
+  "i": 208,
+  "pl": "Żebym ja napisał szaradę o Dizraeli<sup>398<\/sup> albo o Bismarck, to byłaby polityka, ale o Kozaki to przecie nie jest polityka, tylko wojskowość.",
+  "start": 1837.06
+ },
+ {
+  "i": 209,
+  "pl": "— Ale gdzież w tym prześladowanie Żydów? — spytał Wokulski.",
+  "start": 1844.43
+ },
+ {
+  "i": 210,
+  "pl": "— Zaraz powiem. Pan sam musiał bronić od prześladowcy mego Henryka; ja to wszystko wiem, choć nie on mi mówił. A teraz o szaradę. Jak ja pół roku temu odniosłem moją szaradę do pana Szymanowskiego<sup>399<\/sup>, to on mnie powiedział: „Panie Szlangbaum, my te szarade drukować nie będziemy,",
+  "start": 1848.35
+ },
+ {
+  "i": 211,
+  "pl": "ale ja panu radzę, co lepiej byś pan pisał szarade, aniżeli brał procentów.” A ja mówię: „Panie redaktorze, jak mnie pan da tyle za szarady, co ja mam z procenty, to ja będę pisał.” A pan Szymanowski na to: „My, panie Szlangbaum, nie mamy takie pieniądze,",
+  "start": 1867.7
+ },
+ {
+  "i": 212,
+  "pl": "żeby za pańskie szarady płacić.” To powiedział sam pan Szymanowski, słyszy pan? Nu, a oni mnie dzisiaj piszą w „Kurierku”, że to niepolitycznie i niegramatycznie!... Jeszcze pół roku temu gadali inaczej. A co teraz drukują w gazety na Żydków.",
+  "start": 1884.34
+ },
+ {
+  "i": 213,
+  "pl": "Wokulski słuchał historii o prześladowaniu Żydów patrząc na ścianę, gdzie wisiała tabelka loteryjna, i bębniąc palcami w kontuar. Ale myślał o czym innym i wahał się.",
+  "start": 1904.93
+ },
+ {
+  "i": 214,
+  "pl": "— Więc ciągle zajmujesz się szaradami, panie Szlangbaum? — spytał.",
+  "start": 1917.26
+ },
+ {
+  "i": 215,
+  "pl": "— Co to ja!... — odparł stary Żyd. — Ale ja, panie, mam po Henryku wnuczka, co mu dopiero dziewięć lat, i niech no pan słucha, jaki on do mnie w tamten tydzień list napisał. „Mój dziadku — on pisał, ten mały Michaś — ja potrzebuje takie szarade:",
+  "start": 1923.51
+ },
+ {
+  "i": 216,
+  "pl": "A jak dziadzio — on pisał, Michaś — zgadnie, to niech mi dziadzio przyszle<sup>400<\/sup> sześć rubli na ten kortowy interes.” Ja się rozpłakałem, panie Wokulski, jakiem przeczytał. Bo ten pierwszy, dół, to znaczy: spód, a przeczenie to jest nie — a wszystko razem to są spodnie.",
+  "start": 1946.84
+ },
+ {
+  "i": 217,
+  "pl": "Ja się spłakałem, panie Wokulski, co takie mądre dziecko przez upartość Henryka chodzi bez spodnie. Ale ja mu odpisałem: „Mój kochaneczku. Bardzo jestem kontent, że ty od dziadziusia nauczyłeś się układać szarady.",
+  "start": 1968.2
+ },
+ {
+  "i": 218,
+  "pl": "Ale żebyś ty jeszcze nauczył się oszczędności, to ja tobie na te kortowe odzienie<sup>401<\/sup> posyłam tylko cztery ruble. A jak ty się będziesz dobrze uczył, to ja tobie po wakacje sprawie takie szarade:",
+  "start": 1982.36
+ },
+ {
+  "i": 219,
+  "pl": "To znaczy: mund–ur; pan od razu zgadł, panie Wokulski?",
+  "start": 2005.22
+ },
+ {
+  "i": 220,
+  "pl": "— Więc i cała pańska rodzina bawi się szaradami? — wtrącił Wokulski.",
+  "start": 2011.36
+ },
+ {
+  "i": 221,
+  "pl": "— Nie tylko moja — odpowiedział Szlangbaum.",
+  "start": 2015.52
+ },
+ {
+  "i": 222,
+  "pl": "— U nas, panie, niby u Żydów, jak się młodzi zejdą, to oni nie zajmują się, jak u państwo, tańcami, komplementami, ubiorami, głupstwami, ale oni albo robią rachunki, albo oglądają uczone książki, jeden przed drugim zdaje egzamin albo rozwiązują sobie szarady, rebusy, szachowe zadanie.",
+  "start": 2018.52
+ },
+ {
+  "i": 223,
+  "pl": "U nas ciągle jest zajęty rozum i dlatego Żydzi mają rozum, i dlatego, niech się pan nie obrazi, oni cały świat zawojują. U państwa wszystko się robi przez te sercowe gorączke i przez wojne, a u nas tylko przez mądrość i cierpliwość.",
+  "start": 2039.23
+ },
+ {
+  "i": 224,
+  "pl": "Ostatnie wyrazy uderzyły Wokulskiego. On przecież zdobywał pannę Izabelę mądrością i cierpliwością... Jakaś otucha wstąpiła mu w serce, przestał wahać się i nagle rzekł:",
+  "start": 2056.4
+ },
+ {
+  "i": 225,
+  "pl": "— Mam do pana prośbę, panie Szlangbaum...",
+  "start": 2068.8
+ },
+ {
+  "i": 226,
+  "pl": "— Pańskie prośbe tyle znaczy dla mnie co rozkaz, panie Wokulski.",
+  "start": 2071.46
+ },
+ {
+  "i": 227,
+  "pl": "— Chcę kupić dom Łęckiego...",
+  "start": 2076.29
+ },
+ {
+  "i": 228,
+  "pl": "— Znam go. On pójdzie za sześćdziesiąt parę tysięcy.",
+  "start": 2078.51
+ },
+ {
+  "i": 229,
+  "pl": "— Chcę, żeby poszedł za dziewięćdziesiąt tysięcy, i potrzebuję kogoś, kto by licytował do tej sumy.",
+  "start": 2082.93
+ },
+ {
+  "i": 230,
+  "pl": "Żyd szeroko otworzył oczy.",
+  "start": 2088.75
+ },
+ {
+  "i": 231,
+  "pl": "— Jak to?... Pan chce zapłacić drożej o trzydzieści tysięcy rubli?... — spytał.",
+  "start": 2091.01
+ },
+ {
+  "i": 232,
+  "pl": "— Tak.",
+  "start": 2095.49
+ },
+ {
+  "i": 233,
+  "pl": "— Przepraszam, ale nie rozumiem. Bo żeby panu dom sprzedawali, a Łęcki chciał jego kupić, wtedy pan miałby interes podbijać cenę. Ale jak pan kupuje, to pan ma interes zniżyć wartość...",
+  "start": 2096.59
+ },
+ {
+  "i": 234,
+  "pl": "— Mam interes zapłacić drożej.",
+  "start": 2109.02
+ },
+ {
+  "i": 235,
+  "pl": "Starzec potrząsnął głową i odezwał się po chwili:",
+  "start": 2112.1
+ },
+ {
+  "i": 236,
+  "pl": "— Żebym ja pana nie znał, tobym myślał, że pan robi zły interes; ale że ja pana znam, więc ja sobie myślę, co pan robi... dziwny interes. Nie tylko pan zakopuje w mury gotówkę i traci na tym z dziesięć procentów rocznie, ale jeszcze chce pan zapłacić trzydzieści tysięcy rubli więcej...",
+  "start": 2115.0
+ },
+ {
+  "i": 237,
+  "pl": "Panie Wokulski — dodał biorąc go za rękę — nie zrób pan takie głupstwo. Ja pana proszę... Stary Szlangbaum pana prosi...",
+  "start": 2134.24
+ },
+ {
+  "i": 238,
+  "pl": "— Wierz mi pan, że dobrze na tym wyjdę...",
+  "start": 2142.38
+ },
+ {
+  "i": 239,
+  "pl": "Żyd nagle podniósł palec do czoła. Błysnęły mu oczy i zęby białe jak perły.",
+  "start": 2145.08
+ },
+ {
+  "i": 240,
+  "pl": "— Ha! ha!... — zaśmiał się. — Nu, jaki ja już stary jestem, żem od razu tego nie pomiarkował... Pan panu Łęckiemu da trzydzieści tysięcy rubli... a on panu ułatwi interes może na sto tysięcy rubli... Git<sup>402<\/sup>!... Ja panu dam licytanta, co on za piętnaście rubelków podbije cenę domu.",
+  "start": 2150.46
+ },
+ {
+  "i": 241,
+  "pl": "Bardzo porządny pan, katolik, tylko jemu nie można dawać wadium<sup>403<\/sup> do ręki... Ja panu dam jeszcze jakie dystyngowane dame, co także za dziesięć rubelków będzie podbijać... Ja mogę dać jeszcze z pare Żydki, po pięć rubelków...",
+  "start": 2169.43
+ },
+ {
+  "i": 242,
+  "pl": "Zrobi się taka licytacja, co pan może zapłacić za ten dom choćby sto pięćdziesiąt tysięcy i nikt nie zmiarkuje, jaki jest interes...",
+  "start": 2184.27
+ },
+ {
+  "i": 243,
+  "pl": "Wokulskiemu było trochę przykro.",
+  "start": 2193.15
+ },
+ {
+  "i": 244,
+  "pl": "— W każdym razie sprawa zostaje między nami — rzekł.",
+  "start": 2195.4
+ },
+ {
+  "i": 245,
+  "pl": "— Panie Wokulski — odparł Żyd uroczyście — ja myślę, że pan nie potrzebował to powiedzieć. Pański sekret to mój sekret. Pan ujął się za mój Henryczek, pan nie prześladuje Żydów...",
+  "start": 2198.36
+ },
+ {
+  "i": 246,
+  "pl": "Pożegnali się i Wokulski wrócił do swego mieszkania. Tam zastał już Maruszewicza, z którym pojechał do rajtszuli<sup>404<\/sup> obejrzeć kupioną klacz.",
+  "start": 2212.18
+ },
+ {
+  "i": 247,
+  "pl": "Rajtszula składała się z dwu połączonych ze sobą budynków, tworzących jedną całość w formie szlify<sup>405<\/sup>. W części okrągłej mieścił się maneż, w prostokątnej stajnie.",
+  "start": 2221.14
+ },
+ {
+  "i": 248,
+  "pl": "W chwili gdy Wokulski z Maruszewiczem weszli tam, odbywała się lekcja konnej jazdy. Czterech panów i jedna dama jeździli, koń za koniem, wzdłuż ścian maneżu; na środku stał dyrektor zakładu, mężczyzna z miną wojskową, w granatowej kurtce, białych obcisłych spodniach i wysokich butach z ostrogami.",
+  "start": 2232.95
+ },
+ {
+  "i": 249,
+  "pl": "Był to pan Miller; komenderował jeźdźcami pomagając sobie w tej czynności długim batem, którym od czasu do czasu podcinał źle manewrującego konia, przy czym krzywił się jeździec. Wokulski zauważył naprędce, że jeden z panów, który jeździł bez strzemion, trzymając prawą rękę za plecami,",
+  "start": 2251.71
+ },
+ {
+  "i": 250,
+  "pl": "ma minę łobuza, że drugi z nich pragnie zająć na koniu stanowisko środkujące między szyją a zadem, a czwarty wygląda tak, jakby w każdej chwili usiłował zsiąść z konia i już do końca życia nie ćwiczyć się w ekwitacji<sup>406<\/sup>.",
+  "start": 2271.23
+ },
+ {
+  "i": 251,
+  "pl": "Tylko dama w amazonce<sup>407<\/sup> jeździła śmiało i zręcznie, co Wokulskiemu nasunęło myśl, że na świecie nie ma dla kobiet pozycji ani niewygodnej, ani niebezpiecznej.",
+  "start": 2285.35
+ },
+ {
+  "i": 252,
+  "pl": "Maruszewicz zapoznał swego towarzysza z dyrektorem.",
+  "start": 2297.32
+ },
+ {
+  "i": 253,
+  "pl": "— Właśnie czekałem na panów i natychmiast służę. Panie Szulc!...",
+  "start": 2301.18
+ },
+ {
+  "i": 254,
+  "pl": "Wbiegł pan Szulc, młody blondyn, odziany również w granatową kurtkę, lecz jeszcze wyższe buty i obciślejsze spodnie. Z wojskowym ukłonem wziął do ręki symbol dyrektorskiej władzy i zanim Wokulski opuścił maneż, przekonał się, że Szulc mimo młodego wieku energiczniej włada batem aniżeli sam dyrektor.",
+  "start": 2305.32
+ },
+ {
+  "i": 255,
+  "pl": "Drugi bowiem pan aż syknął, a czwarty rozpoczął formalną kłótnię.",
+  "start": 2325.92
+ },
+ {
+  "i": 256,
+  "pl": "— Pan — rzekł dyrektor do Wokulskiego — przyjmuje klacz barona ze wszelkimi przynależnościami: siodłami, derami, i tam dalej?...",
+  "start": 2331.14
+ },
+ {
+  "i": 257,
+  "pl": "— Naturalnie.",
+  "start": 2339.18
+ },
+ {
+  "i": 258,
+  "pl": "— W takim razie mam u pana sześćdziesiąt rubli za stajnię, której pan Krzeszowski nie opłacił.",
+  "start": 2340.02
+ },
+ {
+  "i": 259,
+  "pl": "— Trudna rada.",
+  "start": 2345.92
+ },
+ {
+  "i": 260,
+  "pl": "Weszli do stajenki widnej jak pokój, nawet ozdobionej dywanami, niezbyt zresztą cennymi. Żłób był nowy i pełny, drabina toż samo, na podłodze leżała świeża słoma. Pomimo to bystre oko dyrektora dojrzało jakąś niestosowność, krzyknął bowiem:",
+  "start": 2347.81
+ },
+ {
+  "i": 261,
+  "pl": "— Cóż to za porządek, panie Ksawery, do stu par diabłów!... Czy i w pańskiej sypialni konserwują się takie rzeczy?",
+  "start": 2363.93
+ },
+ {
+  "i": 262,
+  "pl": "Drugi pomocnik dyrektora ukazał się tylko na chwilę. Spojrzał, zniknął i z korytarza zawołał:",
+  "start": 2370.83
+ },
+ {
+  "i": 263,
+  "pl": "— Wojciech!... do stu tysięcy diabłów... Zaraz mi zrób porządek, bo ci to wszystko każę położyć na stole...",
+  "start": 2376.57
+ },
+ {
+  "i": 264,
+  "pl": "— Szczepan!... cholero jakiś... — odezwał się trzeci głos za przepierzeniem. — Jak mi jeszcze raz, pieskie nasienie, tak stajnię zostawisz, to ci każę zbierać zębami...",
+  "start": 2383.82
+ },
+ {
+  "i": 265,
+  "pl": "Jednocześnie rozległo się kilka tępych uderzeń, jakby ktoś pochwycił kogoś drugiego za głowę i uderzał nią o ścianę.",
+  "start": 2394.64
+ },
+ {
+  "i": 266,
+  "pl": "Niebawem zaś przez okno stajni zobaczył Wokulski młodzieńca z metalowymi guzikami przy kurtce, który wybiegł na podwórze po miotłę i znalazłszy takową, mimochodem zwalił przez łeb gapiącego się Żydka.",
+  "start": 2401.9
+ },
+ {
+  "i": 267,
+  "pl": "Jako przyrodnik, podziwiał Wokulski tę nową formę prawa zachowania siły<sup>408<\/sup>, gdzie gniew dyrektora w tak szczególny sposób zawędrował aż do istoty znajdującej się poza rajtszulą.",
+  "start": 2414.88
+ },
+ {
+  "i": 268,
+  "pl": "Tymczasem dyrektor kazał wyprowadzić klacz na korytarz. Było to piękne zwierzę na cienkich nóżkach, z małą główką i oczyma, z których przeglądał dowcip i rzewność. Klaczka w przechodzie zwróciła się do Wokulskiego wąchając go i chrapiąc, jakby w nim odgadła pana.",
+  "start": 2427.22
+ },
+ {
+  "i": 269,
+  "pl": "— Już pana poznała — rzekł dyrektor. — Niech jej pan da cukru... Piękna klacz!...",
+  "start": 2447.07
+ },
+ {
+  "i": 270,
+  "pl": "To mówiąc wydobył z kieszeni kawałek brudnej substancji, nieco zalatującej tytuniem. Wokulski podał to klaczy, która bez namysłu zjadła.",
+  "start": 2452.75
+ },
+ {
+  "i": 271,
+  "pl": "— Zakładam się o pięćdziesiąt rubli, że wygra!... — zawołał dyrektor. — Trzyma pan?",
+  "start": 2461.69
+ },
+ {
+  "i": 272,
+  "pl": "— Owszem — odpowiedział Wokulski.",
+  "start": 2466.85
+ },
+ {
+  "i": 273,
+  "pl": "— Wygra niezawodnie. Dam doskonałego dżokeja, a ten poprowadzi ją według mojej instrukcji. Ale gdyby została przy baronie Krzeszowskim, niech mnie piorun trzaśnie, przywlokłaby się trzecia do mety. Zresztą nawet nie trzymałbym jej na stajni...",
+  "start": 2468.77
+ },
+ {
+  "i": 274,
+  "pl": "— Dyrektor jeszcze nie może uspokoić się — wtrącił ze słodkim uśmiechem Maruszewicz.",
+  "start": 2484.67
+ },
+ {
+  "i": 275,
+  "pl": "— Uspokoić się!... — krzyknął dyrektor czerwieniejąc z gniewu. — No, niech pan Wokulski osądzi, czy mogę nadal utrzymywać stosunki z człowiekiem, który opowiadał, że ja sprzedałem w Lubelskie konia, co miał koler<sup>409<\/sup>!...",
+  "start": 2489.75
+ },
+ {
+  "i": 276,
+  "pl": "Takich rzeczy — wołał, coraz mocniej podnosząc głos — nie zapomina się, panie Maruszewicz. I gdyby hrabia nie załagodził afery, pan Krzeszowski miałby dziś kulę w udzie... Ja sprzedałem konia, co miał koler!... Żebym miał zapłacić od siebie sto rubli, klacz wygra... Żeby miała paść...",
+  "start": 2502.99
+ },
+ {
+  "i": 277,
+  "pl": "Przekona się pan baron... Koń miał koler!... Ha! ha! ha!... — wybuchnął demonicznym śmiechem dyrektor.",
+  "start": 2521.99
+ },
+ {
+  "i": 278,
+  "pl": "Po obejrzeniu klaczy panowie udali się do kancelarii, gdzie Wokulski uregulował należne rachunki przysięgając sobie nie mówić o żadnym koniu, że ma koler. Na pożegnanie zaś odezwał się:",
+  "start": 2529.13
+ },
+ {
+  "i": 279,
+  "pl": "— Czy nie mógłbym, dyrektorze, wprowadzić tę klacz na wyścigi bezimiennie?",
+  "start": 2541.35
+ },
+ {
+  "i": 280,
+  "pl": "— Zrobi się.",
+  "start": 2546.64
+ },
+ {
+  "i": 281,
+  "pl": "— Ale...",
+  "start": 2549.31
+ },
+ {
+  "i": 282,
+  "pl": "— O! niech pan będzie spokojny — odparł dyrektor ściskając go za rękę. — Dla dżentelmena dyskrecja jest pierwszą cnotą. Spodziewam się, że i pan Maruszewicz...",
+  "start": null
+ },
+ {
+  "i": 283,
+  "pl": "— O!... — potwierdził Maruszewicz trzęsąc głową i ręką w taki sposób, że o tajemnicy pogrzebanej w jego piersiach nie można było wątpić.",
+  "start": 2561.57
+ },
+ {
+  "i": 284,
+  "pl": "Wracając obok maneżu Wokulski znowu usłyszał trzaśniecie batem, po którym czwarty pan znowu rozpoczął kłótnię z zastępcą dyrektora.",
+  "start": 2571.42
+ },
+ {
+  "i": 285,
+  "pl": "— To jest niedelikatność, mój panie!... — krzyczał czwarty. — Odzienie mi popęka...",
+  "start": 2580.5
+ },
+ {
+  "i": 286,
+  "pl": "— Wytrzyma — odparł flegmatycznie pan Szulc trzaskając batem w kierunku drugiego pana.",
+  "start": 2585.66
+ },
+ {
+  "i": 287,
+  "pl": "Wokulski opuścił rajtszulę.",
+  "start": 2592.64
+ },
+ {
+  "i": 288,
+  "pl": "Gdy pożegnawszy się z Maruszewiczem, siadał w dorożkę, przyszła mu szczególna myśl do głowy:",
+  "start": 2596.04
+ },
+ {
+  "i": 289,
+  "pl": "„Jeżeli ta klacz wygra, to panna Izabela pokocha mnie...”",
+  "start": 2602.0
+ },
+ {
+  "i": 290,
+  "pl": "I nagle zawrócił się; jeszcze przed chwilą obojętne zwierzę stało mu się sympatycznym i interesującym.",
+  "start": 2606.85
+ },
+ {
+  "i": 291,
+  "pl": "Wchodząc powtórnie do stajenki usłyszał znowu charakterystyczny łoskot głowy ludzkiej uderzanej o ścianę.",
+  "start": 2614.18
+ },
+ {
+  "i": 292,
+  "pl": "Jakoż istotnie z sąsiedniego przedziału wybiegł mocno zarumieniony chłopak stajenny, Szczepan, z włosami ułożonymi w taki wicherek, jakby mu dopiero co wyjęto z nich rękę, a zaraz po nim ukazał się i furman, Wojciech, który ocierał o kurtkę nieco zatłuszczone palce.",
+  "start": 2621.28
+ },
+ {
+  "i": 293,
+  "pl": "Wokulski dał starszemu trzy ruble, młodszemu rubla i obiecał im na przyszłość gratyfikację, byle tylko klaczka nie miała krzywdy.",
+  "start": 2638.97
+ },
+ {
+  "i": 294,
+  "pl": "— Będę jej, panie, doglądał lepiej niż własnej żony — odpowiedział Wojciech z niskim ukłonem. — Ale i stary jej nie skrzywdzi, owszem... Na wyścigu, panie, pójdzie kobyłka jak szkło...",
+  "start": 2647.93
+ },
+ {
+  "i": 295,
+  "pl": "Wokulski wszedł do stajenki i z kwadrans przypatrywał się klaczy. Niepokoiły go jej delikatne nóżki i sam drżał na widok dreszczów przebiegających jej aksamitną skórę, myślał bowiem, że może zachorować. Potem objął ją za szyję, a gdy oparła mu na ramieniu główkę, całował ją i szeptał:",
+  "start": 2661.23
+ },
+ {
+  "i": 296,
+  "pl": "— Gdybyś ty wiedziała, co od ciebie zależy!... gdybyś wiedziała...",
+  "start": 2679.75
+ },
+ {
+  "i": 297,
+  "pl": "Odtąd po parę razy na dzień jeździł do maneżu, karmił klacz cukrem i pieścił się z nią. Czuł, że w jego realnym umyśle zaczyna kiełkować coś jakby przesąd. Uważał to za dobrą wróżbę, gdy klacz witała go wesoło, lecz gdy była smutna, niepokój poruszał mu serce.",
+  "start": 2684.94
+ },
+ {
+  "i": 298,
+  "pl": "Już bowiem jadąc do maneżu mówił sobie: „Jeżeli zastanę ją wesołą, to mnie panna Izabela pokocha.”",
+  "start": 2703.92
+ },
+ {
+  "i": 299,
+  "pl": "Niekiedy budził się w nim rozsądek; wówczas opanowywał go gniew i pogarda dla samego siebie.",
+  "start": 2711.54
+ },
+ {
+  "i": 300,
+  "pl": "„Cóż to — myślał — czy moje życie ma zależeć od kaprysu jednej kobiety?... Czy nie znajdę stu innych?... Alboż pani Meliton nie obiecywała, że mnie zapozna z trzema, czterema, równie pięknymi?... Raz, do licha, muszę się ocknąć!...”",
+  "start": 2717.56
+ },
+ {
+  "i": 301,
+  "pl": "Ale zamiast ocknąć się, coraz głębiej zapadał w opętanie. Zdawało mu się w chwilach świadomości, że na ziemi jeszcze chyba istnieją czarodzieje i że jeden z nich rzucił na niego klątwę. Wtedy mówił z trwogą:",
+  "start": 2732.74
+ },
+ {
+  "i": 302,
+  "pl": "„Ja nie jestem ten sam... Ja robię się jakimś innym człowiekiem... Zdaje mi się, że mi ktoś zamienił duszę!...”",
+  "start": 2746.6
+ },
+ {
+  "i": 303,
+  "pl": "Chwilami znowu zabierał w nim głos przyrodnik i psycholog:",
+  "start": 2753.76
+ },
+ {
+  "i": 304,
+  "pl": "„Oto — szeptał mu gdzieś w głębi mózgu — oto jak mści się natura za pogwałcenie jej praw. Za młodu lekceważyłeś serce, drwiłeś z miłości, sprzedałeś się na męża starej kobiecie, a teraz masz!... Przez długie lata oszczędzany kapitał uczuć zwraca ci się dziś z procentem...”",
+  "start": 2757.38
+ },
+ {
+  "i": 305,
+  "pl": "„Dobrze to — myślał — ale w takim razie powinienem zostać rozpustnikiem; dlaczegóż więc myślę o niej jednej?”",
+  "start": 2779.7
+ },
+ {
+  "i": 306,
+  "pl": "„Licho wie — odpowiadał oponent. — Może właśnie ta kobieta najlepiej nadaje się do ciebie. Może naprawdę, jak mówi legenda<sup>410<\/sup>, dusze wasze stanowiły kiedyś, przed wiekami, jedną całość?...”",
+  "start": 2786.98
+ },
+ {
+  "i": 307,
+  "pl": "„Więc i ona powinna by mnie kochać... — mówił Wokulski. A potem dodawał: — Jeżeli klacz wygra na wyścigach, będzie to znakiem, że mnie panna Izabela pokocha... Ach! stary głupcze, wariacie, do czego ty dochodzisz?...”",
+  "start": 2799.3
+ },
+ {
+  "i": 308,
+  "pl": "Na parę dni przed wyścigami złożył mu w mieszkaniu wizytę hrabia–Anglik, z którym zaznajomił się podczas sesji u księcia.",
+  "start": 2813.04
+ },
+ {
+  "i": 309,
+  "pl": "Po zwykłym powitaniu hrabia usiadł sztywnie<sup>411<\/sup> na krześle i rzekł:",
+  "start": 2822.8
+ },
+ {
+  "i": 310,
+  "pl": "— Z wizytą i z interesem — tek!... Czy wolno?...",
+  "start": 2827.56
+ },
+ {
+  "i": 311,
+  "pl": "— Służę hrabiemu.",
+  "start": 2832.1
+ },
+ {
+  "i": 312,
+  "pl": "— Baron Krzeszowski — ciągnął hrabia — którego klacz nabył pan, zresztą najzupełniej prawidłowo — tek — ośmiela się najuprzejmiej prosić pana o ustąpienie mu jej. Cena nie stanowi nic... Baron porobił duże zakłady... Proponuje tysiąc dwieście rubli.",
+  "start": 2833.64
+ },
+ {
+  "i": 313,
+  "pl": "Wokulskiemu zrobiło się zimno; gdyby sprzedał klacz, panna Izabela mogłaby nim pogardzić.",
+  "start": 2849.76
+ },
+ {
+  "i": 314,
+  "pl": "— A jeżeli i ja mam moje widoki na tę klacz, panie hrabio?... — odparł.",
+  "start": 2855.74
+ },
+ {
+  "i": 315,
+  "pl": "— W takim razie pan ma słuszne pierwszeństwo, tek — wycedził hrabia.",
+  "start": 2859.96
+ },
+ {
+  "i": 316,
+  "pl": "— Zdecydował pan kwestię — rzekł Wokulski z ukłonem.",
+  "start": 2866.61
+ },
+ {
+  "i": 317,
+  "pl": "— Czy tek?... Bardzo żałuję barona, ale pańskie prawa są lepsze.",
+  "start": 2870.85
+ },
+ {
+  "i": 318,
+  "pl": "Wstał z krzesła jak automat na sprężynach i pożegnawszy się dodał:",
+  "start": 2875.67
+ },
+ {
+  "i": 319,
+  "pl": "— Kiedyż do rejenta, drogi panie, z naszą spółką?... Namyśliwszy się przystępuję z pięćdziesięcioma tysiącami rubli... Tek.",
+  "start": 2879.77
+ },
+ {
+  "i": 320,
+  "pl": "— To już zależy od panów.",
+  "start": 2888.2
+ },
+ {
+  "i": 321,
+  "pl": "— Bardzo pragnąłbym widzieć ten kraj kwitnącym i dlatego, panie Wokulski, posiada pan całą moją sympatię i szacunek, tek, bez względu na zmartwienie, jakie pan robi baronowi. Tek, był pewnym, że mu pan ustąpi konia...",
+  "start": 2889.64
+ },
+ {
+  "i": 322,
+  "pl": "— Nie mogę.",
+  "start": 2905.18
+ },
+ {
+  "i": 323,
+  "pl": "— Pojmuję pana — zakończył hrabia. — Szlachcic, choćby się odział w skórę przemysłowca, musi wyleźć z niej przy lada okazji. Pan zaś, proszę mi wybaczyć śmiałość, jesteś przede wszystkim szlachcicem, i to w angielskiej edycji<sup>412<\/sup>, jakim każdy z nas być powinien.",
+  "start": 2906.5
+ },
+ {
+  "i": 324,
+  "pl": "Mocno uścisnął mu rękę i wyszedł. Wokulski przyznawał w duszy, że ten oryginał, udający marionetkę, ma jednak dużo sympatycznych przymiotów.",
+  "start": 2922.54
+ },
+ {
+  "i": 325,
+  "pl": "„Tak — szepnął — z tymi panami przyjemniej żyć aniżeli z kupcami. Oni są naprawdę ulepieni z innej gliny...”",
+  "start": 2932.42
+ },
+ {
+  "i": 326,
+  "pl": "A potem dodał:",
+  "start": 2940.2
+ },
+ {
+  "i": 327,
+  "pl": "„I dziwić się, że panna Izabela pogardza takim jak ja, wychowawszy się wśród takich jak oni... No, ale co oni robią na świecie i dla świata?... Szanują ludzi, którzy mogą dać piętnasty procent od ich kapitałów... To jeszcze nie zasługa.”",
+  "start": 2942.16
+ },
+ {
+  "i": 328,
+  "pl": "„Tam do licha! — mruknął strzelając z palców — a skąd oni wiedzą, że ja kupiłem klacz?... Bagatela!... przecież kupiłem ją od pani Krzeszowskiej za pośrednictwem Maruszewicza... Zresztą za często bywam w maneżu, wie o mnie cała służba... Eh! zaczynam już palić głupstwa, jestem nieostrożny...",
+  "start": 2959.19
+ },
+ {
+  "i": 329,
+  "pl": "Nie podobał mi się ten Maruszewicz...”",
+  "start": 2978.15
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>
