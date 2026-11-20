@@ -116,6 +116,10 @@ When annotations are present, also hover and keyboard-focus at least one footnot
 
 ## Book index page
 
+Preserve the Firebase authentication gate in generated Bookcast book indexes, including any book-local `index.template.html` that takes precedence over the bundled template. After rebuilding, verify signed-in access, signed-out redirect to `../login.html`, auth-error retry, and the `file://` bypass; report any cases not tested. The gate does not protect direct chapter or audio URLs.
+
+When adding a book to Bookcast's main catalog, update `public/index.html` without replacing its existing Firebase authentication gate. Keep the catalog hidden until HTTP/HTTPS sign-in is confirmed, redirect signed-out users to login, preserve the auth-error retry and the `file://` bypass. Verify all four cases after catalog changes; report any cases not tested. This client-side gate does not protect direct book URLs.
+
 In Bookcast, pass the source folder (containing `book.json` and sidecars) and write the index into the matching public folder, for example `build_index.py src/<book-slug> --book src/<book-slug>/book.json --out public/<book-slug>/index.html`. The builder checks reader/vocabulary files and injects "← Contents" into vocabulary pages in the output directory. Build readers with `--index index.html` so they link back. The index always links to each reader and vocabulary page, including not-yet-built pages (dashed "soon" styling); rebuild it whenever published pages are added. Chapter labels use Polish (`pl` when supplied, otherwise `name`); optional `ua` provides the Ukrainian title in an accessible tooltip.
 
 **Card anchors are an interface.** Every reader card has `id="u-N"` (N = 1-based section number) and the page honours `#u-N` on load. Vocabulary pages link to examples this way (`chapter-05.html#u-47`). A template that stops emitting them silently breaks every vocabulary link, so check for `card.id = "u-"` before replacing a book's template, and after rebuilding confirm the links still resolve.

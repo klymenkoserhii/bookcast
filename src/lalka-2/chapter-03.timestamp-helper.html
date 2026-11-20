@@ -1,0 +1,2638 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to ../../public/lalka-2/audio/chapter-03.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-03.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Tom II · Rozdział III — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Tom II · Rozdział III · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="../../public/lalka-2/audio/chapter-03.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "Pewnego dnia, jak zwykle, załatwiał się z interesantami w salonie przyjęć.",
+  "start": 4.76
+ },
+ {
+  "i": 1,
+  "pl": "Już odprawił jegomościa, który ofiarował się staczać za niego pojedynki, drugiego, który jako brzuchomówca chciał odegrać rolę w dyplomacji, i trzeciego, który obiecywał mu wskazać skarby zakopane przez sztab Napoleona I nad Berezyną<sup>717<\/sup>, kiedy lokaj w błękitnym fraku zameldował:",
+  "start": 10.44
+ },
+ {
+  "i": 2,
+  "pl": "— Profesor Geist.",
+  "start": 29.74
+ },
+ {
+  "i": 3,
+  "pl": "— Geist?... — powtórzył Wokulski i doznał szczególnego uczucia. Przyszło mu na myśl, że żelazo za zbliżeniem się magnesu musi doznawać podobnych wrażeń.",
+  "start": 31.42
+ },
+ {
+  "i": 4,
+  "pl": "— Prosić...",
+  "start": 42.56
+ },
+ {
+  "i": 5,
+  "pl": "Po chwili wszedł człowiek bardzo mały i szczupły, z twarzą żółtą jak wosk. Na głowie nie miał ani jednego siwego włosa.",
+  "start": null
+ },
+ {
+  "i": 6,
+  "pl": "„Ile on może mieć lat?...” — pomyślał Wokulski.",
+  "start": 52.37
+ },
+ {
+  "i": 7,
+  "pl": "Gość tymczasem bystro mu się przypatrywał; i tak siedzieli minutę, może dwie, taksując się nawzajem. Wokulski chciał ocenić wiek przybysza, Geist zdawał się badać go.",
+  "start": 55.82
+ },
+ {
+  "i": 8,
+  "pl": "— Co pan rozkaże? — odezwał się wreszcie Wokulski.",
+  "start": 68.04
+ },
+ {
+  "i": 9,
+  "pl": "Gość poruszył się na krześle.",
+  "start": 71.41
+ },
+ {
+  "i": 10,
+  "pl": "— Co ja tam mogę rozkazać! — odparł wzruszając ramionami. — Przyszedłem żebrać, nie rozkazywać...",
+  "start": 74.18
+ },
+ {
+  "i": 11,
+  "pl": "— Czym mogę służyć? — spytał Wokulski, twarz bowiem gościa wydała mu się dziwnie sympatyczną.",
+  "start": 82.14
+ },
+ {
+  "i": 12,
+  "pl": "Geist przeciągnął ręką po głowie.",
+  "start": 88.58
+ },
+ {
+  "i": 13,
+  "pl": "— Przyszedłem tu z czym innym — rzekł — a mówić będę o czym innym. Chciałem panu sprzedać nowy materiał wybuchowy...",
+  "start": 91.13
+ },
+ {
+  "i": 14,
+  "pl": "— Ja go nie kupię — przerwał Wokulski.",
+  "start": 99.05
+ },
+ {
+  "i": 15,
+  "pl": "— Nie?... — spytał Geist. — A jednak — dodał — mówiono mi, że panowie staracie się o coś podobnego dla marynarki. Zresztą mniejsza... Dla pana mam coś innego...",
+  "start": 102.21
+ },
+ {
+  "i": 16,
+  "pl": "— Dla mnie? — spytał Wokulski, zdziwiony nie tyle słowami, ile spojrzeniem Geista.",
+  "start": 113.27
+ },
+ {
+  "i": 17,
+  "pl": "— Onegdaj puszczałeś się pan balonem captif<sup>718<\/sup> — mówił gość.",
+  "start": 119.64
+ },
+ {
+  "i": 18,
+  "pl": "— Tak.",
+  "start": 124.85
+ },
+ {
+  "i": 19,
+  "pl": "— Jesteś pan człowiek majętny i znasz się na naukach przyrodniczych.",
+  "start": null
+ },
+ {
+  "i": 20,
+  "pl": "— Tak — odparł Wokulski.",
+  "start": 130.15
+ },
+ {
+  "i": 21,
+  "pl": "— I była chwila, że chciałeś pan wyskoczyć z galerii?... — pytał Geist.",
+  "start": 132.37
+ },
+ {
+  "i": 22,
+  "pl": "Wokulski cofnął się z krzesłem.",
+  "start": 137.11
+ },
+ {
+  "i": 23,
+  "pl": "— Niech pana to nie dziwi — mówił gość. — Widziałem w życiu około tysiąca przyrodników, a w moim laboratorium miałem czterech samobójców, więc znam się na tych klasach ludzi...",
+  "start": 139.07
+ },
+ {
+  "i": 24,
+  "pl": "Za często spoglądałeś pan na barometr, ażebym nie miał odkryć przyrodnika, no, a człowieka myślącego o samobójstwie poznają nawet pensjonarki.",
+  "start": 150.25
+ },
+ {
+  "i": 25,
+  "pl": "— Czym mogę służyć? — spytał jeszcze raz Wokulski ocierając pot z twarzy.",
+  "start": 159.85
+ },
+ {
+  "i": 26,
+  "pl": "— Powiem niedużo — rzekł Geist. — Pan wie, co to jest chemia organiczna?...",
+  "start": 164.85
+ },
+ {
+  "i": 27,
+  "pl": "— Jest to chemia związków węgla...",
+  "start": 170.17
+ },
+ {
+  "i": 28,
+  "pl": "— A co pan sądzisz o chemii związków wodoru?...",
+  "start": 172.49
+ },
+ {
+  "i": 29,
+  "pl": "— Że jej nie ma.",
+  "start": 175.91
+ },
+ {
+  "i": 30,
+  "pl": "— Owszem, jest — odparł Geist. — Tylko zamiast eterów, tłuszczów, ciał aromatycznych daje nowe aliaże<sup>719<\/sup>... Nowe aliaże, panie Siuzę, z bardzo ciekawymi własnościami...",
+  "start": 177.29
+ },
+ {
+  "i": 31,
+  "pl": "— Cóż mnie to obchodzi — rzekł głucho Wokulski — jestem kupcem.",
+  "start": 190.73
+ },
+ {
+  "i": 32,
+  "pl": "— Nie jesteś pan kupcem, tylko desperatem — odparł Geist. — Kupcy nie myślą o skakaniu z balonu... Ledwiem to zobaczył, zaraz pomyślałem: „To mój człowiek...” Ale znikłeś mi pan z oczu po wyjściu z ganku... Dziś traf zbliżył nas powtórnie...",
+  "start": 195.03
+ },
+ {
+  "i": 33,
+  "pl": "Panie Siuzę, my musimy pogadać o związkach wodoru, jeżeli jesteś pan bogaty...",
+  "start": 213.29
+ },
+ {
+  "i": 34,
+  "pl": "— Przede wszystkim nie jestem Siuzę...",
+  "start": 219.71
+ },
+ {
+  "i": 35,
+  "pl": "— To mi wszystko jedno, gdyż potrzebuję tylko majętnego desperata — rzekł Geist.",
+  "start": 221.49
+ },
+ {
+  "i": 36,
+  "pl": "Wokulski patrzył na Geista nieledwie z trwogą; w głowie zapalały mu się pytania: kuglarz<sup>720<\/sup> czy tajny agent — wariat, a może naprawdę jaki duch?... Kto wie, czy szatan jest legendą i czy w pewnych chwilach nie ukazuje się ludziom?...",
+  "start": 226.71
+ },
+ {
+  "i": 37,
+  "pl": "Faktem jest jednak, że ten starzec, o niezdecydowanym wieku, wytropił najtajemniejszą myśl Wokulskiego, który w tych czasach marzył o samobójstwie, ale jeszcze tak nieśmiało, że sam przed sobą nie miał odwagi sformułować tego projektu.",
+  "start": 243.35
+ },
+ {
+  "i": 38,
+  "pl": "Gość nie spuszczał z niego oka i uśmiechał się z łagodną ironią; gdy zaś Wokulski otworzył usta, ażeby zapytać go o coś, przerwał mu:",
+  "start": 258.87
+ },
+ {
+  "i": 39,
+  "pl": "— Nie fatyguj się pan... Z tyloma już ludźmi rozmawiałem o ich charakterze i o moich wynalazkach, że z góry odpowiem na to, o czym chcesz się poinformować. Jestem profesor Geist, stary wariat, jak mówią we wszystkich kawiarniach pod uniwersytetem i szkołą politechniczną.",
+  "start": 268.69
+ },
+ {
+  "i": 40,
+  "pl": "Kiedyś nazywano mnie wielkim chemikiem, dopóki... nie wyszedłem poza granicę dziś obowiązujących poglądów chemicznych. Pisałem rozprawy, robiłem wynalazki pod imieniem własnym lub moich wspólników, którzy nawet sumiennie dzielili się ze mną zyskami.",
+  "start": 287.42
+ },
+ {
+  "i": 41,
+  "pl": "Ale od czasu gdym odkrył zjawiska nie mieszczące się w rocznikach Akademii<sup>721<\/sup>, ogłoszono mnie nie tylko za wariata, ale za heretyka i zdrajcę...",
+  "start": 303.38
+ },
+ {
+  "i": 42,
+  "pl": "— Tu, w Paryżu? — szepnął Wokulski.",
+  "start": 313.26
+ },
+ {
+  "i": 43,
+  "pl": "— Oho! — roześmiał się Geist — tu, w Paryżu. W jakimś Altdorfie lub Neustadzie<sup>722<\/sup> kacerzem i zdrajcą jest ten, kto nie wierzy w pastorów, Bismarcka, w dziesięcioro przykazań i konstytucję pruską<sup>723<\/sup>.",
+  "start": 315.68
+ },
+ {
+  "i": 44,
+  "pl": "Tu wolno kpić z Bismarcka i konstytucji, ale za to pod grozą odszczepieństwa trzeba wierzyć w tabliczkę mnożenia, teorię ruchu falistego<sup>724<\/sup>, w stałość ciężarów gatunkowych<sup>725<\/sup> itd.",
+  "start": 328.3
+ },
+ {
+  "i": 45,
+  "pl": "Pokaż mi pan jedno miasto, w którym nie ściskano by sobie mózgów jakimiś dogmatami, a — zrobię je stolicą świata i kolebką przyszłej ludzkości...",
+  "start": 341.22
+ },
+ {
+  "i": 46,
+  "pl": "Wokulski ochłonął; był pewny, że ma do czynienia z maniakiem.",
+  "start": 351.86
+ },
+ {
+  "i": 47,
+  "pl": "Geist patrzył na niego i wciąż uśmiechał się.",
+  "start": 356.08
+ },
+ {
+  "i": 48,
+  "pl": "— Kończę, panie Siuzę — mówił dalej. — Porobiłem wielkie odkrycia w chemii, stworzyłem nową naukę, wynalazłem nieznane materiały przemysłowe, o których ledwie śmiano marzyć przede mną. Ale... brakuje mi jeszcze kilku niezmiernie ważnych faktów, a już nie mam pieniędzy.",
+  "start": 358.8
+ },
+ {
+  "i": 49,
+  "pl": "Cztery fortuny utopiłem w moich badaniach, zużyłem kilkunastu ludzi; dziś zaś potrzebuję nowej fortuny i nowych ludzi...",
+  "start": 377.04
+ },
+ {
+  "i": 50,
+  "pl": "— Skądże do mnie nabrał pan takiego zaufania? — pytał Wokulski już spokojny.",
+  "start": 385.68
+ },
+ {
+  "i": 51,
+  "pl": "— To proste — odparł Geist. — O zabiciu się myśli wariat, łajdak albo człowiek dużej wartości, któremu za ciasno na świecie.",
+  "start": 390.86
+ },
+ {
+  "i": 52,
+  "pl": "— A skąd pan wiesz, że ja nie jestem łotrem?",
+  "start": 399.45
+ },
+ {
+  "i": 53,
+  "pl": "— A skąd pan wiesz, że koń nie jest krową? — odpowiedział Geist. — W czasie moich przymusowych wakacyj, które niestety, ciągną się po kilka lat, zajmuję się zoologią i specjalnie badam gatunek człowieka.",
+  "start": 402.37
+ },
+ {
+  "i": 54,
+  "pl": "W tej jednej formie, o dwu rękach, odkryłem kilkadziesiąt typów zwierzęcych począwszy od ostrygi i glisty, skończywszy na sowie i tygrysie.",
+  "start": 415.19
+ },
+ {
+  "i": 55,
+  "pl": "Więcej ci powiem: odkryłem mieszańce tych typów: skrzydlate tygrysy, węże z psimi głowami, sokoły w żółwich skorupach, co zresztą już przeczuła fantazja genialnych poetów.",
+  "start": 425.01
+ },
+ {
+  "i": 56,
+  "pl": "I dopiero wśród całej tej menażerii bydląt albo potworów gdzieniegdzie odnajduję prawdziwego człowieka, istotę z rozumem, sercem i energią. Pan, panie Siuzę, masz niezawodnie cechy ludzkie i dlatego tak otwarcie mówię z panem; jesteś jednym na dziesięć, może na sto tysięcy...",
+  "start": 437.69
+ },
+ {
+  "i": 57,
+  "pl": "Wokulski zmarszczył się, Geist wybuchnął:",
+  "start": 459.16
+ },
+ {
+  "i": 58,
+  "pl": "— Co? może sądzisz pan, że pochlebiam ci dla wytumanienia kilku franków?... Jutro będę jeszcze raz u pana i przekonam cię, jak w tej chwili jesteś niesprawiedliwy i głupi...",
+  "start": 462.24
+ },
+ {
+  "i": 59,
+  "pl": "Zerwał się z krzesła, ale Wokulski zatrzymał go.",
+  "start": 474.64
+ },
+ {
+  "i": 60,
+  "pl": "— Nie gniewaj się, profesorze — rzekł — nie chciałem pana obrazić. Ale mam tu prawie co dzień wizyty różnego gatunku filutów<sup>726<\/sup>...",
+  "start": 477.18
+ },
+ {
+  "i": 61,
+  "pl": "— Jutro przekonam pana, żem nie filut ani wariat — odpowiedział Geist. — Pokażę ci coś, co widziało zaledwie sześciu albo siedmiu ludzi, którzy... już nie żyją... O, gdyby oni żyli!... — westchnął.",
+  "start": 485.72
+ },
+ {
+  "i": 62,
+  "pl": "— Dlaczego dopiero jutro?",
+  "start": 498.18
+ },
+ {
+  "i": 63,
+  "pl": "— Dlatego, że mieszkam daleko stąd, a nie mam na fiakra.",
+  "start": 499.72
+ },
+ {
+  "i": 64,
+  "pl": "Wokulski uścisnął go za rękę.",
+  "start": 503.72
+ },
+ {
+  "i": 65,
+  "pl": "— Nie obrazisz się, profesorze? — spytał — jeżeli...",
+  "start": 505.76
+ },
+ {
+  "i": 66,
+  "pl": "— Jeżeli dasz mi na fiakra?... Nie. Wszakże z góry powiedziałem ci, że jestem żebrakiem, i kto wie, czy nie najnędzniejszym w Paryżu?...",
+  "start": 508.68
+ },
+ {
+  "i": 67,
+  "pl": "Wokulski podał mu sto franków.",
+  "start": 517.84
+ },
+ {
+  "i": 68,
+  "pl": "— Daj spokój — uśmiechnął się Geist — wystarczy dziesięć... Kto wie, czy jutro nie dasz mi stu tysięcy... Duży masz majątek?",
+  "start": 520.1
+ },
+ {
+  "i": 69,
+  "pl": "— Około miliona franków.",
+  "start": 527.38
+ },
+ {
+  "i": 70,
+  "pl": "— Milion! — powtórzył Geist chwytając się za głowę. — Za dwie godziny wrócę tu. Bodajbym stał ci się tak potrzebny, jak ty mnie jesteś...",
+  "start": 529.56
+ },
+ {
+  "i": 71,
+  "pl": "— W takim razie może pozwolisz, profesorze, do mego numeru, na trzecie piętro. To lokal urzędowy...",
+  "start": 539.04
+ },
+ {
+  "i": 72,
+  "pl": "— Wolę, wolę na trzecie piętro... Za dwie godziny będę — odparł Geist i szybko wybiegł z pokoju.",
+  "start": 545.14
+ },
+ {
+  "i": 73,
+  "pl": "Po chwili ukazał się Jumart.",
+  "start": 551.16
+ },
+ {
+  "i": 74,
+  "pl": "— Wynudził pana stary — rzekł do Wokulskiego — co?...",
+  "start": 554.95
+ },
+ {
+  "i": 75,
+  "pl": "— Cóż to za człowiek? — spytał niedbale Wokulski.",
+  "start": 559.18
+ },
+ {
+  "i": 76,
+  "pl": "Jumart wyciągnął naprzód dolną wargę.",
+  "start": 562.08
+ },
+ {
+  "i": 77,
+  "pl": "— Wariat to on jest — odparł — ale jeszcze za moich studenckich czasów był wielkim chemikiem. No i porobił jakieś wynalazki, ma nawet podobno kilka dziwnych okazów, ale...",
+  "start": 565.44
+ },
+ {
+  "i": 78,
+  "pl": "Stuknął się palcem w czoło.",
+  "start": 575.7
+ },
+ {
+  "i": 79,
+  "pl": "— Dlaczego nazywacie go wariatem?",
+  "start": 577.88
+ },
+ {
+  "i": 80,
+  "pl": "— Nie można inaczej nazywać człowieka — odpowiedział Jumart — który sądzi, że uda mu się zmniejszyć ciężar gatunkowy ciał czy tylko metalów, bo już nie pamiętam...",
+  "start": 579.46
+ },
+ {
+  "i": 81,
+  "pl": "Wokulski pożegnał go i poszedł do swego numeru.",
+  "start": 589.6
+ },
+ {
+  "i": 82,
+  "pl": "„Cóż to za dziwne miasto — myślał — gdzie znajdują się poszukiwacze skarbów, najemni obrońcy honoru, dystyngowane damy, które handlują tajemnicami, kelnerzy rozprawiający o chemii i chemicy, którzy chcą zmniejszyć ciężar gatunkowy ciał...”",
+  "start": 592.88
+ },
+ {
+  "i": 83,
+  "pl": "Przed piątą w numerze zjawił się Geist; był jakiś rozdrażniony i zamknął za sobą drzwi na klucz.",
+  "start": 609.2
+ },
+ {
+  "i": 84,
+  "pl": "— Panie Siuzę — rzekł — wiele mi na tym zależy, ażebyśmy się porozumieli... Powiedz mi, czy masz jakie obowiązki: żonę, dzieci?... — Chociaż — nie zdaje mi się...",
+  "start": 615.26
+ },
+ {
+  "i": 85,
+  "pl": "— Nie mam nikogo.",
+  "start": 626.06
+ },
+ {
+  "i": 86,
+  "pl": "— I majątek masz? Milion...",
+  "start": 627.36
+ },
+ {
+  "i": 87,
+  "pl": "— Prawie.",
+  "start": 629.82
+ },
+ {
+  "i": 88,
+  "pl": "— A powiedz mi — mówił Geist — dlaczego ty myślisz o samobójstwie?...",
+  "start": null
+ },
+ {
+  "i": 89,
+  "pl": "Wokulski wstrząsnął się.",
+  "start": 635.17
+ },
+ {
+  "i": 90,
+  "pl": "— To było chwilowe — rzekł. — Doznałem zawrotu w balonie...",
+  "start": 636.85
+ },
+ {
+  "i": 91,
+  "pl": "Geist kręcił głową.",
+  "start": 641.51
+ },
+ {
+  "i": 92,
+  "pl": "— Majątek masz — mruczał — o sławę, przynajmniej dotychczas, nie dobijasz się... Tu musi być kobieta!... — zawołał.",
+  "start": 643.39
+ },
+ {
+  "i": 93,
+  "pl": "— Może — odparł Wokulski, bardzo zmieszany.",
+  "start": 652.15
+ },
+ {
+  "i": 94,
+  "pl": "— Jest kobieta! — rzekł Geist. — To źle. O niej nigdy nie można wiedzieć, co robi i dokąd zaprowadzi... W każdym razie słuchaj — dodał patrząc mu w oczy. — Gdyby ci kiedy jeszcze raz przyszła ochota próbować... Rozumiesz?... Nie zabijaj się, ale przyjdź do mnie...",
+  "start": 655.83
+ },
+ {
+  "i": 95,
+  "pl": "— Może zaraz przyjdę... — rzekł Wokulski spuszczając oczy.",
+  "start": 673.59
+ },
+ {
+  "i": 96,
+  "pl": "— Nie zaraz! — odparł żywo Geist. — Kobiety nigdy nie gubią ludzi od razu. Czy już skończyłeś z tamtą osobą rachunki?...",
+  "start": 677.99
+ },
+ {
+  "i": 97,
+  "pl": "— Zdaje mi się...",
+  "start": 686.25
+ },
+ {
+  "i": 98,
+  "pl": "— Aha! dopiero zdaje ci się. To źle. Na wszelki wypadek, zapamiętaj radę. W moim laboratorium bardzo łatwo można zginąć, i jeszcze jak!...",
+  "start": 687.43
+ },
+ {
+  "i": 99,
+  "pl": "— Coś pan przyniósł, profesorze? — zapytał go Wokulski.",
+  "start": 698.18
+ },
+ {
+  "i": 100,
+  "pl": "— Źle! źle!... — mruczał Geist. — Muszę szukać kupca na mój materiał wybuchowy. A myślałem, że połączymy się...",
+  "start": 701.6
+ },
+ {
+  "i": 101,
+  "pl": "— Pierwej pokaż pan, coś przyniósł — przerwał Wokulski.",
+  "start": 709.32
+ },
+ {
+  "i": 102,
+  "pl": "— Masz rację... — odparł Geist i wydobył z kieszeni średniej wielkości pudełko. — Zobacz — rzekł — za co to ludzi nazywają szaleńcami!...",
+  "start": 712.8
+ },
+ {
+  "i": 103,
+  "pl": "Pudełko było z blachy, zamknięte w szczególny sposób; Geist po kolei dotykał sztyftów osadzonych w różnych punktach, od czasu do czasu rzucając na Wokulskiego spojrzenia gorączkowe i podejrzliwe.",
+  "start": 722.96
+ },
+ {
+  "i": 104,
+  "pl": "Raz nawet zawahał się i zrobił taki ruch, jakby chciał schować pudełko; ale opamiętał się, dotknął jeszcze paru sztyftów i — wieko odskoczyło.",
+  "start": 735.26
+ },
+ {
+  "i": 105,
+  "pl": "W tej chwili opanował go nowy atak podejrzliwości. Starzec padł na kanapę, ukrył pudełko za siebie i trwożnie spoglądał to na pokój, to na Wokulskiego.",
+  "start": 743.94
+ },
+ {
+  "i": 106,
+  "pl": "— Głupstwa robię!... — mruczał. — Co za nonsens narażać wszystko dla pierwszego lepszego z ulicy...",
+  "start": 754.56
+ },
+ {
+  "i": 107,
+  "pl": "— Nie ufasz mi pan?... — spytał nie mniej wzruszony Wokulski.",
+  "start": 759.66
+ },
+ {
+  "i": 108,
+  "pl": "— Nikomu nie ufam — mówił zgryźliwie starzec. — Bo jaką mi dać kto może rękojmię?... Przysięgę czy słowo honoru?... Za stary jestem, aby wierzyć w przysięgi... Tylko wspólny interes jako tako zabezpiecza od najpodlejszej zdrady, a i to nie zawsze...",
+  "start": 763.0
+ },
+ {
+  "i": 109,
+  "pl": "Wokulski wzruszył ramionami i usiadł na krześle.",
+  "start": 778.94
+ },
+ {
+  "i": 110,
+  "pl": "— Nie zmuszam pana — rzekł — do dzielenia się ze mną twoimi kłopotami. Mam dosyć własnych.",
+  "start": 782.26
+ },
+ {
+  "i": 111,
+  "pl": "Geist nie spuszczał z niego oka, lecz stopniowo uspakajał się. W końcu odezwał się:",
+  "start": 788.26
+ },
+ {
+  "i": 112,
+  "pl": "— Przysuń się tu do stołu... Spojrzyj, co to jest?",
+  "start": 794.77
+ },
+ {
+  "i": 113,
+  "pl": "Pokazał mu metalową kulkę ciemnej barwy.",
+  "start": 798.45
+ },
+ {
+  "i": 114,
+  "pl": "— Zdaje mi się, że to jest metal drukarski<sup>727<\/sup>.",
+  "start": 802.55
+ },
+ {
+  "i": 115,
+  "pl": "— Weź w rękę...",
+  "start": 806.15
+ },
+ {
+  "i": 116,
+  "pl": "Wokulski wziął kulkę i aż zdziwił się, tak była ciężka.",
+  "start": 807.81
+ },
+ {
+  "i": 117,
+  "pl": "— To jest platyna<sup>728<\/sup> — rzekł.",
+  "start": 812.03
+ },
+ {
+  "i": 118,
+  "pl": "— Platyna?... — powtórzył Geist z drwiącym uśmiechem. — Oto masz platynę...",
+  "start": 815.01
+ },
+ {
+  "i": 119,
+  "pl": "I podał mu tej samej wielkości kulkę platynową. Wokulski przekładał obie z rąk do rąk; zdziwienie jego wzrosło.",
+  "start": 820.54
+ },
+ {
+  "i": 120,
+  "pl": "— To jest chyba ze dwa razy cięższe od platyny?... — szepnął.",
+  "start": 828.4
+ },
+ {
+  "i": 121,
+  "pl": "— A tak... tak!... — śmiał się Geist. — Nawet jeden z moich przyjaciół akademików<sup>729<\/sup> nazwał to „komprymowaną<sup>730<\/sup> platyną”... Dobry wyraz, co? na oznaczenie metalu, którego ciężar gatunkowy wynosi 30,7 g... Oni tak zawsze.",
+  "start": 833.06
+ },
+ {
+  "i": 122,
+  "pl": "Ile razy uda im się wynaleźć nazwę dla nowej rzeczy, zaraz mówią, że ją wytłomaczyli na zasadzie już poznanych praw natury. Przepyszne osły... najmędrsze ze wszystkich, jakimi roi się tak zwana ludzkość... A to znasz? — dodał.",
+  "start": 849.38
+ },
+ {
+  "i": 123,
+  "pl": "— No, to jest sztabka szklana — odparł Wokulski.",
+  "start": 864.8
+ },
+ {
+  "i": 124,
+  "pl": "— Cha! cha!... — śmiał się Geist. — Weź do ręki, przypatrz się... Prawda, że ciekawe szkło?... Cięższe od żelaza, z odłamem ziarnistym, wyborny przewodnik ciepła i elektryczności, pozwala się strugać... Prawda, jak to szkło dobrze udaje metal?... Może chcesz je rozgrzać albo kuć młotem?...",
+  "start": 868.58
+ },
+ {
+  "i": 125,
+  "pl": "Wokulski przetarł oczy. Nie ulega kwestii, że takiego szkła nie widziano na świecie.",
+  "start": 888.6
+ },
+ {
+  "i": 126,
+  "pl": "— A to?... — spytał Geist pokazując mu inny kawałek metalu.",
+  "start": 893.7
+ },
+ {
+  "i": 127,
+  "pl": "— To chyba stal...",
+  "start": 898.54
+ },
+ {
+  "i": 128,
+  "pl": "— Nie sód<sup>731<\/sup> i nie potas<sup>732<\/sup>?... — pytał Geist.",
+  "start": 901.95
+ },
+ {
+  "i": 129,
+  "pl": "— Nie.",
+  "start": 905.95
+ },
+ {
+  "i": 130,
+  "pl": "— Weźże do rąk tę stal...",
+  "start": 906.92
+ },
+ {
+  "i": 131,
+  "pl": "Tu już podziw Wokulskiego przeszedł w pewien rodzaj zaniepokojenia: owa rzekoma stal była lekką jak płatek bibułki.",
+  "start": 909.78
+ },
+ {
+  "i": 132,
+  "pl": "— Chyba jest pusta w środku?...",
+  "start": 918.04
+ },
+ {
+  "i": 133,
+  "pl": "— Więc przetnij tę sztabkę, a jeżeli nie masz czym, przyjedź do mnie. Zobaczysz tam nierównie więcej podobnych osobliwości i będziesz mógł robić z nimi próby, jakie ci się podoba.",
+  "start": 919.72
+ },
+ {
+  "i": 134,
+  "pl": "Wokulski oglądał po kolei ów metal cięższy od platyny, drugi metal przeźroczysty, trzeci lżejszy od puchu... Dopóki trzymał je w rękach, wydawały mu się rzeczami najnaturalniejszymi pod słońcem: cóż jest bowiem naturalniejszego aniżeli przedmiot, który oddziaływa na zmysły?",
+  "start": 931.32
+ },
+ {
+  "i": 135,
+  "pl": "Lecz gdy oddał próbki Geistowi, ogarniało go zdziwienie i niedowierzanie, zdziwienie i obawa. Więc znowu oglądał je, kręcił głową, wierzył i wątpił na przemian.",
+  "start": 950.24
+ },
+ {
+  "i": 136,
+  "pl": "— No i cóż? — zapytał Geist.",
+  "start": 962.22
+ },
+ {
+  "i": 137,
+  "pl": "— Czy pokazywał pan to chemikom?",
+  "start": 965.04
+ },
+ {
+  "i": 138,
+  "pl": "— Pokazywałem.",
+  "start": 967.68
+ },
+ {
+  "i": 139,
+  "pl": "— I cóż oni?...",
+  "start": 968.66
+ },
+ {
+  "i": 140,
+  "pl": "— Obejrzeli, pokiwali głowami i powiedzieli, że to blaga i kuglarstwo, którym poważna nauka zajmować się nie może.",
+  "start": 969.66
+ },
+ {
+  "i": 141,
+  "pl": "— Jak to, więc nawet nie robili prób? — spytał Wokulski.",
+  "start": 976.72
+ },
+ {
+  "i": 142,
+  "pl": "— Nie. Niektórzy z nich wprost mówili, że mając do wyboru między pogwałceniem „praw natury” a złudzeniami własnych zmysłów, wolą nie dowierzać zmysłom. I jeszcze dodawali, że robienie poważnych doświadczeń z podobnymi kuglarstwami może obłąkać zdrowy rozsądek, i stanowczo wyrzekli się doświadczeń.",
+  "start": 980.4
+ },
+ {
+  "i": 143,
+  "pl": "— I nie ogłaszasz pan o tym?",
+  "start": 999.72
+ },
+ {
+  "i": 144,
+  "pl": "— Ani myślę. Owszem, ta bezwładność mózgów daje mi najlepszą gwarancję bezpieczeństwa tajemnicy moich wynalazków. W przeciwnym razie pochwycono by je, prędzej lub później odkryto by metodę postępowania i znaleziono by to, czego bym im dać nie chciał...",
+  "start": 1002.12
+ },
+ {
+  "i": 145,
+  "pl": "— Mianowicie?... — przerwał mu Wokulski.",
+  "start": 1021.46
+ },
+ {
+  "i": 146,
+  "pl": "— Znaleziono by metal lżejszy od powietrza — spokojnie odparł Geist.",
+  "start": 1024.66
+ },
+ {
+  "i": 147,
+  "pl": "Wokulski rzucił się na krześle; przez chwilę obaj milczeli.",
+  "start": 1030.99
+ },
+ {
+  "i": 148,
+  "pl": "— Dlaczegóż ukrywasz pan przed ludźmi ów transcendentalny<sup>733<\/sup> metal? — odezwał się wreszcie Wokulski.",
+  "start": 1034.97
+ },
+ {
+  "i": 149,
+  "pl": "— Dla wielu powodów — odparł Geist. — Naprzód chcę, ażeby ten produkt wyszedł tylko z mojego laboratorium, choćbym nawet nie ja sam go otrzymał. A po wtóre, podobny materiał, który zmieni postać świata, nie może stać się własnością tak zwanej dzisiejszej ludzkości.",
+  "start": 1041.99
+ },
+ {
+  "i": 150,
+  "pl": "Już za wiele nieszczęść mnoży się na ziemi przez nieopatrzne wynalazki.",
+  "start": 1059.31
+ },
+ {
+  "i": 151,
+  "pl": "— Nie rozumiem pana.",
+  "start": 1064.73
+ },
+ {
+  "i": 152,
+  "pl": "— Więc posłuchaj — mówił Geist. — Tak zwana ludzkość, mniej więcej na dziesięć tysięcy wołów, baranów, tygrysów i gadów, mających człowiecze formy, posiada ledwie jednego prawdziwego człowieka. Tak było zawsze, nawet w epoce krzemiennej<sup>734<\/sup>.",
+  "start": 1066.33
+ },
+ {
+  "i": 153,
+  "pl": "Na taką tedy ludzkość w biegu wieków spadały rozmaite wynalazki. Brąz, żelazo, proch, igła magnesowa, druk, machiny parowe i telegrafy elektryczne dostawały się bez żadnego wyboru w ręce geniuszów i idiotów, ludzi szlachetnych i zbrodniarzy... A jaki tego rezultat?...",
+  "start": 1083.14
+ },
+ {
+  "i": 154,
+  "pl": "Oto ten, że głupota i występek dostając coraz potężniejsze narzędzia mnożyły się i umacniały, zamiast stopniowo ginąć. Ja — ciągnął dalej Geist — nie chcę powtarzać tego błędu i jeżeli znajdę ostatecznie metal lżejszy od powietrza, oddam go tylko prawdziwym ludziom.",
+  "start": 1105.16
+ },
+ {
+  "i": 155,
+  "pl": "Niech oni raz zaopatrzą się w broń na swój wyłączny użytek; niechaj ich rasa mnoży się i rośnie w potęgę, a zwierzęta i potwory w ludzkiej postaci niechaj z wolna wyginą.",
+  "start": 1125.76
+ },
+ {
+  "i": 156,
+  "pl": "Jeżeli Anglicy mieli prawo wypędzić wilków ze swej wyspy<sup>735<\/sup>, istotny człowiek ma prawo wypędzić z ziemi przynajmniej tygrysy ucharakteryzowane na ludzi...",
+  "start": 1139.06
+ },
+ {
+  "i": 157,
+  "pl": "„On ma jednakże tęgiego bzika” — pomyślał Wokulski. Później dodał głośno:",
+  "start": 1149.86
+ },
+ {
+  "i": 158,
+  "pl": "— Cóż więc panu przeszkadza do wykonania tych zamiarów?",
+  "start": 1155.45
+ },
+ {
+  "i": 159,
+  "pl": "— Brak pieniędzy i pomocników. Do ostatecznego odkrycia potrzeba wykonać około ośmiu tysięcy prób, co, lekko licząc, jednemu człowiekowi zabrałoby dwadzieścia lat pracy. Ale czterech ludzi zrobi to samo w ciągu pięciu do sześciu lat...",
+  "start": 1159.41
+ },
+ {
+  "i": 160,
+  "pl": "Wokulski wstał z krzesła i zamyślony począł chodzić po numerze; Geist nie spuszczał z niego oka.",
+  "start": 1173.73
+ },
+ {
+  "i": 161,
+  "pl": "— Przypuśćmy — odezwał się Wokulski — że ja mógłbym panu dać pieniądze i jednego, a nawet... dwu pomocników... Lecz gdzie dowód, że pańskie metale nie są jakąś dziwną mistyfikacją, a pańskie nadzieje złudzeniami?",
+  "start": 1180.47
+ },
+ {
+  "i": 162,
+  "pl": "— Przyjdź do mnie, obejrzyj, co jest, sam zrób kilka doświadczeń, a przekonasz się. Innego sposobu nie widzę — odparł Geist.",
+  "start": 1194.94
+ },
+ {
+  "i": 163,
+  "pl": "— I kiedy można by przyjść?...",
+  "start": 1203.49
+ },
+ {
+  "i": 164,
+  "pl": "— Kiedy zechcesz. Daj mi tylko kilkadziesiąt franków, gdyż nie mam za co kupić potrzebnych preparatów. A oto mój adres — zakończył Geist podając zabrudzoną notatkę.",
+  "start": 1205.19
+ },
+ {
+  "i": 165,
+  "pl": "Wokulski wręczył mu trzysta franków. Starzec zapakował swoje okazy, zamknął pudełko i rzekł na odchodne:",
+  "start": 1216.34
+ },
+ {
+  "i": 166,
+  "pl": "— Napisz do mnie list na dzień przed przybyciem. Prawie ciągle siedzę w domu ocierając kurze z moich retort<sup>736<\/sup>!...",
+  "start": 1223.86
+ },
+ {
+  "i": 167,
+  "pl": "Po odejściu Geista Wokulski był jak odurzony. Spoglądał na drzwi, za którymi zniknął chemik, to na stół, gdzie przed chwilą okazywano mu nadnaturalne przedmioty, to znowu dotykał swoich rąk i głowy lub chodził stukając głośno obcasami po pokoju dla przekonania się, że nie marzy, ale czuwa.",
+  "start": 1231.16
+ },
+ {
+  "i": 168,
+  "pl": "„A przecież faktem jest — myślał — że człowiek ten pokazał mi jakieś dwa materiały: jeden cięższy od platyny, drugi znakomicie lżejszy od sodu. Nawet zapowiedział mi, że szuka metalu lżejszego od powietrza!...",
+  "start": 1251.8
+ },
+ {
+  "i": 169,
+  "pl": "Gdyby w rzeczach tych nie tkwiło jakieś niepojęte oszustwo — rzekł głośno — już miałbym ideę, dla której warto się skazać na całe lata niewoli.",
+  "start": 1265.99
+ },
+ {
+  "i": 170,
+  "pl": "Nie tylko znalazłbym pochłaniającą pracę i spełnienie najśmielszych marzeń młodości, ale jeszcze widziałbym przed sobą cel, wyższy nad wszystkie, do jakich kiedykolwiek rwał się duch ludzki. Kwestia żeglugi powietrznej byłaby rozstrzygniętą, człowiek dostałby skrzydeł.”",
+  "start": 1275.35
+ },
+ {
+  "i": 171,
+  "pl": "I znowu wzruszał ramionami, rozkładał ręce i mruczał:",
+  "start": 1294.04
+ },
+ {
+  "i": 172,
+  "pl": "„Nie, to niepodobna!...”",
+  "start": 1297.8
+ },
+ {
+  "i": 173,
+  "pl": "Brzemię nowych prawd czy nowych złudzeń tak go gniotło, że uczuł konieczność podzielenia go z kimkolwiek, choćby tylko w części. Zbiegł więc na pierwsze piętro do paradnej sali przyjęć i wezwał Jumarta.",
+  "start": 1299.91
+ },
+ {
+  "i": 174,
+  "pl": "Właśnie gdy zastanawiał się, w jaki sposób rozpocząć z nim tę dziwną rozmowę, Jumart sam mu ją ułatwił. Ledwie bowiem ukazał się w sali, rzekł z dyskretnym uśmiechem:",
+  "start": 1314.06
+ },
+ {
+  "i": 175,
+  "pl": "— Stary Geist wyszedł od pana bardzo ożywiony. Przekonał pana czy też został pobity?...",
+  "start": 1325.2
+ },
+ {
+  "i": 176,
+  "pl": "— No, mówieniem nikt nikogo chyba nie przekona, tylko faktami — odparł Wokulski.",
+  "start": 1331.64
+ },
+ {
+  "i": 177,
+  "pl": "— Więc były i fakta?...",
+  "start": 1337.1
+ },
+ {
+  "i": 178,
+  "pl": "— Tymczasem dopiero zapowiedź ich... Powiedz mi pan jednak — ciągnął Wokulski — co byś sądził, gdyby Geist pokazał ci metal pod każdym względem przypominający stal, lecz dwa lub trzy razy lżejszy od wody?... Gdybyś podobny materiał oglądał na własne oczy, dotykał go własnymi rękoma?...",
+  "start": 1339.0
+ },
+ {
+  "i": 179,
+  "pl": "Uśmiech Jumarta przerodził się w jakiś ironiczny grymas.",
+  "start": 1357.4
+ },
+ {
+  "i": 180,
+  "pl": "— Cóż bym miał powiedzieć, dobry Boże, nad to, że profesor Palmieri jeszcze większe cuda pokazuje za pięć franków od osoby...",
+  "start": 1362.8
+ },
+ {
+  "i": 181,
+  "pl": "— Co za Palmieri? — spytał zdziwiony Wokulski.",
+  "start": 1372.58
+ },
+ {
+  "i": 182,
+  "pl": "— Profesor magnetyzmu — odparł Jumart — znakomity człowiek... Mieszka w naszym hotelu i trzy razy dziennie pokazuje magnetyczne sztuki w sali mogącej od biedy pomieścić ze sześćdziesiąt osób... Jest właśnie ósma, więc w tej chwili zaczyna się przedstawienie wieczorne.",
+  "start": 1375.94
+ },
+ {
+  "i": 183,
+  "pl": "Jeżeli pan chce, możemy tam pójść; ja mam wstęp darmo...",
+  "start": 1391.48
+ },
+ {
+  "i": 184,
+  "pl": "Na twarz Wokulskiego wystąpił tak silny rumieniec, że oblał mu czoło, a nawet szyję.",
+  "start": 1394.86
+ },
+ {
+  "i": 185,
+  "pl": "— Chodźmy — rzekł — do owego profesora Palmieri. W duchu zaś dodał:",
+  "start": 1399.88
+ },
+ {
+  "i": 186,
+  "pl": "„Więc ten wielki myśliciel, Geist, jest kuglarzem, a ja głupcem, który płaci trzysta franków za widowisko warte pięć franków... Jakże on mnie złapał!...”",
+  "start": 1404.64
+ },
+ {
+  "i": 187,
+  "pl": "Weszli na drugie piętro do salonu urządzonego równie bogato jak inne w tym hotelu. Większą jego część już zapełniali widzowie starzy i młodzi, kobiety i mężczyźni, ubrani elegancko i bardzo zajęci profesorem Palmierim, który właśnie kończył krótką prelekcję o magnetyzmie.",
+  "start": 1414.74
+ },
+ {
+  "i": 188,
+  "pl": "Był to mężczyzna średnich lat, zawiędły, brunet, z rozczochraną brodą i wyrazistymi oczyma. Otaczało go parę przystojnych kobiet i kilku młodych mężczyzn o twarzach mizernych i apatycznych.",
+  "start": 1432.98
+ },
+ {
+  "i": 189,
+  "pl": "— To są media<sup>737<\/sup> — szepnął Jumart. — Na nich Palmieri pokazuje swoje sztuki.",
+  "start": 1446.16
+ },
+ {
+  "i": 190,
+  "pl": "Widowisko, trwające około dwu godzin, polegało na tym, że Palmieri za pomocą wzroku usypiał swoje media, w taki jednak sposób, że mogły one chodzić, odpowiadać na pytanie i wykonywać rozmaite czynności.",
+  "start": 1451.9
+ },
+ {
+  "i": 191,
+  "pl": "Prócz tego uśpieni przez magnetyzera w miarę jego rozkazów objawiali bądź niezwykłą siłę muskularną, bądź jeszcze niezwykłejszą nieczułość lub nadwrażliwość zmysłów.",
+  "start": 1465.56
+ },
+ {
+  "i": 192,
+  "pl": "Ponieważ Wokulski pierwszy raz widział podobne zjawiska i bynajmniej nie ukrywał niedowierzania, więc Palmieri zaprosił go do pierwszego rzędu krzeseł.",
+  "start": 1477.2
+ },
+ {
+  "i": 193,
+  "pl": "Tu po kilku próbach Wokulski przekonał się, że zjawiska, na które patrzy, nie są kuglarstwem, lecz polegają na jakichś nieznanych właściwościach systemu nerwowego.",
+  "start": 1485.93
+ },
+ {
+  "i": 194,
+  "pl": "Ale najwięcej zajęły, a nawet przeraziły go dwa doświadczenia mające pewien związek z jego własnym życiem. Polegały one na wmawianiu w medium rzeczy nie istniejących.",
+  "start": 1496.7
+ },
+ {
+  "i": 195,
+  "pl": "Jednemu z uśpionych podał Palmieri korek od karafki mówiąc, że podał mu różę. W tej chwili medium zaczęło wąchać korek okazując przy tym wielkie zadowolenie.",
+  "start": 1509.18
+ },
+ {
+  "i": 196,
+  "pl": "— Co pan robisz? — zawołał Palmieri do medium — wszakże to asafetyda<sup>738<\/sup>...",
+  "start": 1519.92
+ },
+ {
+  "i": 197,
+  "pl": "I medium natychmiast z obrzydzeniem odrzuciło korek wycierając ręce i narzekając, że cuchną.",
+  "start": 1525.36
+ },
+ {
+  "i": 198,
+  "pl": "Innemu podał chustkę od nosa, a gdy powiedział mu, że chustka waży sto funtów, uśpiony począł uginać się, drżeć i potnieć pod jej ciężarem.",
+  "start": 1532.55
+ },
+ {
+  "i": 199,
+  "pl": "Wokulski widząc to sam spotniał.",
+  "start": 1542.25
+ },
+ {
+  "i": 200,
+  "pl": "„Już rozumiem — pomyślał — tajemnicę Geista. On mnie zamagnetyzował...”",
+  "start": 1544.59
+ },
+ {
+  "i": 201,
+  "pl": "Lecz najboleśniejszego uczucia doznał wówczas, gdy Palmieri, uśpiwszy jakiegoś wątłego młodzieńca, owinął ręcznikiem łopatkę od węgli i wmówił w swoje medium, że jest to młoda i piękna kobieta, którą trzeba kochać. Zamagnetyzowany ściskał i całował łopatkę, klękał przed nią i robił najczulsze miny.",
+  "start": 1550.42
+ },
+ {
+  "i": 202,
+  "pl": "Gdy ją włożono pod kanapę, popełznął za nią na czworakach jak pies, odepchnąwszy pierwej czterech silnych mężczyzn, którzy chcieli go zatrzymać. A gdy nareszcie Palmieri schował ją mówiąc, że umarła, młody człowiek wpadł w taką rozpacz, że tarzał się po podłodze i bił głową o ścianę.",
+  "start": 1571.64
+ },
+ {
+  "i": 203,
+  "pl": "W tej chwili Palmieri dmuchnął mu w oczy i młodzian obudził się ze strumieniami łez na policzkach, wśród oklasków i śmiechu obecnych.",
+  "start": 1589.5
+ },
+ {
+  "i": 204,
+  "pl": "Wokulski uciekł z sali straszliwie rozdrażniony.",
+  "start": 1598.6
+ },
+ {
+  "i": 205,
+  "pl": "„A więc wszystko jest kłamstwem!... Rzekome wynalazki Geista i jego mądrość, moja szalona miłość i nawet ona... Ona sama jest tylko złudzeniem oczarowanych zmysłów... Jedyną rzeczywistością, która nie zawodzi i nie kłamie, jest chyba — śmierć...”",
+  "start": 1602.68
+ },
+ {
+  "i": 206,
+  "pl": "Wybiegł z hotelu na ulicę, wpadł do kawiarni i kazał podać koniak. Tym razem wypił półtorej karafki, a pijąc myślał, że ten Paryż, w którym znalazł najwięcej mądrości, największe złudzenia i ostateczne rozczarowania, stanie się chyba jego grobem.",
+  "start": 1620.93
+ },
+ {
+  "i": 207,
+  "pl": "„Na co mam już czekać?... czego dowiem się?... Jeżeli Geist jest ordynarnym oszustem i jeżeli można kochać się w łopatce do węgli, jak ja w niej, to cóż mi jeszcze pozostaje?...”",
+  "start": 1639.27
+ },
+ {
+  "i": 208,
+  "pl": "Wrócił do hotelu rozmarzony koniakiem i zasnął w ubraniu. A gdy obudził się o ósmej rano, pierwszą jego myślą było:",
+  "start": 1652.49
+ },
+ {
+  "i": 209,
+  "pl": "„Nie ma kwestii, że Geist za pomocą magnetyzmu oszukał mnie co do owych metali. Lecz... kto magnetyzował mnie wówczas, kiedy oszalałem dla tej kobiety?...”",
+  "start": 1660.31
+ },
+ {
+  "i": 210,
+  "pl": "Nagle błysnął mu projekt, ażeby zasięgnąć informacyj u Palmieriego. Przebrał się więc szybko i zeszedł na drugie piętro.",
+  "start": 1670.35
+ },
+ {
+  "i": 211,
+  "pl": "Mistrz tajemniczej sztuki już czekał na gości; ale że gości jeszcze nie było, więc Wokulskiego przyjął natychmiast, pobrawszy z góry dwadzieścia franków opłaty za naradę.",
+  "start": 1679.85
+ },
+ {
+  "i": 212,
+  "pl": "— Czy — zapytał Wokulski — w każdego może pan wmówić, że łopatka od węgli jest kobietą i że chustka waży sto funtów?...",
+  "start": 1690.38
+ },
+ {
+  "i": 213,
+  "pl": "— W każdego, kto da się uśpić.",
+  "start": 1698.08
+ },
+ {
+  "i": 214,
+  "pl": "— Więc proszę mnie uśpić i powtórzyć na mnie sztukę z chustką.",
+  "start": 1699.84
+ },
+ {
+  "i": 215,
+  "pl": "Palmieri zaczął swoje praktyki; wpatrywał się Wokulskiemu w oczy, dotykał mu czoła, pocierał ręce od obojczyków do dłoni... Nareszcie odsunął się od niego zniechęcony.",
+  "start": 1704.32
+ },
+ {
+  "i": 216,
+  "pl": "— Pan nie jesteś medium — rzekł.",
+  "start": 1715.23
+ },
+ {
+  "i": 217,
+  "pl": "— A gdybym ja miał w życiu wypadek taki, jak ów jegomość z chustką? — spytał Wokulski.",
+  "start": 1718.15
+ },
+ {
+  "i": 218,
+  "pl": "— To jest niemożliwe, pana niepodobna uśpić. Zresztą, gdybyś był uśpiony i miał złudzenie, że chustka waży sto funtów, to znowu obudziwszy się nie pamiętałbyś pan o tym.",
+  "start": 1723.41
+ },
+ {
+  "i": 219,
+  "pl": "— A czy nie sądzisz pan, że ktoś zręczniej może magnetyzować...",
+  "start": 1734.66
+ },
+ {
+  "i": 220,
+  "pl": "Palmieri obraził się.",
+  "start": 1738.6
+ },
+ {
+  "i": 221,
+  "pl": "— Nie ma lepszego magnetyzera ode mnie — zawołał. — Zresztą i ja pana uśpię, ale na to trzeba kilkumiesięcznej pracy... To będzie kosztowało dwa tysiące franków... Nie myślę darmo tracić mego fluidu<sup>739<\/sup>...",
+  "start": 1740.32
+ },
+ {
+  "i": 222,
+  "pl": "Wokulski opuścił magnetyzera wcale niezadowolony. Jeszcze nie wątpił, że panna Izabela mogła oczarować go; miała przecież dosyć czasu. Ale znowu Geist nie mógł go uśpić w ciągu paru minut.",
+  "start": 1753.42
+ },
+ {
+  "i": 223,
+  "pl": "Zresztą Palmieri twierdzi, że uśpieni nie pamiętają swoich przywidzeń; on zaś pamięta każdy szczegół wizyty starego chemika.",
+  "start": 1767.59
+ },
+ {
+  "i": 224,
+  "pl": "Jeżeli więc Geist nie uśpił go, więc nie jest oszustem. Więc jego metale istnieją i... odkrycie metalu lżejszego od powietrza jest możliwe!...",
+  "start": 1775.87
+ },
+ {
+  "i": 225,
+  "pl": "„Oto miasto — myślał — w którym więcej przeżyłem w ciągu jednej godziny aniżeli w Warszawie przez całe życie... Oto miasto!...”",
+  "start": 1786.06
+ },
+ {
+  "i": 226,
+  "pl": "Przez kilka dni Wokulski był bardzo zajęty.",
+  "start": 1796.31
+ },
+ {
+  "i": 227,
+  "pl": "Przede wszystkim wyjeżdżał Suzin, zakupiwszy kilkanaście statków. Najzupełniej legalny zysk z tej operacji był ogromny — tak ogromny, że cząstka przypadająca na Wokulskiego pokryła wszystkie wydatki, jakie w ciągu ostatnich miesięcy poniósł w Warszawie.",
+  "start": 1798.87
+ },
+ {
+  "i": 228,
+  "pl": "Na parę godzin przed pożegnaniem się Suzin i Wokulski jedli śniadanie w swoim paradnym numerze i naturalnie rozmawiali o zyskach.",
+  "start": 1816.52
+ },
+ {
+  "i": 229,
+  "pl": "— Masz bajeczne szczęście — odezwał się Wokulski.",
+  "start": 1825.69
+ },
+ {
+  "i": 230,
+  "pl": "Suzin pociągnął łyk szampana i oparłszy na brzuchu ręce ozdobione pierścieniami rzekł:",
+  "start": 1828.39
+ },
+ {
+  "i": 231,
+  "pl": "— To nie szczęście, Stanisławie Piotrowiczu, to miliony. Nożykiem tniesz wiklinę, a toporem dęby. Kto ma kopiejki, robi interesa kopiejkowe i kopiejki zyskuje; ale kto ma miliony, musi zyskiwać miliony.",
+  "start": 1834.09
+ },
+ {
+  "i": 232,
+  "pl": "Rubel, Stanisławie Piotrowiczu, jest jak zapracowana szkapa: kilka lat musisz czekać, zanim urodzi ci nowego rubla; ale milion jest mnożny jak świnia: co rok daje kilkoro.",
+  "start": 1849.93
+ },
+ {
+  "i": 233,
+  "pl": "Za dwa albo trzy lata, Stanisławie Piotrowiczu, i ty zbierzesz okrągły milionik, a wtedy przekonasz się, jak za nim gonią inne pieniądze. Chociaż z tobą...",
+  "start": 1861.99
+ },
+ {
+  "i": 234,
+  "pl": "Suzin westchnął, zmarszczył brwi i znowu wypił szampana.",
+  "start": 1874.63
+ },
+ {
+  "i": 235,
+  "pl": "— Cóż ze mną? — spytał Wokulski.",
+  "start": 1878.69
+ },
+ {
+  "i": 236,
+  "pl": "— A ot, co z tobą — odparł Suzin. — Ty, zamiast w takim mieście robić interesa dla siebie do swego handlu, ty nic... Ty sobie wałęsasz się z głową na dół albo do góry, na nic się nie patrząc, albo nawet (wstyd powiedzieć chrześcijaninowi!) latasz w powietrze balonem...",
+  "start": 1881.59
+ },
+ {
+  "i": 237,
+  "pl": "Cóż ty bałaganowym<sup>740<\/sup> skoczkiem myślisz zostać, ha?... No i nareszcie, powiem tobie, Stanisławie Piotrowiczu, ty obraziłeś na siebie jedną bardzo dystyngowaną damę, tę ot baronowę...",
+  "start": 1899.85
+ },
+ {
+  "i": 238,
+  "pl": "A przecie u niej można było i w karty pograć, i ładne kobiety znaleźć, i dowiedzieć się o niejednej rzeczy. Radzę tobie, daj ty jej co zarobić przed wyjazdem: nie dasz adwokatowi rubla, on tobie sto wyciągnie. Ach, ty ojcze rodzony...",
+  "start": 1912.63
+ },
+ {
+  "i": 239,
+  "pl": "Wokulski słuchał z uwagą, Suzin znowu westchnął i ciągnął dalej:",
+  "start": 1929.71
+ },
+ {
+  "i": 240,
+  "pl": "— I z czarownikami naradzasz się (pfy! nieczysta siła...), na czym, mówię tobie, nie zyskasz rozbitej kopiejki<sup>741<\/sup>, a możesz na siebie obrazić Boga.",
+  "start": 1935.21
+ },
+ {
+  "i": 241,
+  "pl": "Nieładnie!... Najgorsze, co ty myślisz, że nikt nie wie, co tobie dolega? Tymczasem wszyscy wiedzą, że masz jakieś moralne cierpienie, tylko jeden myśli, że chciałbyś kupować tu fałszywe bankocetle, a inny dogaduje się, że rad byś zbankrutować, jeżeli już nie jesteś bankrut.",
+  "start": 1947.47
+ },
+ {
+  "i": 242,
+  "pl": "— I ty w to wierzysz? — spytał Wokulski.",
+  "start": 1967.54
+ },
+ {
+  "i": 243,
+  "pl": "— Aj! Stanisławie Piotrowiczu, już komu, ale tobie nie godzi się awansować mnie na durnia. Ty myślisz: ja nie wiem, że tobie chodzi o kobietę?... Nu, kobieta smaczna rzecz i bywa, że nawet innemu solidnemu człowiekowi przewróci mózgi<sup>742<\/sup>. Baw więc się i ty, kiedy masz pieniądze.",
+  "start": 1969.96
+ },
+ {
+  "i": 244,
+  "pl": "Ale ja tobie, Stanisławie Piotrowiczu, powiem jedno słówko, chcesz?...",
+  "start": 1989.22
+ },
+ {
+  "i": 245,
+  "pl": "— Proszę cię.",
+  "start": 1992.96
+ },
+ {
+  "i": 246,
+  "pl": "— Kto prosi, żeby mu ogolić brodę, nie gniewa się na zdrapanie. Otóż, gołąbku, powiem tobie przypowieść. Znajduje się w tej Francji jakaś cudowna woda na wszystkie choroby<sup>743<\/sup> (nie pomnę jej nazwiska).",
+  "start": 1994.34
+ },
+ {
+  "i": 247,
+  "pl": "Więc słuchaj mnie: są tacy, którzy przychodzą tam na kolanach i prawie nie śmią spojrzeć; a są inni, którzy tę wodę bez ceremonii piją i nawet zęby płuczą... Ach, Stanisławie Piotrowiczu, ty nie wiesz, jak ten pijący grubo żartuje z modlącego się...",
+  "start": 2007.13
+ },
+ {
+  "i": 248,
+  "pl": "Zobacz więc, czy nie jesteś takim, a gdybyś był, pluń na wszystko... Ale co tobie?... Boli? prawda... No, pokosztuj wina...",
+  "start": 2024.67
+ },
+ {
+  "i": 249,
+  "pl": "— Czyś słyszał co o niej? — głucho spytał Wokulski.",
+  "start": 2035.62
+ },
+ {
+  "i": 250,
+  "pl": "— Klnę się, żem nic nadzwyczajnego nie słyszał — odparł Suzin uderzając się w piersi. — Kupcowi trzeba subiektów, a kobiecie bijących przed nią czołem, choćby dla zasłonięcia tego zucha, który nie bije pokłonów. Rzecz całkiem naturalna.",
+  "start": 2039.88
+ },
+ {
+  "i": 251,
+  "pl": "Tylko ty, Stanisławie Piotrowiczu, nie wchodź między czeredę, a jeżeliś wszedł, podnieś głowę. Pół miliona rubli kapitału to przecie nie plewy; z takiego kupca nie powinni naśmiewać się ludzie.",
+  "start": 2054.9
+ },
+ {
+  "i": 252,
+  "pl": "Wokulski podniósł się i przeciągnął jak człowiek, któremu zrobiono operację rozpalonym żelazem.",
+  "start": 2069.41
+ },
+ {
+  "i": 253,
+  "pl": "„Może tak nie być, a może... tak być!... — pomyślał. — Ale jeżeli tak jest... część majątku oddam szczęśliwemu wielbicielowi za to, że mnie wyleczył!...”",
+  "start": 2075.51
+ },
+ {
+  "i": 254,
+  "pl": "Wrócił do siebie i pierwszy raz całkiem spokojnie począł przebiegać myślą wszystkich adoratorów panny Izabeli, których widywał z nią lub o których tylko słyszał.",
+  "start": 2085.93
+ },
+ {
+  "i": 255,
+  "pl": "Przypomniał sobie ich znaczące rozmowy, tkliwe spojrzenia, dziwne półsłówka, wszystkie sprawozdania pani Meliton, wszystkie sądy, jakie krążyły o pannie Izabeli wśród podziwiającej ją publiczności.",
+  "start": 2096.48
+ },
+ {
+  "i": 256,
+  "pl": "Wreszcie głęboko odetchnął: zdawało mu się, że znalazł jakąś nitkę, która może wyprowadzić go z labiryntu<sup>744<\/sup>.",
+  "start": 2109.81
+ },
+ {
+  "i": 257,
+  "pl": "„Wyjdę z niego chyba do pracowni Geista” — pomyślał czując, że już wpadło mu w serce pierwsze ziarno pogardy.",
+  "start": 2118.24
+ },
+ {
+  "i": 258,
+  "pl": "„Ma prawo, ma wszelkie prawo!... — mruczał uśmiechając się. — Ale też wybór, czy może nawet wybory... Ehej, jakieżem ja podłe bydlę; a Geist uważa mnie za człowieka...”",
+  "start": 2127.22
+ },
+ {
+  "i": 259,
+  "pl": "Po wyjeździe Suzina Wokulski po raz drugi odczytał dziś wręczony mu list Rzeckiego. Stary subiekt mało pisał o interesach, ale bardzo dużo o pani Stawskiej, nieszczęśliwej a pięknej kobiecie, której mąż gdzieś zginął.",
+  "start": 2142.2
+ },
+ {
+  "i": 260,
+  "pl": "„Do śmierci zobowiążesz mnie — mówił Rzecki — jeżeli coś obmyślisz dla ostatecznego wyjaśnienia: czy Ludwik Stawski żyje, czy umarł?”",
+  "start": 2159.83
+ },
+ {
+  "i": 261,
+  "pl": "Po czym następował rejestr dat i miejscowości, w których zaginiony przebywał opuściwszy Warszawę.",
+  "start": 2169.73
+ },
+ {
+  "i": 262,
+  "pl": "„Stawska?... Stawska?... — myślał Wokulski. — Już wiem!... To ta piękna pani z córeczką, która mieszka w moim domu... Co za dziwny zbieg wypadków: może po to kupiłem dom Łęckich, ażeby poznać w nim tę drugą?...",
+  "start": 2176.45
+ },
+ {
+  "i": 263,
+  "pl": "Nic mnie ona nie obchodzi, skoro tu zostanę, ale dlaczegóż nie miałbym jej dopomóc, jeżeli prosi Rzecki... Ach! wybornie... Będę miał zaraz powód dać prezent baronowej, którą mi tak rekomendował Suzin...”",
+  "start": 2189.47
+ },
+ {
+  "i": 264,
+  "pl": "Wziął adres baronowej i pojechał w okolice Saint–Germain<sup>745<\/sup>.",
+  "start": 2202.31
+ },
+ {
+  "i": 265,
+  "pl": "W sieni domu, w którym mieszkała, był kramik antykwariusza. Wokulski rozmawiając ze szwajcarem mimo woli rzucił okiem na książki i z radosnym zdziwieniem spostrzegł egzemplarz poezji Mickiewicza, tej edycji, którą czytał jeszcze jako subiekt Hopfera.",
+  "start": 2206.3
+ },
+ {
+  "i": 266,
+  "pl": "Na widok wytartych okładek i spłowiałego papieru cała młodość stanęła mu przed oczyma.",
+  "start": 2221.8
+ },
+ {
+  "i": 267,
+  "pl": "Natychmiast kupił książkę i o mało nie ucałował jej jak relikwii.",
+  "start": 2228.1
+ },
+ {
+  "i": 268,
+  "pl": "Szwajcar, któremu frank podbił serce dla Wokulskiego, zaprowadził go aż do drzwi apartamentów baronowej z uśmiechem życząc przyjemnej zabawy. Wokulski zadzwonił i zaraz na wstępie zobaczył lokaja w pąsowym fraku.",
+  "start": 2232.68
+ },
+ {
+  "i": 269,
+  "pl": "„Aha!” — mruknął.",
+  "start": 2246.96
+ },
+ {
+  "i": 270,
+  "pl": "W salonie, rzecz naturalna, były złocone meble, obrazy, dywany i kwiaty. Po chwili ukazała się baronowa z miną osoby obrażonej, która gotowa jednak przebaczyć.",
+  "start": 2248.68
+ },
+ {
+  "i": 271,
+  "pl": "Istotnie przebaczyła mu. W krótkiej rozmowie Wokulski wyłożył cel wizyty, napisał nazwisko Stawskiego i miejsc, w których przebywał, usilnie prosząc, ażeby baronowa przez swoje liczne stosunki dała mu o zaginionym dokładną wiadomość.",
+  "start": 2259.92
+ },
+ {
+  "i": 272,
+  "pl": "— To jest możliwe — odparła wielka dama — ale... czy nie zniechęcą pana koszta?... Musimy odwołać się do policji niemieckiej, angielskiej, amerykańskiej...",
+  "start": 2274.44
+ },
+ {
+  "i": 273,
+  "pl": "— Więc?...",
+  "start": 2284.54
+ },
+ {
+  "i": 274,
+  "pl": "— Więc wyda pan ze trzy tysiące franków?",
+  "start": 2285.42
+ },
+ {
+  "i": 275,
+  "pl": "— Oto są cztery tysiące — odparł Wokulski podając jej czek, na którym wypisał odnośną sumę. — Kiedyż mam spodziewać się odpowiedzi?...",
+  "start": 2289.22
+ },
+ {
+  "i": 276,
+  "pl": "— Tego nie jestem w stanie oznaczyć — rzekła baronowa — może za miesiąc, może za rok. Sądzę jednak — dodała surowo — że o rzeczywistości poszukiwań nie wątpi pan?",
+  "start": 2297.26
+ },
+ {
+  "i": 277,
+  "pl": "— Tak dalece nie wątpię, że zostawię u Rotszylda kwit jeszcze na dwa tysiące franków, płatnych po otrzymaniu wiadomości o tym człowieku.",
+  "start": 2307.84
+ },
+ {
+  "i": 278,
+  "pl": "— Pan wkrótce wyjeżdża?",
+  "start": 2316.81
+ },
+ {
+  "i": 279,
+  "pl": "— O nie. Zabawię jakiś czas.",
+  "start": 2318.43
+ },
+ {
+  "i": 280,
+  "pl": "— Ach, zachwycił pana Paryż!... — rzekła baronowa z uśmiechem. — Spodoba się panu jeszcze bardziej z okien mego salonu. Przyjmuję co wieczór.",
+  "start": 2320.65
+ },
+ {
+  "i": 281,
+  "pl": "Pożegnali się oboje bardzo zadowoleni: baronowa z pieniędzy swojego klienta, Wokulski, że jednym zamachem spełnił radę Suzina i prośbę Rzeckiego.",
+  "start": 2329.55
+ },
+ {
+  "i": 282,
+  "pl": "Teraz Wokulski został w Paryżu zupełnie osamotniony, bez żadnego obowiązkowego zajęcia. Znowu zwiedzał wystawę, teatry, nieznane ulice, pominięte sale w muzeach...",
+  "start": 2339.31
+ },
+ {
+  "i": 283,
+  "pl": "Znowu podziwiał olbrzymie siły Francji, prawidłowość w budowie i życiu milionowego miasta, wpływ łagodnego klimatu na przyśpieszony rozwój cywilizacji... Znowu pił koniak, jadał kosztowne potrawy albo grał w karty w salonie baronowej, gdzie zawsze przegrywał...",
+  "start": 2350.61
+ },
+ {
+  "i": 284,
+  "pl": "Taki sposób przepędzania czasu wyczerpywał go znakomicie, ale nie dawał ani kropli radości. Godziny wlokły mu się jak doby, dnie nie miały końca, a noce spokojnego snu.",
+  "start": 2369.82
+ },
+ {
+  "i": 285,
+  "pl": "Bo choć spał twardo, bez żadnych marzeń przykrych albo przyjemnych, chociaż tracił świadomość, nie mógł jednakże pozbyć się uczucia niezgruntowanej goryczy, w której tonęła jego dusza na próżno szukająca tam dna albo brzegów.",
+  "start": 2381.35
+ },
+ {
+  "i": 286,
+  "pl": "„Dajcie mi jakiś cel... albo śmierć!...” — mówił nieraz patrząc w niebo. A w chwilę później śmiał się i myślał:",
+  "start": 2397.19
+ },
+ {
+  "i": 287,
+  "pl": "„Do kogo ja mówię?... Kto mnie wysłucha w tym mechanizmie ślepych sił, których stałem się igraszką? Cóż to za okrutna dola nie być do niczego przywiązanym, niczego nie pragnąć, a tak wiele rozumieć...”",
+  "start": 2406.17
+ },
+ {
+  "i": 288,
+  "pl": "Zdawało mu się, że widzi jakąś niezmierną fabrykę, skąd wybiegają nowe słońca, nowe planety, nowe gatunki, nowe narody, a w nich ludzie i serca, które szarpią furie: nadzieja, miłość i boleść. Któraż z nich najgorsza? Nie boleść, bo ona przynajmniej nie kłamie.",
+  "start": 2420.5
+ },
+ {
+  "i": 289,
+  "pl": "Ale ta nadzieja, która tym głębiej strąca, im wyżej podniosła... Ale miłość, ten motyl, którego jedno skrzydło nazywa się niepewnością, a drugie oszustwem...",
+  "start": 2442.21
+ },
+ {
+  "i": 290,
+  "pl": "„Wszystko jedno — mruczał. — Jeżeli już musimy odurzać się czymś, odurzajmy się czymkolwiek. Ale czym?...”",
+  "start": 2453.9
+ },
+ {
+  "i": 291,
+  "pl": "Wówczas w głębi mroku, nazywającego się naturą, ukazywały się przed nim jakby dwie gwiazdy. Jedna blada, ale niezmienna — to był Geist i jego metale; druga iskrząca się jak słońce albo nagle gasnąca, a tą była ona...",
+  "start": 2461.58
+ },
+ {
+  "i": 292,
+  "pl": "„Co tu wybrać? — myślał — jeżeli jedno jest wątpliwe, a druga niedostępna i niepewna. Bo choćbym nawet dosięgnął jej, czy ja jej kiedy uwierzę?... czy nawet mógłbym uwierzyć?...”",
+  "start": 2476.92
+ },
+ {
+  "i": 293,
+  "pl": "Z tym wszystkim czuł, że zbliża się chwila decydującej walki pomiędzy jego rozumem i sercem. Rozum ciągnął go do Geista, serce do Warszawy.",
+  "start": 2491.41
+ },
+ {
+  "i": 294,
+  "pl": "Czuł, że lada dzień coś z tego musi wybrać: albo ciężką pracę, która wiodła do nadzwyczajnej sławy, albo płomienną namiętność, która obiecywała chyba to, że spali go na popiół.",
+  "start": 2501.85
+ },
+ {
+  "i": 295,
+  "pl": "„A jeżeli i to, i tamto jest złudzeniem, jak owa łopatka albo chustka ważąca sto funtów?...”",
+  "start": 2515.7
+ },
+ {
+  "i": 296,
+  "pl": "Poszedł jeszcze raz do magnetyzera Palmieriego i zapłaciwszy należne dwadzieścia franków za konferencję, począł zadawać mu pytania:",
+  "start": 2523.42
+ },
+ {
+  "i": 297,
+  "pl": "— Więc twierdzisz pan, że mnie nie można zamagnetyzować?",
+  "start": 2532.95
+ },
+ {
+  "i": 298,
+  "pl": "— Co to jest nie można! — oburzył się Palmieri. — Nie można od razu, gdyż nie jesteś pan medium. Ale można by z pana zrobić medium, jeżeli nie w kilka miesięcy, to w kilka lat.",
+  "start": 2537.05
+ },
+ {
+  "i": 299,
+  "pl": "„Zatem Geist stanowczo nie otumanił mnie” — pomyślał Wokulski. Głośno zaś dodał:",
+  "start": 2548.11
+ },
+ {
+  "i": 300,
+  "pl": "— A kobieta, panie Palmieri, może zamagnetyzować człowieka?",
+  "start": 2553.57
+ },
+ {
+  "i": 301,
+  "pl": "— Nie tylko kobieta, ale nawet drzewo, klamka, woda, no, słowem, wszystko, czemu magnetyzer nada władzę. Ja mogę moje media magnetyzować bodajby szpilką; mówię im: w tę szpilkę przelewam mój fluid i zaśniesz pan, kiedy na nią spojrzysz.",
+  "start": 2558.47
+ },
+ {
+  "i": 302,
+  "pl": "Tym więc łatwiej mógłbym przekazać moją władzę jakiejś kobiecie. Byle, rozumie się, osoba magnetyzowana była medium.",
+  "start": 2575.15
+ },
+ {
+  "i": 303,
+  "pl": "— I wtedy do owej kobiety przywiązałbym się tak jak pańskie medium do łopatki od węgli?... — spytał Wokulski.",
+  "start": 2583.05
+ },
+ {
+  "i": 304,
+  "pl": "— Bardzo naturalnie — odpowiedział Palmieri spoglądając na zegarek.",
+  "start": 2590.27
+ },
+ {
+  "i": 305,
+  "pl": "Wokulski opuścił go i włócząc się po ulicach myślał: „Co do Geista, mam prawie dowód, że nie łudził mnie za pomocą magnetyzmu; nie starczyłoby na to czasu. Ale co do niej, nie mam pewności, że nie oczarowała mnie w ten sposób. Czasu było dosyć, ale... któż mnie zrobił jej medium?...”",
+  "start": 2595.03
+ },
+ {
+  "i": 306,
+  "pl": "Im więcej porównywał swoją miłość do panny Izabeli z uczuciami ogółu mężczyzn dla ogółu kobiet, tym bardziej wydawała mu się nienaturalną. Bo jak można zakochać się w kimś od jednego rzutu oka?",
+  "start": 2616.12
+ },
+ {
+  "i": 307,
+  "pl": "Albo jak można szaleć za kobietą, którą widzi się raz na kilka miesięcy, i tylko po to, ażeby przekonać się, że ona nie dba o nas?",
+  "start": 2630.12
+ },
+ {
+  "i": 308,
+  "pl": "„Bah! — mruknął — rzadkie spotkania właśnie nadają jej charakter ideału. Kto wie, czy zupełnie nie rozczarowałbym się poznawszy ją dokładniej?”",
+  "start": 2638.9
+ },
+ {
+  "i": 309,
+  "pl": "Zdziwiło go, że od Geista nie miał żadnej wiadomości.",
+  "start": 2650.1
+ },
+ {
+  "i": 310,
+  "pl": "„Czyby uczony chemik po to wziął trzysta franków, ażeby już wcale mi się nie pokazywać...” — pomyślał.",
+  "start": 2654.19
+ },
+ {
+  "i": 311,
+  "pl": "Ale sam zawstydził się tych podejrzeń.",
+  "start": 2660.98
+ },
+ {
+  "i": 312,
+  "pl": "„Może chory?” — szepnął.",
+  "start": 2664.06
+ },
+ {
+  "i": 313,
+  "pl": "Wziął fiakra i pojechał według adresu, daleko za wały miasta, w okolice Charenton<sup>746<\/sup>.",
+  "start": 2666.63
+ },
+ {
+  "i": 314,
+  "pl": "Na wskazanej ulicy fiakier zatrzymał się przed murowanym parkanem; spoza niego widać było dach i górną część okien domu.",
+  "start": 2673.48
+ },
+ {
+  "i": 315,
+  "pl": "Wokulski wysiadł z powozu i zbliżył się do żelaznej furtki w murze, zaopatrzonej w młotek. Po kilkunastu uderzeniach furtka nagle uchyliła się i Wokulski wszedł na dziedziniec.",
+  "start": 2682.58
+ },
+ {
+  "i": 316,
+  "pl": "Dom był jednopiętrowy, bardzo stary; mówiły o tym ściany pokryte pleśnią, mówiły okna zakurzone, gdzieniegdzie wybite. W środku ściany frontowej znajdowały się drzwi, do których wchodziło się po kilku stopniach kamiennych, dość zrujnowanych.",
+  "start": 2698.03
+ },
+ {
+  "i": 317,
+  "pl": "Ponieważ furtka już zamknęła się z głuchym łoskotem, a nie było widać szwajcara, który ją otwierał, więc Wokulski stał na środku dziedzińca zdziwiony i zakłopotany. Nagle w oknie pierwszego, a zarazem jedynego piętra ukazała się jakaś głowa w czerwonej czapce i znajomy głos zawołał:",
+  "start": 2715.19
+ },
+ {
+  "i": 318,
+  "pl": "— Czy to wy, panie Siuzę?... Dzień dobry!",
+  "start": 2734.88
+ },
+ {
+  "i": 319,
+  "pl": "Głowa znikła, lecz otwarty lufcik świadczył, że nie była złudzeniem. Wreszcie po kilku chwilach zgrzytnęły drzwi środkowe, otworzyły się i stanął w nich Geist. Był ubrany w podarte niebieskie spodnie, drewniane sandały na nogach i brudny flanelowy kaftanik na grzbiecie.",
+  "start": 2738.62
+ },
+ {
+  "i": 320,
+  "pl": "— Powinszuj mi, panie Siuzę! — mówił Geist. — Sprzedałem mój materiał wybuchowy anglo–amerykańskiej kompanii<sup>747<\/sup> i zdaje się, zrobiłem niezły interes. Sto pięćdziesiąt tysięcy franków gotówką z góry i dwadzieścia pięć centimów<sup>748<\/sup> od każdego sprzedanego kilograma.",
+  "start": 2757.22
+ },
+ {
+  "i": 321,
+  "pl": "— No, w tych warunkach chyba zarzuci pan swoje metale — rzekł uśmiechając się Wokulski.",
+  "start": 2776.01
+ },
+ {
+  "i": 322,
+  "pl": "Geist spojrzał na niego z pobłażliwą wzgardą.",
+  "start": 2782.45
+ },
+ {
+  "i": 323,
+  "pl": "— Warunki te — odparł — o tyle zmieniły moje położenie, że na parę lat nie potrzebuję się troszczyć o majętnego wspólnika. Lecz co do metalów, właśnie w tej chwili pracuję nad nimi, spojrzyj...",
+  "start": 2785.75
+ },
+ {
+  "i": 324,
+  "pl": "Otworzył drzwi na lewo od sieni. Wokulski zobaczył rozległą, kwadratową salę, bardzo chłodną. Na środku jej stał ogromny cylinder, podobny do kadzi: stalowa ściana jej miała z łokieć grubości i była w czterech miejscach ściśnięta potężnymi obręczami.",
+  "start": 2799.9
+ },
+ {
+  "i": 325,
+  "pl": "Do górnego dna były przytwierdzone jakieś aparaty: jeden podobny do klapy bezpieczeństwa, spod której od czasu do czasu wydobywał się obłoczek pary i szybko niknął w powietrzu, drugi przypominał manometr, którego skazówka jest w ruchu.",
+  "start": 2818.39
+ },
+ {
+  "i": 326,
+  "pl": "— Kocioł parowy?... — spytał Wokulski. — Dlaczegóż takie grube ściany?",
+  "start": 2834.07
+ },
+ {
+  "i": 327,
+  "pl": "— Dotknij go — rzekł Geist.",
+  "start": 2839.21
+ },
+ {
+  "i": 328,
+  "pl": "Wokulski dotknął i syknął z bólu. Na palcach wyskoczyły mu pęcherze, lecz nie z gorąca, tylko z zimna... Kadź była straszliwie zimna, co zresztą czuło się w całej sali.",
+  "start": 2841.78
+ },
+ {
+  "i": 329,
+  "pl": "— Sześćset atmosfer ciśnienia wewnętrznego — dodał Geist nie zważając na przygodę Wokulskiego, który aż wstrząsnął się usłyszawszy taką cyfrę.",
+  "start": 2855.3
+ },
+ {
+  "i": 330,
+  "pl": "— Wulkan!... — szepnął.",
+  "start": 2865.64
+ },
+ {
+  "i": 331,
+  "pl": "— Dlatego namawiałem cię, ażebyś u mnie pracował — odparł Geist. — Jak widzisz, łatwo tu o wypadek... Chodźmy na górę...",
+  "start": 2867.8
+ },
+ {
+  "i": 332,
+  "pl": "— Kocioł zostawi pan bez dozoru? — spytał Wokulski.",
+  "start": 2876.12
+ },
+ {
+  "i": 333,
+  "pl": "— O, przy tej robocie nie potrzeba niańki; wszystko robi się samo i nie może być niespodzianek.",
+  "start": 2879.52
+ },
+ {
+  "i": 334,
+  "pl": "Wszedłszy na górę znaleźli się w dużym pokoju o czterech oknach. Głównym jego umeblowaniem były stoły, literalnie zarzucone retortami, miseczkami i rurkami ze szkła, porcelany, nawet z ołowiu i miedzi.",
+  "start": 2885.46
+ },
+ {
+  "i": 335,
+  "pl": "Na podłodze pod stołami i w kątach leżało kilkanaście bomb artyleryjskich, między nimi kilka pękniętych. Pod oknami stały wanienki kamienne lub miedziane, napełnione kolorowymi płynami; wzdłuż jednej ze ścian ciągnęła się ława czy tapczan, a na niej ogromny stos elektryczny.",
+  "start": 2900.1
+ },
+ {
+  "i": 336,
+  "pl": "Dopiero odwróciwszy się Wokulski spostrzegł przy samych drzwiach żelazną szafę wmurowaną w ścianę, łóżko okryte podartą kołdrą, z której wyłaziła brudna wata, pod oknem stolik z papierami, a przed nim fotel obity skórą, popękaną i wytartą.",
+  "start": 2920.49
+ },
+ {
+  "i": 337,
+  "pl": "Wokulski spojrzał na starca obutego w drewniane sandały jak najuboższy wyrobnik, potem na jego sprzęty, z których wyzierała nędza, i pomyślał, że przecie ten człowiek za swoje wynalazki mógłby mieć miliony. Wyrzekł się ich jednak dla dobra jakiejś przyszłej, doskonalszej ludzkości...",
+  "start": 2937.98
+ },
+ {
+  "i": 338,
+  "pl": "Geist wydał mu się w tej chwili jak Mojżesz, który do obiecanej ziemi prowadzi jeszcze nie urodzone pokolenia.",
+  "start": 2959.86
+ },
+ {
+  "i": 339,
+  "pl": "Ale stary chemik tym razem nie odgadł myśli Wokulskiego; przypatrzył mu się pochmurnie i rzekł:",
+  "start": 2967.22
+ },
+ {
+  "i": 340,
+  "pl": "— Cóż, panie Siuzę, niewesołe miejsce, niewesoła robota?... Od czterdziestu lat żyję w ten sposób. W tych aparatach uwięzło już kilka milionów i może dlatego ich posiadacz nie bawi się, nie ma służby, a czasami nawet nie ma co jeść... To nie dla pana zajęcie — dodał machnąwszy ręką.",
+  "start": 2974.93
+ },
+ {
+  "i": 341,
+  "pl": "— Mylisz się, profesorze — odparł Wokulski. — Zresztą w grobie nie jest chyba weselej...",
+  "start": 2997.87
+ },
+ {
+  "i": 342,
+  "pl": "— Co tam grób... głupstwo... sentymentalizm!... — mruknął Geist. — W naturze nie ma grobów ani śmierci; są różne formy bytu, z których jedne pozwalają nam być chemikami, inne tylko preparatami chemicznymi.",
+  "start": 3004.49
+ },
+ {
+  "i": 343,
+  "pl": "Cała zaś mądrość polega na tym, ażeby korzystać z nadarzającej się okazji, nie tracić czasu na błazeństwa, lecz coś zrobić.",
+  "start": 3020.37
+ },
+ {
+  "i": 344,
+  "pl": "— Rozumiem to — odparł Wokulski — ale... Wybacz pan, pańskie odkrycia są tak nowe...",
+  "start": 3029.38
+ },
+ {
+  "i": 345,
+  "pl": "— I ja rozumiem — przerwał Geist. — Moje odkrycia są tak nowe, że... uważasz je pan za oszustwo!... Pod tym względem nie są mędrszymi od ciebie członkowie Akademii, masz więc dobre towarzystwo... Aha!... chciałbyś jeszcze raz zobaczyć moje metale, wypróbować je?... Dobrze, bardzo dobrze...",
+  "start": 3036.28
+ },
+ {
+  "i": 346,
+  "pl": "Pobiegł do żelaznej szafy, otworzył ją w sposób bardzo skomplikowany i po kolei począł wydobywać sztabki metalu cięższego od platyny, lżejszego od wody, to znowu przezroczystego... Wokulski oglądał je, ważył, ogrzewał, kuł, przepuszczał przez nie prąd elektryczny, ciął nożycami.",
+  "start": 3058.09
+ },
+ {
+  "i": 347,
+  "pl": "Na próbach tych zeszło mu parę godzin; w rezultacie jednak przekonał się, że przynajmniej pod względem fizycznym ma do czynienia z autentycznymi metalami.",
+  "start": 3078.33
+ },
+ {
+  "i": 348,
+  "pl": "Skończywszy próby Wokulski wyczerpany upadł na fotel; Geist pochował swoje okazy, zamknął szafę i śmiejąc się zapytał:",
+  "start": 3090.54
+ },
+ {
+  "i": 349,
+  "pl": "— No i cóż: fakt czy złudzenie?",
+  "start": 3099.26
+ },
+ {
+  "i": 350,
+  "pl": "— Nic nie rozumiem — szepnął Wokulski ściskając rękoma skronie — głowa mi pęka!... Metal trzy razy lżejszy od wody... niepojęta rzecz!...",
+  "start": 3103.31
+ },
+ {
+  "i": 351,
+  "pl": "— Albo metal o jakie dziesięć procent lżejszy od powietrza, co?... — śmiał się Geist. Ciężar gatunkowy obalony... prawa natury podkopane, co?... Cha! cha!... Nic z tego wszystkiego. Prawa natury, o ile je znamy, nawet przy moich metalach pozostaną nietknięte.",
+  "start": 3113.86
+ },
+ {
+  "i": 352,
+  "pl": "Rozszerzą się tylko nasze pojęcia o własnościach ciał i ich budowie wewnętrznej, no i rozszerzą się granice ludzkiej techniki.",
+  "start": 3132.87
+ },
+ {
+  "i": 353,
+  "pl": "— A ciężar gatunkowy? — spytał Wokulski.",
+  "start": 3141.88
+ },
+ {
+  "i": 354,
+  "pl": "— Posłuchaj mnie — przerwał mu Geist — a wnet zrozumiesz, na czym polega istota moich odkryć, chociaż, pośpieszam dodać, naśladować ich nie potrafisz. Tu nie ma ani cudów, ani oszustwa; tu są rzeczy tak proste, że pojąć je mógłby uczeń szkoły elementarnej.",
+  "start": 3144.78
+ },
+ {
+  "i": 355,
+  "pl": "Wziął ze stołu stalowy sześcian i podawszy go Wokulskiemu mówił:",
+  "start": 3163.01
+ },
+ {
+  "i": 356,
+  "pl": "— Oto jest decymetr sześcienny, pełny, odlany ze stali; weź go w rękę, ile waży?",
+  "start": 3167.55
+ },
+ {
+  "i": 357,
+  "pl": "— Z osiem kilogramów...",
+  "start": 3174.53
+ },
+ {
+  "i": 358,
+  "pl": "Podał mu drugi sześcian tej samej wielkości, również stalowy, pytając:",
+  "start": 3176.9
+ },
+ {
+  "i": 359,
+  "pl": "— A ten ile waży?",
+  "start": 3180.75
+ },
+ {
+  "i": 360,
+  "pl": "— No, ten waży z pół kilograma... Ale on jest pusty... — odparł Wokulski.",
+  "start": 3183.33
+ },
+ {
+  "i": 361,
+  "pl": "— Doskonale! A ta sześcienna klatka ze stalowego drutu ile waży? — spytał Geist podając ją Wokulskiemu.",
+  "start": 3188.23
+ },
+ {
+  "i": 362,
+  "pl": "— Ta waży kilkanaście gramów...",
+  "start": 3196.49
+ },
+ {
+  "i": 363,
+  "pl": "— Otóż widzisz — przerwał Geist. — Mamy trzy sześciany tej samej wielkości i z tego samego materiału, które jednak są nierównej wagi. A dlaczego? Gdyż w pełnym sześcianie jest najwięcej cząstek stali, w pustym mniej, a w drucianym najmniej.",
+  "start": 3199.42
+ },
+ {
+  "i": 364,
+  "pl": "Wyobraź więc sobie, że udało mi się zamiast pełnych cząstek budować klatkowate cząstki ciał<sup>749<\/sup>, a zrozumiesz tajemnicę wynalazku. Polega on na zmianie budowy wewnętrznej materiałów, co nawet dla dzisiejszej chemii nie jest żadną nowością. Cóż, jakże tam?...",
+  "start": 3218.28
+ },
+ {
+  "i": 365,
+  "pl": "— Kiedy widzę okazy, wierzę — odparł Wokulski — kiedy pana słucham, rozumiem. Ale gdy wyjdę stąd... Rozłożył ręce w sposób desperacki.",
+  "start": 3238.66
+ },
+ {
+  "i": 366,
+  "pl": "Geist znowu otworzył szafę, poszukał, i wydobywszy mały skrawek metalu, barwą przypominającego mosiądz, podał Wokulskiemu mówiąc:",
+  "start": 3248.54
+ },
+ {
+  "i": 367,
+  "pl": "— Weź sobie to jako amulet przeciw powątpiewaniu o moim rozumie czy prawdomówności. Ten metal jest około pięciu razy lżejszy od wody, dobrze więc będzie ci przypominał naszą znajomość. Przy tym — dodał śmiejąc się — ma on wielką zaletę: nie obawia się żadnych odczynników chemicznych...",
+  "start": 3258.06
+ },
+ {
+  "i": 368,
+  "pl": "Prędzej zniknie, aniżeli zdradzi mój sekret... A teraz idź już, panie Siuzę, odpocznij i namyśl się: co masz zrobić ze sobą?",
+  "start": 3279.97
+ },
+ {
+  "i": 369,
+  "pl": "— Przyjdę tu — szepnął Wokulski.",
+  "start": 3292.02
+ },
+ {
+  "i": 370,
+  "pl": "— O nie! nie zaraz!... — odparł Geist. — Jeszcze nie ukończyłeś swoich rachunków ze światem; a że i ja mam na parę lat pieniądze, więc nie nalegam. Przyjdziesz tu, kiedy ci już nic nie zostanie z dawnych złudzeń...",
+  "start": 3294.76
+ },
+ {
+  "i": 371,
+  "pl": "Niecierpliwie ścisnął go za rękę i popychał ku drzwiom. Na schodach pożegnał go jeszcze raz i cofnął się do laboratorium. Gdy Wokulski wyszedł na dziedziniec, furtka już była otwarta, a gdy wyminął ją i stanął obok swego fiakra, zatrzasnęła się.",
+  "start": 3312.1
+ },
+ {
+  "i": 372,
+  "pl": "Wróciwszy do miasta Wokulski przede wszystkim kupił złoty medalion, umieścił w nim skrawek nowego metalu i zawiesił na szyi jak szkaplerz<sup>750<\/sup>. Chciał przespacerować się, ale spostrzegł, że ruch uliczny męczy go; więc poszedł do siebie.",
+  "start": 3329.31
+ },
+ {
+  "i": 373,
+  "pl": "„Czemu ja się wracam? — szeptał. — Dlaczego nie idę do Geista do roboty?...”",
+  "start": 3345.65
+ },
+ {
+  "i": 374,
+  "pl": "Usiadł na fotelu i utonął we wspomnieniach. Widział sklep Hopfera, stołowe pokoje i gości, którzy drwili z niego; widział swoją maszynę o wieczystym ruchu i model balonu, któremu usiłował nadać kierunek. Widział Kasię Hopfer, która mizerniała z miłości dla niego...",
+  "start": 3351.79
+ },
+ {
+  "i": 375,
+  "pl": "„Do roboty!... Dlaczego ja nie idę do roboty?...”",
+  "start": 3372.56
+ },
+ {
+  "i": 376,
+  "pl": "Wzrok jego machinalnie padł na stół, gdzie leżał niedawno kupiony Mickiewicz.",
+  "start": 3378.5
+ },
+ {
+  "i": 377,
+  "pl": "„Ile ja to razy czytałem!...” — westchnął biorąc książkę do ręki.",
+  "start": 3385.42
+ },
+ {
+  "i": 378,
+  "pl": "Książka otworzyła się sama i Wokulski przeczytał:",
+  "start": 3390.4
+ },
+ {
+  "i": 379,
+  "pl": "„Zrywam się, biegnę, składam na pamięć wyrazy, którymi mam złorzeczyć okrucieństwu twemu, składane, zapomniane już po milion razy... Ale gdy ciebie ujrzę, nie pojmuję, czemu znowu jestem spokojny, zimniejszy nad głazy, aby goreć na nowo, milczeć po dawnemu...”<sup>751<\/sup>",
+  "start": 3393.11
+ },
+ {
+  "i": 380,
+  "pl": "„Teraz już wiem, przez kogo jestem tak zaczarowany...”",
+  "start": 3416.1
+ },
+ {
+  "i": 381,
+  "pl": "Uczuł łzę pod powieką, lecz pohamował się i nie splamiła mu twarzy.",
+  "start": 3420.65
+ },
+ {
+  "i": 382,
+  "pl": "„Zmarnowaliście życie moje... Zatruliście dwa pokolenia!... — szepnął. — Oto skutki waszych sentymentalnych poglądów na miłość.”",
+  "start": 3426.73
+ },
+ {
+  "i": 383,
+  "pl": "Złożył książkę i cisnął nią w kąt pokoju, aż rozleciały się kartki.",
+  "start": 3437.07
+ },
+ {
+  "i": 384,
+  "pl": "Książka odbiła się od ściany, spadła na umywalnię i ze smutnym szelestem stoczyła się na podłogę.",
+  "start": 3442.77
+ },
+ {
+  "i": 385,
+  "pl": "„Dobrze ci tak! tam twoje miejsce... — myślał Wokulski. — Bo któż to miłość przedstawiał mi jako świętą tajemnicę? Kto nauczył mnie gardzić codziennymi kobietami, a szukać niepochwytnego ideału?... Miłość jest radością świata, słońcem życia, wesołą melodią w pustyni, a ty co z niej zrobiłeś?...",
+  "start": 3450.02
+ },
+ {
+  "i": 386,
+  "pl": "Żałobny ołtarz, przed którym śpiewają się egzekwie<sup>752<\/sup> nad zdeptanym sercem ludzkim!”",
+  "start": 3474.34
+ },
+ {
+  "i": 387,
+  "pl": "Wtem nasunęło mu się pytanie:",
+  "start": 3481.62
+ },
+ {
+  "i": 388,
+  "pl": "„Jeżeli poezja zatruła twoje życie, to któż zatruł ją samą? I dlaczego Mickiewicz, zamiast śmiać się i swawolić jak francuscy pieśniarze, umiał tylko tęsknić i rozpaczać?",
+  "start": 3484.31
+ },
+ {
+  "i": 389,
+  "pl": "Bo on, tak jak i ja, kochał pannę wysokiego urodzenia<sup>753<\/sup>, która mogła stać się nagrodą nie rozumu, nie pracy, nie poświęceń, nawet nie geniuszu, ale... pieniędzy i tytułu...”",
+  "start": 3499.23
+ },
+ {
+  "i": 390,
+  "pl": "„Biedny męczenniku! — szepnął Wokulski. — Tyś oddał narodowi, coś miał najlepszego; lecz cóżeś winien, że przelewając w niego własną duszę, razem z nią przelałeś cierpienia, jakimi nasycali ciebie? To oni są winni twoim, moim i naszym nieszczęściom...”",
+  "start": 3512.46
+ },
+ {
+  "i": 391,
+  "pl": "Podniósł się z fotelu i ze czcią zebrał porozdzierane kartki.",
+  "start": 3532.92
+ },
+ {
+  "i": 392,
+  "pl": "„Nie dość, że byłeś umęczony przez nich, ale jeszcze miałbyś odpowiadać za ich występki?... To oni winni, oni, że twoje serce, zamiast śpiewać, jęczało jak dzwon rozbity.”",
+  "start": 3537.78
+ },
+ {
+  "i": 393,
+  "pl": "Położył się na kanapie i znowu myślał:",
+  "start": 3551.09
+ },
+ {
+  "i": 394,
+  "pl": "„Szczególny kraj, w którym od tak dawna mieszkają obok siebie dwa całkiem różne narody: arystokracja i pospólstwo. Jeden mówi, że jest szlachetną rośliną, która ma prawo ssać glinę i mierzwę, a ten drugi albo przytakuje dzikim pretensjom, albo nie ma siły zaprotestować przeciw krzywdzie.",
+  "start": 3554.46
+ },
+ {
+  "i": 395,
+  "pl": "A jak się to wszystko składało na uwiecznienie monopolu jednej klasy i zdławienie w zarodku każdej innej! Tak silnie wierzono w powagę rodu, że nawet synowie rzemieślników i handlarzy albo kupowali herby, albo podszywali się pod jakieś zubożałe rody szlachetne.",
+  "start": 3576.06
+ },
+ {
+  "i": 396,
+  "pl": "Nikt nie miał odwagi nazwać się dzieckiem swoich zasług, a nawet ja, głupiec, wydałem kilkaset rubli na kupno szlacheckiego patentu.",
+  "start": 3595.39
+ },
+ {
+  "i": 397,
+  "pl": "I ja miałbym tam wracać?... Po co?... Tu przynajmniej mam naród żyjący wszystkimi zdolnościami, jakimi obdarowano człowieka.",
+  "start": 3606.0
+ },
+ {
+  "i": 398,
+  "pl": "Tu naczelnych miejsc nie obsiada pleśń podejrzanej starożytności, ale wysuwają się naprzód istotne siły: praca, rozum, wola, twórczość, wiedza, nawet piękność i zręczność, a nawet choćby szczere uczucie. Tam zaś praca staje pod pręgierzem, a triumfuje rozpusta!",
+  "start": 3616.22
+ },
+ {
+  "i": 399,
+  "pl": "Ten, kto dorabia się majątku, nosi tytuł sknery, kutwy, dorobkiewicza; ten, kto go trwoni, nazywa się: hojnym, bezinteresownym, wspaniałomyślnym... Tam prostota jest dziwactwem, oszczędność wstydem, uczoność równoznaczy z obłędem, artyzm symbolizuje się dziurawymi łokciami.",
+  "start": 3637.99
+ },
+ {
+  "i": 400,
+  "pl": "Tam, chcąc zdobyć miano człowieka, trzeba posiadać albo tytuł z pieniędzmi, albo talent wciskania się do przedpokojów. I ja bym tam miał wracać?...”",
+  "start": 3659.66
+ },
+ {
+  "i": 401,
+  "pl": "Począł chodzić po pokoju i liczyć:",
+  "start": 3672.01
+ },
+ {
+  "i": 402,
+  "pl": "„Geist jeden, ja drugi, Ochocki trzeci... Ze dwu jeszcze znajdziemy i za cztery albo pięć lat wyczerpalibyśmy owe osiem tysięcy doświadczeń, potrzebnych do znalezienia metalu lżejszego niż powietrze. No, a wtedy co?...",
+  "start": 3674.99
+ },
+ {
+  "i": 403,
+  "pl": "Co stanie się z dzisiejszym światem na widok pierwszej machiny latającej, bez skrzydeł, bez skomplikowanych mechanizmów, a trwałej jak okręt pancerny?”",
+  "start": 3691.0
+ },
+ {
+  "i": 404,
+  "pl": "Zdawało mu się, że szmer uliczny za jego oknami rozszerza się i potęguje ogarniając cały Paryż, Francję i Europę. I że wszystkie głosy ludzkie zlewają się w jeden ogromny okrzyk:",
+  "start": 3703.66
+ },
+ {
+  "i": 405,
+  "pl": "„Sława!... sława!... sława!...”",
+  "start": 3717.2
+ },
+ {
+  "i": 406,
+  "pl": "„Oszalałem?” — mruknął.",
+  "start": 3721.11
+ },
+ {
+  "i": 407,
+  "pl": "Szybko rozpiął kamizelkę i wydobywszy spod koszuli złoty medalion otworzył go. Skrawek metalu, podobnego do mosiądzu i lekkiego jak puch, był na swoim miejscu. Geist nie łudził go; droga do olbrzymiego wynalazku była na oścież otwarta.",
+  "start": 3723.57
+ },
+ {
+  "i": 408,
+  "pl": "„Zostaję! — szepnął. — Bóg ani ludzie nie przebaczyliby mi zaniedbania podobnej sprawy.”",
+  "start": 3744.1
+ },
+ {
+  "i": 409,
+  "pl": "Mrok już zapadał. Wokulski zaświecił gazowe lampy nad stołem, wydobył papier i pióro i zaczął pisać:",
+  "start": 3751.67
+ },
+ {
+  "i": 410,
+  "pl": "„Mój Ignacy! chcę pogadać z tobą o bardzo ważnych rzeczach, a ponieważ do Warszawy już nie wrócę, proszę cię więc, ażebyś jak najśpieszniej...”",
+  "start": 3761.38
+ },
+ {
+  "i": 411,
+  "pl": "Nagle rzucił pióro: jakaś trwoga opanowała go na widok napisanych przez siebie wyrazów: „do Warszawy już nie wrócę...”",
+  "start": 3771.9
+ },
+ {
+  "i": 412,
+  "pl": "„Dlaczego nie mam wrócić?...” — szepnął.",
+  "start": 3782.34
+ },
+ {
+  "i": 413,
+  "pl": "„A po co?... Może po to, ażeby znowu spotkać pannę Izabelę, znowu stracić energię?...”",
+  "start": 3785.23
+ },
+ {
+  "i": 414,
+  "pl": "„Raz nareszcie muszę zamknąć te głupie rachunki...”",
+  "start": 3791.92
+ },
+ {
+  "i": 415,
+  "pl": "Chodził i myślał:",
+  "start": 3795.71
+ },
+ {
+  "i": 416,
+  "pl": "„Oto dwie drogi: jedna wiedzie do nieobliczonych reform ludzkości, druga do podobania się, a nawet, przypuśćmy, do zdobycia kobiety. Co wybrać?...",
+  "start": 3797.07
+ },
+ {
+  "i": 417,
+  "pl": "Bo jużci jest faktem, że każdy nowy a ważny materiał, każda nowa siła to nowe piętro cywilizacji. Brąz stworzył cywilizację klasyczną, żelazo wieki średnie; proch zakończył wieki średnie, a węgiel kamienny rozpoczął wiek dziewiętnasty.",
+  "start": 3809.91
+ },
+ {
+  "i": 418,
+  "pl": "Co się tu wahać: metale Geista dadzą początek takiej cywilizacji, o jakiej nie marzono, i kto wie, czy wprost nie uszlachetnią gatunku ludzkiego...",
+  "start": 3828.23
+ },
+ {
+  "i": 419,
+  "pl": "A z drugiej strony cóż mam?... Kobietę, która przy takich jak ja parweniuszach nie wahałaby się kąpać. Czym jestem w jej oczach obok tych wykwintnisiów, dla których pusta rozmowa, koncept, kompliment stanowią najwyższą treść życia.",
+  "start": 3837.99
+ },
+ {
+  "i": 420,
+  "pl": "Co ta czereda, nie wyłączając jej samej, powiedziałaby na widok obdartego Geista i jego niezmiernych odkryć? Tak są ciemni, że nawet nie dziwiliby się temu.",
+  "start": 3856.96
+ },
+ {
+  "i": 421,
+  "pl": "Przypuśćmy wreszcie, żebym się z nią ożenił, a wtedy co?... Natychmiast do salonu dorobkiewicza wleliby się wszyscy jawni i tajni wielbiciele, kuzyni rozmaitego stopnia, czy ja wiem wreszcie kto!...",
+  "start": 3869.1
+ },
+ {
+  "i": 422,
+  "pl": "I znowu musiałbym zamykać oczy na ich spojrzenia, głuchnąć na ich komplimenta, dyskretnie usuwać się od ich poufnych rozmów — o czym?... O mojej hańbie czy głupocie?...",
+  "start": 3883.78
+ },
+ {
+  "i": 423,
+  "pl": "Po roku tego życia spodliliby mnie tak, że może zniżyłbym się do zazdrości o podobne indywidua...",
+  "start": 3897.16
+ },
+ {
+  "i": 424,
+  "pl": "Ach, czy nie wolałbym rzucić serce głodnemu psu aniżeli oddać je kobiecie, która nawet nie domyśla się, jaka jest różnica między nimi a mną.",
+  "start": 3904.05
+ },
+ {
+  "i": 425,
+  "pl": "Basta!...”",
+  "start": 3913.31
+ },
+ {
+  "i": 426,
+  "pl": "Znowu usiadł przy stole i zaczął list do Geista. Nagle przerwał:",
+  "start": 3915.43
+ },
+ {
+  "i": 427,
+  "pl": "„Paradny jestem — rzekł głośno — chcę pisać zobowiązanie nie uregulowawszy moich interesów...”",
+  "start": 3920.27
+ },
+ {
+  "i": 428,
+  "pl": "„Oto zmieniły się czasy! — myślał. — Dawniej taki Geist byłby symbolem szatana, z którym walczy o duszę ludzką anioł w postaci kobiety. A dzisiaj... kto jest szatanem, a kto aniołem?...”",
+  "start": 3927.34
+ },
+ {
+  "i": 429,
+  "pl": "Wtem zapukano do drzwi. Wszedł garson i podał Wokulskiemu duży list.",
+  "start": 3939.84
+ },
+ {
+  "i": 430,
+  "pl": "„Z Warszawy — szepnął. — Od Rzeckiego?... Przysyła mi jakiś drugi list... Ach, od prezesowej!... Co, może donosi mi o ślubie panny Izabeli?...”",
+  "start": 3946.2
+ },
+ {
+  "i": 431,
+  "pl": "Rozerwał kopertę, lecz przez chwilę wahał się z odczytaniem. Serce zaczęło mu bić spieszniej.",
+  "start": 3956.06
+ },
+ {
+  "i": 432,
+  "pl": "„Wszystko jedno!” — mruknął i zaczął:",
+  "start": 3963.36
+ },
+ {
+  "i": 433,
+  "pl": "„Mój kochany panie Stanisławie! Dobrze, widać, bawisz się, podobno nawet w Paryżu, kiedy zapominasz o swoich przyjaciołach. A grób śp. biednego stryja twego wciąż czeka na obiecany kamień i ja także chciałabym poradzić się ciebie o budowę cukrowni, do której namawiają mnie na stare lata.",
+  "start": 3966.45
+ },
+ {
+  "i": 434,
+  "pl": "Wstydź się, panie Stanisławie, a nade wszystko żałuj, że nie widzisz rumieńca na twarzy Beli, która w tej chwili jest u mnie i spiekła raczka usłyszawszy, że piszę do ciebie. Kochane dziecko! Mieszka u ciotki w sąsiedztwie i często mnie odwiedza.",
+  "start": 3987.2
+ },
+ {
+  "i": 435,
+  "pl": "Domyślam się, że zrobiłeś jej jakąś dużą przykrość; nie ociągaj się więc z przeprosinami i jak najrychlej przyjeżdżaj prosto do mnie. Bela zabawi tu jeszcze kilka dni i może uda mi się wyjednać ci przebaczenie...”",
+  "start": 4002.66
+ },
+ {
+  "i": 436,
+  "pl": "Wokulski zerwał się od stołu, otworzył okno i postawszy w nim chwilę przeczytał drugi raz list prezesowej; oczy zaiskrzyły mu się, na twarz wystąpiły wypieki.",
+  "start": 4017.74
+ },
+ {
+  "i": 437,
+  "pl": "Zadzwonił raz, drugi, trzeci... Wreszcie sam wybiegł na korytarz wołając:",
+  "start": 4028.28
+ },
+ {
+  "i": 438,
+  "pl": "— Garson!... Hej, garson!...",
+  "start": 4033.66
+ },
+ {
+  "i": 439,
+  "pl": "— Do usług...",
+  "start": 4036.12
+ },
+ {
+  "i": 440,
+  "pl": "— Rachunek.",
+  "start": null
+ },
+ {
+  "i": 441,
+  "pl": "— Jaki?...",
+  "start": 4038.04
+ },
+ {
+  "i": 442,
+  "pl": "— Cały rachunek za ostatnie pięć dni... Cały, nie rozumiesz?...",
+  "start": 4039.2
+ },
+ {
+  "i": 443,
+  "pl": "— Czy zaraz? — zdziwił się garson.",
+  "start": 4042.48
+ },
+ {
+  "i": 444,
+  "pl": "— Natychmiast i... powóz na dworzec kolei północnej<sup>754<\/sup>... Natychmiast!",
+  "start": 4044.6
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>

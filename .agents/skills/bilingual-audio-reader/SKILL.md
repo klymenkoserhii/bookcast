@@ -42,6 +42,10 @@ The builder reads a sibling `annotations.md` by default, or accepts `--annotatio
 
 ## Index and vocabulary integration
 
+Preserve the Firebase authentication gate in generated Bookcast book indexes, including any book-local `index.template.html` that takes precedence over the bundled template. After rebuilding, verify signed-in access, signed-out redirect to `../login.html`, auth-error retry, and the `file://` bypass; report any cases not tested. The gate does not protect direct chapter or audio URLs.
+
+When adding a book to Bookcast's main catalog, update `public/index.html` without replacing its existing Firebase authentication gate. Keep the catalog hidden until HTTP/HTTPS sign-in is confirmed, redirect signed-out users to login, preserve the auth-error retry and the `file://` bypass. Verify all four cases after catalog changes; report any cases not tested. This client-side gate does not protect direct book URLs.
+
 Use `build_index.py` for a book contents page; follow `references/index-page.md`. The bilingual `book.json` has title, author, an eyebrow such as `Bilingual study edition · PL → UA`, reader/vocabulary patterns, and chapters with number and Ukrainian `name`. Optionally add `pl` for the Polish chapter title: it becomes the visible linked label, while `name` appears in an accessible, annotation-style tooltip on hover and keyboard focus. Without `pl`, the existing `name` remains the visible label. Rebuild the index when chapters/readers/vocabulary pages change.
 
 Reader cards keep stable `id="u-N"` anchors because vocabulary examples link to them. Preserve these anchors when changing templates.

@@ -1,0 +1,2533 @@
+<!doctype html>
+<!--
+  ==========================================================================
+  timestamp-helper.html — manual boundary stamping (standalone)
+  ··········································································
+  Use this when align_audio.py got a boundary wrong, or to build timestamps
+  by ear for a chapter you have not run ASR on.
+
+  HOW IT WORKS
+  1. Open this file next to ../../public/lalka-2/audio/chapter-02.webm (or use "Load MP3…").
+  2. Press  ▶ Play  (or the P key).
+  3. At the exact moment each Polish section STARTS, press  SPACE.
+     The stamp lands on the highlighted row and the cursor moves to the
+     next row automatically — so you just follow the recording and tap.
+  4. SPACE again = play/pause.  BACKSPACE = undo last stamp.  ↑/↓ = move row.
+  5. Copy the generated `const AUDIO_TIMES = [...]` block into
+     chapter-02.html (section 2), replacing the old array. That is all.
+
+  Rows are pre-filled with the current AUDIO_TIMES, so you only need to
+  correct the ones that are off. Times are in seconds, editable by hand.
+  ==========================================================================
+-->
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lalka · Tom II · Rozdział II — timestamp helper</title>
+<style>
+  :root {
+    --bg:#fbfaf7; --surface:#fff; --ink:#15140f; --ink-soft:#3d3a33; --muted:#7c766c;
+    --line:#e5e0d6; --line-strong:#d3ccbe; --accent:#2c6e4f; --accent-soft:#e6f1ea;
+    --accent-ink:#fff; --warn:#b4541f; --warn-soft:#fdf0ea; --shadow:0 1px 2px rgba(24,20,10,.05),0 6px 18px rgba(24,20,10,.04);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  html[data-theme="dark"] {
+    --bg:#12120f; --surface:#1b1a16; --ink:#f2efe6; --ink-soft:#d6d1c4; --muted:#9a9486;
+    --line:#2b2924; --line-strong:#3b3831; --accent:#7fc9a2; --accent-soft:#1e2b23;
+    --accent-ink:#10231a; --warn:#e0a07c; --warn-soft:#2a1a14;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:15px}
+
+  header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);
+         backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+  h1{font-family:var(--serif);font-size:1rem;margin:0;flex:1 1 220px;font-weight:600}
+  h1 small{display:block;font-family:var(--sans);font-size:.7rem;color:var(--muted);font-weight:400}
+
+  .transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:.8rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+         background:var(--surface);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:var(--line-strong)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn);border-color:var(--line)}
+  .time{font-family:var(--mono);font-size:1.5rem;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .time small{font-size:.75rem;color:var(--muted);letter-spacing:0}
+
+  main{max-width:1080px;margin:0 auto;padding:14px 16px 120px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+            margin:0;padding:12px 14px 8px;font-weight:600}
+
+  .seek{width:100%;accent-color:var(--accent);margin:0;padding:0 14px 10px;cursor:pointer}
+  .bar{padding:0 14px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  ol.rows{list-style:none;margin:0;padding:0 6px 10px;max-height:62vh;overflow:auto}
+  li.row{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;cursor:pointer;border:1px solid transparent}
+  li.row:hover{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+  li.row.active{border-color:var(--accent);background:var(--accent-soft)}
+  li.row.empty .val{color:var(--warn)}
+  .idx{font-family:var(--mono);font-size:.7rem;color:var(--muted);width:26px;flex:none;text-align:right}
+  .txt{flex:1;min-width:0;font-size:.82rem;color:var(--ink-soft);
+       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .val{font-family:var(--mono);font-size:.78rem;width:62px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+  input.t{font-family:var(--mono);font-size:.76rem;width:72px;flex:none;text-align:right;
+          padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .stamp{font-size:.7rem;padding:2px 7px;flex:none}
+
+  pre#out{margin:0;padding:10px 12px 14px;font-family:var(--mono);font-size:.68rem;line-height:1.5;
+          max-height:44vh;overflow:auto;white-space:pre;color:var(--ink-soft);
+          border-top:1px solid var(--line);background:var(--bg);border-radius:0 0 14px 14px}
+  .hint{font-size:.75rem;color:var(--muted);margin:0;padding:0 14px 12px}
+  kbd{font-family:var(--mono);font-size:.7rem;padding:1px 5px;border:1px solid var(--line-strong);
+      border-radius:5px;background:var(--bg-soft,#f4f1ea)}
+  .flash{animation:flash .45s ease}
+  @keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:var(--bg);
+         padding:8px 14px;border-radius:999px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .25s}
+  .toast.show{opacity:.94}
+  .file{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--muted)}
+  .file input{font-size:.72rem;max-width:180px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <h1>Timestamp helper<small>Lalka · Tom II · Rozdział II · tap <kbd>Space</kbd> at every PL section start</small></h1>
+    <div class="transport">
+      <button id="play" class="primary" type="button">▶ Play</button>
+      <span class="time"><span id="tnow">0:00.0</span> <small>/ <span id="tdur">0:00</span></small></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Sections — <span id="counter">0</span> stamped</h2>
+    <input id="seek" class="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="bar">
+      <button id="undo" class="ghost" type="button" title="Backspace">↩ Undo</button>
+      <button id="markNext" type="button" title="Space">⟵ Stamp here</button>
+      <button id="clear" class="ghost danger" type="button">Clear all</button>
+      <label class="file">MP3 <input id="file" type="file" accept="audio/*"></label>
+    </div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="panel">
+    <h2>Generated array</h2>
+    <p class="hint">
+      <kbd>Space</kbd> stamp · <kbd>P</kbd> play/pause · <kbd>↑↓</kbd> row ·
+      <kbd>Enter</kbd> seek to row · <kbd>Backspace</kbd> undo
+    </p>
+    <div class="bar">
+      <button id="copy" class="primary" type="button">Copy</button>
+      <button id="download" type="button">Download .js</button>
+      <button id="theme" class="ghost" type="button" aria-label="Toggle dark mode">🌙</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" src="../../public/lalka-2/audio/chapter-02.webm" preload="metadata"></audio>
+
+<script>
+"use strict";
+
+/* ===================================================================== */
+/* 1. DATA — sections from the same Markdown (start = current values)    */
+/* ===================================================================== */
+const SECTIONS = [
+ {
+  "i": 0,
+  "pl": "W kwadrans po wyjeździe z Warszawy koleją warszawsko–bydgoską<sup>600<\/sup> Wokulski doznał dwu szczególnych, choć zupełnie różnych uczuć: owionęło go świeże powietrze, a on sam wpadł w jakiś dziwny letarg.",
+  "start": 6.29
+ },
+ {
+  "i": 1,
+  "pl": "Poruszał się swobodnie, był trzeźwy, myślał jasno i szybko, tylko nic go nie obchodziło; ani kto z nim jedzie, ani którędy jedzie, ani dokąd jedzie. Apatia ta rosła w miarę oddalania się od Warszawy.",
+  "start": 22.38
+ },
+ {
+  "i": 2,
+  "pl": "Za Pruszkowem<sup>601<\/sup> prawie ucieszyły go krople deszczu, przez otwarte okno padające do wnętrza wagonu; później nieco ożywiła go gwałtowna burza za Grodziskiem; miał nawet pragnienie, ażeby go piorun zabił.",
+  "start": 37.46
+ },
+ {
+  "i": 3,
+  "pl": "Ale gdy burza przeszła, wpadł znowu w obojętność i nie interesował się niczym; nawet tym, że jego sąsiad z prawej strony spał mu na ramieniu, a sąsiad z przeciwka zdjął kamasze i oparł mu na kolanach nogi, w czystych zresztą skarpetkach.",
+  "start": 51.64
+ },
+ {
+  "i": 4,
+  "pl": "Około północy napadło na niego coś, jakby sen, a może tylko jeszcze większa obojętność. Zasłonił firanką latarnię wagonu, przymknął oczy i myślał, że ta osobliwa apatia skończy się ze wschodem słońca. Ale nie skończyła się; owszem, do rana wzrosła i rosła coraz bardziej.",
+  "start": 68.91
+ },
+ {
+  "i": 5,
+  "pl": "Nie było mu z nią dobrze ani źle; tak sobie.",
+  "start": 91.3
+ },
+ {
+  "i": 6,
+  "pl": "Potem wzięto od niego paszport, potem zjadł śniadanie, kupił nowy bilet, kazał przenieść rzeczy do innego pociągu i ruszyli dalej. Nowa stacja, nowa zmiana pociągów, nowa jazda... Wagon drżał i turkotał, lokomotywa co pewien czas świstała, zatrzymywała się...",
+  "start": 95.65
+ },
+ {
+  "i": 7,
+  "pl": "Do przedziału zaczęli siadać ludzie mówiący po niemiecku, dwoje, troje... Potem całkiem zniknęli ludzie mówiący po polsku i wagon napełnił się samymi Niemcami.",
+  "start": 114.33
+ },
+ {
+  "i": 8,
+  "pl": "Zmieniał się też krajobraz. Ukazały się lasy otoczone wałami i złożone z drzew stojących w tak równej odległości jak żołnierze. Znikły drewniane chaty kryte słomą i coraz częściej zaczęły się pojawiać piętrowe domki kryte dachówką, otoczone ogródkami. Znowu postój, znowu jedzenie.",
+  "start": 126.32
+ },
+ {
+  "i": 9,
+  "pl": "Jakieś ogromne miasto... Ach! To chyba Berlin... Znowu jazda... Do wagonu siadają ludzie wciąż mówiący po niemiecku, ale jakby innym akcentem. Potem noc i sen... Nie, to nie sen, to tylko apatia.",
+  "start": 146.95
+ },
+ {
+  "i": 10,
+  "pl": "Zjawia się dwu Francuzów w przedziale. Krajobraz całkiem odmienny; szerokie horyzonty, wzgórza, winnice. Tu i owdzie wielki dom piętrowy, stary, ale krzepki, zasłonięty drzewami, zawinięty jakby w bluszcze. Znowu rewizja walizki.",
+  "start": 162.98
+ },
+ {
+  "i": 11,
+  "pl": "Zmiana pociągów, do wagonu wchodzi dwu Francuzów i jedna Francuzka i robią taki hałas, jakby ich było z dziesięcioro. Są to ludzie widocznie dobrze wychowani; pomimo to śmieją się, kilka razy zmieniają miejsca i przepraszają Wokulskiego, lecz za co, on sam nie wie.",
+  "start": 181.02
+ },
+ {
+  "i": 12,
+  "pl": "Na jednej ze stacyj Wokulski pisze kartkę do Suzina: „Paris — Grand Hotel”<sup>602<\/sup>, i daje ją konduktorowi wagonu razem z jakimś banknotem, nie troszcząc się ani o to, ile dał, ani o to, czy depesza dojdzie. Na następnej stacji ktoś wsuwa mu w rękę cały zwitek banknotów i jadą dalej.",
+  "start": 197.02
+ },
+ {
+  "i": 13,
+  "pl": "Wokulski spostrzega, że znowu jest noc, i znowu zapada w stan, który może być snem, a może tylko utratą przytomności.",
+  "start": 217.65
+ },
+ {
+  "i": 14,
+  "pl": "Ma oczy zamknięte, pomimo to myśli, że śpi i że ten dziwny stan zobojętnienia opuści go w Paryżu.",
+  "start": 226.01
+ },
+ {
+  "i": 15,
+  "pl": "„Paryż!... Paryż!... (mówi sobie, ciągle śpiąc). Wszakże od tylu lat o nim tylko marzyłem. To przejdzie... Wszystko przejdzie!...”",
+  "start": 235.6
+ },
+ {
+  "i": 16,
+  "pl": "Godzina dziesiąta rano, nowa stacja. Pociąg staje pod dachem; hałas, krzyk, bieganina. Wokulskiego napada od razu trzech Francuzów ofiarujących mu usługi. Nagle ktoś chwyta go za ramię.",
+  "start": 245.15
+ },
+ {
+  "i": 17,
+  "pl": "— No, Stanisławie Piotrowiczu, twoje szczęście, żeś przyjechał...",
+  "start": 258.21
+ },
+ {
+  "i": 18,
+  "pl": "Wokulski przypatruje się przez chwilę jakiemuś olbrzymowi z czerwoną twarzą i konopiastą brodą, wreszcie mówi:",
+  "start": 263.05
+ },
+ {
+  "i": 19,
+  "pl": "— Ach, Suzin!",
+  "start": 271.11
+ },
+ {
+  "i": 20,
+  "pl": "Padają sobie w objęcia. Suzinowi towarzyszy jeszcze dwu Francuzów, z których jeden odbiera Wokulskiemu bilet na rzeczy.",
+  "start": 273.66
+ },
+ {
+  "i": 21,
+  "pl": "— Twoje szczęście, żeś przyjechał — mówi Suzin całując go jeszcze raz. — Myślałem, że się skręcę w tym Paryżu bez ciebie...",
+  "start": 281.8
+ },
+ {
+  "i": 22,
+  "pl": "„Paryż...” — myśli Wokulski.",
+  "start": 290.16
+ },
+ {
+  "i": 23,
+  "pl": "— O mnie mniejsza — ciągnie dalej Suzin. — Takeś zhardział pomiędzy waszą parszywą szlachtą, że o mnie już nie dbasz. Ale dla ciebie samego szkoda pieniędzy... Straciłbyś z pięćdziesiąt tysięcy rubli...",
+  "start": 292.62
+ },
+ {
+  "i": 24,
+  "pl": "Dwaj Francuzi, towarzyszący Suzinowi, ukazują się znowu i mówią im, że już mogą jechać. Suzin bierze pod rękę Wokulskiego i wyprowadza go na plac, gdzie stoi mnóstwo omnibusów i powozów jedno- i dwukonnych, z woźnicami umieszczonymi z przodu lub z tyłu.",
+  "start": 305.26
+ },
+ {
+  "i": 25,
+  "pl": "Przeszedłszy kilkanaście kroków trafiają na dwukonny powóz z lokajem. Siadają i jadą.",
+  "start": 325.04
+ },
+ {
+  "i": 26,
+  "pl": "— Patrzaj — mówi Suzin — to ulica Lafayette<sup>603<\/sup>, a ot bulwar Magenta. Jedziem wciąż Lafayettem aż do hotelu przy Operze<sup>604<\/sup>. Powiadam tobie, cud, nie miasto! No, a jak zobaczysz Elizejskie Pola<sup>605<\/sup>, a potem między Sekwaną i Rivoli<sup>606<\/sup>...",
+  "start": 332.86
+ },
+ {
+  "i": 27,
+  "pl": "Eh! ja tobie mówię, cud, nie miasto... Kobiety tylko trochę zanadto wypychają się. Ale tu inszy smak... Na wszelki sposób cieszę się, żeś przyjechał; pięćdziesiąt albo i więcej tysięcy rubli to nie nic... Ot, widzisz, Opera, a ot bulwar Kapucyński, a ot nasza chata.",
+  "start": 354.34
+ },
+ {
+  "i": 28,
+  "pl": "Wokulski spostrzega ogromny pięciopiętrowy gmach, formy klinowatej, na wysokości drugiego piętra otoczony żelazną balustradą, przy szerokiej ulicy wysadzonej niezbyt starymi drzewami, pełnej omnibusów, powozów, ludzi konnych i pieszych.",
+  "start": 372.88
+ },
+ {
+  "i": 29,
+  "pl": "Ruch jest tak wielki, jak gdyby co najmniej połowa Warszawy biegła na zobaczenie jakiegoś wypadku; ulica jest tak gładka jak posadzka. Widzi, że jest w samym środku Paryża, lecz nie doznaje ani wzruszenia, ani ciekawości. Nic go nie obchodzi.",
+  "start": 389.56
+ },
+ {
+  "i": 30,
+  "pl": "Powóz wjeżdża we wspaniałą bramę, lokaj otwiera drzwiczki, wysiadają. Suzin bierze Wokulskiego pod rękę i prowadzi do małego pokoiku, który po chwili zaczyna wznosić się w górę.",
+  "start": 407.14
+ },
+ {
+  "i": 31,
+  "pl": "— A ot winda — mówi Suzin. — Ja mam tu dwa mieszkania. Jedno na pierwszym piętrze za sto franków dziennie, drugie na trzecim za dziesięć franków. I dla ciebie wziąłem za dziesięć franków. Trudna rada — wystawa!...",
+  "start": 418.52
+ },
+ {
+  "i": 32,
+  "pl": "Wychodzą z windy na korytarz i po chwili znajdują się w eleganckim saloniku, który posiada mahoniowe meble, szerokie łóżko pod baldachimem i szafę mającą zamiast drzwi ogromne lustro.",
+  "start": 434.38
+ },
+ {
+  "i": 33,
+  "pl": "— Siadaj, Stanisławie Piotrowiczu. Chcesz jeść czy pić, tu czy w sali? No, pięćdziesiąt tysięcy twoje... Bardzom kontent...",
+  "start": 446.12
+ },
+ {
+  "i": 34,
+  "pl": "— Powiedz mi — po raz pierwszy odezwał się Wokulski — za cóż to ja mam dostać pięćdziesiąt tysięcy?...",
+  "start": 454.8
+ },
+ {
+  "i": 35,
+  "pl": "— Może i więcej.",
+  "start": 461.04
+ },
+ {
+  "i": 36,
+  "pl": "— Dobrze, ale za co?",
+  "start": 462.7
+ },
+ {
+  "i": 37,
+  "pl": "Suzin rzuca się na fotel, opiera ręce na brzuchu i wybucha śmiechem.",
+  "start": 464.71
+ },
+ {
+  "i": 38,
+  "pl": "— Ot, za to samo, że się pytasz!... Inny nie pyta: za co weźmie pieniądze, tylko dawaj... A ty jeden chcesz wiedzieć: za co zarobisz takie pieniądze. Ach, ty gołąbku!...",
+  "start": 469.25
+ },
+ {
+  "i": 39,
+  "pl": "— To nie jest odpowiedź.",
+  "start": 480.95
+ },
+ {
+  "i": 40,
+  "pl": "— Zaraz ja tobie odpowiem — mówi Suzin. — Najpierw za to, żeś ty mnie jeszcze w Irkucku przez cztery lata rozumu uczył. Żeby nie ty, ja nie byłbym ten Suzin co dziś. No, a ja, Stanisławie Piotrowiczu, ja nie wasz człowiek: za dobro daję dobro...",
+  "start": 483.17
+ },
+ {
+  "i": 41,
+  "pl": "— I to nie odpowiedź — wtrącił Wokulski.",
+  "start": 502.24
+ },
+ {
+  "i": 42,
+  "pl": "Suzin wzruszył ramionami.",
+  "start": 505.84
+ },
+ {
+  "i": 43,
+  "pl": "— Już ty w tej izbie nie chciej ode mnie objaśnienia; a tam na dole sam zrozumiesz. Może być, kupię trochę galanteryj paryskich, a może być, kilkanaście statków kupieckich. Ja po francusku ani w ząb i po niemiecku też, więc trzeba mi człowieka takiego jak ty...",
+  "start": 507.52
+ },
+ {
+  "i": 44,
+  "pl": "— Nie znam się na statkach.",
+  "start": 524.58
+ },
+ {
+  "i": 45,
+  "pl": "— Bądź spokojny. Znajdziem tu inżynierów kolejowych i morskich, i wojskowych... Mnie nie o nich chodzi, ale o człowieka, który by gadał za mnie — dla mnie. Zresztą, mówię tobie, jak zejdziemy tam na dół, miej ty dwie pary oczów i dwie pary uszów, ale jak wyjdziemy stamtąd, nie miej ty nawet pamięci.",
+  "start": 526.93
+ },
+ {
+  "i": 46,
+  "pl": "Ty to potrafisz, Stanisławie Piotrowiczu, a o resztę nie pytaj się. Ja zarobię dziesięć procent, tobie dam dziesięć procent od mego zarobku i sprawa skończona. A na co to, dla kogo i przeciw komu — nie pytaj.",
+  "start": 549.31
+ },
+ {
+  "i": 47,
+  "pl": "Wokulski milczał.",
+  "start": 564.41
+ },
+ {
+  "i": 48,
+  "pl": "— O czwartej przyjdą do mnie fabrykanci amerykańscy i francuscy. Możesz zejść? — spytał Suzin.",
+  "start": 566.33
+ },
+ {
+  "i": 49,
+  "pl": "— Dobrze.",
+  "start": 572.61
+ },
+ {
+  "i": 50,
+  "pl": "— A teraz przejdziesz się po mieście?",
+  "start": 574.05
+ },
+ {
+  "i": 51,
+  "pl": "— Nie. Teraz pójdę spać.",
+  "start": 576.77
+ },
+ {
+  "i": 52,
+  "pl": "— No, to i dobrze. Chodźże do twego mieszkania.",
+  "start": 578.35
+ },
+ {
+  "i": 53,
+  "pl": "Opuścili numer Suzina i o kilkanaście kroków dalej weszli do podobnego zupełnie saloniku: Wokulski rzucił się na łóżko, Suzin wyszedł na palcach i zamknął drzwi.",
+  "start": 582.93
+ },
+ {
+  "i": 54,
+  "pl": "Po odejściu Suzina Wokulski przymknął oczy i usiłował zasnąć. Może nie tyle zasnąć, ile odpędzić od siebie jakąś myśl natrętną, przed którą uciekł z Warszawy.",
+  "start": 594.87
+ },
+ {
+  "i": 55,
+  "pl": "Przez pewien czas zdawało mu się, że jej nie ma, że została tam i że dopiero szuka go stroskana, tułając się od Krakowskiego Przedmieścia do Alei Ujazdowskiej.",
+  "start": 607.1
+ },
+ {
+  "i": 56,
+  "pl": "„Gdzie on jest?... gdzie on jest?...” — szeptało widmo.",
+  "start": 618.54
+ },
+ {
+  "i": 57,
+  "pl": "„A jeżeli poleci za mną?... — spytał samego siebie Wokulski. — No, już chyba tu mnie nie znajdzie w tak wielkim mieście, w takim ogromnym hotelu...”",
+  "start": 622.56
+ },
+ {
+  "i": 58,
+  "pl": "„A może mnie już szuka?...” — pomyślał.",
+  "start": 632.25
+ },
+ {
+  "i": 59,
+  "pl": "Zamknął oczy jeszcze mocniej i począł huśtać się na materacu, który wydał mu się nadzwyczajnie szerokim i wyjątkowo sprężystym. Był pogrążony w dwu szmerach. Za drzwiami, na hotelowym korytarzu, ludzie rozmawiali i biegali, jakby w tej chwili stało się coś; za oknem, na ulicy,",
+  "start": 635.18
+ },
+ {
+  "i": 60,
+  "pl": "rozlegał się nieokreślony hałas, na który składają się turkoty licznych wozów, dźwięki dzwonów, głosy ludzkie, trąbki, wystrzały i Bóg nie wie co, a wszystko przytłumione i odległe.",
+  "start": 655.08
+ },
+ {
+  "i": 61,
+  "pl": "Potem przywidziało mu się, że jakiś cień zagląda do jego okna, a później, że po długim korytarzu ktoś chodzi ode drzwi do drzwi, puka i pyta:",
+  "start": 667.11
+ },
+ {
+  "i": 62,
+  "pl": "„Czy nie ma go tu?...”",
+  "start": 677.19
+ },
+ {
+  "i": 63,
+  "pl": "Istotnie ktoś chodził, pukał i nawet zapukał do jego drzwi; lecz nie odebrawszy odpowiedzi poszedł dalej.",
+  "start": 679.51
+ },
+ {
+  "i": 64,
+  "pl": "„Nie znajdzie mnie!... nie znajdzie...” — myślał Wokulski.",
+  "start": 687.13
+ },
+ {
+  "i": 65,
+  "pl": "Wtem otworzył oczy i włosy powstały mu na głowie.",
+  "start": 692.08
+ },
+ {
+  "i": 66,
+  "pl": "Naprzeciw siebie zobaczył taki sam pokój jak jego, takie samo łóżko z baldachimem, a na nim... siebie!... Było to jedno z najsilniejszych wstrząśnień, jakich doznał w życiu, sprawdziwszy własnymi oczyma, że tu, gdzie uważał się za zupełnie samotnego, towarzyszy mu nieodstępny świadek... on sam!...",
+  "start": 696.02
+ },
+ {
+  "i": 67,
+  "pl": "„Co za oryginalne szpiegowanie... — mruknął. — Głupie te szafy z lustrami.”",
+  "start": 717.75
+ },
+ {
+  "i": 68,
+  "pl": "Zerwał się z łóżka, jego sobowtór zerwał się równie szybko. Pobiegł do okna — tamten także. Otworzył gorączkowo walizkę, ażeby przebrać się, i tamten również zaczął przebierać się, widocznie z zamiarem wyjścia na miasto.",
+  "start": 723.19
+ },
+ {
+  "i": 69,
+  "pl": "Wokulski czuł, że musi uciec z tego pokoju. Widmo, przed którym wyjechał z Warszawy, było już tu i stało za progiem.",
+  "start": 739.24
+ },
+ {
+  "i": 70,
+  "pl": "Umył się, włożył czystą bieliznę, przebrał się. Było ledwie wpół do pierwszej.",
+  "start": 748.4
+ },
+ {
+  "i": 71,
+  "pl": "„Trzy i pół godzin! — pomyślał. — Coś trzeba z nimi zrobić...”",
+  "start": 753.78
+ },
+ {
+  "i": 72,
+  "pl": "Ledwie otworzył drzwi, już znalazł się służący z frazesem:",
+  "start": 758.62
+ },
+ {
+  "i": 73,
+  "pl": "— Monsieur?<sup>607<\/sup>...",
+  "start": 763.02
+ },
+ {
+  "i": 74,
+  "pl": "Wokulski kazał zaprowadzić się do schodów, dał służącemu franka i zbiegł z trzeciego piętra na dół, jak człowiek, którego ścigają.",
+  "start": 765.66
+ },
+ {
+  "i": 75,
+  "pl": "Wyszedł przed bramę i zatrzymał się na chodniku. Ulica szeroka, wysadzona drzewami<sup>608<\/sup>. W jednej chwili przelatuje około niego ze sześć powozów i żółty omnibus, naładowany podróżnymi wewnątrz i na dachu.",
+  "start": 773.77
+ },
+ {
+  "i": 76,
+  "pl": "Na prawo, gdzieś bardzo daleko, widać plac<sup>609<\/sup>, na lewo — pod hotelem — niedużą markizę<sup>610<\/sup> a pod nią gromadę mężczyzn i kobiet, którzy siedzą przy okrągłych stoliczkach, prawie na chodniku, i piją kawę.",
+  "start": 788.44
+ },
+ {
+  "i": 77,
+  "pl": "Panowie są jak wydekoltowani, mają w dziurkach od guzików kwiaty lub wstążeczki i zakładają nogi na kolana akurat tak wysoko, jak przystoi w sąsiedztwie pięciopiętrowych domów; kobiety szczupłe, małe, śniade, z ognistymi spojrzeniami, lecz skromnie ubrane.",
+  "start": 802.54
+ },
+ {
+  "i": 78,
+  "pl": "Wokulski idzie w lewo i za węgłem tego samego hotelu, w tymże samym hotelu, widzi drugą markizę i drugą gromadę ludzi, pijących coś, obok chodnika. Tu siedzi ze sto osób, jeżeli nie więcej; panowie mają miny impertynentów, damy są ożywione, przyjacielskie i pełne prostoty.",
+  "start": 821.04
+ },
+ {
+  "i": 79,
+  "pl": "Powozy jedno– i dwukonne toczą się w dalszym ciągu, gromady pieszych pędzą co chwilę w jedną i drugą stronę, przesuwa się żółty i zielony omnibus, tym zaś przecinają drogę omnibusy brunatne, wszystkie napełnione wewnątrz, wszystkie obładowane podróżnymi na dachach.",
+  "start": 840.46
+ },
+ {
+  "i": 80,
+  "pl": "Wokulski znajduje się na środku placu, z którego rozchodzi się siedem ulic<sup>611<\/sup>. Liczy raz i drugi — siedem ulic... Gdzie iść?... Chyba w kierunku drzew... Akurat dwie ulice, przecinające się pod kątem prostym, są zadrzewione...",
+  "start": 860.25
+ },
+ {
+  "i": 81,
+  "pl": "„Pójdę w kierunku ściany hotelu” — myśli Wokulski.",
+  "start": 876.33
+ },
+ {
+  "i": 82,
+  "pl": "Robi pół obrotu w lewo i staje zdumiony.",
+  "start": 880.84
+ },
+ {
+  "i": 83,
+  "pl": "W głębi na lewo widać jakiś potężny gmach<sup>612<\/sup>.",
+  "start": 884.04
+ },
+ {
+  "i": 84,
+  "pl": "Na parterze — szereg arkad i posągów, na pierwszym piętrze olbrzymie kolumny kamienne i nieco mniejsze marmurowe, ze złoconymi kapitelami<sup>613<\/sup>. Na wysokości dachu w kątach orły i złocone posągi, unoszące się nad złoconymi figurami rozhukanych koni.",
+  "start": 887.58
+ },
+ {
+  "i": 85,
+  "pl": "Dach bliżej płaski, dalej kopuła zakończona koroną, a jeszcze dalej — dach trójkątny, również dźwigający na szczycie grupę figur. Wszędzie marmur, brąz, złoto, wszędzie kolumny, posągi i medaliony<sup>614<\/sup>...",
+  "start": 906.74
+ },
+ {
+  "i": 86,
+  "pl": "„Opera?... — myśli Wokulski. — Ależ tu jest więcej marmurów i brązów aniżeli w całej Warszawie!...”",
+  "start": 921.34
+ },
+ {
+  "i": 87,
+  "pl": "Przypomina sobie swój sklep, ozdobę miasta, rumieni się i idzie dalej<sup>615<\/sup>. Czuje, że Paryż na pierwszym kroku przytłoczył go, i — jest kontent.",
+  "start": 928.75
+ },
+ {
+  "i": 88,
+  "pl": "Ruch powozów, omnibusów i ludzi pieszych zwiększa się w zastraszający sposób. Co kilka kroków werendy, okrągłe stoliki, ludzie siedzący przy chodnikach.",
+  "start": 939.74
+ },
+ {
+  "i": 89,
+  "pl": "Za powozem, który ma z tyłu lokaja, toczy się wózek ciągniony przez psa, mija go omnibus, potem dwaj ludzie z tragami<sup>616<\/sup>, potem większy wóz na dwu kołach, potem dama i mężczyzna konno i znowu nieskończony szereg powozów.",
+  "start": 952.64
+ },
+ {
+  "i": 90,
+  "pl": "Bliżej chodnika — wózek z bukietami, drugi z owocami, naprzeciw pasztetnik<sup>617<\/sup>, roznosiciel gazet, handlarz starzyzny, szlifierz, roznosiciel książek...",
+  "start": 968.08
+ },
+ {
+  "i": 91,
+  "pl": "— M’rchand d’habits<sup>618<\/sup>...",
+  "start": 979.28
+ },
+ {
+  "i": 92,
+  "pl": "— »Figaro«...<sup>619<\/sup>",
+  "start": 981.14
+ },
+ {
+  "i": 93,
+  "pl": "— Exposition!...<sup>620<\/sup>",
+  "start": 982.08
+ },
+ {
+  "i": 94,
+  "pl": "— »Guide Parisien«!... trois francs!... trois francs!...<sup>621<\/sup>",
+  "start": 983.42
+ },
+ {
+  "i": 95,
+  "pl": "Ktoś wsuwa Wokulskiemu książkę w rękę, on płaci trzy franki i przechodzi na drugą stronę ulicy. Idzie szybko, lecz pomimo to widzi, że wszystko go wyprzedza: powozy i piesi.",
+  "start": 987.86
+ },
+ {
+  "i": 96,
+  "pl": "Oczywiście, jest to jakiś olbrzymi wyścig; więc przyśpiesza kroku, a choć jeszcze nikogo nie wyścignął, już zwraca na siebie powszechną uwagę. Jego przede wszystkim atakują roznosiciele gazet i książek, na niego patrzą kobiety, z niego w drwiący sposób uśmiechają się mężczyźni.",
+  "start": 1000.46
+ },
+ {
+  "i": 97,
+  "pl": "Czuje, że on, Wokulski, który tyle hałasu robił w Warszawie, tutaj jest onieśmielony jak dziecko i... dobrze mu z tym... Ach, jakże pragnąłby znowu zostać dzieckiem z owej epoki, kiedy to jego ojciec naradzał się z przyjaciółmi: czy go oddać do kupca, czy do szkół?",
+  "start": 1018.4
+ },
+ {
+  "i": 98,
+  "pl": "W tym miejscu ulica nieco zgina się na prawo. Wokulski pierwszy raz spostrzega dom trzypiętrowy i napełnia go jakaś rzewność. Dom trzypiętrowy między pięciopiętrowymi!... cóż to za miła niespodzianka...",
+  "start": 1037.82
+ },
+ {
+  "i": 99,
+  "pl": "Nagle — mija go powóz z groomem<sup>622<\/sup> na koźle, wiozący dwie kobiety. Jedna całkiem mu nie znana, druga...",
+  "start": 1052.46
+ },
+ {
+  "i": 100,
+  "pl": "„Ona?... — szepcze Wokulski. — Niepodobieństwo!...”",
+  "start": 1060.4
+ },
+ {
+  "i": 101,
+  "pl": "Mimo to czuje, że siły go opuszczają. Na szczęście, jest obok kawiarnia. Rzuca się na krzesło, tuż przy chodniku; zjawia się garson<sup>623<\/sup>, o coś pyta, a następnie przynosi mazagran<sup>624<\/sup>.",
+  "start": 1065.52
+ },
+ {
+  "i": 102,
+  "pl": "Jednocześnie jakaś kwiaciarka przypina mu różę do tużurka<sup>625<\/sup>, a roznosiciel gazet kładzie przed nim „Figaro”.",
+  "start": 1078.13
+ },
+ {
+  "i": 103,
+  "pl": "Wokulski tej rzuca dziesięć franków, temu franka, pije mazagran i zaczyna czytać: „Jej K. M.<sup>626<\/sup> Królowa Izabela<sup>627<\/sup>...”",
+  "start": 1085.82
+ },
+ {
+  "i": 104,
+  "pl": "Mnie gazetę i chowa ją do kieszeni, nie dokończywszy mazagranu płaci za niego i — wstaje od stołu. Garson patrzy spod oka, dwaj goście, bawiący się cienkimi laseczkami, zakładają nogi jeszcze wyżej, a jeden z nich impertynencko przypatruje mu się przez monokl.",
+  "start": 1095.12
+ },
+ {
+  "i": 105,
+  "pl": "„Gdybym tego franta uderzył w twarz? — myśli Wokulski. — Jutro pojedynek i może zabiłby mnie... Ale gdybym ja jego zabił?...”",
+  "start": 1113.23
+ },
+ {
+  "i": 106,
+  "pl": "Przeszedł około franta i spojrzał mu w oczy. Elegantowi monokl spadł na kamizelkę i opuściła go ochota do półuśmieszków.",
+  "start": 1123.2
+ },
+ {
+  "i": 107,
+  "pl": "Wokulski idzie dalej i z największą uwagą przypatruje się kamienicom. Cóż tu za sklepy!... Najlichszy z nich lepiej wygląda aniżeli jego, który jest najpiękniejszym w Warszawie. Domy ciosowe<sup>628<\/sup>; prawie na każdym piętrze wielkie balkony albo balustrady biegnące wzdłuż całego piętra.",
+  "start": 1133.67
+ },
+ {
+  "i": 108,
+  "pl": "„Ten Paryż wygląda, jakby wszyscy mieszkańcy czuli potrzebę ciągłego komunikowania się jeżeli nie w kawiarniach, to za pomocą ganków” — myśli Wokulski.",
+  "start": 1153.82
+ },
+ {
+  "i": 109,
+  "pl": "I dachy są jakieś oryginalne, wysokie, obładowane kominami, najeżone blaszanymi kominkami i szpicami. I na ulicach co krok wyrasta albo drzewo, albo latarnia, albo kiosk, albo kolumna zakończona kulą.",
+  "start": 1163.28
+ },
+ {
+  "i": 110,
+  "pl": "Życie kipi tu tak silnie, że nie mogąc zużyć się w nieskończonym ruchu powozów, w szybkim biegu ludzi, w dźwiganiu pięciopiętrowych domów z kamienia, jeszcze wytryskuje ze ścian w formie posągów lub płaskorzeźb, z dachów w formie strzał i z ulic w postaci nieprzeliczonych kiosków.",
+  "start": 1178.54
+ },
+ {
+  "i": 111,
+  "pl": "Wokulskiemu zdaje się, że wydobyty z martwej wody wpadł nagle w ukrop, który „burzy się i szumi, i pryska...” On, człowiek dojrzały i w swoim klimacie gwałtowny, poczuł się tu jak flegmatyczne dziecko, któremu imponuje wszystko i wszyscy.",
+  "start": 1200.15
+ },
+ {
+  "i": 112,
+  "pl": "Tymczasem dokoła niego wciąż „wre i kipi, i szumi i pryska”<sup>629<\/sup>; nie widać końca tłumów ani powozów, ani drzew, ani olśniewających wystaw, ani nawet samej ulicy. Wokulski stopniowo zapada w odurzenie.",
+  "start": 1217.34
+ },
+ {
+  "i": 113,
+  "pl": "Przestaje słyszeć hałaśliwą rozmowę przechodniów, potem głuchnie na krzyki handlarzy ulicznych, wreszcie na turkot kół. Potem zdaje mu się, że już gdzieś widział takie domy, taki ruch, takie kawiarnie; później myśli, że ostatecznie jest to nic wielkiego,",
+  "start": 1234.3
+ },
+ {
+  "i": 114,
+  "pl": "a nareszcie budzą się w nim zdolności krytyczne, i mówi sobie, że — jakkolwiek w Paryżu częściej można słyszeć język francuski aniżeli w Warszawie, to jednak akcent tutejszy jest gorszy i wymowa mniej wyraźna.",
+  "start": 1252.16
+ },
+ {
+  "i": 115,
+  "pl": "Tak rozważając zwalnia kroku i zaczyna nie ustępować z drogi. I kiedy myśli, że dopiero teraz Francuzi zaczną go wytykać palcami, spostrzega ze zdziwieniem, że już coraz mniej zwracają na niego uwagę. Po jednogodzinnym pobycie na ulicy stał się zwyczajną kroplą paryskiego oceanu.",
+  "start": 1266.97
+ },
+ {
+  "i": 116,
+  "pl": "„To i lepiej!” — mruczy.",
+  "start": 1287.19
+ },
+ {
+  "i": 117,
+  "pl": "Do tej chwili co kilkadziesiąt kroków, na prawo i na lewo, rozsuwały się domy i widać było jakąś boczną ulicę. Teraz jednolita ściana domów ciągnie się przez kilkaset kroków.",
+  "start": 1289.94
+ },
+ {
+  "i": 118,
+  "pl": "Zaniepokojony, pośpiesza i ku wielkiemu zadowoleniu dociera nareszcie do bocznej ulicy; skręca trochę na prawo i czyta: Rue St. Fiacre<sup>630<\/sup>",
+  "start": 1302.92
+ },
+ {
+  "i": 119,
+  "pl": "Uśmiecha się, przychodzi mu bowiem na myśl jakiś romans Pawła Kocka<sup>631<\/sup>. Znowu boczna ulica i znowu czyta: Rue du Sentier<sup>632<\/sup>.",
+  "start": 1312.42
+ },
+ {
+  "i": 120,
+  "pl": "„Nie znam” — mówi do siebie.",
+  "start": 1321.86
+ },
+ {
+  "i": 121,
+  "pl": "O kilkadziesiąt kroków dalej widzi: Rue Poissonniere<sup>633<\/sup>, która mu przypomina jakąś sprawę kryminalną, a potem cały szereg krótkich uliczek wychodzących naprzeciw teatru „Gymnase”<sup>634<\/sup>.",
+  "start": 1324.12
+ },
+ {
+  "i": 122,
+  "pl": "„Cóż to znowu?...” — myśli spostrzegłszy na lewo ogromny budynek<sup>635<\/sup>, niepodobny do żadnego z tych, jakie znał dotychczas. Jest to olbrzymi prostokąt z kamienia, a w nim brama z półkolistym sklepieniem. Oczywiście brama, która stoi na przecięciu się dwu ulic.",
+  "start": 1337.92
+ },
+ {
+  "i": 123,
+  "pl": "Obok niej budka, gdzie zatrzymują się omnibusy; prawie naprzeciw kawiarnia i chodnik oddzielony od środka ulicy krótką, żelazną balustradą.",
+  "start": 1356.36
+ },
+ {
+  "i": 124,
+  "pl": "O paręset kroków dalej druga podobna brama<sup>636<\/sup>, a między nimi szeroka ulica, ciągnąca się na prawo i lewo<sup>637<\/sup>. Ruch nagle potęguje się; tędy bowiem przejeżdżają aż trzy gatunki omnibusów i tramwaje.",
+  "start": 1365.88
+ },
+ {
+  "i": 125,
+  "pl": "Wokulski spogląda na prawo i znowu widzi dwa szeregi latarń, dwa szeregi kiosków, dwa szeregi drzew i dwa szeregi pięciopiętrowych domów ciągnących się na długość Krakowskiego Przedmieścia i Nowego Światu.",
+  "start": 1381.53
+ },
+ {
+  "i": 126,
+  "pl": "Końca ich nie widać, tylko gdzieś het, daleko, ulica podnosi się ku niebu, dachy zniżają się ku ziemi i wszystko znika.",
+  "start": 1395.27
+ },
+ {
+  "i": 127,
+  "pl": "„No, choćbym miał zbłądzić i spóźnić się na sesję, pójdę w tamtą stronę!...” — myśli.",
+  "start": 1404.27
+ },
+ {
+  "i": 128,
+  "pl": "Wtem na skręcie wymija go młoda kobieta, której wzrost i ruchy robią na Wokulskim silne wrażenie.",
+  "start": 1410.37
+ },
+ {
+  "i": 129,
+  "pl": "„Ona?... Nie... Naprzód, ona została w Warszawie, a po wtóre — spotykam już drugą taką... Złudzenia...”",
+  "start": 1416.23
+ },
+ {
+  "i": 130,
+  "pl": "Ale siły opuszczają go, a nawet pamięć. Stoi na przecięciu się dwu ulic wysadzonych drzewami i absolutnie nie wie, skąd przyszedł? Ogarnia go strach paniczny, znany ludziom, którzy zbłądzili w lesie; szczęściem, nadjeżdża jednokonka, której furman uśmiecha się do niego w sposób bardzo przyjacielski.",
+  "start": 1424.99
+ },
+ {
+  "i": 131,
+  "pl": "— Grand Hotel — mówi Wokulski siadając.",
+  "start": 1446.89
+ },
+ {
+  "i": 132,
+  "pl": "Dorożkarz dotyka ręką kapelusza i woła:",
+  "start": 1449.87
+ },
+ {
+  "i": 133,
+  "pl": "— Naprzód, Lizetka!.... Ten szlachetny cudzoziemiec postawi ci za fatygę kwartę piwa.",
+  "start": 1452.99
+ },
+ {
+  "i": 134,
+  "pl": "Następnie, odwróciwszy się bokiem do Wokulskiego, mówi:",
+  "start": 1458.81
+ },
+ {
+  "i": 135,
+  "pl": "— Jedno z dwojga, obywatelu: albo dopiero dziś przyjechaliście, albo jesteście po dobrym śniadaniu?...",
+  "start": 1462.63
+ },
+ {
+  "i": 136,
+  "pl": "— Dziś przyjechałem — odpowiada Wokulski, uspokojony widokiem jego pełnej, czerwonej twarzy bez zarostu.",
+  "start": 1469.35
+ },
+ {
+  "i": 137,
+  "pl": "— I piliście trochę, to zaraz widać — wtrąca dorożkarz. — A taksę znacie?...",
+  "start": 1476.29
+ },
+ {
+  "i": 138,
+  "pl": "— Wszystko jedno.",
+  "start": 1481.63
+ },
+ {
+  "i": 139,
+  "pl": "— Naprzód, Lizetka!... Bardzo podobał mi się ten cudzoziemiec i myślę, że tylko tacy powinni pokazywać się na naszej wystawie. Czy aby jesteście pewni, obywatelu, że mamy jechać do Grand Hotel?... — zwraca się do Wokulskiego.",
+  "start": 1482.73
+ },
+ {
+  "i": 140,
+  "pl": "— Najzupełniej.",
+  "start": 1496.86
+ },
+ {
+  "i": 141,
+  "pl": "— Naprzód, Lizetka! Ten cudzoziemiec zaczyna mi imponować. — Czy nie jesteście, obywatelu, z Berlina?...",
+  "start": 1498.4
+ },
+ {
+  "i": 142,
+  "pl": "— Nie.",
+  "start": 1505.76
+ },
+ {
+  "i": 143,
+  "pl": "Dorożkarz przypatruje mu się chwilę, wreszcie mówi:",
+  "start": 1507.0
+ },
+ {
+  "i": 144,
+  "pl": "— Tym lepiej dla was. Nie mam wprawdzie pretensji do Prusaków, choć zabrali nam Alzację i spory kawał Lotaryngii<sup>638<\/sup>, ale zawsze nie lubię mieć Niemca za kołnierzem. Skądże jesteście, obywatelu?",
+  "start": 1510.04
+ },
+ {
+  "i": 145,
+  "pl": "— Z Warszawy.",
+  "start": 1523.52
+ },
+ {
+  "i": 146,
+  "pl": "— Ah, ca!...<sup>639<\/sup> Piękny kraj... bogaty kraj... Naprzód, Lizetka!... Więc pan jesteś Polak?... Znam Polaków!... Oto plac Opery, obywatelu, a oto Grand Hotel...",
+  "start": 1525.38
+ },
+ {
+  "i": 147,
+  "pl": "Wokulski rzucił trzy franki dorożkarzowi, pędem wbiegł do bramy, a z niej na trzecie piętro. Ledwie stanął przed swoim numerem, już ukazał się uśmiechnięty służący i oddał mu bilet Suzina i pakiet listów.",
+  "start": 1538.49
+ },
+ {
+  "i": 148,
+  "pl": "— Dużo interesantów... dużo interesantek! — rzekł służący patrząc na niego figlarnie.",
+  "start": 1552.77
+ },
+ {
+  "i": 149,
+  "pl": "— Gdzież oni?",
+  "start": 1558.77
+ },
+ {
+  "i": 150,
+  "pl": "— Są w salonie przyjęć, są w czytelni, są w sali jadalnej... Pan Jumart niecierpliwi się...",
+  "start": 1559.65
+ },
+ {
+  "i": 151,
+  "pl": "— Któż jest pan Jumart? — spytał Wokulski.",
+  "start": 1566.11
+ },
+ {
+  "i": 152,
+  "pl": "— Marszałek dworu<sup>640<\/sup> pańskiego i pana Siuzę<sup>641<\/sup>... Bardzo zdolny człowiek i duże mógłby panu oddać usługi, gdyby był pewny tak... z tysiąc franków gratyfikacji... — mówił wciąż figlarnie służący.",
+  "start": 1569.47
+ },
+ {
+  "i": 153,
+  "pl": "— Gdzież on jest?",
+  "start": 1584.09
+ },
+ {
+  "i": 154,
+  "pl": "— Na pierwszym piętrze, w pańskim salonie przyjęć. Pan Jumart jest bardzo zdolny człowiek, ale i ja może przydałbym się waszej ekscelencji, jakkolwiek nazywam się Miler.",
+  "start": 1585.25
+ },
+ {
+  "i": 155,
+  "pl": "Naprawdę jednak jestem Alzatczyk i na honor, zamiast brać od pana, jeszcze płaciłbym dziesięć franków dziennie, byleśmy raz skończyli z Prusakami.",
+  "start": 1595.77
+ },
+ {
+  "i": 156,
+  "pl": "Wokulski wszedł do numeru.",
+  "start": 1606.37
+ },
+ {
+  "i": 157,
+  "pl": "— Nade wszystko niech panowie strzegą się tej baronowej... która już czeka w czytelni, a ma niby to przyjść dopiero o trzeciej... Przysięgnę, to Niemka... Jestem przecie Alzatczyk!...",
+  "start": 1608.59
+ },
+ {
+  "i": 158,
+  "pl": "Ostatnie zdania Miler wypowiedział zniżonym głosem i cofnął się na korytarz.",
+  "start": 1621.19
+ },
+ {
+  "i": 159,
+  "pl": "Wokulski otworzył bilet Suzina i czytał: „Sesja dopiero o ósmej — pisał Suzin — masz czasu dosyć, więc załatw się z tymi interesantami, a nade wszystko z babami. Ja już, dalibóg, za stary, żeby im wszystkim dogodzić.”",
+  "start": 1626.47
+ },
+ {
+  "i": 160,
+  "pl": "Wokulski zaczął przeglądać listy. Po większej części były to reklamy kupców, fryzjerów, dentystów, prośby o wsparcie, propozycje wyjawienia jakichś tajemnic, jedna odezwa od Armii Zbawienia<sup>642<\/sup>.",
+  "start": 1644.42
+ },
+ {
+  "i": 161,
+  "pl": "Z całego mnóstwa tych korespondencyj uderzyła Wokulskiego następna: „Osoba młoda, elegancka i przystojna pragnie zwiedzać z panem Paryż na wspólny koszt. Odpowiedź złożyć u szwajcara hotelu.”",
+  "start": 1658.17
+ },
+ {
+  "i": 162,
+  "pl": "„Oryginalne miasto!” — mruknął Wokulski.",
+  "start": 1673.33
+ },
+ {
+  "i": 163,
+  "pl": "Drugi, jeszcze ciekawszy list pochodził od owej baronowej... która od trzeciej miała czekać na schadzkę w czytelni.",
+  "start": 1676.57
+ },
+ {
+  "i": 164,
+  "pl": "„To jeszcze pół godziny...”",
+  "start": 1684.05
+ },
+ {
+  "i": 165,
+  "pl": "Zadzwonił i kazał przynieść do numeru śniadanie. W kilka minut podano mu szynkę, jaja, befsztyk, jakąś nieznaną rybę, kilka butelek rozmaitych trunków i maszynkę kawy czarnej. Jadł z wilczym apetytem, pił nie gorzej, wreszcie kazał Milerowi zaprowadzić się do owej sali przyjęć.",
+  "start": 1686.25
+ },
+ {
+  "i": 166,
+  "pl": "Służący wyszedł z nim na korytarz, dotknął dzwonka, coś powiedział przez tubę i wprowadził Wokulskiego do windy. W minutę później Wokulski był na pierwszym piętrze, a gdy opuszczał windę, zastąpił mu drogę jakiś dystyngowany pan, z niedużymi wąsami, we fraku i białym krawacie.",
+  "start": 1708.6
+ },
+ {
+  "i": 167,
+  "pl": "— Jumart... — odezwał się ten pan z ukłonem.",
+  "start": 1727.46
+ },
+ {
+  "i": 168,
+  "pl": "Poszli kilkanaście kroków korytarzem i Jumart otworzył drzwi wspaniałego salonu. Wokulski o mało nie cofnął się, zobaczywszy złocone meble, olbrzymie lustra i ściany ozdobione płaskorzeźbami. Na środku stał duży stół pokryty kosztownym obrusem i przywalony stosem papierów.",
+  "start": 1731.14
+ },
+ {
+  "i": 169,
+  "pl": "— Mogę wprowadzić interesantów? — spytał Jumart. — Ci nie są, zdaje mi się, niebezpieczni. Tylko na baronowę... ośmielę się zwrócić uwagę... Czeka w czytelni.",
+  "start": 1750.98
+ },
+ {
+  "i": 170,
+  "pl": "Ukłonił się i wyszedł z powagą do innego salonu, który zdawał się być poczekalnią.",
+  "start": 1762.13
+ },
+ {
+  "i": 171,
+  "pl": "„Czy ja, do licha, nie wpadłem w jaką awanturę?” — pomyślał Wokulski.",
+  "start": 1767.63
+ },
+ {
+  "i": 172,
+  "pl": "Ledwie Wokulski usiadł na fotelu i zaczął przeglądać papiery, wszedł lokaj w błękitnym fraku ozdobionym złotymi haftami i podał mu bilet na tacy. Na bilecie był napis: „Pułkownik”, i jakieś nic nie mówiące nazwisko.",
+  "start": 1771.75
+ },
+ {
+  "i": 173,
+  "pl": "— Prosić.",
+  "start": 1786.89
+ },
+ {
+  "i": 174,
+  "pl": "Po chwili ukazał się mężczyzna pięknego wzrostu, z siwą hiszpanką, takimiż wąsami i czerwoną wstążeczką przy klapie surduta.",
+  "start": 1788.08
+ },
+ {
+  "i": 175,
+  "pl": "— Wiem, że mało ma pan czasu — odezwał się gość, lekko kłaniając się. — Mój interes jest krótki. Paryż, miasto wspaniałe pod każdym względem: czy chodzi o zabawę, czy o naukę; ale potrzebuje wytrawnego przewodnika.",
+  "start": 1797.12
+ },
+ {
+  "i": 176,
+  "pl": "Ponieważ znam wszystkie muzea, galerie, teatry, kluby, monumenta, instytucje rządowe i prywatne, słowem wszystko... więc jeżeli pan życzy sobie...",
+  "start": 1810.8
+ },
+ {
+  "i": 177,
+  "pl": "— Niech pan raczy zostawić swój adres — odpowiedział Wokulski.",
+  "start": 1820.17
+ },
+ {
+  "i": 178,
+  "pl": "— Władam czterema językami, mam znajomości w świecie artystycznym, literackim, naukowym i przemysłowym...",
+  "start": 1823.7
+ },
+ {
+  "i": 179,
+  "pl": "— W tej chwili nie mogę panu dać odpowiedzi — przerwał Wokulski.",
+  "start": 1829.76
+ },
+ {
+  "i": 180,
+  "pl": "— Mam zgłosić się czy czekać na pańskie wezwanie? — spytał gość.",
+  "start": 1833.34
+ },
+ {
+  "i": 181,
+  "pl": "— Tak, odpowiem panu listownie.",
+  "start": 1837.34
+ },
+ {
+  "i": 182,
+  "pl": "— Polecam się pamięci — odparł gość. Wstał z krzesła i ukłoniwszy się wyszedł.",
+  "start": 1839.4
+ },
+ {
+  "i": 183,
+  "pl": "Lokaj przyniósł drugi bilet i niebawem ukazał się drugi gość. Był to człowiek pulchny i rumiany i wyglądał na właściciela sklepu bławatnego, kłaniał się na całej przestrzeni ode drzwi do stołu.",
+  "start": 1845.98
+ },
+ {
+  "i": 184,
+  "pl": "— Co pan każe? — spytał Wokulski.",
+  "start": 1859.12
+ },
+ {
+  "i": 185,
+  "pl": "— Jak to, nie odgadł pan przeczytawszy nazwisko Escabeau?... Hannibal Escabeau?... — zdziwił się przybyły. — Karabin Escabeau daje siedemnaście strzałów na minutę; ten zaś, który będę miał honor zaprezentować panu, wyrzuca trzydzieści kul...",
+  "start": 1861.44
+ },
+ {
+  "i": 186,
+  "pl": "Wokulski miał tak zdziwioną minę, że Hannibal Escabeau sam począł się dziwić.",
+  "start": 1877.23
+ },
+ {
+  "i": 187,
+  "pl": "— Sądzę, że nie omyliłem się? — spytał gość.",
+  "start": 1883.52
+ },
+ {
+  "i": 188,
+  "pl": "— Omylił się pan — odparł Wokulski. — Jestem kupcem galanteryjnym i karabiny nic mnie nie obchodzą.",
+  "start": 1887.57
+ },
+ {
+  "i": 189,
+  "pl": "— Mówiono mi jednak... poufnie... — rzekł z naciskiem Escabeau — że panowie...",
+  "start": 1894.81
+ },
+ {
+  "i": 190,
+  "pl": "— Źle pana poinformowano.",
+  "start": 1900.37
+ },
+ {
+  "i": 191,
+  "pl": "— Ach, w takim razie przepraszam... To może być pod innym numerem... — mówił gość cofając się i kłaniając.",
+  "start": 1902.71
+ },
+ {
+  "i": 192,
+  "pl": "Nowy występ błękitnego fraka i białych spodni i nowy gość; tym razem mały, szczupły, czarny, z niespokojnym wejrzeniem. Ten prawie przybiegł do stołu, padł na krzesło, obejrzał się na drzwi i przysunąwszy się do Wokulskiego zaczął przyciszonym głosem:",
+  "start": 1910.3
+ },
+ {
+  "i": 193,
+  "pl": "— Pewnie dziwi to pana, ale... rzecz jest ważna... zbyt ważna... W tych dniach zrobiłem olbrzymie odkrycie co do rulety... Trzeba tylko sześć do siedmiu razy dublować stawkę...",
+  "start": 1926.88
+ },
+ {
+  "i": 194,
+  "pl": "— Wybaczy pan, ale ja się tym nie zajmuję — przerwał mu Wokulski.",
+  "start": 1938.58
+ },
+ {
+  "i": 195,
+  "pl": "— Nie ufa mi pan?... To całkiem naturalne... Ale mam właśnie przy sobie małą ruletę... Możemy spróbować...",
+  "start": 1942.32
+ },
+ {
+  "i": 196,
+  "pl": "— Przepraszam pana, w tej chwili nie mam czasu.",
+  "start": 1947.92
+ },
+ {
+  "i": 197,
+  "pl": "— Trzy minuty, panie... minutkę...",
+  "start": 1950.62
+ },
+ {
+  "i": 198,
+  "pl": "— Ani pół minuty.",
+  "start": 1952.82
+ },
+ {
+  "i": 199,
+  "pl": "— Więc kiedyż mam przyjść? — pytał gość z miną bardzo zdesperowaną.",
+  "start": 1954.26
+ },
+ {
+  "i": 200,
+  "pl": "— W każdym razie nieprędko.",
+  "start": 1958.5
+ },
+ {
+  "i": 201,
+  "pl": "— Niechże mi pan przynajmniej pożyczy sto franków na oficjalne próby...",
+  "start": 1960.28
+ },
+ {
+  "i": 202,
+  "pl": "— Mogę służyć pięcioma — odparł Wokulski sięgając do kieszeni.",
+  "start": 1964.06
+ },
+ {
+  "i": 203,
+  "pl": "— O nie, panie, dziękuję... Nie jestem awanturnikiem... Zresztą... niech pan da... jutro odniosę... Pan może się tymczasem namyśli...",
+  "start": 1968.68
+ },
+ {
+  "i": 204,
+  "pl": "Następny gość, człowiek okazałej tuszy, ze sznurem miniaturowych orderów na klapie surduta, proponował Wokulskiemu: dyplom doktora filozofii, order lub tytuł, i wydawał się bardzo zdziwionym, gdy propozycji nie przyjęto. Odszedł, nawet nie pożegnawszy się.",
+  "start": 1975.78
+ },
+ {
+  "i": 205,
+  "pl": "Po nim nastąpiła paruminutowa przerwa. Wokulskiemu zdawało się, że w poczekalni słyszy szelest kobiecej sukni. Wytężył ucho... W tej chwili lokaj zameldował baronowę...",
+  "start": 1993.72
+ },
+ {
+  "i": 206,
+  "pl": "Znowu długa pauza i ukazała się w salonie kobieta tak piękna i dystyngowana, że Wokulski mimo woli powstał z fotelu. Mogła mieć około czterdziestu lat; wzrost okazały, rysy bardzo regularne, postawa wielkiej damy.",
+  "start": 2006.94
+ },
+ {
+  "i": 207,
+  "pl": "Milcząc wskazał jej fotel. Gdy zaś usiadła, spostrzegł, że jest wzburzoną i szarpie w rękach haftowaną chusteczkę. Nagle odezwała się, dumnie patrząc mu w oczy:",
+  "start": 2022.4
+ },
+ {
+  "i": 208,
+  "pl": "— Pan mnie zna?",
+  "start": 2035.15
+ },
+ {
+  "i": 209,
+  "pl": "— Nie, pani.",
+  "start": 2037.12
+ },
+ {
+  "i": 210,
+  "pl": "— Nie widział pan nawet moich portretów?",
+  "start": 2038.91
+ },
+ {
+  "i": 211,
+  "pl": "— Nie.",
+  "start": 2041.55
+ },
+ {
+  "i": 212,
+  "pl": "— Więc chyba nigdy pan nie był ani w Berlinie, ani w Wiedniu.",
+  "start": 2042.99
+ },
+ {
+  "i": 213,
+  "pl": "— Nie byłem.",
+  "start": 2047.01
+ },
+ {
+  "i": 214,
+  "pl": "Dama głęboko odetchnęła.",
+  "start": 2048.24
+ },
+ {
+  "i": 215,
+  "pl": "— Tym lepiej — rzekła — będę śmielszą. Nie jestem baronowa... jestem zupełnie kim innym. Ale o to mniejsza. Chwilowo znalazłam się w trudnym położeniu... potrzebuję dwudziestu tysięcy franków... A ponieważ nie chcę w tutejszych lombardach<sup>643<\/sup> zastawiać moich klejnotów, więc... Pojmuje pan?",
+  "start": 2050.02
+ },
+ {
+  "i": 216,
+  "pl": "— Nie, pani.",
+  "start": 2068.52
+ },
+ {
+  "i": 217,
+  "pl": "— Więc... mam do zbycia ważną tajemnicę...",
+  "start": 2069.72
+ },
+ {
+  "i": 218,
+  "pl": "— Nie mam prawa nabywać tajemnic — odpowiedział już zmieszany Wokulski.",
+  "start": 2072.96
+ },
+ {
+  "i": 219,
+  "pl": "Dama poruszyła się na fotelu.",
+  "start": 2077.88
+ },
+ {
+  "i": 220,
+  "pl": "— Nie ma pan prawa?... Więc po cóż pan tu przyjechał?... — rzekła z lekkim uśmiechem.",
+  "start": 2080.28
+ },
+ {
+  "i": 221,
+  "pl": "— A jednak nie mam...",
+  "start": 2087.02
+ },
+ {
+  "i": 222,
+  "pl": "Dama podniosła się.",
+  "start": 2088.84
+ },
+ {
+  "i": 223,
+  "pl": "— Tu — mówiła wzruszona — jest adres, pod którym można się zgłosić do mnie w ciągu dwudziestu czterech godzin, a tu... notatka, która może panu da trochę do myślenia... Żegnam.",
+  "start": 2090.7
+ },
+ {
+  "i": 224,
+  "pl": "Wyszła z szelestem. Wokulski spojrzał na notatkę i znalazł w niej szczegóły dotyczące osoby jego i Suzina, które zazwyczaj stanowią treść paszportów.",
+  "start": 2103.9
+ },
+ {
+  "i": 225,
+  "pl": "„No tak!... — myślał. — Miler przeczytał mój paszport i zrobił z niego wyciąg, nawet nie bez błędów... Woklusky!... Cóż, u diabła, czy oni mnie uważają za dziecko?...”",
+  "start": 2114.03
+ },
+ {
+  "i": 226,
+  "pl": "Ponieważ nikt z gości już nie przychodził, Wokulski wezwał do siebie Jumarta.",
+  "start": 2126.6
+ },
+ {
+  "i": 227,
+  "pl": "— Co pan rozkaże? — spytał elegancki marszałek dworu.",
+  "start": 2133.19
+ },
+ {
+  "i": 228,
+  "pl": "— Chciałem z panem pomówić.",
+  "start": 2136.43
+ },
+ {
+  "i": 229,
+  "pl": "— Prywatnie?... W takim razie pozwoli pan, że usiądę. Przedstawienie skończone, kostiumy idą do składu, aktorzy stają się równi sobie.",
+  "start": 2138.37
+ },
+ {
+  "i": 230,
+  "pl": "Mówił to nieco ironicznym tonem i zachowywał się, jak przystało na człowieka bardzo dobrze wychowanego. Wokulski dziwił się coraz więcej.",
+  "start": 2146.25
+ },
+ {
+  "i": 231,
+  "pl": "— Powiedz mi pan — rzekł — co to są za ludzie?",
+  "start": 2155.01
+ },
+ {
+  "i": 232,
+  "pl": "— Ci, którzy byli u pana? — spytał Jumart. — Ludzie, jak inni: przewodnicy, wynalazcy, pośrednicy... Każdy pracuje, jak umie, i stara się swoją pracę zbyć najkorzystniej. A że lubią zarobić, jeżeli się da, więcej, niż warto, to już cecha Francuzów.",
+  "start": 2158.45
+ },
+ {
+  "i": 233,
+  "pl": "— Pan nie jesteś Francuzem?",
+  "start": 2176.27
+ },
+ {
+  "i": 234,
+  "pl": "— Ja?... Urodziłem się w Wiedniu, kształciłem się w Szwajcarii i w Niemczech, długi czas mieszkałem we Włoszech, Anglii, Norwegii, Stanach Zjednoczonych... Moje zaś nazwisko najlepiej streszcza narodowość<sup>644<\/sup>: tym jestem, w czyjej mieszkam oborze; wołem między wołami, koniem między końmi.",
+  "start": 2178.31
+ },
+ {
+  "i": 235,
+  "pl": "A że wiem, skąd mam pieniądze i na co je wydaję, i ludzie o mnie wiedzą, więc zresztą nic mnie nie obchodzi.",
+  "start": 2196.15
+ },
+ {
+  "i": 236,
+  "pl": "Wokulski przypatrywał mu się z uwagą.",
+  "start": 2203.97
+ },
+ {
+  "i": 237,
+  "pl": "— Nie rozumiem pana — rzekł.",
+  "start": 2206.37
+ },
+ {
+  "i": 238,
+  "pl": "— Widzi pan — mówił Jumart przebierając palcami po stole — za dużo zwiedziłem świata, ażebym miał troszczyć się o czyjąś narodowość. Dla mnie istnieją tylko cztery narodowości bez względu na języki. Numer pierwszy mają ci, o których wiem: skąd biorą pieniądze i na co je wydają.",
+  "start": 2208.71
+ },
+ {
+  "i": 239,
+  "pl": "Numer drugi — ci, o których wiem, skąd biorą, ale nie wiem na co wydają. Numer trzeci ma znane wydatki, choć nieznane dochody, a numer czwarty noszą ci, których nie znam ani źródła dochodów, ani wydatków.",
+  "start": 2227.83
+ },
+ {
+  "i": 240,
+  "pl": "O panu Escabeau wiem, że ma dochody z fabryki trykotaży, a wydaje pieniądze na zbudowanie jakiejś piekielnej broni, więc szanuję go... Zaś o pani baronowej... nie wiem, ani skąd bierze pieniądze, ani na co je wydaje, i dlatego jej nie ufam.",
+  "start": 2242.87
+ },
+ {
+  "i": 241,
+  "pl": "— Ja jestem kupcem, panie Jumart — odpowiedział Wokulski, niemile draśnięty wykładem powyższej teorii.",
+  "start": 2259.23
+ },
+ {
+  "i": 242,
+  "pl": "— Wiem o tym. I jeszcze jest pan przyjacielem pana Siuzę, co także daje pewien procent. Nie do pana zresztą stosowały się moje uwagi; wypowiedziałem je jako odczyt, który mam nadzieję, opłaci mi się.",
+  "start": 2266.49
+ },
+ {
+  "i": 243,
+  "pl": "— Jesteś pan filozofem — mruknął Wokulski.",
+  "start": 2280.05
+ },
+ {
+  "i": 244,
+  "pl": "— Nawet doktorem filozofii dwu uniwersytetów — odparł Jumart.",
+  "start": 2283.11
+ },
+ {
+  "i": 245,
+  "pl": "— I spełniasz pan rolę...",
+  "start": 2288.23
+ },
+ {
+  "i": 246,
+  "pl": "— Służącego?... chciałeś pan powiedzieć — przerwał śmiejąc się Jumart. — Pracuję, panie, aby żyć i zabezpieczyć sobie rentę<sup>645<\/sup> na starość. A o tytuł nie dbam: tyle ich już miałem!...",
+  "start": 2290.46
+ },
+ {
+  "i": 247,
+  "pl": "Świat podobny jest do amatorskiego teatru więc nieprzyzwoicie jest pchać się w nim do ról pierwszych, a odrzucać podrzędne. Wreszcie, każda rola jest dobra, byle grać ją z artyzmem i nie brać jej zbyt poważnie.",
+  "start": 2302.36
+ },
+ {
+  "i": 248,
+  "pl": "Wokulski poruszył się. Jumart wstał z krzesła i ukłoniwszy się elegancko, rzekł:",
+  "start": 2316.95
+ },
+ {
+  "i": 249,
+  "pl": "— Polecam panu moje usługi.",
+  "start": 2322.29
+ },
+ {
+  "i": 250,
+  "pl": "Następnie wyszedł z salonu.",
+  "start": 2325.03
+ },
+ {
+  "i": 251,
+  "pl": "„Mam gorączkę, czy co?... — szepnął Wokulski ściskając głowę rękoma. — Wiedziałem, że Paryż jest dziwny, ale żeby był aż tak dziwny...”",
+  "start": 2327.43
+ },
+ {
+  "i": 252,
+  "pl": "Kiedy Wokulski spojrzał na zegarek, było dopiero wpół do czwartej.",
+  "start": 2336.12
+ },
+ {
+  "i": 253,
+  "pl": "„Przeszło cztery godziny do sesji” — mruknął czując, że ogarnia go trwoga na myśl: co robić z czasem? Widział tyle nowych rzeczy, rozmawiał z tyloma nowymi ludźmi i jest dopiero wpół do czwartej!...",
+  "start": 2340.43
+ },
+ {
+  "i": 254,
+  "pl": "Trapił go nieokreślony niepokój, czuł brak czegoś... „Może by znowu co zjeść? — nie. Może czytać? — nie. Może rozmawiać? — Już mam dosyć tej rozmowy...” Ludzie obrzydli mu; najmniej wstrętnymi byli ci chorzy na manię wynalazków i ten Jumart, ze swoją klasyfikacją człowieczego gatunku.",
+  "start": 2355.18
+ },
+ {
+  "i": 255,
+  "pl": "Nie miał odwagi wracać do swego numeru z wielkim lustrem; cóż mu więc pozostało, jeżeli nie oglądanie paryskich osobliwości. Kazał zaprowadzić się do sali jadalnej Grand Hotel. Wszystko tu pyszne i ogromne, począwszy od ścian, sufitu i okien, skończywszy na liczbie i długości stołów.",
+  "start": 2377.68
+ },
+ {
+  "i": 256,
+  "pl": "Ale Wokulski nie przypatrywał się; utkwił oczy w jednym z olbrzymich złoconych pająków i myślał:",
+  "start": 2397.56
+ },
+ {
+  "i": 257,
+  "pl": "„Kiedy ona dosięgnie wieku baronowej... ona, przywykła do wydawania dziesiątków tysięcy rubli rocznie, kto wie, czy nie pójdzie też drogami baronowej?... Przecie i ta kobieta była młodą, i za nią mógł szaleć taki wariat jak ja, i ona nie pytała, skąd się biorą pieniądze...",
+  "start": 2404.08
+ },
+ {
+  "i": 258,
+  "pl": "Dziś już wie skąd: z handlu tajemnicami!... Przeklęta sfera, która hoduje takie piękne i takie kobiety...”",
+  "start": 2424.21
+ },
+ {
+  "i": 259,
+  "pl": "W sali było mu ciasno, więc wybiegł przed hotel utopić się w ulicznym gwarze.",
+  "start": 2433.72
+ },
+ {
+  "i": 260,
+  "pl": "„Pierwej szedłem na lewo — myślał — teraz pójdę w prawo...”",
+  "start": 2440.22
+ },
+ {
+  "i": 261,
+  "pl": "Wędrówka na oślep w niezmiernym mieście była jedyną rzeczą mającą dla niego jakiś gorzki powab.",
+  "start": 2444.31
+ },
+ {
+  "i": 262,
+  "pl": "„Gdybym między tymi tłumami mógł zgubić samego siebie...” — szepnął.",
+  "start": 2451.38
+ },
+ {
+  "i": 263,
+  "pl": "Skręcił tedy na prawo. Wyminął nieduży plac i wszedł na bardzo duży<sup>646<\/sup>, obficie zasadzony drzewami.",
+  "start": 2455.77
+ },
+ {
+  "i": 264,
+  "pl": "Na środku jego stał gmach prostokątny<sup>647<\/sup>, otoczony kolumnami jak grecka świątynia; wielkie drzwi spiżowe, okryte płaskorzeźbą, na szczycie frontonu<sup>648<\/sup> również płaskorzeźba przedstawiająca, zdaje się, sąd ostateczny<sup>649<\/sup>.",
+  "start": 2463.51
+ },
+ {
+  "i": 265,
+  "pl": "Wkoło obszedł gmach myśląc o Warszawie. Z jakim trudem dźwigają się tamtejsze budowle nieduże, nietrwałe i płaskie, gdy tu siła ludzka, jakby dla rozrywki, wznosi olbrzymy i tak dalece jest niewyczerpana pracą, że jeszcze zalewa je ozdobami.",
+  "start": 2477.33
+ },
+ {
+  "i": 266,
+  "pl": "Naprzeciw zobaczył niedługą ulicę<sup>650<\/sup>, a za nią ogromny plac<sup>651<\/sup>, na którym majaczyła wysmukła kolumna. Poszedł w tamtą stronę. Im bardziej zbliżał się, tym wyżej rosła kolumna i plac się rozszerzał.",
+  "start": 2495.98
+ },
+ {
+  "i": 267,
+  "pl": "Przed i za kolumną biły duże wodotryski: na prawo i na lewo ciągnęły się już żółknące kępy drzew jak ogrody; w głębi widać było rzekę, nad którą co chwilę rozsnuwał się dym szybko przelatującego parostatku.",
+  "start": 2508.86
+ },
+ {
+  "i": 268,
+  "pl": "Na placu kręciło się niewiele stosunkowo powozów; natomiast było dużo dzieci z matkami i bonami<sup>652<\/sup>. Krążyli wojskowi różnej broni i gdzieś grała orkiestra.",
+  "start": 2523.84
+ },
+ {
+  "i": 269,
+  "pl": "Wokulski zbliżył się do obelisku<sup>653<\/sup> i ogarnęło go zdumienie. Znajdował się na środku obszaru mającego ze dwie wiorsty długości i z pół szerokości. Za sobą miał ogród<sup>654<\/sup>, przed sobą bardzo długą aleję<sup>655<\/sup>.",
+  "start": 2536.58
+ },
+ {
+  "i": 270,
+  "pl": "Po obu jej stronach ciągnęły się skwery i pałace<sup>656<\/sup>, a daleko, na wzgórzu, wznosiła się ogromna brama<sup>657<\/sup>. Wokulski czuł, że w tym miejscu może mu zabraknąć przymiotników i stopni najwyższych.",
+  "start": 2550.63
+ },
+ {
+  "i": 271,
+  "pl": "— To jest plac Zgody, to obelisk z Luxor (oryginalny, panie!), za nami ogród Tuileryjski, przed nami Pola Elizejskie, a tam, na końcu... Łuk Gwiazdy...",
+  "start": 2563.23
+ },
+ {
+  "i": 272,
+  "pl": "Wokulski obejrzał się: przy nim kręcił się jakiś pan w ciemnych okularach i nieco podartych rękawiczkach.",
+  "start": 2575.51
+ },
+ {
+  "i": 273,
+  "pl": "— Możemy tam podejść... Boski spacer!... Czy widzisz pan ten ruch... — mówił nieznajomy.",
+  "start": 2582.09
+ },
+ {
+  "i": 274,
+  "pl": "Nagle umilkł, szybko odszedł i zniknął między dwoma przejeżdżającymi powozami. Natomiast zbliżył się jakiś wojskowy w krótkiej pelerynie, z kapturem na plecach. Wojskowy chwilę przypatrzył się Wokulskiemu i rzekł z uśmiechem.",
+  "start": 2588.59
+ },
+ {
+  "i": 275,
+  "pl": "— Pan cudzoziemiec?... Niech pan będzie ostrożny ze znajomościami w Paryżu...",
+  "start": 2603.65
+ },
+ {
+  "i": 276,
+  "pl": "Wokulski machinalnie dotknął bocznej kieszeni surduta i już nie znalazł tam srebrnej papierośnicy. Zarumienił się, grzecznie podziękował wojskowemu w pelerynie, lecz nie przyznał się do straty.",
+  "start": 2608.79
+ },
+ {
+  "i": 277,
+  "pl": "Przyszły mu na myśl definicje Jumarta i powiedział sobie, że już zna źródło dochodów pana w podartych rękawiczkach, choć nie wie jeszcze o jego wydatkach.",
+  "start": 2622.21
+ },
+ {
+  "i": 278,
+  "pl": "„Jumart ma rację — szepnął. — Złodzieje są mniej niepewni od ludzi, którzy nie wiadomo skąd czerpią dochody...”",
+  "start": 2634.17
+ },
+ {
+  "i": 279,
+  "pl": "I przypomniał sobie, że w Warszawie jest bardzo wielu takich.",
+  "start": 2641.07
+ },
+ {
+  "i": 280,
+  "pl": "„Może dlatego nie ma tam gmachów i łuków triumfalnych...”",
+  "start": 2645.64
+ },
+ {
+  "i": 281,
+  "pl": "Szedł Polami Elizejskimi i odurzał się ruchem nieskończonych sznurów karet i powozów, między którymi przesuwali się jeźdźcy i amazonki<sup>658<\/sup>. Szedł odpędzając od siebie posępne myśli, które krążyły nad nim jak stada nietoperzy.",
+  "start": 2650.4
+ },
+ {
+  "i": 282,
+  "pl": "Szedł i lękał się spojrzeć za siebie; zdawało mu się, że na tej drodze, kipiącej przepychem i weselem, on sam jest jak zdeptany robak, który wlecze za sobą wnętrzności.",
+  "start": 2666.08
+ },
+ {
+  "i": 283,
+  "pl": "Dotarł do Łuku Gwiazdy i powoli zawrócił się z powrotem. Gdy znowu dosięgał placu Zgody, zobaczył, poza Tuileryjskim ogrodem, ogromną czarną kulę, która szybko szła w górę, zatrzymała się pewien czas i powoli opadła na dół.",
+  "start": 2679.34
+ },
+ {
+  "i": 284,
+  "pl": "„Ach, to tu jest balon Giffarda<sup>659<\/sup>? — pomyślał. — Szkoda, że nie mam dziś czasu!...”",
+  "start": 2694.87
+ },
+ {
+  "i": 285,
+  "pl": "Z placu skręcił w jakąś ulicę<sup>660<\/sup>, gdzie na prawo ciągnął się ogród<sup>661<\/sup> oddzielony żelaznymi sztachetami i słupami, na których stały wazony, a na lewo — szereg kamienic z półokrągłymi dachami, z lasem kominów i kominków, z niekończącymi się balustradami...",
+  "start": 2700.47
+ },
+ {
+  "i": 286,
+  "pl": "Szedł powoli i z trwogą myślał, że ledwie po ośmiogodzinnym pobycie Paryż zaczyna go nudzić...",
+  "start": 2716.54
+ },
+ {
+  "i": 287,
+  "pl": "„Bah! — szepnął. — A wystawa, a muzea, a balon?...”",
+  "start": 2722.46
+ },
+ {
+  "i": 288,
+  "pl": "Idąc wciąż ulicą Rivoli około siódmej dotarł do placu, na którym wznosiła się, samotna jak palec, wieża gotycka<sup>662<\/sup>, otoczona drzewami i niskim płotem z prętów żelaznych.",
+  "start": 2727.12
+ },
+ {
+  "i": 289,
+  "pl": "Stąd znowu rozbiegało się kilka ulic; Wokulski uczuł znużenie, kiwnął na fiakra<sup>663<\/sup> i po upływie pół godziny znalazł się w hotelu spotkawszy po drodze znajomą już bramę St. Denis.",
+  "start": 2738.74
+ },
+ {
+  "i": 290,
+  "pl": "Sesja z fabrykantami okrętów i odnośnymi inżynierami przeciągnęła się do północy, przy udziale bardzo wielu butelek szampana. Wokulski, który musiał wyręczać w rozmowie Suzina i robił dużo notatek, dopiero przy tej pracy uspokoił się zupełnie.",
+  "start": 2751.33
+ },
+ {
+  "i": 291,
+  "pl": "Rześko pobiegł do swojego numeru i zamiast dręczyć się lustrem, wziął do poduszki plan Paryża umieszczony w Przewodniku.",
+  "start": 2767.56
+ },
+ {
+  "i": 292,
+  "pl": "„Bagatela! — mruknął. — Około stu wiorst kwadratowych<sup>664<\/sup> powierzchni, dwa miliony mieszkańców, kilka tysięcy ulic i kilkanaście tysięcy powozów publicznych...”",
+  "start": 2775.04
+ },
+ {
+  "i": 293,
+  "pl": "Potem przejrzał długi spis najznakomitszych budowli paryskich i ze wstydem pomyślał, że chyba nigdy nie zorientuje się w tym mieście.",
+  "start": 2785.46
+ },
+ {
+  "i": 294,
+  "pl": "„Wystawa... Notre–Dame<sup>665<\/sup>... Hale Centralne<sup>666<\/sup>... Plac Bastylii<sup>667<\/sup>... Magdalena... Ścieki<sup>668<\/sup>... No, dajcie mi spokój!” — mówił.",
+  "start": 2794.52
+ },
+ {
+  "i": 295,
+  "pl": "Zgasił świecę. Na ulicy było cicho; przez okno napływał szary blask świateł odbitych chyba od obłoków.",
+  "start": 2803.23
+ },
+ {
+  "i": 296,
+  "pl": "Ale Wokulskiemu szumiało i dzwoniło w uszach, a przed oczyma ukazywały mu się to ulice gładkie jak posadzka, to drzewa otoczone żelaznymi koszykami, to gmachy budowane z ciosowego kamienia, to znowu ciżba ludzi i powozów wychodzących nie wiadomo skąd i biegnących nie wiadomo dokąd.",
+  "start": 2810.63
+ },
+ {
+  "i": 297,
+  "pl": "Przypatrując się tym pierzchliwym widziadłom usypiał i myślał, że jednak ten pierwszy dzień w Paryżu upamiętni mu się na całe życie.",
+  "start": 2831.43
+ },
+ {
+  "i": 298,
+  "pl": "Potem marzyło mu się, że to morze domów i las posągów, i nieskończone szeregi drzew zwalają się na niego i że on sam już śpi w niezmiernym grobowcu samotny, cichy, prawie szczęśliwy.",
+  "start": 2840.63
+ },
+ {
+  "i": 299,
+  "pl": "Śpi, o niczym nie myśli, o nikim nie pamięta, i tak przespałby wieki, gdyby, ach! nie ta kropla żalu, która leży w nim czy obok niego, tak mała, że jej nie dojrzy ludzkie oko, a tak gorzka, że mogłaby cały świat zatruć.",
+  "start": 2853.01
+ },
+ {
+  "i": 300,
+  "pl": "Od dnia, w którym po raz pierwszy skąpał się w Paryżu, zaczęło się dla Wokulskiego życie prawie mistyczne. Poza obrębem kilku godzin, które poświęcał naradom Suzina z budowniczymi okrętów, Wokulski był zupełnie swobodny i używał tego czasu na najnieporządniejsze zwiedzanie miasta.",
+  "start": 2870.8
+ },
+ {
+  "i": 301,
+  "pl": "Wybierał jakąś miejscowość według alfabetu w Przewodniku i nawet nie patrząc na plan jechał tam otwartym powozem.",
+  "start": 2890.66
+ },
+ {
+  "i": 302,
+  "pl": "Wdrapywał się na schody, obchodził gmachy, przebiegał sale, zatrzymywał się przed ciekawszymi okazami i tym samym fiakrem, wynajętym na cały dzień, przenosił się do innej miejscowości, znowu według alfabetu.",
+  "start": 2898.98
+ },
+ {
+  "i": 303,
+  "pl": "A ponieważ największym niebezpieczeństwem, jakiego lękał się, był brak zajęcia, więc wieczorami oglądał plan miasta, wykreślał już obejrzane punkta i robił notatki.",
+  "start": 2911.82
+ },
+ {
+  "i": 304,
+  "pl": "Niekiedy w wycieczkach towarzyszył mu Jumart i prowadził go do miejsc, o których nie wspominają przewodniki: do składów kupieckich, do warsztatów fabrycznych, do mieszkań rękodzielników, do kwater studenckich, do kawiarni i restauracyj na ulicach czwartego rzędu.",
+  "start": 2923.31
+ },
+ {
+  "i": 305,
+  "pl": "I tu dopiero Wokulski poznawał właściwe życie Paryża.",
+  "start": 2941.35
+ },
+ {
+  "i": 306,
+  "pl": "W ciągu tych wędrówek wchodził na wieże: St. Jacques, Notre–Dame i Panteonu<sup>669<\/sup>, wjeżdżał windą na Trocadero<sup>670<\/sup>, zstępował do ścieków paryskich i do ozdobionych trupimi głowami katakumb<sup>671<\/sup>, zwiedzał wystawę powszechną, Louvre<sup>672<\/sup> i Cluny<sup>673<\/sup>,",
+  "start": 2946.65
+ },
+ {
+  "i": 307,
+  "pl": "Lasek Buloński<sup>674<\/sup> i cmentarze<sup>675<\/sup>, kawiarnie de la Rotonde, du Grand Balcon<sup>676<\/sup> i fontanny, szkoły i szpitale, Sorbonę<sup>677<\/sup> i sale fechtunku, hale i konserwatorium muzyczne<sup>678<\/sup>, bydłobójnie i teatry, giełdę<sup>679<\/sup>,",
+  "start": 2966.19
+ },
+ {
+  "i": 308,
+  "pl": "Kolumnę Lipcową i wnętrza świątyń. Wszystkie te widoki tworzyły dokoła niego chaos, któremu odpowiadał chaos panujący we własnej duszy.",
+  "start": 2980.53
+ },
+ {
+  "i": 309,
+  "pl": "Nieraz przebiegając myślą oglądane przedmioty: od pałacu wystawy, mającego dwie wiorsty w obwodzie, do perły w koronie Burbonów<sup>680<\/sup>, nie większej od ziarna grochu, pytał: czego ja chcę?... I okazywało się, że nie chciał niczego.",
+  "start": 2991.32
+ },
+ {
+  "i": 310,
+  "pl": "Nic nie przykuwało jego uwagi, nie przyśpieszało bicia serca, nie pobudzało go do czynów. Gdyby za cenę pieszej podróży od cmentarza Montmartre do cmentarza Montparnasse ofiarowano mu cały Paryż pod warunkiem, żeby go to zajęło i rozgrzało, nie przeszedłby tych pięciu wiorst.",
+  "start": 3008.08
+ },
+ {
+  "i": 311,
+  "pl": "Przechodził zaś ich dziesiątki dziennie dlatego tylko, ażeby zagłuszyć wspomnienia.",
+  "start": 3027.32
+ },
+ {
+  "i": 312,
+  "pl": "Nieraz zdawało mu się, że jest istotą, która dziwnym zbiegiem wypadków urodziła się przed kilkoma dniami tu, na bruku paryskim, i że wszystko, co mu przychodziło na pamięć, jest złudzeniem, jakimś snem przedbytowym, który nigdy nie istniał w rzeczywistości.",
+  "start": 3034.49
+ },
+ {
+  "i": 313,
+  "pl": "Wówczas mówił sobie, że jest zupełnie szczęśliwy, jeździł z jednego końca Paryża na drugi i jak szaleniec garściami rozrzucał luidory<sup>681<\/sup>.",
+  "start": 3051.93
+ },
+ {
+  "i": 314,
+  "pl": "„Wszystko jedno!” — mruczał.",
+  "start": 3061.65
+ },
+ {
+  "i": 315,
+  "pl": "Ach, gdyby tylko nie ta kropla żalu, tak mała, a tak gorzka!",
+  "start": 3063.51
+ },
+ {
+  "i": 316,
+  "pl": "Czasami na tle szarych dni, w których zdawało mu się, że na jego głowę wali się cały świat pałaców, fontann, rzeźb, obrazów i machin, trafiał się wypadek, który przypominał mu, że on nie jest złudzeniem, ale rzeczywistym człowiekiem, chorym na raka w duszy.",
+  "start": 3069.63
+ },
+ {
+  "i": 317,
+  "pl": "Był raz w teatrze „Variétés”<sup>682<\/sup> na ul. Montmartre, o paręset kroków od swego hotelu. Miano grać trzy wesołe sztuczki, między nimi jedną operetkę.",
+  "start": 3087.96
+ },
+ {
+  "i": 318,
+  "pl": "Poszedł tam, ażeby odurzyć się błazeństwem, i prawie natychmiast po podniesieniu kurtyny usłyszał na scenie frazes<sup>683<\/sup> wypowiedziany płaczliwym głosem:",
+  "start": 3099.01
+ },
+ {
+  "i": 319,
+  "pl": "„Kochanek wszystko wybaczy kochance, wyjąwszy drugiego kochanka...”",
+  "start": 3109.39
+ },
+ {
+  "i": 320,
+  "pl": "— Niekiedy trzeba wybaczyć trzech albo czterech!... — odezwał się ze śmiechem siedzący obok niego Francuz.",
+  "start": 3115.81
+ },
+ {
+  "i": 321,
+  "pl": "Wokulski uczuł brak powietrza, zdawało mu się, że ziemia rozstępuje się pod nim i sufit upada na niego. Nie mógł wytrzymać w teatrze; wstał z krzesła, na nieszczęście położonego gdzieś we środku teatru, i oblany zimnym potem, depcząc po nogach sąsiadów, uciekł z przedstawienia.",
+  "start": 3123.07
+ },
+ {
+  "i": 322,
+  "pl": "Biegł w stronę hotelu i wpadł do pierwszej narożnej kawiarni. O co go pytano, co odpowiedział, nie pamięta. Wiedział tylko, że podano mu kawę i karafkę koniaku, naznaczoną kreskami, które odpowiadały objętości kieliszka.",
+  "start": 3142.08
+ },
+ {
+  "i": 323,
+  "pl": "Wokulski pił i myślał:",
+  "start": 3156.86
+ },
+ {
+  "i": 324,
+  "pl": "„Starski to jest ten drugi kochanek, Ochocki trzeci... A Rossi?... Rossi, któremu ja urządzałem klakę i znosiłem mu do teatru prezenta... Czymże on był?... Głupi człowieku, ależ to jest Mesalina<sup>684<\/sup>, jeżeli nie ciałem, to duchem... I ja, ja mam szaleć dla niej?... Ja!...”",
+  "start": 3159.36
+ },
+ {
+  "i": 325,
+  "pl": "Czuł, że oburzenie uspakaja go; gdy przyszło do rachunku, przekonał się, że... karafka była pusta...",
+  "start": 3180.11
+ },
+ {
+  "i": 326,
+  "pl": "„A jednakże ten koniak uspakaja...” — pomyślał.",
+  "start": 3186.67
+ },
+ {
+  "i": 327,
+  "pl": "Odtąd, ile razy przypomniała mu się Warszawa albo ile razy spotkał kobietę mającą coś szczególnego w ruchach, w ubiorze czy fizjognomii, wpadał do kawiarni i wypijał karafkę koniaku.",
+  "start": 3195.18
+ },
+ {
+  "i": 328,
+  "pl": "Tylko wówczas śmiało przypominał sobie pannę Izabelę i dziwił się, że taki jak on człowiek mógł kochać taką jak ona kobietę.",
+  "start": 3209.15
+ },
+ {
+  "i": 329,
+  "pl": "„Przecież chyba zasługuję na to — myślał — ażebym był pierwszym i ostatnim...”",
+  "start": 3218.15
+ },
+ {
+  "i": 330,
+  "pl": "Karafka koniaku wypróżniała się, a on opierał głowę na rękach i drzemał, ku wielkiej uciesze garsonów i gości.",
+  "start": 3223.86
+ },
+ {
+  "i": 331,
+  "pl": "I znowu po całych dniach zwiedzał wystawę, muzea, studnie artezyjskie<sup>685<\/sup>, szkoły i teatry nie dlatego, ażeby coś poznać, ale ażeby zagłuszyć wspomnienia. Powoli, na tle głuchych i nieokreślonych cierpień, poczęło się w nim rodzić pytanie: czy istnieje jaki porządek w budowie Paryża?",
+  "start": 3230.66
+ },
+ {
+  "i": 332,
+  "pl": "Czy jest przedmiot, z którym można by go porównać, i ład, pod który dałoby się go podciągnąć?",
+  "start": 3251.51
+ },
+ {
+  "i": 333,
+  "pl": "Widziany z Panteonu i z Trocadero, Paryż przedstawiał się jednakowo: było to morze domów, przecięte tysiącem ulic, nierówne dachy wyglądały jak fale, kominy jak odpryski, a wieże i kolumny jak większe fale.",
+  "start": 3257.71
+ },
+ {
+  "i": 334,
+  "pl": "„Chaos! — mówił Wokulski. — Zresztą nie może być inaczej tam, gdzie zbiegają się miliony usiłowań. Wielkie miasto jest jak obłok kurzu; ma przypadkowe kontury, lecz nie może mieć logiki. Gdyby ją miało, już od dawna wykryliby ten fakt autorowie przewodników; bo i od czegóż oni są?...”",
+  "start": 3274.97
+ },
+ {
+  "i": 335,
+  "pl": "I przyglądał się planowi miasta wyśmiewając własne wysiłki.",
+  "start": 3294.69
+ },
+ {
+  "i": 336,
+  "pl": "„Tylko jeden człowiek, i w dodatku genialny człowiek, może wytworzyć jakiś styl, jakiś plan — myślał.",
+  "start": 3300.28
+ },
+ {
+  "i": 337,
+  "pl": "— Ale żeby miliony ludzi, pracujących przez kilka wieków i nie wiedzących jeden o drugim, wytworzyło jakąś logiczną całość, jest to wprost niepodobne.”",
+  "start": 3307.36
+ },
+ {
+  "i": 338,
+  "pl": "Powoli jednakże, ku największemu zdziwieniu, spostrzegł, że ów Paryż, budowany przez kilkanaście wieków, przez miliony ludzi, nie wiedzących o sobie i nie myślących o żadnym planie, ma jednakże plan, tworzy całość, nawet bardzo logiczną.",
+  "start": 3317.73
+ },
+ {
+  "i": 339,
+  "pl": "Uderzyło go naprzód to, że Paryż jest podobny do olbrzymiego półmiska, o dziewięciu wiorstach szerokości z północy na południe i o jedynastu długości ze wschodu na zachód.",
+  "start": 3332.21
+ },
+ {
+  "i": 340,
+  "pl": "Półmisek ten w stronie południowej jest pęknięty i przedzielony Sekwaną, która przecina go łukiem biegnącym od kąta południowo–wschodniego przez środek miasta i skręca do kąta południowo–zachodniego. Ośmioletnie dziecko mogłoby wyrysować taki plan.",
+  "start": 3342.67
+ },
+ {
+  "i": 341,
+  "pl": "„No dobrze — myślał Wokulski — ale gdzież tu jest jakiśkolwiek ład w ustawieniu osobliwych budynków... Notre–Dame w jednej stronie, Trocadero w innej stronie, a Louvre, a giełda, a Sorbona!... Chaos, i tyle...”",
+  "start": 3360.25
+ },
+ {
+  "i": 342,
+  "pl": "Lecz gdy pilniej zaczął rozglądać się w planie Paryża, spostrzegł to, czego nie dojrzeli rodowici paryżanie (co byłoby mniej dziwne) ani nawet K. Baedeker<sup>686<\/sup>, roszczący sobie prawo do orientowania się po całej Europie.",
+  "start": 3374.64
+ },
+ {
+  "i": 343,
+  "pl": "Paryż pomimo pozornego chaosu ma plan, ma logikę, chociaż budowało go przez kilkanaście wieków miliony ludzi nie wiedzących o sobie i bynajmniej nie myślących o logice i stylu.",
+  "start": 3390.52
+ },
+ {
+  "i": 344,
+  "pl": "Paryż posiada to, co można by nazwać kręgosłupem, osią krystalizacji<sup>687<\/sup> miasta.",
+  "start": 3404.51
+ },
+ {
+  "i": 345,
+  "pl": "Lasek Vincennes<sup>688<\/sup> leży w stronie południowo–wschodniej, a kraniec Lasku Bulońskiego w północno–zachodniej stronie Paryża.",
+  "start": 3411.48
+ },
+ {
+  "i": 346,
+  "pl": "Otóż: owa oś krystalizacji miasta podobna jest do olbrzymiej gąsienicy (mającej prawie sześć wiorst długości), która znudziwszy się w Lasku Vincennes poszła na spacer do Lasku Bulońskiego.",
+  "start": 3419.66
+ },
+ {
+  "i": 347,
+  "pl": "Ogon jej opiera się o plac Bastylii, głowa o Łuk Gwiazdy, korpus prawie przylega do Sekwany. Szyję stanowią Pola Elizejskie, gorset Tuileries i Louvre, ogonem jest Ratusz<sup>689<\/sup>, Notre–Dame i nareszcie Kolumna Lipcowa na placu Bastylii.",
+  "start": 3432.34
+ },
+ {
+  "i": 348,
+  "pl": "Gąsienica ta posiada wiele nóżek krótszych i dłuższych. Idąc od głowy pierwsza para jej nóżek opiera się na lewo: o Pole Marsowe<sup>690<\/sup>, pałac Trocadero i wystawę, na prawo aż o cmentarz Montmartre.",
+  "start": 3451.5
+ },
+ {
+  "i": 349,
+  "pl": "Druga para (nóżki krótsze) na lewo sięga do Szkoły Wojskowej<sup>691<\/sup>, Hotelu des Invalides<sup>692<\/sup>. i Izby Deputowanych<sup>693<\/sup>, na prawo kościoła Magdaleny i Opery. Potem idzie (wciąż ku ogonowi) na lewo Szkoła Sztuk Pięknych<sup>694<\/sup>, na prawo Palais Royal<sup>695<\/sup>,",
+  "start": 3466.17
+ },
+ {
+  "i": 350,
+  "pl": "bank i giełda; na lewo Institut de France<sup>696<\/sup> i mennica<sup>697<\/sup>, na prawo Hale Centralne; na lewo Pałac Luksemburski<sup>698<\/sup>, muzeum Cluny i Szkoła Medyczna<sup>699<\/sup>, na prawo plac Republiki<sup>700<\/sup>, z koszarami ks. Eugeniusza<sup>701<\/sup>.",
+  "start": 3484.47
+ },
+ {
+  "i": 351,
+  "pl": "Niezależnie od osi krystalizacyjnej i prawidłowości w ogólnym konturze miasta Wokulski przekonał się jeszcze (o czym zresztą mówiły przewodniki), że w Paryżu istnieją całe dziedziny prac ludzkich i jakiś porządek w ich układzie.",
+  "start": 3502.26
+ },
+ {
+  "i": 352,
+  "pl": "Pomiędzy placem Bastylii i placem Rzeczypospolitej skupia się przemysł i rzemiosła; naprzeciw nich, po drugiej stronie Sekwany, leży „dzielnica łacińska”<sup>702<\/sup>, gniazdo uczących się i uczonych.",
+  "start": 3518.45
+ },
+ {
+  "i": 353,
+  "pl": "Między Operą, placem Rzeczypospolitej i Sekwaną gromadzi się handel wywozowy i finanse; między Notre–Dame, Instytutem Francuskim i cmentarzem Montparnasse gnieżdżą się szczątki arystokracji rodowej.",
+  "start": 3532.33
+ },
+ {
+  "i": 354,
+  "pl": "Od Opery do Łuku Gwiazdy ciągnie się dzielnica bogatych dorobkiewiczów, a naprzeciw nich, po lewej stronie Sekwany, obok Hotelu Inwalidów i Szkoły Wojskowej jest siedziba militaryzmu i wszechświatowych wystaw.",
+  "start": 3546.75
+ },
+ {
+  "i": 355,
+  "pl": "Obserwacje te zbudziły w duszy Wokulskiego nowe prądy, o których pierwej nie myślał albo myślał niedokładnie. Zatem wielkie miasto, jak roślina i zwierzę, ma właściwą sobie anatomię i fizjologię.",
+  "start": 3563.48
+ },
+ {
+  "i": 356,
+  "pl": "Zatem praca milionów ludzi, którzy tak głośno krzyczą o swojej wolnej woli, wydaje te same skutki, co praca pszczół budujących regularne plastry, mrówek wznoszących ostrokrężne kopce albo związków chemicznych układających się w regularne kryształy.",
+  "start": 3577.1
+ },
+ {
+  "i": 357,
+  "pl": "Nie ma więc w społeczeństwie przypadku, ale nieugięte prawo, które jakby na ironię z ludzkiej pychy, tak wyraźnie objawia się w życiu najkapryśniejszego narodu, Francuzów!",
+  "start": 3594.84
+ },
+ {
+  "i": 358,
+  "pl": "Rządzili nimi Merowingowie i Karlowingowie, Burboni i Bonapartowie<sup>703<\/sup>, były trzy republiki<sup>704<\/sup> i parę anarchii, była inkwizycja<sup>705<\/sup> i ateizm, rządcy i ministrowie zmieniali się jak krój sukien albo obłoki na niebie... Lecz pomimo tylu zmian, tak na pozór głębokich,",
+  "start": 3607.79
+ },
+ {
+  "i": 359,
+  "pl": "Paryż coraz dokładniej przybierał formę półmiska rozdartego przez Sekwanę; coraz wyraźniej rysowała się na nim oś krystalizacji, biegnąca z placu Bastylii do Łuku Gwiazdy, coraz jaśniej odgraniczały się dzielnice: uczona i przemysłowa, rodowa i handlowa, wojskowa i dorobkiewiczowska.",
+  "start": 3626.67
+ },
+ {
+  "i": 360,
+  "pl": "Ten sam fatalizm<sup>706<\/sup> spostrzegł Wokulski w historii kilkunastu głośniejszych rodzin paryskich. Dziad, jako skromny rzemieślnik, pracował przy ulicy Temple<sup>707<\/sup> po szesnaście godzin na dobę; jego syn skąpawszy się w cyrkule łacińskim założył większy warsztat przy ulicy Św.",
+  "start": 3647.55
+ },
+ {
+  "i": 361,
+  "pl": "Antoniego<sup>708<\/sup>. Wnuk, jeszcze lepiej zanurzywszy się w naukowej dzielnicy, przeniósł się jako wielki handlarz na bulwar Poissonniere<sup>709<\/sup>, zaś prawnuk, już jako milioner, zamieszkał w sąsiedztwie Pól Elizejskch po to, ażeby... jego córki mogły chorować na nerwy przy bulwarze St.",
+  "start": 3669.28
+ },
+ {
+  "i": 362,
+  "pl": "Germain<sup>710<\/sup>. I tym sposobem ród spracowany i zbogacony około Bastylii, zużyty około Tuileries, dogorywał w pobliżu Notre–Dame. Topografia<sup>711<\/sup> miasta odpowiadała historii mieszkańców.",
+  "start": 3686.8
+ },
+ {
+  "i": 363,
+  "pl": "Wokulski rozmyślając o tej dziwnej prawidłowości w faktach, uznawanych za nieprawidłowe, przeczuwał, że jeżeli co mogłoby go uleczyć z apatii, to chyba tego rodzaju badania.",
+  "start": 3702.1
+ },
+ {
+  "i": 364,
+  "pl": "„Jestem dziki człowiek — mówił sobie — więc wpadłem w obłęd, ale wydobędzie mnie z niego cywilizacja.”",
+  "start": 3714.84
+ },
+ {
+  "i": 365,
+  "pl": "Każdy zresztą dzień w Paryżu przynosił mu nowe idee albo rozjaśniał tajemnice jego własnej duszy. Raz, gdy siedział przed kawiarnią pijąc mazagran, zbliżył się do werendy jakiś uliczny tenor i przy akompaniamencie arfy zaśpiewał:",
+  "start": 3722.65
+ },
+ {
+  "i": 366,
+  "pl": "I natychmiast kilku gości powtórzyło ostatnią strofę:",
+  "start": 3762.96
+ },
+ {
+  "i": 367,
+  "pl": "„Głupcy! — mruknął Wokulski. — Nie mają co powtarzać, tylko takie błazeństwa.”",
+  "start": 3781.96
+ },
+ {
+  "i": 368,
+  "pl": "Wstał zachmurzony i z bólem w sercu przesuwał się pomiędzy potokiem ludzi tak ruchliwych, krzykliwych, rozmawiających i śpiewających jak dzieci wypuszczone ze szkoły.",
+  "start": 3788.56
+ },
+ {
+  "i": 369,
+  "pl": "„Głupcy! głupcy!...” — powtarzał.",
+  "start": 3798.18
+ },
+ {
+  "i": 370,
+  "pl": "Nagle przyszło mu na myśl: czy to on raczej nie jest głupi?...",
+  "start": 3800.64
+ },
+ {
+  "i": 371,
+  "pl": "„Gdyby ci wszyscy ludzie — mówił sobie — byli podobni do mnie, Paryż wyglądałby jak szpital smutnych wariatów. Każdy trułby się jakimś widziadłem, ulice zamieniłyby się w kałuże, a domy w ruinę.",
+  "start": 3805.38
+ },
+ {
+  "i": 372,
+  "pl": "Tymczasem oni biorą życie, jakim jest, uganiają się za praktycznymi celami, są szczęśliwi i tworzą arcydzieła.",
+  "start": 3818.9
+ },
+ {
+  "i": 373,
+  "pl": "A ja za czym goniłem? Naprzód za perpetuum mobile i kierowaniem balonami, potem za zdobyciem stanowiska, do którego nie dopuszczali mnie moi właśni sprzymierzeńcy, nareszcie za kobietą, do której prawie nie wolno mi się zbliżyć.",
+  "start": 3826.82
+ },
+ {
+  "i": 374,
+  "pl": "A zawsze albo poświęcałem się, albo ulegałem ideom wytworzonym przez klasy, które chciały mnie zrobić swoim sługą i niewolnikiem.”",
+  "start": 3842.81
+ },
+ {
+  "i": 375,
+  "pl": "I wyobrażał sobie, jakby to było, gdyby zamiast w Warszawie przyszedł na świat w Paryżu. Przede wszystkim dzięki mnóstwu instytucyj mógłby więcej nauczyć się w dzieciństwie. Później, nawet dostawszy się do kupca, doznałby mniej przykrości, a więcej pomocy w studiach.",
+  "start": 3852.42
+ },
+ {
+  "i": 376,
+  "pl": "Dalej, nie pracowałby nad perpetuum mobile przekonawszy się, że w tutejszych muzeach istnieje wiele podobnych machin, które nigdy nie funkcjonowały.",
+  "start": 3870.2
+ },
+ {
+  "i": 377,
+  "pl": "Gdyby zaś wziął się do kierowania balonami, znalazłby gotowe modele, całe grupy podobnych jak on marzycieli, a nawet pomoc w razie praktyczności pomysłów.",
+  "start": 3879.12
+ },
+ {
+  "i": 378,
+  "pl": "A gdyby nareszcie, posiadając majątek, zakochał się w arystokratycznej pannie, nie napotkałby tylu przeszkód w zbliżeniu się do niej. Mógłby ją poznać i albo wytrzeźwiałby, albo zdobyłby jej wzajemność. W żadnym zaś wypadku nie traktowano by go jak Murzyna w Ameryce.",
+  "start": 3889.07
+ },
+ {
+  "i": 379,
+  "pl": "Zresztą, czy w tym Paryżu można zakochać się tak jak on do szaleństwa?",
+  "start": 3909.38
+ },
+ {
+  "i": 380,
+  "pl": "Tu zakochani nie rozpaczają, ale tańczą, śpiewają i w ogóle najweselej pędzą życie. Gdy nie mogą zdobyć się na małżeństwo urzędowe, tworzą wolne stadło; gdy nie mogą przy sobie chować dzieci, oddają je na mamki. Tu miłość nigdy chyba nie doprowadziła do obłędu rozsądnego człowieka.",
+  "start": 3916.18
+ },
+ {
+  "i": 381,
+  "pl": "„Dwa ostatnie lata mojej egzystencji — mówił Wokulski — schodzą na uganianiu się za kobietą, której może bym się nawet wyrzekł poznawszy ją dokładniej. Cała moja energia, nauka, zdolności i taki ogromny majątek toną w jednym afekcie dlatego tylko, że ja jestem kupcem, a ona jakąś tam arystokratką.",
+  "start": 3936.57
+ },
+ {
+  "i": 382,
+  "pl": "Czyliż ten ogół w mojej osobie nie krzywdzi samego siebie...”",
+  "start": 3960.26
+ },
+ {
+  "i": 383,
+  "pl": "Tu Wokulski dosięgnął najwyższego punktu samokrytyki: poznał niedorzeczność swego położenia i postanowił wydobyć się.",
+  "start": 3964.72
+ },
+ {
+  "i": 384,
+  "pl": "„Co robić, co robić?... — myślał. — Jużci to, co robią inni.”",
+  "start": 3974.28
+ },
+ {
+  "i": 385,
+  "pl": "A cóż oni robią?... Przede wszystkim nadzwyczajnie pracują, po szesnaście godzin na dobę, bez względu na niedzielę i święta. Dzięki czemu spełnia się tu prawo doboru, wedle którego tylko najsilniejsi mają prawo do życia.",
+  "start": 3979.1
+ },
+ {
+  "i": 386,
+  "pl": "Chorowity zginie tu przed upływem roku, nieudolny w ciągu kilku lat, a zostają tylko najsilniejsi i najzdolniejsi. Ci zaś dzięki pracy całych pokoleń takich jak oni bojowników znajdują tu zaspokojenie wszelkich potrzeb.",
+  "start": 3994.56
+ },
+ {
+  "i": 387,
+  "pl": "Olbrzymie ścieki chronią ich od chorób, szerokie ulice ułatwiają im dopływ powietrza; Hale Centralne dostarczają żywności, tysiące fabryk — odzieży i sprzętów.",
+  "start": 4011.04
+ },
+ {
+  "i": 388,
+  "pl": "Gdy paryżanin chce zobaczyć naturę, jedzie za miasto albo do „lasku”<sup>713<\/sup>, gdy chce nacieszyć się sztuką, idzie do galerii Luwru, a gdy pragnie zdobyć wiedzę, ma muzea i gabinety<sup>714<\/sup>.",
+  "start": 4022.34
+ },
+ {
+  "i": 389,
+  "pl": "Praca nad szczęściem we wszystkich kierunkach — oto treść życia paryskiego. Tu przeciw zmęczeniu zaprowadzono tysiące powozów, przeciw nudzie setki teatrów i widowisk, przeciw niewiadomości setki muzeów, bibliotek i odczytów.",
+  "start": 4033.88
+ },
+ {
+  "i": 390,
+  "pl": "Tu troszczą się nie tylko o człowieka, ale nawet o konia dając mu gładkie gościńce; tu dbają nawet o drzewa, przenoszą je w specjalnych wozach na nowe miejsce pobytu, chronią żelaznymi koszami od szkodników, ułatwiają dopływ wilgoci, pielęgnują w razie choroby.",
+  "start": 4050.27
+ },
+ {
+  "i": 391,
+  "pl": "Dzięki troskliwości o wszystko przedmioty znajdujące się w Paryżu przynoszą wielorakie korzyści. Dom, sprzęt, naczynie jest nie tylko użyteczne, ale i piękne, nie tylko dogadza muskułom, ale i zmysłom. I na odwrót — dzieła sztuki są nie tylko piękne, ale i użyteczne.",
+  "start": 4068.09
+ },
+ {
+  "i": 392,
+  "pl": "Przy łukach triumfalnych i wieżach kościołów znajdują się schody ułatwiające wejście na szczyt i spoglądanie na miasto z wysokości. Posągi i obrazy są dostępne nie tylko dla amatorów, ale dla artystów i rzemieślników, którzy w galeriach mogą zdejmować kopie.",
+  "start": 4086.25
+ },
+ {
+  "i": 393,
+  "pl": "Francuz, gdy coś wytwarza, dba naprzód o to, ażeby dzieło jego odpowiadało swemu celowi, a potem, ażeby było piękne. I jeszcze nie kończąc na tym troszczy się o jego trwałość i czystość.",
+  "start": 4104.64
+ },
+ {
+  "i": 394,
+  "pl": "Prawdę tę stwierdzał Wokulski na każdym kroku i na każdej rzeczy, począwszy od wózków wywożących śmiecie do otoczonej barierą Wenus milońskiej<sup>715<\/sup>.",
+  "start": 4118.12
+ },
+ {
+  "i": 395,
+  "pl": "Odgadł również skutki podobnego gospodarstwa, że nie marnuje się tu praca: każde pokolenie oddaje swoim następcom najświetniejsze dzieła poprzedników dopełniając je własnym dorobkiem.",
+  "start": 4128.48
+ },
+ {
+  "i": 396,
+  "pl": "Tym sposobem Paryż jest arką, w której mieszczą się zdobycze kilkunastu, jeżeli nie kilkudziesięciu wieków cywilizacji...",
+  "start": 4141.94
+ },
+ {
+  "i": 397,
+  "pl": "Wszystko tu jest zacząwszy od potwornych posągów asyryjskich i mumij egipskich, skończywszy na ostatnich rezultatach mechaniki i elektrotechniki, od dzbanków, w których przed czterdziestoma wiekami Egipcjanki nosiły wodę, do olbrzymich kół hydraulicznych z Saint–Maur<sup>716<\/sup>.",
+  "start": 4150.08
+ },
+ {
+  "i": 398,
+  "pl": "„Ci, którzy stworzyli te cuda — myślał Wokulski — albo je gromadzili w jedno miejsce, ci nie byli jak ja szalonymi próżniakami...”",
+  "start": 4170.38
+ },
+ {
+  "i": 399,
+  "pl": "Tak sobie mówiąc czuł, że wstyd go ogarnia.",
+  "start": 4181.43
+ },
+ {
+  "i": 400,
+  "pl": "I znowu załatwiwszy w ciągu paru godzin interesa Suzina włóczył się po Paryżu. Błądził po nieznanych ulicach, tonął wśród krociowego tłumu, zanurzał się w pozorny chaos rzeczy i wypadków i na dnie jego znajdował porządek i prawo.",
+  "start": 4184.03
+ },
+ {
+  "i": 401,
+  "pl": "To znowu, dla odmiany, pił koniak, grał w karty i w ruletę, albo oddawał się rozpuście.",
+  "start": 4202.42
+ },
+ {
+  "i": 402,
+  "pl": "Zdawało mu się, że w tym wulkanicznym ognisku cywilizacji spotka go coś nadzwyczajnego, że tu zacznie się nowa epoka jego życia.",
+  "start": 4208.85
+ },
+ {
+  "i": 403,
+  "pl": "Zarazem czuł, że rozpierzchnięte dotychczas wiadomości i poglądy zbiegają się w pewną całość, w jakiś system filozoficzny, który tłomaczył mu wiele tajemnic świata i jego własnego bytu.",
+  "start": 4217.57
+ },
+ {
+  "i": 404,
+  "pl": "„Czym ja jestem?” — pytał się nieraz i stopniowo formułował sobie odpowiedź:",
+  "start": 4230.97
+ },
+ {
+  "i": 405,
+  "pl": "„Jestem człowiek zmarnowany. Miałem ogromne zdolności i energię, lecz — nie zrobiłem nic dla cywilizacji. Ci znakomici ludzie, jakich tu spotykam, nie mają nawet połowy moich sił i mimo to zostawiają po sobie machiny, gmachy, utwory sztuki, nowe poglądy. Lecz ja co zostawię?...",
+  "start": 4236.37
+ },
+ {
+  "i": 406,
+  "pl": "Chyba mój sklep, który dziś upadłby, gdyby go nie pilnował Rzecki... A przecież nie próżnowałem: szarpałem się za trzech ludzi i gdyby mi nie pomógł przypadek, nie miałbym nawet tego majątku, jaki posiadam!...”",
+  "start": 4257.86
+ },
+ {
+  "i": 407,
+  "pl": "Później przyszło mu na myśl: na co to on strwonił siły i życie?...",
+  "start": 4272.69
+ },
+ {
+  "i": 408,
+  "pl": "Na walkę z otoczeniem, do którego nie przystawał. Gdy miał ochotę uczyć się, nie mógł, ponieważ w jego kraju potrzebowano nie uczonych, ale — chłopców i subiektów sklepowych.",
+  "start": 4278.31
+ },
+ {
+  "i": 409,
+  "pl": "Gdy chciał służyć społeczeństwu, choćby ofiarą własnego życia, podsunięto mu fantastyczne marzenia zamiast programu, a potem — zapomniano o nim. Gdy szukał pracy, nie dano mu jej, lecz wskazano szeroki gościniec do ożenienia się ze starszą kobietą dla pieniędzy.",
+  "start": 4290.08
+ },
+ {
+  "i": 410,
+  "pl": "Gdy nareszcie zakochał się i chciał zostać legalnym ojcem rodziny, kapłanem domowego ogniska, którego świętość wszyscy dokoła zachwalali, postawiono go w położeniu bez wyjścia.",
+  "start": 4307.77
+ },
+ {
+  "i": 411,
+  "pl": "Tak, że nie wie nawet, czy kobieta, za którą szalał, jest zwykłą kokietką o przewróconej głowie, czy może taką jak on zbłąkaną istotą, która nie znalazła właściwej dla siebie drogi.",
+  "start": 4318.95
+ },
+ {
+  "i": 412,
+  "pl": "Sądząc jej czyny, jest to panna na wydaniu, która szuka najlepszej partii; patrząc w jej oczy, jest to anielska dusza, której konwenanse ludzkie spętały skrzydła.",
+  "start": 4332.6
+ },
+ {
+  "i": 413,
+  "pl": "„Gdyby mi wystarczyło kilkadziesiąt tysięcy rubli rocznie i komplet do wista, byłbym w Warszawie najszczęśliwszym człowiekiem — mówił do siebie. — Ale ponieważ oprócz żołądka mam duszę, która łaknie wiedzy i miłości, więc musiałbym tam zginąć.",
+  "start": 4345.41
+ },
+ {
+  "i": 414,
+  "pl": "W tej strefie nie dojrzewają ani pewnego gatunku rośliny, ani pewnego gatunku ludzie...”",
+  "start": 4361.39
+ },
+ {
+  "i": 415,
+  "pl": "Strefa!... Raz będąc w obserwatorium rzucił okiem na klimatyczną mapę Europy i zapamiętał, że średnia temperatura Paryża jest o pięć stopni wyższą aniżeli Warszawy. Znaczy, że ów Paryż ma rocznie więcej o dwa tysiące stopni ciepła aniżeli Warszawa.",
+  "start": 4368.46
+ },
+ {
+  "i": 416,
+  "pl": "A że ciepło jest siłą, i to potężną, jeżeli nie jedyną siłą twórczą, więc... zagadka rozwiązana...",
+  "start": 4386.79
+ },
+ {
+  "i": 417,
+  "pl": "„Na północy jest chłodniej — myślał — świat roślinny i zwierzęcy jest mniej obfity, a więc o żywność dla człowieka trudniej. Nie dość na tym: ten sam człowiek musi jeszcze wkładać mnóstwo pracy w budowę ciepłych mieszkań i przygotowanie ciepłej odzieży.",
+  "start": 4394.49
+ },
+ {
+  "i": 418,
+  "pl": "Francuz w porównaniu z mieszkańcem północy ma więcej wolnych sił i czasu, a nie potrzebując zużywać ich na zaspokojenie potrzeb materialnych obraca je na twórczość duchową.",
+  "start": 4411.17
+ },
+ {
+  "i": 419,
+  "pl": "Jeżeli do ciężkich warunków klimatycznych dodać jeszcze arystokrację, która opanowała wszystkie oszczędności narodu i utopiła je w bezmyślnej rozpuście, to zaraz wyjaśni się: dlaczego ludzie niezwykle zdolni nie tylko nie mogą rozwijać się tam, ale wprost muszą ginąć.”",
+  "start": 4424.51
+ },
+ {
+  "i": 420,
+  "pl": "„No, już ja nie zginę!...” — mruknął, głęboko zniechęcony.",
+  "start": 4443.29
+ },
+ {
+  "i": 421,
+  "pl": "I w tej chwili, po raz pierwszy, jasno zarysował mu się projekt niewracania do kraju.",
+  "start": 4447.77
+ },
+ {
+  "i": 422,
+  "pl": "„Sprzedam sklep — myślał — wycofam moje kapitały i osiądę w Paryżu. Nie będę zawadzał tym, którzy mnie nie chcą... Będę tu zwiedzał muzea, może wezmę się do jakiej specjalnej nauki i życie upłynie mi, jeżeli nie w szczęściu, to przynajmniej bez boleści...”",
+  "start": 4455.14
+ },
+ {
+  "i": 423,
+  "pl": "Powrócić go do kraju i zatrzymać w nim mógł już tylko jeden wypadek, jedna osoba... Ale ten wypadek nie nadchodził, a natomiast zdarzały się inne, coraz bardziej odsuwające go od Warszawy i coraz mocniej przykuwające do Paryża.",
+  "start": 4471.72
+ }
+];
+
+/* ===================================================================== */
+/* 2. STATE                                                             */
+/* ===================================================================== */
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const outEl = document.getElementById("out");
+const nowEl = document.getElementById("tnow");
+const durEl = document.getElementById("tdur");
+const counterEl = document.getElementById("counter");
+const seekEl = document.getElementById("seek");
+const playBtn = document.getElementById("play");
+const toastEl = document.getElementById("toast");
+
+const stamps = SECTIONS.map((s) => (s.start == null ? null : Number(s.start)));
+const history = [];
+let cursor = 0;          // row that receives the next Space press
+let raf = 0;
+
+const fmt = (s, tenths) => {
+  if (!isFinite(s)) s = 0;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  return m + ":" + (tenths ? sec.toFixed(1).padStart(4, "0") : String(Math.floor(sec)).padStart(2, "0"));
+};
+const fmt2 = (s) => (s == null ? "—" : s.toFixed(2) + "s");
+const preview = (t, n = 46) => (t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t);
+const firstWords = (t, n = 6) => t.split(/\s+/).slice(0, n).join(" ");
+
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+}
+
+/* ===================================================================== */
+/* 3. RENDER                                                            */
+/* ===================================================================== */
+function render() {
+  rowsEl.textContent = "";
+  SECTIONS.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === cursor ? " active" : "") + (stamps[i] == null ? " empty" : "");
+    li.dataset.i = String(i);
+
+    const idx = document.createElement("span");
+    idx.className = "idx";
+    idx.textContent = String(i + 1);
+
+    const txt = document.createElement("span");
+    txt.className = "txt";
+    txt.textContent = preview(s.pl);
+    txt.title = s.pl;
+
+    const val = document.createElement("span");
+    val.className = "val";
+    val.textContent = fmt2(stamps[i]);
+
+    const inp = document.createElement("input");
+    inp.className = "t";
+    inp.type = "number";
+    inp.step = "0.01";
+    inp.min = "0";
+    inp.value = stamps[i] == null ? "" : stamps[i].toFixed(2);
+    inp.setAttribute("aria-label", "start time for section " + (i + 1));
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("change", () => {
+      const v = parseFloat(inp.value);
+      pushHistory(i);
+      stamps[i] = isFinite(v) ? Math.max(0, v) : null;
+      render();
+      updateOutput();
+    });
+
+    const stamp = document.createElement("button");
+    stamp.type = "button";
+    stamp.className = "stamp";
+    stamp.textContent = "⏺";
+    stamp.title = "Stamp the playhead into this row";
+    stamp.addEventListener("click", (e) => { e.stopPropagation(); stampRow(i); });
+
+    li.append(idx, txt, val, inp, stamp);
+    li.addEventListener("click", () => { cursor = i; seekTo(stamps[i]); render(); });
+    rowsEl.appendChild(li);
+  });
+  counterEl.textContent = stamps.filter((v) => v != null).length;
+}
+
+function seekTo(t) {
+  if (t == null) return;
+  if (audio.readyState >= 1) audio.currentTime = Math.max(0, t);
+}
+
+/* ===================================================================== */
+/* 4. STAMPING                                                          */
+/* ===================================================================== */
+function pushHistory(i) {
+  history.push({ i, prev: stamps[i] });
+  if (history.length > 200) history.shift();
+}
+
+function stampRow(i) {
+  if (audio.readyState < 1) { toast("Audio not loaded"); return; }
+  pushHistory(i);
+  stamps[i] = Math.round(audio.currentTime * 100) / 100;
+  cursor = Math.min(SECTIONS.length - 1, i + 1);
+  render();
+  updateOutput();
+  const active = rowsEl.querySelector('li.row.active');
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) { toast("Nothing to undo"); return; }
+  stamps[last.i] = last.prev;
+  cursor = last.i;
+  render();
+  updateOutput();
+  toast("Undone row " + (last.i + 1));
+}
+
+/* ===================================================================== */
+/* 5. OUTPUT                                                            */
+/* ===================================================================== */
+function updateOutput() {
+  const width = String(SECTIONS.length - 1).length;
+  const lines = ["const AUDIO_TIMES = ["];
+  stamps.forEach((t, i) => {
+    const value = t == null ? "null" : t.toFixed(2);
+    lines.push(`  ${(value + ",").padEnd(8)} // [${String(i).padStart(width)}] "${firstWords(SECTIONS[i].pl)}…"`);
+  });
+  lines.push("];");
+  outEl.textContent = lines.join("\n");
+}
+
+/* ===================================================================== */
+/* 6. TRANSPORT                                                         */
+/* ===================================================================== */
+function refreshPlayLabel() {
+  playBtn.textContent = audio.paused ? "▶ Play" : "⏸ Pause";
+}
+
+function tick() {
+  if (audio.paused) return;
+  nowEl.textContent = fmt(audio.currentTime, true);
+  if (isFinite(audio.duration) && audio.duration > 0) {
+    seekEl.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+playBtn.addEventListener("click", () => {
+  if (audio.paused) audio.play().catch(() => toast("Cannot play — load the MP3 first"));
+  else audio.pause();
+});
+audio.addEventListener("play", () => { refreshPlayLabel(); tick(); });
+audio.addEventListener("pause", () => { refreshPlayLabel(); cancelAnimationFrame(raf); nowEl.textContent = fmt(audio.currentTime, true); });
+audio.addEventListener("ended", refreshPlayLabel);
+
+audio.addEventListener("loadedmetadata", () => { durEl.textContent = fmt(audio.duration); });
+
+seekEl.addEventListener("input", () => {
+  if (!isFinite(audio.duration)) return;
+  audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration;
+  nowEl.textContent = fmt(audio.currentTime, true);
+});
+
+document.getElementById("file").addEventListener("change", (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (f) { audio.src = URL.createObjectURL(f); audio.load(); toast("Loaded " + f.name); }
+});
+
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("markNext").addEventListener("click", () => stampRow(cursor));
+document.getElementById("clear").addEventListener("click", () => {
+  if (!confirm("Clear every timestamp?")) return;
+  stamps.forEach((_, i) => (stamps[i] = null));
+  history.length = 0;
+  cursor = 0;
+  render();
+  updateOutput();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = outEl.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied AUDIO_TIMES");
+  } catch (e) {
+    // file:// fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); toast("Copied AUDIO_TIMES"); }
+    catch (e2) { toast("Select the array and copy manually"); }
+    ta.remove();
+  }
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([outEl.textContent + "\n"], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "audio-times.js";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+/* --- theme ------------------------------------------------------------ */
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "dark" ? "☀️" : "🌙";
+  localStorage.setItem("helper.theme", t);
+}
+themeBtn.addEventListener("click", () =>
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+
+/* --- keyboard --------------------------------------------------------- */
+document.addEventListener("keydown", (ev) => {
+  const tag = (ev.target.tagName || "").toLowerCase();
+  if (tag === "input" && ev.target.type !== "range") return;
+  if (tag === "select" || tag === "textarea") return;
+
+  if (ev.code === "Space") {
+    ev.preventDefault();                 // never scroll the page
+    if (audio.paused) { playBtn.click(); return; }
+    stampRow(cursor);                    // playing -> tap on every boundary
+  } else if (ev.key === "Backspace") {
+    ev.preventDefault();
+    undo();
+  } else if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    cursor = Math.min(SECTIONS.length - 1, cursor + 1);
+    render();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    cursor = Math.max(0, cursor - 1);
+    render();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    seekTo(stamps[cursor]);
+    audio.play().catch(() => {});
+  } else if (ev.key === "p" || ev.key === "P") {
+    ev.preventDefault();
+    playBtn.click();
+  }
+});
+
+/* --- boot ------------------------------------------------------------- */
+applyTheme(localStorage.getItem("helper.theme") ||
+  (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+render();
+updateOutput();
+refreshPlayLabel();
+</script>
+</body>
+</html>
