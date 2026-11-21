@@ -45,6 +45,11 @@
     .card p { margin: 0 0 20px; }
     .sign-in { border: 1px solid var(--button-bg); border-radius: 999px; background: var(--button-bg); color: var(--button-ink); padding: 10px 18px; font: 600 1rem var(--sans); cursor: pointer; }
     .sign-in:disabled { cursor: wait; opacity: .6; }
+    .email-form { display: grid; gap: 10px; margin-bottom: 20px; }
+    .email-form label { font-weight: 600; }
+    .email-form input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit; }
+    .email-form .sign-in { justify-self: start; margin-top: 6px; }
+    .email-form[hidden] { display: none; }
     .explore { display: inline-block; margin-right: 16px; font-weight: 600; }
     .explore[hidden] { display: none; }
     .status { margin: 16px 0 0 !important; overflow-wrap: anywhere; }
@@ -65,6 +70,13 @@
     <section class="card" aria-labelledby="sign-in-heading">
       <h2 id="sign-in-heading">Welcome to Bookcast</h2>
       <p id="account-message" hidden></p>
+      <form id="email-form" class="email-form">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" required>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <button id="email-sign-in" class="sign-in" type="submit" disabled>Sign in</button>
+      </form>
       <button id="sign-in" class="sign-in" type="button" disabled>Continue with Google</button>
       <a id="explore" class="explore" href="index.html" hidden>Explore the library →</a>
       <button id="sign-out" class="sign-in" type="button" hidden>Sign out</button>
@@ -86,7 +98,7 @@
   </script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js';
-    import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js';
+    import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyC4ZCg4k2bnMJmwUqGefe4cX8DeHKFcFAM",
@@ -98,32 +110,87 @@
       measurementId: "G-EWG7LF2QYG"
     };
     const button = document.getElementById('sign-in');
+    const emailForm = document.getElementById('email-form');
+    const emailButton = document.getElementById('email-sign-in');
     const signOutButton = document.getElementById('sign-out');
     const heading = document.getElementById('sign-in-heading');
     const accountMessage = document.getElementById('account-message');
     const explore = document.getElementById('explore');
     const status = document.getElementById('status');
     try {
-      const auth = getAuth(initializeApp(firebaseConfig));
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      async function recordLogin(user, provider) {
+        let timeout;
+        try {
+          await Promise.race([
+            (async () => {
+              const { getFirestore, collection, addDoc, serverTimestamp, Timestamp } =
+                await import('https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js');
+              await addDoc(collection(getFirestore(app), 'loginEvents'), {
+                userId: user.uid,
+                email: user.email || null,
+                provider,
+                userAgent: navigator.userAgent.slice(0, 1024),
+                loggedInAt: serverTimestamp(),
+                expiresAt: Timestamp.fromMillis(Date.now() + 90 * 24 * 60 * 60 * 1000)
+              });
+            })(),
+            new Promise((_, reject) => {
+              timeout = setTimeout(() => reject(new Error('Login event timed out')), 3000);
+            })
+          ]);
+        } catch (error) {
+          console.warn('Unable to record login event.', error.code || 'unavailable');
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
       onAuthStateChanged(auth, user => {
         heading.textContent = user ? 'You’re signed in' : 'Welcome to Bookcast';
         accountMessage.textContent = user ? `Welcome, ${user.displayName || user.email || 'reader'}. Ready to pick up a book?` : '';
         accountMessage.hidden = !user;
         status.textContent = '';
         button.hidden = !!user;
+        emailForm.hidden = !!user;
         signOutButton.hidden = !user;
         explore.hidden = !user;
         button.disabled = false;
+        emailButton.disabled = false;
       }, error => {
         console.error('Unable to check sign-in status:', error);
         status.textContent = 'Unable to check your sign-in status. Please try again.';
         button.disabled = false;
+        emailButton.disabled = false;
+      });
+      emailForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        emailButton.disabled = true;
+        button.disabled = true;
+        status.textContent = 'Signing in…';
+        try {
+          const result = await signInWithEmailAndPassword(auth, document.getElementById('email').value.trim(), document.getElementById('password').value);
+          await recordLogin(result.user, 'password');
+          window.location.href = 'index.html';
+        } catch (error) {
+          console.error('Email sign-in failed:', error.code);
+          status.textContent = error.code === 'auth/network-request-failed'
+            ? 'We couldn’t connect. Check your connection and try again.'
+            : error.code === 'auth/too-many-requests'
+              ? 'Too many attempts. Please wait and try again.'
+              : 'We couldn’t sign you in. Check your email and password and try again.';
+        } finally {
+          emailButton.disabled = false;
+          button.disabled = false;
+        }
       });
       button.addEventListener('click', async () => {
         button.disabled = true;
+        emailButton.disabled = true;
         status.textContent = 'Opening Google sign-in…';
         try {
-          await signInWithPopup(auth, new GoogleAuthProvider());
+          const result = await signInWithPopup(auth, new GoogleAuthProvider());
+          await recordLogin(result.user, 'google');
           window.location.href = 'index.html';
         } catch (error) {
           console.error('Sign-in failed:', error);
@@ -136,6 +203,7 @@
           }
         } finally {
           button.disabled = false;
+          emailButton.disabled = false;
         }
       });
       signOutButton.addEventListener('click', async () => {
