@@ -108,6 +108,12 @@ def init_book(folder: Path, out: Path) -> int:
 def extract_tokens(reader_template: Path) -> tuple[str, str]:
     """Reuse the reader's colour tokens so index, readers and vocabulary pages match."""
     t = read(reader_template)
+    if '../reader/reader.css' in t and not re.search(r":root \{", t):
+        css = next((parent / "public/reader/reader.css" for parent in reader_template.resolve().parents
+                    if (parent / "public/reader/reader.css").is_file()), None)
+        if css is None:
+            raise SystemExit(f"shared reader stylesheet not found for {reader_template}")
+        t = read(css)
     light = re.search(r":root \{(.*?)\n  \}", t, re.S)
     dark = re.search(r'html\[data-theme="dark"\] \{(.*?)\n  \}', t, re.S)
     if not (light and dark):

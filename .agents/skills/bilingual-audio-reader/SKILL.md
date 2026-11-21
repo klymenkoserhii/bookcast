@@ -50,6 +50,8 @@ Use `build_index.py` for a book contents page; follow `references/index-page.md`
 
 Reader cards keep stable `id="u-N"` anchors because vocabulary examples link to them. Preserve these anchors when changing templates.
 
+Bookcast chapter readers load a classic shared bundle and `reader.css` from `public/reader/` via `../reader/`; keep those files alongside published book directories for both HTTP and `file://` use. After editing reader JavaScript sources, run `python3 scripts/build_reader_bundle.py` from the repository root to rebuild the bundle and update versioned references; run it with `--check` to verify they are current. Preserve these references when rebuilding templates or migrating book-local template copies, and verify styling, playback and annotations for both protocols. A chapter HTML file alone is no longer self-contained.
+
 ## Alignment and maintenance notes
 
 - The aligner matches Polish tokens to Polish ASR globally; local alignment per sentence can shift boundaries.

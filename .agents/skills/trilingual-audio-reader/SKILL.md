@@ -5,7 +5,7 @@ description: Build offline, per-chapter HTML study readers (EN → PL → UA) fr
 
 # Trilingual reader with automatic audio alignment
 
-Turns `chapter-NN.md` (EN/PL/UA triples) and one MP3 narration of the Polish text into a single self-contained `chapter-NN.html`. The Polish text is always visible with a ▶ button per section that plays only that section. English and Ukrainian sit behind per-card toggles.
+Turns `chapter-NN.md` (EN/PL/UA triples) and one MP3 narration of the Polish text into `chapter-NN.html` with shared local reader scripts. The Polish text is always visible with a ▶ button per section that plays only that section. English and Ukrainian sit behind per-card toggles.
 
 The timing comes from running speech recognition locally (faster-whisper, word-level timestamps) and matching the recognised words against the Polish text. No hand stamping or CDN is needed; the reader embeds text/timings and loads its audio asset locally or from the same-site host.
 
@@ -56,7 +56,7 @@ The builder automatically reads `annotations.md` beside the chapter Markdown whe
 bash <skill-dir>/scripts/setup_book.sh /path/to/book-folder
 ```
 
-This copies the scripts and templates into the book folder (the generated HTML's "How to re-align after edits" comment tells readers to run them from there) and links `.venv-asr` to a shared Python environment with faster-whisper, creating it once. The first transcription downloads the ~1.6 GB `large-v3-turbo` model.
+This copies the scripts and templates into the book folder and links `.venv-asr` to a shared Python environment with faster-whisper, creating it once. The first transcription downloads the ~1.6 GB `large-v3-turbo` model.
 
 ## Per-chapter workflow
 
@@ -106,7 +106,7 @@ The converter validates that the output is decodable Opus and its duration is wi
      --helper-audio "../../public/<book-slug>/audio/chapter-03.webm" # helper stays beside source
 ```
 
-`--audio` is the URL *relative to the published HTML*, so `audio/chapter-03.webm` resolves within `public/<book-slug>/`. The reader's header shows three lines: title, chapter name (italic; collapses if empty), subtitle. Keep the title, subtitle and audio naming consistent across chapters of a book. `--annotations` is optional; by default, the builder detects `annotations.md` beside the chapter Markdown. Only notes referenced by the chapter are embedded, so text and timing remain self-contained.
+`--audio` is the URL *relative to the published HTML*, so `audio/chapter-03.webm` resolves within `public/<book-slug>/`. The reader's header shows three lines: title, chapter name (italic; collapses if empty), subtitle. Keep the title, subtitle and audio naming consistent across chapters of a book. `--annotations` is optional; by default, the builder detects `annotations.md` beside the chapter Markdown. Only notes referenced by the chapter are embedded. The generated reader loads a classic bundle and `reader.css` from `public/reader/` via `../reader/`; keep them alongside book directories for both HTTP and `file://` use. After editing reader JavaScript sources, run `python3 scripts/build_reader_bundle.py` from the repository root to rebuild the bundle and update versioned references; run it with `--check` to verify they are current. A chapter HTML file alone is no longer self-contained.
 
 **6. Verify in a browser.** Follow `references/browser-verification.md`, serving the Bookcast repository over HTTP. The reader downloads the full audio as a Blob, so playback seeking does not depend on Range support; the timestamp helper remains in `src/<book-slug>/`, uses a direct media URL, and should be tested with the range-enabled server. Drive the reader (playback at a mid section, hard stop at the next boundary, select-then-Continuous) and helper separately. Confirm audio duration and timestamps, and check the console for errors.
 
